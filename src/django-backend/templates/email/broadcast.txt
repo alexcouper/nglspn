@@ -1,0 +1,11 @@
+{{ subject }}
+==============================
+
+{{ body_markdown }}
+
+---
+Manage your email preferences: {{ profile_url }}
+
+All great things start small
+
+(c) {{ current_year }} Naglasúpan.

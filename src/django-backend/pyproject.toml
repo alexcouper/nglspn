@@ -1,0 +1,104 @@
+[project]
+name = "django-backend"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "django>=4.2",
+    "django-cors-headers>=4.9.0",
+    "django-ninja>=1.0",
+    "django-storages[s3]>=1.14",
+    "gunicorn>=23.0.0",
+    "passlib[bcrypt]>=1.7",
+    "pillow>=10.0",
+    "psycopg2-binary>=2.9",
+    "dj-database-url>=2.0",
+    "pyjwt[crypto]>=2.8",
+    "python-dotenv>=1.0",
+    "whitenoise>=6.0",
+    "boto3>=1.35",
+    "markdown>=3.5",
+    "mjml>=0.4",
+    # OpenTelemetry for distributed tracing
+    "opentelemetry-sdk>=1.27",
+    "opentelemetry-exporter-otlp-proto-http>=1.27",
+    "opentelemetry-instrumentation-django>=0.48b0",
+    "opentelemetry-instrumentation-psycopg2>=0.48b0",
+    "opentelemetry-instrumentation-sqlite3>=0.48b0",
+    "python-json-logger>=4.0.0",
+]
+
+[project.optional-dependencies]
+test = [
+    "pytest>=8.0",
+    "pytest-django>=4.5",
+    "factory-boy>=3.3",
+    "pyhamcrest>=2.1",
+    "moto[s3]>=5.0",
+]
+dev = [
+    "ruff>=0.8",
+]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "project_showcase.settings"
+python_files = ["test_*.py"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ALL"]
+fixable = ["ALL"]
+
+ignore = [
+    "ANN002",  # Missing type *args
+    "ANN003",  # Missing type **kwargs
+    "ANN401",  # Dynamically typed expressions (Any)
+    "D",       # All doc related
+    "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
+    "PLR0913", # Too many arguments (Django Ninja API endpoints need many)
+    "B008",    # Do not perform function calls in argument defaults (Query() is fine for Django Ninja)
+    "DJ001",   # Avoid null=True on string fields (Django convention)
+    "TC002",   # Move third-party imports into TYPE_CHECKING block (not needed with annotations import)
+    "COM812",  # Trailing comma conflicts with formatter
+    "ARG002",  # Unused args in method argument
+    "ARG001",  # Unused function args
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test_*.py" = [
+    "S101",    # asserts allowed in tests...
+    "ARG",     # Unused function args -> fixtures nevertheless are functionally relevant...
+    "FBT",     # Don't care about booleans as positional arguments in tests
+    "PLR2004", # Magic value used in comparison
+    "ANN",     # Type annotations not required in tests
+    "S106",    # Possible hardcoded password assigned to argument
+    "S311",    # Standard pseudo-random generators
+]
+"conftest.py" = [
+    "ANN",     # Type annotations not required in test fixtures
+]
+"factories.py" = [
+    "ANN",     # Factory-boy has dynamic patterns
+    "ARG002",  # Unused kwargs is normal in post_generation
+]
+"**/migrations/*.py" = ["ALL"]
+"scripts/*.py" = [
+    "E402",    # Module-level imports below django.setup()
+    "E501",    # Long lines in data constants are fine
+    "T201",    # Print statements expected in CLI scripts
+    "EXE001",  # Shebang without executable bit is fine
+    "S105",    # Hardcoded passwords are intentional in seed/bootstrap
+    "S106",    # Hardcoded password argument
+]
+
+
+[tool.ruff.lint.isort]
+known-first-party = ["project_showcase", "apps"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

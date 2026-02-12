@@ -1,0 +1,19 @@
+{% extends "email/base.mjml" %}
+
+{% block title %}Project approved - Naglasúpan{% endblock %}
+
+{% block content %}
+<mj-section background-color="#ffffff" border-radius="16px" padding="40px 30px">
+  <mj-column>
+    <mj-text font-size="24px" font-weight="600" align="center" padding-bottom="10px">
+      Your project has been approved!
+    </mj-text>
+    <mj-text align="center" padding-bottom="30px">
+      Hi {{ user_name }}, great news &mdash; your project <strong>{{ project_title }}</strong> has been approved and is now live on Naglasúpan.
+    </mj-text>
+    <mj-button href="{{ project_url }}" align="center">
+      View your project
+    </mj-button>
+  </mj-column>
+</mj-section>
+{% endblock %}

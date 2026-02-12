@@ -1,0 +1,13 @@
+Project approved - Naglasúpan
+==============================
+
+Hi {{ user_name }},
+
+Great news — your project "{{ project_title }}" has been approved and is now live on Naglasúpan.
+
+View your project: {{ project_url }}
+
+---
+All great things start small
+
+(c) {{ current_year }} Naglasúpan.

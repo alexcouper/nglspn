@@ -1,0 +1,39 @@
+{% extends "admin/change_form.html" %}
+
+{% block after_related_objects %}
+  {{ block.super }}
+  {% if show_broadcast_buttons %}
+  <div class="submit-row" style="margin-top: 10px; padding: 12px 14px;">
+    <a href="{{ preview_url }}" target="_blank" class="button" style="margin-right: 8px;">
+      Preview HTML
+    </a>
+    <a href="{{ preview_url }}?format=text" target="_blank" class="button" style="margin-right: 8px;">
+      Preview Text
+    </a>
+    <a href="{{ send_url }}" class="button" style="background: #16a34a; color: #fff;">
+      Send Email
+    </a>
+  </div>
+  {% endif %}
+{% endblock %}
+
+{% block admin_change_form_document_ready %}
+  {{ block.super }}
+  <script>
+    document.addEventListener("click", function(e) {
+      const btn = e.target.closest(".broadcast-image-insert");
+      if (!btn) return;
+      e.preventDefault();
+      const url = btn.dataset.url;
+      const filename = btn.dataset.filename;
+      const textarea = document.getElementById("id_body_markdown");
+      if (!textarea) return;
+      const markdown = '<img src="' + url + '" width="560" alt="' + filename + '" />\n';
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      textarea.value = textarea.value.substring(0, start) + markdown + textarea.value.substring(end);
+      textarea.selectionStart = textarea.selectionEnd = start + markdown.length;
+      textarea.focus();
+    });
+  </script>
+{% endblock %}

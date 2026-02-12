@@ -1,0 +1,57 @@
+[tool.uv.workspace]
+members = [
+    "lib/python/*",
+    "src/django-backend",
+]
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["ALL"]
+fixable = ["ALL"]
+
+ignore = [
+    "ANN002",  # Missing type *args
+    "ANN003",  # Missing type **kwargs
+    "ANN401",  # Dynamically typed expressions (Any)
+    "D",       # All doc related
+    "RUF012",  # Mutable class attributes should be annotated with `typing.ClassVar`
+    "PLR0913", # Too many arguments
+    "B008",    # Do not perform function calls in argument defaults
+    "DJ001",   # Avoid null=True on string fields (Django convention)
+    "TC002",   # Move third-party imports into TYPE_CHECKING block
+    "COM812",  # Trailing comma conflicts with formatter
+    "ARG002",  # Unused args in method argument
+    "ARG001",  # Unused function args
+]
+
+[tool.ruff.lint.per-file-ignores]
+"test_*.py" = [
+    "S101",    # asserts allowed in tests
+    "ARG",     # Unused function args -> fixtures
+    "FBT",     # Booleans as positional arguments in tests
+    "PLR2004", # Magic value used in comparison
+    "ANN",     # Type annotations not required in tests
+    "S106",    # Possible hardcoded password
+    "S311",    # Standard pseudo-random generators
+]
+"conftest.py" = [
+    "ANN",     # Type annotations not required in test fixtures
+]
+"factories.py" = [
+    "ANN",     # Factory-boy has dynamic patterns
+    "ARG002",  # Unused kwargs is normal in post_generation
+]
+"**/migrations/*.py" = ["ALL"]
+"lib/python/devops/**/*.py" = [
+    "T201",    # print is expected in CLI tools
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["project_showcase", "apps", "devops"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

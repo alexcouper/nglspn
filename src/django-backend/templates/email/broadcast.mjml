@@ -1,0 +1,22 @@
+{% extends "email/base.mjml" %}
+
+{% block title %}{{ subject }} - Naglasúpan{% endblock %}
+
+{% block content %}
+<mj-section background-color="#ffffff" border-radius="16px" padding="10px 30px 40px">
+  <mj-column>
+    <mj-text font-size="24px" font-weight="600" align="center" padding-bottom="20px">
+      {{ subject }}
+    </mj-text>
+    <mj-text>
+      {{ body_html|safe }}
+    </mj-text>
+  </mj-column>
+</mj-section>
+{% endblock %}
+
+{% block footer_extra %}
+        <mj-text align="center" font-size="14px" color="#64748b" padding-top="20px" padding-bottom="0px">
+          <a href="{{ profile_url }}" style="color: #6366f1; text-decoration: underline;">Manage your email preferences</a>
+        </mj-text>
+{% endblock %}

@@ -1,0 +1,30 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Send broadcast email{% endblock %}
+
+{% block content %}
+<div style="max-width: 600px; margin: 20px auto;">
+  <h2>Confirm sending broadcast email</h2>
+
+  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+    <p><strong>Subject:</strong> {{ broadcast.subject }}</p>
+    <p><strong>Type:</strong> {{ broadcast.get_email_type_display|default:"Individual recipients" }}</p>
+    <p><strong>Recipients:</strong> {{ recipient_count }} user{{ recipient_count|pluralize }}</p>
+  </div>
+
+  <p style="color: #dc2626; font-weight: 600;">
+    This action cannot be undone. The email will be sent to all {{ recipient_count }} recipient{{ recipient_count|pluralize }}.
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+    <div style="margin-top: 20px;">
+      <input type="submit" value="Confirm and Send" class="button" style="background: #16a34a; color: #fff; padding: 10px 20px; cursor: pointer;">
+      <a href="{% url 'admin:emails_broadcastemail_change' broadcast.pk %}" class="button" style="margin-left: 8px; padding: 10px 20px;">
+        Cancel
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

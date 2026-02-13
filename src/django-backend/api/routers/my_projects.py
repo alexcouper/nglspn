@@ -52,7 +52,7 @@ def list_my_projects(request: HttpRequest) -> QuerySet[Project]:
     return (
         Project.objects.filter(owner=request.auth)
         .select_related("owner")
-        .prefetch_related("tags", "tags__category")
+        .prefetch_related("tags", "tags__category", "won_competitions")
     )
 
 
@@ -141,7 +141,7 @@ def create_project(
 )
 def get_my_project(request: HttpRequest, project_id: str) -> Project:
     qs = Project.objects.select_related("owner").prefetch_related(
-        "tags", "tags__category"
+        "tags", "tags__category", "won_competitions"
     )
     return get_object_or_404(qs, id=project_id, owner=request.auth)
 

@@ -31,7 +31,7 @@ def list_projects(
     queryset: QuerySet[Project] = (
         Project.objects.filter(status=ProjectStatus.APPROVED)
         .select_related("owner")
-        .prefetch_related("tags", "tags__category")
+        .prefetch_related("tags", "tags__category", "won_competitions")
     )
 
     # Apply filters
@@ -77,7 +77,7 @@ def get_featured_projects(
     return (
         Project.objects.filter(status=ProjectStatus.APPROVED, is_featured=True)
         .select_related("owner")
-        .prefetch_related("tags", "tags__category")[:10]
+        .prefetch_related("tags", "tags__category", "won_competitions")[:10]
     )
 
 
@@ -89,7 +89,7 @@ def get_trending_projects(
     return (
         Project.objects.filter(status=ProjectStatus.APPROVED)
         .select_related("owner")
-        .prefetch_related("tags", "tags__category")
+        .prefetch_related("tags", "tags__category", "won_competitions")
         .order_by("-monthly_visitors")[:10]
     )
 
@@ -115,7 +115,7 @@ def get_project(
     try:
         project = (
             Project.objects.select_related("owner")
-            .prefetch_related("tags", "tags__category")
+            .prefetch_related("tags", "tags__category", "won_competitions")
             .get(id=project_id)
         )
     except Project.DoesNotExist:

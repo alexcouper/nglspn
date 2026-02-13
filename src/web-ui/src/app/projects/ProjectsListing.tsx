@@ -6,10 +6,11 @@ import Image from "next/image";
 import Link from "next/link";
 import {
   Squares2X2Icon,
-  TrophyIcon,
+  TrophyIcon as TrophyIconOutline,
   ArrowsUpDownIcon,
   FunnelIcon,
 } from "@heroicons/react/24/outline";
+import { TrophyIcon } from "@heroicons/react/24/solid";
 import {
   api,
   type Project,
@@ -132,7 +133,7 @@ export function ProjectsListing() {
                   : "text-muted-foreground hover:bg-muted hover:text-foreground"
               }`}
             >
-              <TrophyIcon className="w-4.5 h-4.5" />
+              <TrophyIconOutline className="w-4.5 h-4.5" />
             </button>
           </div>
 
@@ -238,11 +239,12 @@ function ProjectCard({ project }: { project: Project }) {
   const mainImage =
     project.images?.find((img) => img.is_main) || project.images?.[0];
   const placeholderColor = getPlaceholderColor(project.id);
+  const isWinner = project.won_competitions && project.won_competitions.length > 0;
 
   return (
     <Link
       href={`/projects/${project.id}`}
-      className="card card-interactive group"
+      className={`card card-interactive group ${isWinner ? "border-amber-300 ring-1 ring-amber-200" : ""}`}
     >
       <div className={`relative aspect-video ${!mainImage ? placeholderColor : "bg-slate-100"}`}>
         {mainImage && (
@@ -253,6 +255,11 @@ function ProjectCard({ project }: { project: Project }) {
             className="object-cover"
             sizes="(max-width: 768px) 50vw, 33vw"
           />
+        )}
+        {isWinner && (
+          <div className="absolute top-2 right-2 bg-amber-500 text-white p-1 rounded-full shadow-sm">
+            <TrophyIcon className="w-3.5 h-3.5" />
+          </div>
         )}
       </div>
       <div className="p-3.5">

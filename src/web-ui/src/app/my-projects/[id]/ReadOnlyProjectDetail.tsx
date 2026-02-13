@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import Link from "next/link";
 import ReactMarkdown from "react-markdown";
+import { TrophyIcon } from "@heroicons/react/24/solid";
 import type { Project } from "@/lib/api";
 import { ImageGallery } from "@/components/ImageUpload";
 import { TagGroup } from "@/components/TagBadge";
@@ -88,6 +89,27 @@ export function ReadOnlyProjectDetail({ project, showStatus = true }: ReadOnlyPr
             </Link>
           </span>
         </div>
+
+        {/* Winner banner */}
+        {project.won_competitions && project.won_competitions.length > 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-6 flex items-center gap-2">
+            <TrophyIcon className="w-5 h-5 text-amber-500 flex-shrink-0" />
+            <p className="text-amber-800 text-sm">
+              Winner of{" "}
+              {project.won_competitions.map((comp, i) => (
+                <span key={comp.slug}>
+                  {i > 0 && ", "}
+                  <Link
+                    href={`/competitions/${comp.slug}`}
+                    className="font-medium underline hover:text-amber-900 transition-colors"
+                  >
+                    {comp.name}
+                  </Link>
+                </span>
+              ))}
+            </p>
+          </div>
+        )}
 
         <div className="flex flex-col lg:flex-row gap-8">
           {/* Description */}

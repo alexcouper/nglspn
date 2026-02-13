@@ -37,6 +37,11 @@ class ProjectImageResponse(Schema):
     created_at: datetime
 
 
+class WonCompetitionInfo(Schema):
+    name: str
+    slug: str
+
+
 class ProjectResponse(Schema):
     id: UUID
     title: str
@@ -54,6 +59,7 @@ class ProjectResponse(Schema):
     owner: PublicUserProfile
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []
+    won_competitions: list[WonCompetitionInfo] = []
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:
@@ -64,6 +70,10 @@ class ProjectResponse(Schema):
     def resolve_tags(obj: Any) -> list[Any]:
         """Only return non-rejected tags."""
         return list(obj.tags.exclude(status="rejected"))
+
+    @staticmethod
+    def resolve_won_competitions(obj: Any) -> list[Any]:
+        return list(obj.won_competitions.all())
 
 
 class PresignedUploadRequest(Schema):

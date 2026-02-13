@@ -2500,6 +2500,14 @@
             },
             "title": "Images",
             "type": "array"
+          },
+          "won_competitions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/WonCompetitionInfo"
+            },
+            "title": "Won Competitions",
+            "type": "array"
           }
         },
         "required": [
@@ -2627,6 +2635,24 @@
           "status"
         ],
         "title": "TagWithCategoryResponse",
+        "type": "object"
+      },
+      "WonCompetitionInfo": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "slug"
+        ],
+        "title": "WonCompetitionInfo",
         "type": "object"
       },
       "ProjectCreate": {

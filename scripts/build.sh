@@ -11,7 +11,6 @@ echo "Building Docker image $IMAGE"
 
 # Copy workspace lock file for Docker build (needed by uv workspace)
 cp "$ROOT_DIR/uv.lock" uv.lock
+trap 'rm -f uv.lock' EXIT
 
 docker build -t "$IMAGE" --platform=linux/amd64 .
-
-rm -f uv.lock

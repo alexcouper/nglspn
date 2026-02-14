@@ -177,6 +177,5 @@ logs/
 .env.claude
 
 .swarm/
-# Note: uv.lock should be committed to ensure reproducible builds
 
 .backend-port

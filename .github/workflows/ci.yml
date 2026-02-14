@@ -1,0 +1,33 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  django-backend:
+    name: Django Backend Tests
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/django-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+      - run: make test
+
+  web-ui:
+    name: Web UI Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web-ui
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: src/web-ui/package-lock.json
+      - run: npm ci
+      - run: make build-app

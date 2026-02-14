@@ -1,6 +1,5 @@
 [tool.uv.workspace]
 members = [
-    "lib/python/*",
     "src/django-backend",
 ]
 

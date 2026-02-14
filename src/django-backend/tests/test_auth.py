@@ -318,11 +318,13 @@ class TestUpdateCurrentUser:
     def test_update_multiple_fields(self, client, user, auth_headers) -> None:
         response = client.put(
             "/api/auth/me",
-            data=json.dumps({
-                "first_name": "John",
-                "last_name": "Doe",
-                "info": "Full stack developer",
-            }),
+            data=json.dumps(
+                {
+                    "first_name": "John",
+                    "last_name": "Doe",
+                    "info": "Full stack developer",
+                }
+            ),
             content_type="application/json",
             **auth_headers,
         )

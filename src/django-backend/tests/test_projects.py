@@ -154,5 +154,3 @@ class TestGetPublicProject:
                 title=project.title,
             ),
         )
-
-

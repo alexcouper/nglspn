@@ -30,9 +30,7 @@ def is_valid_uuid(value: str) -> bool:
 router = Router()
 
 
-@router.get(
-    "", response={200: CompetitionOverviewListResponse}, tags=["Competitions"]
-)
+@router.get("", response={200: CompetitionOverviewListResponse}, tags=["Competitions"])
 def list_competitions(request: HttpRequest) -> CompetitionOverviewListResponse:
     competitions = Competition.objects.prefetch_related("projects").all()
     pending_count = Project.objects.filter(status=ProjectStatus.PENDING).count()
@@ -61,9 +59,7 @@ def list_competitions_with_projects(request: HttpRequest) -> CompetitionListResp
     )
     pending_count = Project.objects.filter(status=ProjectStatus.PENDING).count()
     return CompetitionListResponse(
-        competitions=[
-            CompetitionResponse.from_competition(c) for c in competitions
-        ],
+        competitions=[CompetitionResponse.from_competition(c) for c in competitions],
         pending_projects_count=pending_count,
     )
 

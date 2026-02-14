@@ -21,7 +21,6 @@ class AdminIPMiddleware:
                 client_ip = x_forwarded_for.split(",")[0].strip()
             else:
                 client_ip = request.META.get("REMOTE_ADDR", "")
-            print(f"Client IP: {client_ip}")
             if client_ip not in allowed_ips:
                 raise Http404
 

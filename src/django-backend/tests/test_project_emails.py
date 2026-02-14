@@ -85,17 +85,15 @@ class TestApproveProjectsAdminAction:
         model_admin = ProjectAdmin(Project, site)
         request = RequestFactory().post("/admin/projects/project/")
         request.user = admin_user
-        setattr(request, "session", "session")
-        setattr(request, "_messages", FallbackStorage(request))
+        request.session = "session"
+        request._messages = FallbackStorage(request)  # noqa: SLF001
         queryset = Project.objects.filter(pk__in=[p.pk for p in projects])
         model_admin.approve_projects(request, queryset)
 
     def test_sends_email_for_each_approved_project(self):
         projects = ProjectFactory.create_batch(2)
 
-        with patch(
-            "apps.projects.admin.send_project_approved_email"
-        ) as mock_send:
+        with patch("apps.projects.admin.send_project_approved_email") as mock_send:
             self._call_action(projects)
 
         assert mock_send.call_count == 2
@@ -103,9 +101,7 @@ class TestApproveProjectsAdminAction:
     def test_does_not_send_email_for_non_pending_projects(self):
         approved_project = ProjectFactory(status=ProjectStatus.APPROVED)
 
-        with patch(
-            "apps.projects.admin.send_project_approved_email"
-        ) as mock_send:
+        with patch("apps.projects.admin.send_project_approved_email") as mock_send:
             self._call_action([approved_project])
 
         mock_send.assert_not_called()

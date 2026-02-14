@@ -19,7 +19,7 @@ repo_root = project_root.parent.parent
 os.environ.setdefault("DJANGO_SETTINGS_MODULE", "project_showcase.settings")
 django.setup()
 
-from api.main import api  # noqa: E402
+from api.main import api
 
 
 def extract_openapi_spec() -> bool:

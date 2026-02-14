@@ -164,9 +164,7 @@ class TestLokiGracefulFailure:
         )
         handler.format(record)
 
-        with patch(
-            "urllib.request.urlopen", side_effect=OSError("connection refused")
-        ):
+        with patch("urllib.request.urlopen", side_effect=OSError("connection refused")):
             # Should not raise
             handler._flush([record])
 

@@ -533,9 +533,7 @@ class TestActiveOrMostRecent:
 
     def test_does_not_include_winner_or_pending_count(self, client) -> None:
         winner = ProjectFactory(status=ProjectStatus.APPROVED)
-        competition = CompetitionFactory(
-            status=CompetitionStatus.CLOSED, winner=winner
-        )
+        competition = CompetitionFactory(status=CompetitionStatus.CLOSED, winner=winner)
         competition.projects.add(winner)
 
         response = client.get("/api/competitions/active-or-most-recent")

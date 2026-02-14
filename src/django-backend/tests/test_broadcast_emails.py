@@ -164,9 +164,7 @@ class TestSendBroadcast:
             is_superuser=True,
             email_opt_in_platform_updates=False,
         )
-        users = [
-            UserFactory(email_opt_in_platform_updates=True) for _ in range(count)
-        ]
+        users = [UserFactory(email_opt_in_platform_updates=True) for _ in range(count)]
         broadcast = BroadcastEmailFactory(
             email_type="platform_updates",
             created_by=admin,
@@ -391,9 +389,7 @@ class TestBroadcastEmailAdminViews:
         broadcast.refresh_from_db()
         assert broadcast.sent_at is not None
         # admin_client creation may add emails to mailbox
-        broadcast_emails = [
-            m for m in mailoutbox if broadcast.subject in m.subject
-        ]
+        broadcast_emails = [m for m in mailoutbox if broadcast.subject in m.subject]
         assert len(broadcast_emails) >= 1
 
     def test_send_view_rejects_already_sent(self, admin_client):

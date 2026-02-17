@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 interface SettingsProps {
   emailOptInCompetitionResults: boolean;
   emailOptInPlatformUpdates: boolean;
+  optInToExternalPromotions: boolean;
 }
 
 interface ToggleProps {
@@ -53,13 +54,15 @@ function Toggle({ label, description, checked, onChange, disabled }: ToggleProps
 export function Settings({
   emailOptInCompetitionResults,
   emailOptInPlatformUpdates,
+  optInToExternalPromotions,
 }: SettingsProps) {
   const [competitionResults, setCompetitionResults] = useState(emailOptInCompetitionResults);
   const [platformUpdates, setPlatformUpdates] = useState(emailOptInPlatformUpdates);
+  const [externalPromotions, setExternalPromotions] = useState(optInToExternalPromotions);
   const [saving, setSaving] = useState<string | null>(null);
 
   const handleToggle = async (
-    field: "email_opt_in_competition_results" | "email_opt_in_platform_updates",
+    field: "email_opt_in_competition_results" | "email_opt_in_platform_updates" | "opt_in_to_external_promotions",
     value: boolean,
     setter: (v: boolean) => void
   ) => {
@@ -98,6 +101,21 @@ export function Settings({
             handleToggle("email_opt_in_platform_updates", v, setPlatformUpdates)
           }
           disabled={saving === "email_opt_in_platform_updates"}
+        />
+      </div>
+
+      <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">Privacy</h2>
+      <p className="text-xs text-muted-foreground mb-3">Manage your privacy preferences</p>
+
+      <div className="divide-y divide-border">
+        <Toggle
+          label="External promotions"
+          description="Allow your participation to be featured on external platforms like LinkedIn"
+          checked={externalPromotions}
+          onChange={(v) =>
+            handleToggle("opt_in_to_external_promotions", v, setExternalPromotions)
+          }
+          disabled={saving === "opt_in_to_external_promotions"}
         />
       </div>
     </div>

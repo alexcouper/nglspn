@@ -34,6 +34,7 @@ class UserAdmin(BaseUserAdmin):
                 ),
             },
         ),
+        (_("Privacy"), {"fields": ("opt_in_to_external_promotions",)}),
         (
             _("Permissions"),
             {

@@ -2028,6 +2028,10 @@
           "email_opt_in_platform_updates": {
             "title": "Email Opt In Platform Updates",
             "type": "boolean"
+          },
+          "opt_in_to_external_promotions": {
+            "title": "Opt In To External Promotions",
+            "type": "boolean"
           }
         },
         "required": [
@@ -2041,7 +2045,8 @@
           "created_at",
           "groups",
           "email_opt_in_competition_results",
-          "email_opt_in_platform_updates"
+          "email_opt_in_platform_updates",
+          "opt_in_to_external_promotions"
         ],
         "title": "UserResponse",
         "type": "object"
@@ -2225,6 +2230,17 @@
               }
             ],
             "title": "Email Opt In Platform Updates"
+          },
+          "opt_in_to_external_promotions": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opt In To External Promotions"
           }
         },
         "title": "UserUpdate",

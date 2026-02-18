@@ -200,7 +200,7 @@ class TestSendBroadcast:
         call_count = 0
 
         with patch(
-            "svc.email.django_impl.EmailMultiAlternatives.send",
+            "svc.email.django_impl.handler.EmailMultiAlternatives.send",
         ) as mock_send:
 
             def fail_first(*args, **kwargs):
@@ -222,7 +222,7 @@ class TestSendBroadcast:
         broadcast, admin, _ = self._make_broadcast_with_recipients(1)
 
         with patch(
-            "svc.email.django_impl.EmailMultiAlternatives.send",
+            "svc.email.django_impl.handler.EmailMultiAlternatives.send",
             side_effect=Exception("SMTP error"),
         ):
             HANDLERS.email.send_broadcast(broadcast, admin)

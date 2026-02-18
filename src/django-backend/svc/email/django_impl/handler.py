@@ -3,59 +3,23 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-import markdown
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
-from django.template.loader import render_to_string
 from django.utils import timezone
-from mjml import mjml_to_html
 
 from apps.emails.models import BroadcastEmailRecipient
-from svc.users.django_impl import VERIFICATION_CODE_EXPIRY_MINUTES, DjangoUserQuery
+from svc.email.handler_interface import EmailHandlerInterface
+from svc.users.django_impl import VERIFICATION_CODE_EXPIRY_MINUTES
 
-from .handler_interface import EmailHandlerInterface
-from .query_interface import EmailQueryInterface
+from . import render_email
+from .query import DjangoEmailQuery
 
 if TYPE_CHECKING:
-    from django.db.models import QuerySet
-
     from apps.emails.models import BroadcastEmail
     from apps.projects.models import Project
     from apps.users.models import User
 
 logger = logging.getLogger(__name__)
-
-
-def render_email(template_name: str, context: dict) -> tuple[str, str]:
-    mjml_content = render_to_string(f"email/{template_name}.mjml", context)
-    result = mjml_to_html(mjml_content)
-    html = result.html
-    text = render_to_string(f"email/{template_name}.txt", context)
-    return html, text
-
-
-class DjangoEmailQuery(EmailQueryInterface):
-    def render_broadcast_email(self, broadcast: BroadcastEmail) -> tuple[str, str]:
-        body_html = markdown.markdown(
-            broadcast.body_markdown,
-            extensions=["extra", "smarty"],
-        )
-        context = {
-            "subject": broadcast.subject,
-            "body_html": body_html,
-            "body_markdown": broadcast.body_markdown,
-            "profile_url": f"{settings.FRONTEND_URL}/profile",
-            "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
-            "current_year": timezone.now().year,
-        }
-        return render_email("broadcast", context)
-
-    def resolve_broadcast_recipients(self, broadcast: BroadcastEmail) -> QuerySet:
-        if broadcast.email_type in ("platform_updates", "competition_results"):
-            return DjangoUserQuery().list_opted_in_for_broadcast_type(
-                broadcast.email_type
-            )
-        return broadcast.individual_recipients.filter(is_active=True)
 
 
 class DjangoEmailHandler(EmailHandlerInterface):

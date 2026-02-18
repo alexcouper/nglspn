@@ -4,17 +4,15 @@ from unittest.mock import patch
 import pytest
 from django.utils import timezone
 
-from api.services.email import (
+from apps.users.models import EmailVerificationCode
+from svc import HANDLERS
+from svc.email.django_impl import (
     VERIFICATION_CODE_EXPIRY_MINUTES,
     VERIFICATION_COOLDOWN_SECONDS,
-    RateLimitError,
-    create_verification_code,
     generate_verification_code,
     render_email,
-    send_verification_email,
-    verify_code,
 )
-from apps.users.models import EmailVerificationCode
+from svc.email.exceptions import RateLimitError
 
 from .factories import EmailVerificationCodeFactory, UserFactory
 
@@ -34,7 +32,7 @@ class TestGenerateVerificationCode:
 class TestCreateVerificationCode:
     def test_creates_code_for_user(self):
         user = UserFactory()
-        verification = create_verification_code(user)
+        verification = HANDLERS.email.create_verification_code(user)
 
         assert verification.user == user
         assert len(verification.code) == 6
@@ -44,7 +42,7 @@ class TestCreateVerificationCode:
     def test_code_expires_after_configured_minutes(self):
         user = UserFactory()
         before = timezone.now()
-        verification = create_verification_code(user)
+        verification = HANDLERS.email.create_verification_code(user)
         after = timezone.now()
 
         expected_min = before + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
@@ -54,21 +52,21 @@ class TestCreateVerificationCode:
 
     def test_rate_limits_requests(self):
         user = UserFactory()
-        create_verification_code(user)
+        HANDLERS.email.create_verification_code(user)
 
         with pytest.raises(RateLimitError):
-            create_verification_code(user)
+            HANDLERS.email.create_verification_code(user)
 
     def test_allows_new_code_after_cooldown(self):
         user = UserFactory()
-        verification = create_verification_code(user)
+        verification = HANDLERS.email.create_verification_code(user)
 
         verification.created_at = timezone.now() - timedelta(
             seconds=VERIFICATION_COOLDOWN_SECONDS + 1
         )
         verification.save()
 
-        new_verification = create_verification_code(user)
+        new_verification = HANDLERS.email.create_verification_code(user)
         assert new_verification.id != verification.id
 
 
@@ -78,7 +76,7 @@ class TestVerifyCode:
         user = UserFactory(is_verified=False)
         verification = EmailVerificationCodeFactory(user=user, code="123456")
 
-        result = verify_code(user, "123456")
+        result = HANDLERS.email.verify_code(user, "123456")
 
         assert result is True
         user.refresh_from_db()
@@ -90,7 +88,7 @@ class TestVerifyCode:
         user = UserFactory(is_verified=False)
         EmailVerificationCodeFactory(user=user, code="123456")
 
-        result = verify_code(user, "654321")
+        result = HANDLERS.email.verify_code(user, "654321")
 
         assert result is False
         user.refresh_from_db()
@@ -104,7 +102,7 @@ class TestVerifyCode:
             expires_at=timezone.now() - timedelta(minutes=1),
         )
 
-        result = verify_code(user, "123456")
+        result = HANDLERS.email.verify_code(user, "123456")
 
         assert result is False
         user.refresh_from_db()
@@ -118,7 +116,7 @@ class TestVerifyCode:
             used_at=timezone.now(),
         )
 
-        result = verify_code(user, "123456")
+        result = HANDLERS.email.verify_code(user, "123456")
 
         assert result is False
         user.refresh_from_db()
@@ -128,7 +126,7 @@ class TestVerifyCode:
 @pytest.mark.django_db
 class TestRegistrationSendsVerificationEmail:
     def test_sends_email_on_registration(self, client):
-        with patch("api.routers.auth.send_verification_email") as mock_send:
+        with patch.object(HANDLERS.email, "send_verification_email") as mock_send:
             response = client.post(
                 "/api/auth/register",
                 data={
@@ -166,7 +164,7 @@ class TestLoginVerificationBehavior:
     def test_returns_is_verified_false_for_unverified_user(self, client):
         user = UserFactory(is_verified=False)
 
-        with patch("api.routers.auth.send_verification_email"):
+        with patch.object(HANDLERS.email, "send_verification_email"):
             response = client.post(
                 "/api/auth/login",
                 data={"email": user.email, "password": "testpassword123"},
@@ -180,7 +178,7 @@ class TestLoginVerificationBehavior:
     def test_sends_verification_email_for_unverified_user(self, client):
         user = UserFactory(is_verified=False)
 
-        with patch("api.routers.auth.send_verification_email") as mock_send:
+        with patch.object(HANDLERS.email, "send_verification_email") as mock_send:
             client.post(
                 "/api/auth/login",
                 data={"email": user.email, "password": "testpassword123"},
@@ -192,7 +190,7 @@ class TestLoginVerificationBehavior:
     def test_does_not_send_email_for_verified_user(self, client):
         user = UserFactory(is_verified=True)
 
-        with patch("api.routers.auth.send_verification_email") as mock_send:
+        with patch.object(HANDLERS.email, "send_verification_email") as mock_send:
             client.post(
                 "/api/auth/login",
                 data={"email": user.email, "password": "testpassword123"},
@@ -262,7 +260,7 @@ class TestVerifyEmailEndpoint:
         assert response.status_code == 401
 
     def _get_token(self, client, user):
-        with patch("api.routers.auth.send_verification_email"):
+        with patch.object(HANDLERS.email, "send_verification_email"):
             response = client.post(
                 "/api/auth/login",
                 data={"email": user.email, "password": "testpassword123"},
@@ -283,7 +281,7 @@ class TestResendVerificationEndpoint:
             created_at=timezone.now() - cooldown_offset
         )
 
-        with patch("api.routers.auth.send_verification_email") as mock_send:
+        with patch.object(HANDLERS.email, "send_verification_email") as mock_send:
             response = client.post(
                 "/api/auth/resend-verification",
                 content_type="application/json",
@@ -329,7 +327,7 @@ class TestResendVerificationEndpoint:
         assert response.status_code == 401
 
     def _get_token(self, client, user):
-        with patch("api.routers.auth.send_verification_email"):
+        with patch.object(HANDLERS.email, "send_verification_email"):
             response = client.post(
                 "/api/auth/login",
                 data={"email": user.email, "password": "testpassword123"},
@@ -390,7 +388,7 @@ class TestSendVerificationEmailFormat:
     def test_sends_email_with_html_and_text_parts(self, mailoutbox):
         user = UserFactory(first_name="Bob")
 
-        send_verification_email(user, "654321")
+        HANDLERS.email.send_verification_email(user, "654321")
 
         assert len(mailoutbox) == 1
         email = mailoutbox[0]

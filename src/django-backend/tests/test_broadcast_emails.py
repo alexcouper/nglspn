@@ -7,17 +7,13 @@ from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 
-from api.services.email import (
-    render_broadcast_email,
-    resolve_broadcast_recipients,
-    send_broadcast,
-)
 from apps.emails.admin import BroadcastEmailAdmin, BroadcastEmailImageInline
 from apps.emails.models import (
     BroadcastEmail,
     BroadcastEmailImage,
     BroadcastEmailRecipient,
 )
+from svc import HANDLERS, REPO
 
 from .factories import BroadcastEmailFactory, BroadcastEmailImageFactory, UserFactory
 
@@ -28,7 +24,7 @@ class TestRenderBroadcastEmail:
             body_markdown="Hello **world**!",
         )
 
-        html, _ = render_broadcast_email(broadcast)
+        html, _ = REPO.email.render_broadcast_email(broadcast)
 
         assert "<strong>world</strong>" in html
 
@@ -37,14 +33,14 @@ class TestRenderBroadcastEmail:
             subject="Important Update",
         )
 
-        html, _ = render_broadcast_email(broadcast)
+        html, _ = REPO.email.render_broadcast_email(broadcast)
 
         assert "Important Update" in html
 
     def test_unsubscribe_link_present_in_html(self):
         broadcast = BroadcastEmailFactory.build()
 
-        html, _ = render_broadcast_email(broadcast)
+        html, _ = REPO.email.render_broadcast_email(broadcast)
 
         assert "/profile" in html
         assert "email preferences" in html.lower()
@@ -54,7 +50,7 @@ class TestRenderBroadcastEmail:
             body_markdown="Hello **world**!",
         )
 
-        _, text = render_broadcast_email(broadcast)
+        _, text = REPO.email.render_broadcast_email(broadcast)
 
         assert "Hello **world**!" in text
 
@@ -63,14 +59,14 @@ class TestRenderBroadcastEmail:
             subject="Big News",
         )
 
-        _, text = render_broadcast_email(broadcast)
+        _, text = REPO.email.render_broadcast_email(broadcast)
 
         assert "Big News" in text
 
     def test_plain_text_contains_unsubscribe_link(self):
         broadcast = BroadcastEmailFactory.build()
 
-        _, text = render_broadcast_email(broadcast)
+        _, text = REPO.email.render_broadcast_email(broadcast)
 
         assert "/profile" in text
 
@@ -85,7 +81,7 @@ class TestResolveBroadcastRecipients:
             email_type="platform_updates",
             created_by=UserFactory(email_opt_in_platform_updates=False),
         )
-        recipients = resolve_broadcast_recipients(broadcast)
+        recipients = REPO.email.resolve_broadcast_recipients(broadcast)
 
         assert list(recipients) == [opted_in]
 
@@ -97,7 +93,7 @@ class TestResolveBroadcastRecipients:
             email_type="competition_results",
             created_by=UserFactory(email_opt_in_competition_results=False),
         )
-        recipients = resolve_broadcast_recipients(broadcast)
+        recipients = REPO.email.resolve_broadcast_recipients(broadcast)
 
         assert list(recipients) == [opted_in]
 
@@ -110,7 +106,7 @@ class TestResolveBroadcastRecipients:
             email_type=None,
             individual_recipients=[user1, user2],
         )
-        recipients = resolve_broadcast_recipients(broadcast)
+        recipients = REPO.email.resolve_broadcast_recipients(broadcast)
 
         assert set(recipients) == {user1, user2}
 
@@ -124,7 +120,7 @@ class TestResolveBroadcastRecipients:
             email_type="platform_updates",
             created_by=UserFactory(email_opt_in_platform_updates=False),
         )
-        recipients = resolve_broadcast_recipients(broadcast)
+        recipients = REPO.email.resolve_broadcast_recipients(broadcast)
 
         # Only the factory-created admin user (who has opt-in True by default)
         # should remain - but we set it to False, so count is 0
@@ -140,7 +136,7 @@ class TestResolveBroadcastRecipients:
             email_type="competition_results",
             created_by=UserFactory(email_opt_in_competition_results=False),
         )
-        recipients = resolve_broadcast_recipients(broadcast)
+        recipients = REPO.email.resolve_broadcast_recipients(broadcast)
 
         assert recipients.count() == 0
 
@@ -151,7 +147,7 @@ class TestResolveBroadcastRecipients:
             email_type=None,
             individual_recipients=[inactive],
         )
-        recipients = resolve_broadcast_recipients(broadcast)
+        recipients = REPO.email.resolve_broadcast_recipients(broadcast)
 
         assert recipients.count() == 0
 
@@ -174,7 +170,7 @@ class TestSendBroadcast:
 
     def test_sends_to_all_resolved_recipients(self, mailoutbox):
         broadcast, admin, users = self._make_broadcast_with_recipients(2)
-        send_broadcast(broadcast, admin)
+        HANDLERS.email.send_broadcast(broadcast, admin)
 
         assert len(mailoutbox) == 2
         sent_to = {m.to[0] for m in mailoutbox}
@@ -182,7 +178,7 @@ class TestSendBroadcast:
 
     def test_sets_sent_at_and_sent_by(self):
         broadcast, admin, _ = self._make_broadcast_with_recipients(1)
-        send_broadcast(broadcast, admin)
+        HANDLERS.email.send_broadcast(broadcast, admin)
 
         broadcast.refresh_from_db()
         assert broadcast.sent_at is not None
@@ -190,7 +186,7 @@ class TestSendBroadcast:
 
     def test_creates_delivery_records(self):
         broadcast, admin, users = self._make_broadcast_with_recipients(1)
-        send_broadcast(broadcast, admin)
+        HANDLERS.email.send_broadcast(broadcast, admin)
 
         records = BroadcastEmailRecipient.objects.filter(broadcast_email=broadcast)
         assert records.count() == 1
@@ -204,7 +200,7 @@ class TestSendBroadcast:
         call_count = 0
 
         with patch(
-            "api.services.email.EmailMultiAlternatives.send",
+            "svc.email.django_impl.EmailMultiAlternatives.send",
         ) as mock_send:
 
             def fail_first(*args, **kwargs):
@@ -215,7 +211,9 @@ class TestSendBroadcast:
                     raise Exception(msg)  # noqa: TRY002
 
             mock_send.side_effect = fail_first
-            success_count, failure_count = send_broadcast(broadcast, admin)
+            success_count, failure_count = HANDLERS.email.send_broadcast(
+                broadcast, admin
+            )
 
         assert success_count == 1
         assert failure_count == 1
@@ -224,10 +222,10 @@ class TestSendBroadcast:
         broadcast, admin, _ = self._make_broadcast_with_recipients(1)
 
         with patch(
-            "api.services.email.EmailMultiAlternatives.send",
+            "svc.email.django_impl.EmailMultiAlternatives.send",
             side_effect=Exception("SMTP error"),
         ):
-            send_broadcast(broadcast, admin)
+            HANDLERS.email.send_broadcast(broadcast, admin)
 
         record = BroadcastEmailRecipient.objects.get(broadcast_email=broadcast)
         assert record.success is False
@@ -235,7 +233,7 @@ class TestSendBroadcast:
 
     def test_returns_correct_counts(self, mailoutbox):
         broadcast, admin, _ = self._make_broadcast_with_recipients(2)
-        success_count, failure_count = send_broadcast(broadcast, admin)
+        success_count, failure_count = HANDLERS.email.send_broadcast(broadcast, admin)
 
         assert success_count == 2
         assert failure_count == 0
@@ -245,7 +243,7 @@ class TestSendBroadcast:
             1,
             body_markdown="Hello **world**!",
         )
-        send_broadcast(broadcast, admin)
+        HANDLERS.email.send_broadcast(broadcast, admin)
 
         email = mailoutbox[0]
         assert "Hello **world**!" in email.body
@@ -259,7 +257,7 @@ class TestSendBroadcast:
             1,
             subject="Big News",
         )
-        send_broadcast(broadcast, admin)
+        HANDLERS.email.send_broadcast(broadcast, admin)
 
         assert mailoutbox[0].subject == "Big News - Naglasúpan"
 

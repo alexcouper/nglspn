@@ -20,12 +20,8 @@ from api.schemas.auth import (
 )
 from api.schemas.errors import Error
 from api.schemas.user import UserCreate, UserResponse, UserUpdate
-from api.services.email import (
-    RateLimitError,
-    create_verification_code,
-    send_verification_email,
-    verify_code,
-)
+from svc import HANDLERS
+from svc.email.exceptions import RateLimitError
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser
@@ -62,8 +58,8 @@ def register(
 
     # Send verification email
     try:
-        verification = create_verification_code(user)
-        send_verification_email(user, verification.code)
+        verification = HANDLERS.email.create_verification_code(user)
+        HANDLERS.email.send_verification_email(user, verification.code)
     except Exception:
         logger.exception("Failed to send verification email during registration")
 
@@ -86,8 +82,8 @@ def login(
     # Send verification email if user is not verified
     if not user.is_verified:
         try:
-            verification = create_verification_code(user)
-            send_verification_email(user, verification.code)
+            verification = HANDLERS.email.create_verification_code(user)
+            HANDLERS.email.send_verification_email(user, verification.code)
         except RateLimitError:
             pass  # Ignore rate limit - user already has a recent code
         except Exception:
@@ -182,7 +178,7 @@ def verify_email(
             is_verified=True,
         )
 
-    if verify_code(user, payload.code):
+    if HANDLERS.email.verify_code(user, payload.code):
         return VerifyEmailResponse(
             message="Email verified successfully",
             is_verified=True,
@@ -206,8 +202,8 @@ def resend_verification(
         return 400, Error(detail="Email already verified")
 
     try:
-        verification = create_verification_code(user)
-        send_verification_email(user, verification.code)
+        verification = HANDLERS.email.create_verification_code(user)
+        HANDLERS.email.send_verification_email(user, verification.code)
         return ResendVerificationResponse(message="Verification email sent")
     except RateLimitError:
         msg = "Please wait before requesting another verification code"

@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
-from api.services.email import send_project_approved_email
+from svc import HANDLERS
 
 from .models import (
     Competition,
@@ -188,7 +188,7 @@ class ProjectAdmin(admin.ModelAdmin):
         )
         for project in pending:
             try:
-                send_project_approved_email(project)
+                HANDLERS.email.send_project_approved_email(project)
             except Exception:
                 logger.exception(
                     "Failed to send approval email for project %s", project.id

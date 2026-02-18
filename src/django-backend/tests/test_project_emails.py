@@ -5,9 +5,10 @@ from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
 from django.test import RequestFactory
 
-from api.services.email import render_email, send_project_approved_email
 from apps.projects.admin import ProjectAdmin
 from apps.projects.models import Project, ProjectStatus
+from svc import HANDLERS
+from svc.email.django_impl import render_email
 
 from .factories import ProjectFactory, UserFactory
 
@@ -64,7 +65,7 @@ class TestSendProjectApprovedEmail:
     def test_sends_email_with_html_and_text_parts(self, mailoutbox):
         project = ProjectFactory(title="Awesome App")
 
-        send_project_approved_email(project)
+        HANDLERS.email.send_project_approved_email(project)
 
         assert len(mailoutbox) == 1
         email = mailoutbox[0]
@@ -93,7 +94,7 @@ class TestApproveProjectsAdminAction:
     def test_sends_email_for_each_approved_project(self):
         projects = ProjectFactory.create_batch(2)
 
-        with patch("apps.projects.admin.send_project_approved_email") as mock_send:
+        with patch.object(HANDLERS.email, "send_project_approved_email") as mock_send:
             self._call_action(projects)
 
         assert mock_send.call_count == 2
@@ -101,7 +102,7 @@ class TestApproveProjectsAdminAction:
     def test_does_not_send_email_for_non_pending_projects(self):
         approved_project = ProjectFactory(status=ProjectStatus.APPROVED)
 
-        with patch("apps.projects.admin.send_project_approved_email") as mock_send:
+        with patch.object(HANDLERS.email, "send_project_approved_email") as mock_send:
             self._call_action([approved_project])
 
         mock_send.assert_not_called()
@@ -109,8 +110,9 @@ class TestApproveProjectsAdminAction:
     def test_continues_approval_on_email_failure(self):
         projects = ProjectFactory.create_batch(2)
 
-        with patch(
-            "apps.projects.admin.send_project_approved_email",
+        with patch.object(
+            HANDLERS.email,
+            "send_project_approved_email",
             side_effect=Exception("SMTP error"),
         ):
             self._call_action(projects)

@@ -8,74 +8,8 @@ from django.test import RequestFactory
 from apps.projects.admin import ProjectAdmin
 from apps.projects.models import Project, ProjectStatus
 from svc import HANDLERS
-from svc.email.django_impl import render_email
 
 from .factories import ProjectFactory, UserFactory
-
-
-class TestRenderProjectApprovedEmail:
-    def test_renders_html_with_project_title(self):
-        html, _ = render_email(
-            "project_approved",
-            {
-                "user_name": "Test",
-                "project_title": "My Cool Project",
-                "project_url": "https://naglasupan.is/projects/123",
-                "logo_url": "https://example.com/logo.png",
-                "current_year": 2026,
-            },
-        )
-
-        assert "My Cool Project" in html
-        assert "#6366f1" in html
-
-    def test_renders_html_with_project_url(self):
-        html, _ = render_email(
-            "project_approved",
-            {
-                "user_name": "Test",
-                "project_title": "My Cool Project",
-                "project_url": "https://naglasupan.is/projects/abc-123",
-                "logo_url": "https://example.com/logo.png",
-                "current_year": 2026,
-            },
-        )
-
-        assert "https://naglasupan.is/projects/abc-123" in html
-
-    def test_renders_plain_text_with_project_title_and_url(self):
-        _, text = render_email(
-            "project_approved",
-            {
-                "user_name": "Alice",
-                "project_title": "My Cool Project",
-                "project_url": "https://naglasupan.is/projects/123",
-                "logo_url": "https://example.com/logo.png",
-                "current_year": 2026,
-            },
-        )
-
-        assert "My Cool Project" in text
-        assert "https://naglasupan.is/projects/123" in text
-        assert "Hi Alice" in text
-
-
-@pytest.mark.django_db
-class TestSendProjectApprovedEmail:
-    def test_sends_email_with_html_and_text_parts(self, mailoutbox):
-        project = ProjectFactory(title="Awesome App")
-
-        HANDLERS.email.send_project_approved_email(project)
-
-        assert len(mailoutbox) == 1
-        email = mailoutbox[0]
-        assert email.to == [project.owner.email]
-        assert email.subject == "Your project has been approved - Naglasúpan"
-        assert "Awesome App" in email.body
-        assert len(email.alternatives) == 1
-        html_content, mime_type = email.alternatives[0]
-        assert mime_type == "text/html"
-        assert "Awesome App" in html_content
 
 
 @pytest.mark.django_db

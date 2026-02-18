@@ -9,7 +9,6 @@ from django.utils import timezone
 
 from apps.emails.models import BroadcastEmailRecipient
 from svc.email.handler_interface import EmailHandlerInterface
-from svc.users.django_impl import VERIFICATION_CODE_EXPIRY_MINUTES
 
 from . import render_email
 from .query import DjangoEmailQuery
@@ -23,10 +22,15 @@ logger = logging.getLogger(__name__)
 
 
 class DjangoEmailHandler(EmailHandlerInterface):
-    def send_verification_email(self, user: User, code: str) -> None:
+    def send_verification_email(
+        self,
+        user: User,
+        code: str,
+        expires_minutes: int,
+    ) -> None:
         context = {
             "code": code,
-            "expiry_minutes": VERIFICATION_CODE_EXPIRY_MINUTES,
+            "expiry_minutes": expires_minutes,
             "user_name": user.first_name or "there",
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
             "current_year": timezone.now().year,

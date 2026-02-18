@@ -20,7 +20,6 @@ if TYPE_CHECKING:
     from svc.users.handler_interface import RegisterUserInput
 
 
-VERIFICATION_CODE_EXPIRY_MINUTES = 15
 VERIFICATION_COOLDOWN_SECONDS = 60
 
 
@@ -46,7 +45,9 @@ class DjangoUserHandler(UserHandlerInterface):
             kennitala=data.kennitala,
         )
 
-    def create_verification_code(self, user: User) -> EmailVerificationCode:
+    def create_verification_code(
+        self, user: User, expires_minutes: int
+    ) -> EmailVerificationCode:
         now = timezone.now()
         cooldown_threshold = now - timedelta(seconds=VERIFICATION_COOLDOWN_SECONDS)
 
@@ -59,7 +60,7 @@ class DjangoUserHandler(UserHandlerInterface):
             raise RateLimitError
 
         code = generate_verification_code()
-        expires_at = now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
+        expires_at = now + timedelta(minutes=expires_minutes)
 
         return EmailVerificationCode.objects.create(
             user=user,

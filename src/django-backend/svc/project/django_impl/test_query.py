@@ -3,7 +3,7 @@ from uuid import uuid4
 import pytest
 
 from apps.projects.models import ProjectStatus
-from svc.project.django_impl import DjangoProjectQuery
+from svc.project.django_impl import DjangoProjectQuery, get_title_from_url
 from svc.project.exceptions import ProjectNotFoundError
 from tests.factories import ProjectFactory, UserFactory
 
@@ -85,3 +85,19 @@ class TestCountPending:
         ProjectFactory(status=ProjectStatus.APPROVED)
 
         assert query.count_pending() == 2
+
+
+class TestGetTitleFromUrl:
+    def test_extracts_domain_from_url(self):
+        assert get_title_from_url("https://www.example.com/path") == "example.com"
+        assert (
+            get_title_from_url("http://subdomain.example.com")
+            == "subdomain.example.com"
+        )
+        assert get_title_from_url("https://example.com") == "example.com"
+        assert get_title_from_url("example.com/path") == "example.com"
+        assert get_title_from_url("www.example.com") == "example.com"
+        assert get_title_from_url("") == "Untitled Project"
+
+    def test_special_handling_for_github_projects(self):
+        assert get_title_from_url("https://github.com/x/y") == "y"

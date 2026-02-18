@@ -11,7 +11,9 @@ if TYPE_CHECKING:
 
 class EmailHandlerInterface(ABC):
     @abstractmethod
-    def send_verification_email(self, user: User, code: str) -> None: ...
+    def send_verification_email(
+        self, user: User, code: str, expires_minutes: int
+    ) -> None: ...
 
     @abstractmethod
     def send_project_approved_email(self, project: Project) -> None: ...

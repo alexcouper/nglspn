@@ -5,7 +5,6 @@ from datetime import date
 from hamcrest import assert_that, equal_to, has_entries, has_length, is_, none
 
 from apps.projects.models import CompetitionStatus, Project, ProjectStatus
-from svc.project.django_impl import get_title_from_url
 from tests.factories import CompetitionFactory, ProjectFactory
 
 
@@ -432,27 +431,3 @@ class TestAuthorization:
         )
 
         assert_that(response.status_code, equal_to(404))
-
-
-class TestGetTitleFromUrl:
-    def test_get_title_from_url(self) -> None:
-        assert_that(
-            get_title_from_url("https://www.example.com/path"),
-            equal_to("example.com"),
-        )
-        assert_that(
-            get_title_from_url("http://subdomain.example.com"),
-            equal_to("subdomain.example.com"),
-        )
-        assert_that(get_title_from_url("https://example.com"), equal_to("example.com"))
-        assert_that(get_title_from_url("example.com/path"), equal_to("example.com"))
-        assert_that(get_title_from_url("www.example.com"), equal_to("example.com"))
-        assert_that(get_title_from_url(""), equal_to("Untitled Project"))
-
-    def test_special_handling_for_github_projects(self) -> None:
-        assert_that(
-            get_title_from_url(
-                "https://github.com/x/y",
-            ),
-            equal_to("y"),
-        )

@@ -36,6 +36,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 router = Router()
 
+VERIFICATION_CODE_EXPIRY_MINUTES = 15
+
 
 @router.post(
     "/register",
@@ -63,8 +65,12 @@ def register(
 
     # Send verification email
     try:
-        verification = HANDLERS.users.create_verification_code(user)
-        HANDLERS.email.send_verification_email(user, verification.code)
+        verification = HANDLERS.users.create_verification_code(
+            user, VERIFICATION_CODE_EXPIRY_MINUTES
+        )
+        HANDLERS.email.send_verification_email(
+            user, verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
+        )
     except Exception:
         logger.exception("Failed to send verification email during registration")
 
@@ -87,8 +93,12 @@ def login(
     # Send verification email if user is not verified
     if not user.is_verified:
         try:
-            verification = HANDLERS.users.create_verification_code(user)
-            HANDLERS.email.send_verification_email(user, verification.code)
+            verification = HANDLERS.users.create_verification_code(
+                user, VERIFICATION_CODE_EXPIRY_MINUTES
+            )
+            HANDLERS.email.send_verification_email(
+                user, verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
+            )
         except RateLimitError:
             pass  # Ignore rate limit - user already has a recent code
         except Exception:
@@ -207,8 +217,12 @@ def resend_verification(
         return 400, Error(detail="Email already verified")
 
     try:
-        verification = HANDLERS.users.create_verification_code(user)
-        HANDLERS.email.send_verification_email(user, verification.code)
+        verification = HANDLERS.users.create_verification_code(
+            user, VERIFICATION_CODE_EXPIRY_MINUTES
+        )
+        HANDLERS.email.send_verification_email(
+            user, verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
+        )
         return ResendVerificationResponse(message="Verification email sent")
     except RateLimitError:
         msg = "Please wait before requesting another verification code"

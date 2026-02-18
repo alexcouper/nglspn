@@ -179,7 +179,7 @@ def send_broadcast(
             email = EmailMultiAlternatives(
                 subject=f"{broadcast.subject} - Naglasúpan",
                 body=text,
-                from_email=settings.DEFAULT_FROM_EMAIL,
+                from_email=settings.ADMIN_FROM_EMAIL,
                 to=[user.email],
             )
             email.attach_alternative(html, "text/html")

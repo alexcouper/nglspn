@@ -1,13 +1,19 @@
-from uuid import UUID
+from __future__ import annotations
 
-from django.contrib.auth import get_user_model
+from typing import TYPE_CHECKING
+from uuid import UUID  # noqa: TC003 - needed at runtime for ninja path param
+
 from django.http import HttpRequest
 from ninja import Router
 
 from api.schemas.errors import Error
 from api.schemas.user import PublicUserProfile
+from svc import REPO
+from svc.users.exceptions import UserNotFoundError
 
-User = get_user_model()
+if TYPE_CHECKING:
+    from apps.users.models import User
+
 router = Router()
 
 
@@ -21,8 +27,8 @@ def get_public_profile(
     user_id: UUID,
 ) -> User | tuple[int, Error]:
     try:
-        user = User.objects.get(id=user_id)
-    except User.DoesNotExist:
+        user = REPO.users.get_by_id(user_id)
+    except UserNotFoundError:
         return 404, Error(detail="User not found")
 
     return user

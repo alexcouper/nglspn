@@ -1,14 +1,14 @@
 from datetime import UTC, datetime, timedelta
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
 import jwt
 from django.conf import settings
-from django.contrib.auth import get_user_model
+
+from svc import REPO
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser
-
-User = get_user_model()
 
 
 def create_access_token(user_id: str) -> str:
@@ -59,9 +59,4 @@ def get_user_from_token(token: str) -> "AbstractUser | None":
     if not payload:
         return None
 
-    try:
-        user = User.objects.get(id=payload["user_id"])
-    except User.DoesNotExist:
-        return None
-    else:
-        return user if user.is_active else None
+    return REPO.users.get_active_by_id(UUID(payload["user_id"]))

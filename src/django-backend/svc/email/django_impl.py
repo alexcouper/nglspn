@@ -1,22 +1,18 @@
 from __future__ import annotations
 
 import logging
-import secrets
-from datetime import timedelta
 from typing import TYPE_CHECKING
 
 import markdown
 from django.conf import settings
-from django.contrib.auth import get_user_model
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 from django.utils import timezone
 from mjml import mjml_to_html
 
 from apps.emails.models import BroadcastEmailRecipient
-from apps.users.models import EmailVerificationCode
+from svc.users.django_impl import VERIFICATION_CODE_EXPIRY_MINUTES, DjangoUserQuery
 
-from .exceptions import RateLimitError
 from .handler_interface import EmailHandlerInterface
 from .query_interface import EmailQueryInterface
 
@@ -28,14 +24,6 @@ if TYPE_CHECKING:
     from apps.users.models import User
 
 logger = logging.getLogger(__name__)
-
-
-VERIFICATION_CODE_EXPIRY_MINUTES = 15
-VERIFICATION_COOLDOWN_SECONDS = 60
-
-
-def generate_verification_code() -> str:
-    return f"{secrets.randbelow(1000000):06d}"
 
 
 def render_email(template_name: str, context: dict) -> tuple[str, str]:
@@ -63,42 +51,14 @@ class DjangoEmailQuery(EmailQueryInterface):
         return render_email("broadcast", context)
 
     def resolve_broadcast_recipients(self, broadcast: BroadcastEmail) -> QuerySet:
-        user_model = get_user_model()
-        if broadcast.email_type == "platform_updates":
-            return user_model.objects.filter(
-                email_opt_in_platform_updates=True,
-                is_active=True,
-            )
-        if broadcast.email_type == "competition_results":
-            return user_model.objects.filter(
-                email_opt_in_competition_results=True,
-                is_active=True,
+        if broadcast.email_type in ("platform_updates", "competition_results"):
+            return DjangoUserQuery().list_opted_in_for_broadcast_type(
+                broadcast.email_type
             )
         return broadcast.individual_recipients.filter(is_active=True)
 
 
 class DjangoEmailHandler(EmailHandlerInterface):
-    def create_verification_code(self, user: User) -> EmailVerificationCode:
-        now = timezone.now()
-        cooldown_threshold = now - timedelta(seconds=VERIFICATION_COOLDOWN_SECONDS)
-
-        recent_code = EmailVerificationCode.objects.filter(
-            user=user,
-            created_at__gte=cooldown_threshold,
-        ).first()
-
-        if recent_code:
-            raise RateLimitError
-
-        code = generate_verification_code()
-        expires_at = now + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
-
-        return EmailVerificationCode.objects.create(
-            user=user,
-            code=code,
-            expires_at=expires_at,
-        )
-
     def send_verification_email(self, user: User, code: str) -> None:
         context = {
             "code": code,
@@ -117,27 +77,6 @@ class DjangoEmailHandler(EmailHandlerInterface):
         )
         email.attach_alternative(html, "text/html")
         email.send(fail_silently=False)
-
-    def verify_code(self, user: User, code: str) -> bool:
-        now = timezone.now()
-
-        verification = EmailVerificationCode.objects.filter(
-            user=user,
-            code=code,
-            expires_at__gt=now,
-            used_at__isnull=True,
-        ).first()
-
-        if not verification:
-            return False
-
-        verification.used_at = now
-        verification.save(update_fields=["used_at"])
-
-        user.is_verified = True
-        user.save(update_fields=["is_verified"])
-
-        return True
 
     def send_project_approved_email(self, project: Project) -> None:
         owner = project.owner

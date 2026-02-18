@@ -6,13 +6,13 @@ from django.utils import timezone
 
 from apps.users.models import EmailVerificationCode
 from svc import HANDLERS
-from svc.email.django_impl import (
+from svc.email.django_impl import render_email
+from svc.users.django_impl import (
     VERIFICATION_CODE_EXPIRY_MINUTES,
     VERIFICATION_COOLDOWN_SECONDS,
     generate_verification_code,
-    render_email,
 )
-from svc.email.exceptions import RateLimitError
+from svc.users.exceptions import RateLimitError
 
 from .factories import EmailVerificationCodeFactory, UserFactory
 
@@ -32,7 +32,7 @@ class TestGenerateVerificationCode:
 class TestCreateVerificationCode:
     def test_creates_code_for_user(self):
         user = UserFactory()
-        verification = HANDLERS.email.create_verification_code(user)
+        verification = HANDLERS.users.create_verification_code(user)
 
         assert verification.user == user
         assert len(verification.code) == 6
@@ -42,7 +42,7 @@ class TestCreateVerificationCode:
     def test_code_expires_after_configured_minutes(self):
         user = UserFactory()
         before = timezone.now()
-        verification = HANDLERS.email.create_verification_code(user)
+        verification = HANDLERS.users.create_verification_code(user)
         after = timezone.now()
 
         expected_min = before + timedelta(minutes=VERIFICATION_CODE_EXPIRY_MINUTES)
@@ -52,21 +52,21 @@ class TestCreateVerificationCode:
 
     def test_rate_limits_requests(self):
         user = UserFactory()
-        HANDLERS.email.create_verification_code(user)
+        HANDLERS.users.create_verification_code(user)
 
         with pytest.raises(RateLimitError):
-            HANDLERS.email.create_verification_code(user)
+            HANDLERS.users.create_verification_code(user)
 
     def test_allows_new_code_after_cooldown(self):
         user = UserFactory()
-        verification = HANDLERS.email.create_verification_code(user)
+        verification = HANDLERS.users.create_verification_code(user)
 
         verification.created_at = timezone.now() - timedelta(
             seconds=VERIFICATION_COOLDOWN_SECONDS + 1
         )
         verification.save()
 
-        new_verification = HANDLERS.email.create_verification_code(user)
+        new_verification = HANDLERS.users.create_verification_code(user)
         assert new_verification.id != verification.id
 
 
@@ -76,7 +76,7 @@ class TestVerifyCode:
         user = UserFactory(is_verified=False)
         verification = EmailVerificationCodeFactory(user=user, code="123456")
 
-        result = HANDLERS.email.verify_code(user, "123456")
+        result = HANDLERS.users.verify_code(user, "123456")
 
         assert result is True
         user.refresh_from_db()
@@ -88,7 +88,7 @@ class TestVerifyCode:
         user = UserFactory(is_verified=False)
         EmailVerificationCodeFactory(user=user, code="123456")
 
-        result = HANDLERS.email.verify_code(user, "654321")
+        result = HANDLERS.users.verify_code(user, "654321")
 
         assert result is False
         user.refresh_from_db()
@@ -102,7 +102,7 @@ class TestVerifyCode:
             expires_at=timezone.now() - timedelta(minutes=1),
         )
 
-        result = HANDLERS.email.verify_code(user, "123456")
+        result = HANDLERS.users.verify_code(user, "123456")
 
         assert result is False
         user.refresh_from_db()
@@ -116,7 +116,7 @@ class TestVerifyCode:
             used_at=timezone.now(),
         )
 
-        result = HANDLERS.email.verify_code(user, "123456")
+        result = HANDLERS.users.verify_code(user, "123456")
 
         assert result is False
         user.refresh_from_db()

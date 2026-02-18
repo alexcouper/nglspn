@@ -4,10 +4,10 @@
 {% block title %}Send broadcast email{% endblock %}
 
 {% block content %}
-<div style="max-width: 600px; margin: 20px auto;">
+<div style="max-width: 600px; margin: 20px auto; color: #1e293b;">
   <h2>Confirm sending broadcast email</h2>
 
-  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0;">
+  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 20px; margin: 20px 0; color: #1e293b;">
     <p><strong>Subject:</strong> {{ broadcast.subject }}</p>
     <p><strong>Type:</strong> {{ broadcast.get_email_type_display|default:"Individual recipients" }}</p>
     <p><strong>Recipients:</strong> {{ recipient_count }} user{{ recipient_count|pluralize }}</p>

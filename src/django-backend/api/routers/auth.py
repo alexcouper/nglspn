@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import logging
 from typing import TYPE_CHECKING, Any
+from uuid import UUID
 
-from django.contrib.auth import authenticate, get_user_model
+from django.contrib.auth import authenticate
 from django.http import HttpRequest
 from ninja import Router
 
@@ -20,19 +21,22 @@ from api.schemas.auth import (
 )
 from api.schemas.errors import Error
 from api.schemas.user import UserCreate, UserResponse, UserUpdate
-from api.services.email import (
+from services import HANDLERS, REPO
+from services.users.exceptions import (
+    EmailAlreadyRegisteredError,
+    KennitalaAlreadyRegisteredError,
     RateLimitError,
-    create_verification_code,
-    send_verification_email,
-    verify_code,
+    UserNotFoundError,
 )
+from services.users.handler_interface import RegisterUserInput
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser
 
 logger = logging.getLogger(__name__)
-User = get_user_model()
 router = Router()
+
+VERIFICATION_CODE_EXPIRY_MINUTES = 15
 
 
 @router.post(
@@ -44,26 +48,29 @@ def register(
     request: HttpRequest,
     payload: UserCreate,
 ) -> tuple[int, AbstractUser | Error]:
-    # Check if user already exists
-    if User.objects.filter(email=payload.email).exists():
+    try:
+        user = HANDLERS.users.register(
+            RegisterUserInput(
+                email=payload.email,
+                password=payload.password,
+                kennitala=payload.kennitala,
+                first_name=payload.first_name,
+                last_name=payload.last_name,
+            )
+        )
+    except EmailAlreadyRegisteredError:
         return 400, Error(detail="Email already registered")
-
-    if User.objects.filter(kennitala=payload.kennitala).exists():
+    except KennitalaAlreadyRegisteredError:
         return 400, Error(detail="Kennitala already registered")
-
-    # Create user
-    user = User.objects.create_user(
-        email=payload.email,
-        password=payload.password,
-        first_name=payload.first_name,
-        last_name=payload.last_name,
-        kennitala=payload.kennitala,
-    )
 
     # Send verification email
     try:
-        verification = create_verification_code(user)
-        send_verification_email(user, verification.code)
+        verification = HANDLERS.users.create_verification_code(
+            user, VERIFICATION_CODE_EXPIRY_MINUTES
+        )
+        HANDLERS.email.send_verification_email(
+            user, verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
+        )
     except Exception:
         logger.exception("Failed to send verification email during registration")
 
@@ -86,8 +93,12 @@ def login(
     # Send verification email if user is not verified
     if not user.is_verified:
         try:
-            verification = create_verification_code(user)
-            send_verification_email(user, verification.code)
+            verification = HANDLERS.users.create_verification_code(
+                user, VERIFICATION_CODE_EXPIRY_MINUTES
+            )
+            HANDLERS.email.send_verification_email(
+                user, verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
+            )
         except RateLimitError:
             pass  # Ignore rate limit - user already has a recent code
         except Exception:
@@ -122,8 +133,8 @@ def refresh_token_endpoint(
         return 401, {"detail": "Invalid token type"}
 
     try:
-        user = User.objects.get(id=token_payload["user_id"])
-    except User.DoesNotExist:
+        user = REPO.users.get_by_id(UUID(token_payload["user_id"]))
+    except UserNotFoundError:
         return 401, {"detail": "User not found"}
 
     if not user.is_active:
@@ -182,7 +193,7 @@ def verify_email(
             is_verified=True,
         )
 
-    if verify_code(user, payload.code):
+    if HANDLERS.users.verify_code(user, payload.code):
         return VerifyEmailResponse(
             message="Email verified successfully",
             is_verified=True,
@@ -206,8 +217,12 @@ def resend_verification(
         return 400, Error(detail="Email already verified")
 
     try:
-        verification = create_verification_code(user)
-        send_verification_email(user, verification.code)
+        verification = HANDLERS.users.create_verification_code(
+            user, VERIFICATION_CODE_EXPIRY_MINUTES
+        )
+        HANDLERS.email.send_verification_email(
+            user, verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
+        )
         return ResendVerificationResponse(message="Verification email sent")
     except RateLimitError:
         msg = "Please wait before requesting another verification code"

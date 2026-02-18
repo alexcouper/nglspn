@@ -8,11 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.utils.html import format_html
 
-from api.services.email import (
-    render_broadcast_email,
-    resolve_broadcast_recipients,
-    send_broadcast,
-)
+from services import HANDLERS, REPO
 
 from .models import BroadcastEmail, BroadcastEmailImage, BroadcastEmailRecipient
 
@@ -153,7 +149,7 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
     def recipient_count(self, obj: BroadcastEmail) -> int:
         if obj.is_sent:
             return obj.delivery_records.count()
-        return resolve_broadcast_recipients(obj).count()
+        return REPO.email.resolve_broadcast_recipients(obj).count()
 
     def get_urls(self) -> list:
         custom_urls = [
@@ -172,7 +168,7 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
 
     def preview_view(self, request: HttpRequest, pk: str) -> HttpResponse:
         broadcast = get_object_or_404(BroadcastEmail, pk=pk)
-        html, text = render_broadcast_email(broadcast)
+        html, text = REPO.email.render_broadcast_email(broadcast)
 
         if request.GET.get("format") == "text":
             return HttpResponse(
@@ -194,7 +190,7 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
                 )
             )
 
-        recipients = resolve_broadcast_recipients(broadcast)
+        recipients = REPO.email.resolve_broadcast_recipients(broadcast)
         recipient_count = recipients.count()
 
         if recipient_count == 0:
@@ -207,7 +203,9 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
             )
 
         if request.method == "POST":
-            success_count, failure_count = send_broadcast(broadcast, request.user)
+            success_count, failure_count = HANDLERS.email.send_broadcast(
+                broadcast, request.user
+            )
             messages.success(
                 request,
                 f"Email sent to {success_count} recipient(s)"

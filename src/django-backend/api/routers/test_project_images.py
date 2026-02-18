@@ -53,7 +53,7 @@ def mock_storage_service(s3_client, mock_storage_settings):
 
         # Patch the storage service client
         with patch(
-            "api.services.storage.storage_service._client",
+            "services.storage.storage_service._client",
             s3_client,
         ):
             yield s3_client

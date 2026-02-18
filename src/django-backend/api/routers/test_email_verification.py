@@ -6,23 +6,8 @@ from django.utils import timezone
 
 from apps.users.models import EmailVerificationCode
 from services import HANDLERS
-from services.users.django_impl import (
-    VERIFICATION_COOLDOWN_SECONDS,
-    generate_verification_code,
-)
-
-from .factories import EmailVerificationCodeFactory, UserFactory
-
-
-class TestGenerateVerificationCode:
-    def test_generates_6_digit_code(self):
-        code = generate_verification_code()
-        assert len(code) == 6
-        assert code.isdigit()
-
-    def test_generates_different_codes(self):
-        codes = {generate_verification_code() for _ in range(100)}
-        assert len(codes) > 1
+from services.users.django_impl import VERIFICATION_COOLDOWN_SECONDS
+from tests.factories import EmailVerificationCodeFactory, UserFactory
 
 
 @pytest.mark.django_db

@@ -98,56 +98,44 @@ django-backend/
 └── manage.py
 ```
 
-## API Endpoints
+### Separation of concerns
 
-The Django backend provides identical endpoints to the FastAPI version:
+Whilst this is currently a monolithic backend, we code in such a way as to easily be able
+to change that in future.
 
-### Authentication
-- `POST /auth/register` - User registration
-- `POST /auth/login` - User login
-- `GET /auth/me` - Get current user info
-- `PUT /auth/me` - Update current user
+How:
+ - apps/X - databases only
+ - services/ - things that could later be taken out into other apps.
+       - email/
+            handler_interface (should define methods available, params and return types)
+            query_interface (defines querying methods available, params and return types)
+            django_impl (django-native implementation of the interface)
+       - project/
+            handler_interface
+            query_interface
+            django_impl
 
-### Projects
-- `GET /projects` - List approved projects (with filtering)
-- `GET /projects/featured` - Get featured projects
-- `GET /projects/trending` - Get trending projects
-- `GET /projects/{id}` - Get specific project
 
-### My Projects (Authenticated)
-- `GET /my/projects` - List user's projects
-- `POST /my/projects` - Create new project
-- `GET /my/projects/{id}` - Get user's project
-- `PUT /my/projects/{id}` - Update user's project
-- `DELETE /my/projects/{id}` - Delete user's project
-- `POST /my/projects/{id}/resubmit` - Resubmit rejected project
+Someone is responsible for creating the handler and query classes and these can be referred to from django.conf settings
+eg. settings.HANDLERS.email and settings.REPO.email resolves to an instantiated email handler and email querier respectively.
 
-### Tags
-- `GET /tags` - List all tags
+email's interface should contain:
+ - send_verification_email(recipient, code)
+ - send_project_approved_email(project_id)
 
-### Admin (Superuser only)
-- `GET /admin/projects` - List all projects for review
-- `GET /admin/projects/{id}` - Get project for review
-- `PUT /admin/projects/{id}/approve` - Approve/reject project
-- `PUT /admin/projects/{id}/feature` - Toggle featured status
-- `GET /admin/users` - List users
-- `PUT /admin/users/{id}/ban` - Ban/unban user
-- `POST /admin/tags` - Create tag
-- `PUT /admin/tags/{id}` - Update tag
-- `DELETE /admin/tags/{id}` - Delete tag
-- `GET /admin/analytics` - Get platform analytics
+project interface then has:
+ - get_project_with_owner(project_id)
+ - create(project)
 
-## Comparison with FastAPI Backend
+email's django implementation should ALSO use the settings.REPO.project to peform the queries it needs
 
-This Django implementation provides the same functionality as the FastAPI backend but uses:
+Ruels:
+ - Each service in services/ cannot use other apps database models to perform queries.
+ - Only exception to this is for foreign keys.
+ - Each service defines an interface that other apps can use for a) triggering things, b) fetching things.
+ - Each service provides an implementation of those interface which uses django models.
 
-- **Django ORM** instead of SQLAlchemy
-- **Django Ninja** instead of FastAPI for API framework
-- **Django's built-in user system** (extended) instead of custom user models
-- **Django migrations** instead of Alembic
-- **Django's settings system** instead of Pydantic settings
 
-Both backends offer identical API interfaces and can be used interchangeably.
 
 ## Development
 

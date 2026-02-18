@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING
 
-from django.contrib.auth import get_user_model
 from django.http import HttpRequest
 from ninja.security import HttpBearer
 
@@ -8,8 +7,6 @@ from .jwt import get_user_from_token
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser
-
-User = get_user_model()
 
 
 class JWTAuth(HttpBearer):

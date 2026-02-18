@@ -65,6 +65,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           if (!formInitialized) {
             setFormData({
               title: project.title,
+              tagline: project.tagline,
               website_url: project.website_url,
               description: project.description,
               tag_ids: project.tags?.map((t) => t.id) || [],
@@ -113,6 +114,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     try {
       const updatedProject = await api.myProjects.update(project.id, {
         title: formData.title,
+        tagline: formData.tagline,
         description: formData.description,
         website_url: formData.website_url,
         tag_ids: formData.tag_ids,
@@ -183,6 +185,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       ? {
           ...project,
           title: formData.title,
+          tagline: formData.tagline,
           website_url: formData.website_url,
           description: formData.description,
           images: images,

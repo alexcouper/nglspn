@@ -73,6 +73,7 @@ USERS = [
 PROJECTS = [
     {
         "title": "Reykjavik Bikes",
+        "tagline": "Bike-sharing made easy for Reykjavik commuters",
         "description": "A bike-sharing platform for the Reykjavik metro area with real-time availability tracking.",
         "long_description": "Reykjavik Bikes connects cyclists with available bikes across the city. Features include live station maps, trip planning, and monthly subscription management. Built to promote sustainable transport in Iceland's capital.",
         "website_url": "https://reykjavikbikes.example.com",
@@ -84,6 +85,7 @@ PROJECTS = [
     },
     {
         "title": "Northern Lights Tracker",
+        "tagline": "Never miss the aurora again",
         "description": "Real-time aurora borealis forecasting app for Iceland using ML-based prediction models.",
         "long_description": "Uses satellite data and machine learning to predict aurora visibility across Iceland. Sends push notifications when conditions are optimal for your location.",
         "website_url": "https://aurora.example.com",
@@ -94,6 +96,7 @@ PROJECTS = [
     },
     {
         "title": "Icelandic Recipe Box",
+        "tagline": "Traditional Icelandic flavors, one recipe at a time",
         "description": "A curated collection of traditional and modern Icelandic recipes with ingredient sourcing.",
         "website_url": "https://recipes.example.com",
         "tech_stack": ["Next.js", "PostgreSQL"],
@@ -103,6 +106,7 @@ PROJECTS = [
     },
     {
         "title": "Saga Reader",
+        "tagline": "Bringing ancient sagas to modern readers",
         "description": "Interactive reader for Icelandic sagas with modern Icelandic translations and annotations.",
         "long_description": "Makes the Icelandic sagas accessible to modern readers. Features side-by-side Old Norse and modern Icelandic text, vocabulary tools, and cultural annotations.",
         "website_url": "https://sagareader.example.com",
@@ -122,6 +126,7 @@ PROJECTS = [
     },
     {
         "title": "Volcanic Alert",
+        "tagline": "Stay ahead of Iceland's volcanic activity",
         "description": "Early warning system for volcanic activity around Iceland with live seismic data.",
         "website_url": "https://volcanic.example.com",
         "tech_stack": ["Python", "TypeScript", "Redis", "Docker"],
@@ -140,6 +145,7 @@ PROJECTS = [
     },
     {
         "title": "Fish Market API",
+        "tagline": "Real-time fish prices from every harbor in Iceland",
         "description": "Open API for real-time Icelandic fish market prices and catch data.",
         "long_description": "Provides structured access to fish auction data from harbors across Iceland. Used by restaurants, retailers, and researchers to track seafood pricing trends.",
         "website_url": "https://fishapi.example.com",
@@ -159,6 +165,7 @@ PROJECTS = [
     },
     {
         "title": "Geyser Monitor",
+        "tagline": "Live geothermal insights at your fingertips",
         "description": "IoT monitoring dashboard for geothermal activity at popular tourist sites.",
         "website_url": "https://geyser.example.com",
         "tech_stack": ["Vue", "Go", "Redis"],
@@ -168,6 +175,7 @@ PROJECTS = [
     },
     {
         "title": "Reykjavik Events",
+        "tagline": "Discover what's happening in Reykjavik tonight",
         "description": "Community-driven event discovery platform for the greater Reykjavik area.",
         "website_url": "https://events.example.com",
         "tech_stack": ["Next.js", "Node.js", "MongoDB"],
@@ -186,6 +194,7 @@ PROJECTS = [
     },
     {
         "title": "Wool Marketplace",
+        "tagline": "Connecting Icelandic wool with the world",
         "description": "E-commerce platform connecting Icelandic wool producers with international buyers.",
         "website_url": "https://woolmarket.example.com",
         "tech_stack": ["Django", "React", "PostgreSQL", "AWS"],
@@ -195,6 +204,7 @@ PROJECTS = [
     },
     {
         "title": "Icelandic Language Tutor",
+        "tagline": "Learn Icelandic with AI-powered lessons",
         "description": "AI-powered Icelandic language learning app with speech recognition and grammar exercises.",
         "website_url": "https://learnIS.example.com",
         "tech_stack": ["React", "Python", "AWS"],
@@ -211,6 +221,7 @@ PROJECTS = [
     },
     {
         "title": "Puffin Tracker",
+        "tagline": "Monitoring Iceland's puffin colonies for conservation",
         "description": "Wildlife conservation tool tracking puffin colony populations across Iceland.",
         "website_url": "https://puffins.example.com",
         "github_url": "https://github.com/example/puffin-tracker",
@@ -229,6 +240,7 @@ PROJECTS = [
     },
     {
         "title": "Hot Spring Finder",
+        "tagline": "Find your perfect hot spring anywhere in Iceland",
         "description": "GPS-based app for discovering natural hot springs across Iceland with safety ratings.",
         "website_url": "https://hotsprings.example.com",
         "tech_stack": ["React", "Node.js", "MongoDB"],
@@ -245,6 +257,7 @@ PROJECTS = [
     },
     {
         "title": "Glacier Watch",
+        "tagline": "Visualizing a century of glacier change in Iceland",
         "description": "Dashboard visualizing glacier retreat data across Iceland over the past century.",
         "website_url": "https://glacierwatch.example.com",
         "tech_stack": ["Svelte", "Python", "PostgreSQL"],
@@ -254,6 +267,7 @@ PROJECTS = [
     },
     {
         "title": "Startup Iceland Hub",
+        "tagline": "The home for Iceland's startup community",
         "description": "Directory and networking platform for the Icelandic startup ecosystem.",
         "website_url": "https://startuphub.example.com",
         "tech_stack": ["Next.js", "Django", "PostgreSQL", "Vercel"],
@@ -273,6 +287,7 @@ PROJECTS = [
     },
     {
         "title": "Renewable Energy Dashboard",
+        "tagline": "Iceland's clean energy grid in real time",
         "description": "Real-time monitoring of Iceland's renewable energy grid including geothermal and hydro.",
         "website_url": "https://energy.example.com",
         "tech_stack": ["Angular", "Go", "GraphQL", "Docker"],
@@ -283,6 +298,7 @@ PROJECTS = [
     },
     {
         "title": "Whaler's Archive",
+        "tagline": "Preserving Iceland's whaling history digitally",
         "description": "Digital archive preserving historical Icelandic whaling records and photographs.",
         "website_url": "https://whalearchive.example.com",
         "tech_stack": ["Django", "PostgreSQL", "AWS"],
@@ -511,6 +527,7 @@ def create_projects(users: list[User], admin: User | None) -> list[Project]:
 
         project = Project.objects.create(
             title=p["title"],
+            tagline=p.get("tagline", ""),
             description=p["description"],
             long_description=p.get("long_description", ""),
             website_url=p["website_url"],

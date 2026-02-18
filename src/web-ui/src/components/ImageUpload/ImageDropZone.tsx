@@ -123,6 +123,7 @@ export function ImageDropZone({
         </p>
 
         <p className="text-xs text-muted-foreground/70">PNG, JPG, WebP, GIF up to 10MB</p>
+        <p className="text-xs text-muted-foreground/70">Main image is best at 16:9 ratio (e.g. 1920×1080 or 1280×720)</p>
 
         <p className="text-xs text-muted-foreground/50">
           {remainingSlots > 0

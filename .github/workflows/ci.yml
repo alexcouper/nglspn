@@ -32,5 +32,6 @@ jobs:
           cache: npm
           cache-dependency-path: src/web-ui/package-lock.json
       - run: npm ci
+      - run: npm run generate-types
       - run: make lint
       - run: make build-app

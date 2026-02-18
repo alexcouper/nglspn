@@ -77,7 +77,7 @@ export function ImageGallery({
             src={mainImage.url}
             alt="Main project image"
             fill
-            className="object-cover"
+            className="object-contain"
             sizes="(max-width: 768px) 100vw, 50vw"
           />
           {editable && (

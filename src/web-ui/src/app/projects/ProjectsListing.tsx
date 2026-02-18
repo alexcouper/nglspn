@@ -252,7 +252,7 @@ function ProjectCard({ project }: { project: Project }) {
             src={mainImage.url}
             alt={project.title}
             fill
-            className="object-cover"
+            className="object-contain"
             sizes="(max-width: 768px) 50vw, 33vw"
           />
         )}
@@ -266,6 +266,9 @@ function ProjectCard({ project }: { project: Project }) {
         <h3 className="font-medium text-sm text-foreground truncate group-hover:text-accent transition-colors">
           {project.title || "Untitled"}
         </h3>
+        {project.tagline && (
+          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{project.tagline}</p>
+        )}
         {project.tags && project.tags.length > 0 && (
           <div className="mt-2 flex flex-wrap gap-1">
             {project.tags.slice(0, 3).map((tag) => (
@@ -295,7 +298,7 @@ function CompetitionProjectCard({ project }: { project: CompetitionProject }) {
             src={project.main_image_url}
             alt={project.title}
             fill
-            className="object-cover"
+            className="object-contain"
             sizes="(max-width: 768px) 50vw, 33vw"
           />
         )}

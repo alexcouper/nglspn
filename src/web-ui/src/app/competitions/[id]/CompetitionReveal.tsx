@@ -281,7 +281,7 @@ function WinnerCard({ project }: { project: CompetitionProject }) {
               src={project.main_image_url}
               alt={project.title}
               fill
-              className="object-cover"
+              className="object-contain"
               sizes="(max-width: 640px) 100vw, 224px"
             />
           )}
@@ -327,7 +327,7 @@ function ProjectCard({
             src={project.main_image_url}
             alt={project.title}
             fill
-            className="object-cover"
+            className="object-contain"
             sizes="(max-width: 768px) 50vw, 33vw"
           />
         )}

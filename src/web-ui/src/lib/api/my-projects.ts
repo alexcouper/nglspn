@@ -28,12 +28,7 @@ export class MyProjectsClient {
 
   async update(
     id: string,
-    data: {
-      title?: string;
-      description?: string;
-      website_url?: string;
-      tag_ids?: string[];
-    }
+    data: Partial<ProjectCreate>
   ): Promise<Project> {
     return this.client.request<Project>(`/api/my/projects/${id}`, {
       method: "PUT",

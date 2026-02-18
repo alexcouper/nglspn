@@ -13,6 +13,7 @@ class ProjectCreate(Schema):
     description: str | None = None
     # fields | None- will be filled by admin during review
     title: str | None = None
+    tagline: str | None = None
     long_description: str | None = None
     github_url: str | None = None
     demo_url: str | None = None
@@ -45,6 +46,7 @@ class WonCompetitionInfo(Schema):
 class ProjectResponse(Schema):
     id: UUID
     title: str
+    tagline: str
     description: str
     long_description: str | None
     website_url: str

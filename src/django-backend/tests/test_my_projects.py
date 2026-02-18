@@ -4,8 +4,8 @@ from datetime import date
 
 from hamcrest import assert_that, equal_to, has_entries, has_length, is_, none
 
-from api.routers.my_projects import get_title_from_url
 from apps.projects.models import CompetitionStatus, Project, ProjectStatus
+from svc.project.django_impl import get_title_from_url
 from tests.factories import CompetitionFactory, ProjectFactory
 
 

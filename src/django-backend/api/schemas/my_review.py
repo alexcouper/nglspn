@@ -83,6 +83,7 @@ class ReviewProjectDetailResponse(Schema):
 
     id: UUID
     title: str
+    tagline: str
     description: str
     long_description: str | None
     website_url: str

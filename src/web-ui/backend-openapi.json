@@ -2422,6 +2422,10 @@
             "title": "Title",
             "type": "string"
           },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -2529,6 +2533,7 @@
         "required": [
           "id",
           "title",
+          "tagline",
           "description",
           "long_description",
           "website_url",
@@ -2698,6 +2703,17 @@
               }
             ],
             "title": "Title"
+          },
+          "tagline": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tagline"
           },
           "long_description": {
             "anyOf": [
@@ -3113,6 +3129,10 @@
             "title": "Title",
             "type": "string"
           },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          },
           "description": {
             "title": "Description",
             "type": "string"
@@ -3220,6 +3240,7 @@
         "required": [
           "id",
           "title",
+          "tagline",
           "description",
           "long_description",
           "website_url",

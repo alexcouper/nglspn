@@ -50,6 +50,7 @@ class ProjectStatus(models.TextChoices):
 class Project(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=100, db_index=True, blank=True)
+    tagline = models.CharField(max_length=200, blank=True)
     description = models.TextField(blank=True)
     long_description = models.TextField(max_length=5000, blank=True, null=True)
     website_url = models.URLField(max_length=2083)

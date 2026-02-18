@@ -62,9 +62,14 @@ export function ReadOnlyProjectDetail({ project, showStatus = true }: ReadOnlyPr
       <div className="p-6 sm:p-8">
         {/* Title + Status */}
         <div className="flex items-start gap-3 mb-4">
-          <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight flex-1">
-            {project.title || "Untitled Project"}
-          </h1>
+          <div className="flex-1">
+            <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
+              {project.title || "Untitled Project"}
+            </h1>
+            {project.tagline && (
+              <p className="text-muted-foreground text-sm mt-1">{project.tagline}</p>
+            )}
+          </div>
           {showStatus && <StatusBadge status={project.status} />}
         </div>
 

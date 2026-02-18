@@ -7,6 +7,7 @@ import type { SelectedTag } from "@/components/TagSelector";
 
 export interface ProjectFormData {
   title: string;
+  tagline: string;
   website_url: string;
   description: string;
   tag_ids: string[];
@@ -68,6 +69,19 @@ export function EditProjectDetail({
             onChange={(e) => handleChange("title", e.target.value)}
             className="input"
             placeholder="My Awesome Project"
+          />
+        </div>
+
+        <div>
+          <label htmlFor="tagline" className="label">Tagline</label>
+          <input
+            id="tagline"
+            type="text"
+            value={formData.tagline}
+            onChange={(e) => handleChange("tagline", e.target.value)}
+            className="input"
+            placeholder="A short description of your project"
+            maxLength={200}
           />
         </div>
 

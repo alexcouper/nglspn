@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
-from svc import HANDLERS
+from services import HANDLERS
 
 from .models import (
     Competition,

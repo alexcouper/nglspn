@@ -2,8 +2,8 @@ from uuid import uuid4
 
 import pytest
 
-from svc.users.django_impl import DjangoUserQuery
-from svc.users.exceptions import UserNotFoundError
+from services.users.django_impl import DjangoUserQuery
+from services.users.exceptions import UserNotFoundError
 from tests.factories import UserFactory
 
 query = DjangoUserQuery()

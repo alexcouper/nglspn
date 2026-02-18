@@ -7,7 +7,7 @@ from django.test import RequestFactory
 
 from apps.projects.admin import ProjectAdmin
 from apps.projects.models import Project, ProjectStatus
-from svc import HANDLERS
+from services import HANDLERS
 
 from .factories import ProjectFactory, UserFactory
 

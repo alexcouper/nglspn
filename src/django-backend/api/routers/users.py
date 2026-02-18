@@ -8,8 +8,8 @@ from ninja import Router
 
 from api.schemas.errors import Error
 from api.schemas.user import PublicUserProfile
-from svc import REPO
-from svc.users.exceptions import UserNotFoundError
+from services import REPO
+from services.users.exceptions import UserNotFoundError
 
 if TYPE_CHECKING:
     from apps.users.models import User

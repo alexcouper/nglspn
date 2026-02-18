@@ -4,8 +4,8 @@ from typing import TYPE_CHECKING
 
 from django.contrib.auth import get_user_model
 
-from svc.users.exceptions import UserNotFoundError
-from svc.users.query_interface import UserQueryInterface
+from services.users.exceptions import UserNotFoundError
+from services.users.query_interface import UserQueryInterface
 
 if TYPE_CHECKING:
     from uuid import UUID

@@ -10,13 +10,13 @@ from apps.projects.models import (
     ProjectStatus,
 )
 from apps.tags.models import Tag, TagStatus
-from svc.project.exceptions import (
+from services.project.exceptions import (
     InvalidCompetitionError,
     InvalidProjectStateError,
     InvalidTagsError,
     ProjectNotFoundError,
 )
-from svc.project.handler_interface import ProjectHandlerInterface
+from services.project.handler_interface import ProjectHandlerInterface
 
 from .query import get_title_from_url
 
@@ -25,7 +25,10 @@ if TYPE_CHECKING:
 
     from django.db.models import QuerySet
 
-    from svc.project.handler_interface import CreateProjectInput, UpdateProjectInput
+    from services.project.handler_interface import (
+        CreateProjectInput,
+        UpdateProjectInput,
+    )
 
 
 def _validate_tags(tag_ids: list[UUID]) -> QuerySet[Tag]:

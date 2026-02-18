@@ -1,6 +1,6 @@
 import pytest
 
-from svc.email.django_impl import DjangoEmailQuery, render_email
+from services.email.django_impl import DjangoEmailQuery, render_email
 from tests.factories import BroadcastEmailFactory, UserFactory
 
 query = DjangoEmailQuery()

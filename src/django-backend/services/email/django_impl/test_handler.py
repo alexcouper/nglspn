@@ -3,7 +3,7 @@ from unittest.mock import patch
 import pytest
 
 from apps.emails.models import BroadcastEmailRecipient
-from svc.email.django_impl import DjangoEmailHandler
+from services.email.django_impl import DjangoEmailHandler
 from tests.factories import BroadcastEmailFactory, ProjectFactory, UserFactory
 
 handler = DjangoEmailHandler()
@@ -105,7 +105,7 @@ class TestSendBroadcast:
         call_count = 0
 
         with patch(
-            "svc.email.django_impl.handler.EmailMultiAlternatives.send",
+            "services.email.django_impl.handler.EmailMultiAlternatives.send",
         ) as mock_send:
 
             def fail_first(*args, **kwargs):
@@ -125,7 +125,7 @@ class TestSendBroadcast:
         broadcast, admin, _ = self._make_broadcast_with_recipients(1)
 
         with patch(
-            "svc.email.django_impl.handler.EmailMultiAlternatives.send",
+            "services.email.django_impl.handler.EmailMultiAlternatives.send",
             side_effect=Exception("SMTP error"),
         ):
             handler.send_broadcast(broadcast, admin)

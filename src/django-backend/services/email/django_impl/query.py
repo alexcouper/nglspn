@@ -6,8 +6,8 @@ import markdown
 from django.conf import settings
 from django.utils import timezone
 
-from svc.email.query_interface import EmailQueryInterface
-from svc.users.django_impl import DjangoUserQuery
+from services.email.query_interface import EmailQueryInterface
+from services.users.django_impl import DjangoUserQuery
 
 from . import render_email
 

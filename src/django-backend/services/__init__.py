@@ -1,14 +1,14 @@
 from dataclasses import dataclass, field
 
-from svc.email.django_impl import DjangoEmailHandler, DjangoEmailQuery
-from svc.email.handler_interface import EmailHandlerInterface
-from svc.email.query_interface import EmailQueryInterface
-from svc.project.django_impl import DjangoProjectHandler, DjangoProjectQuery
-from svc.project.handler_interface import ProjectHandlerInterface
-from svc.project.query_interface import ProjectQueryInterface
-from svc.users.django_impl import DjangoUserHandler, DjangoUserQuery
-from svc.users.handler_interface import UserHandlerInterface
-from svc.users.query_interface import UserQueryInterface
+from services.email.django_impl import DjangoEmailHandler, DjangoEmailQuery
+from services.email.handler_interface import EmailHandlerInterface
+from services.email.query_interface import EmailQueryInterface
+from services.project.django_impl import DjangoProjectHandler, DjangoProjectQuery
+from services.project.handler_interface import ProjectHandlerInterface
+from services.project.query_interface import ProjectQueryInterface
+from services.users.django_impl import DjangoUserHandler, DjangoUserQuery
+from services.users.handler_interface import UserHandlerInterface
+from services.users.query_interface import UserQueryInterface
 
 
 @dataclass(frozen=True)

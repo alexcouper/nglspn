@@ -8,7 +8,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.utils.html import format_html
 
-from svc import HANDLERS, REPO
+from services import HANDLERS, REPO
 
 from .models import BroadcastEmail, BroadcastEmailImage, BroadcastEmailRecipient
 

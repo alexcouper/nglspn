@@ -8,7 +8,7 @@ from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
 from apps.emails.models import BroadcastEmailRecipient
-from svc.email.handler_interface import EmailHandlerInterface
+from services.email.handler_interface import EmailHandlerInterface
 
 from . import render_email
 from .query import DjangoEmailQuery

@@ -21,14 +21,14 @@ from api.schemas.auth import (
 )
 from api.schemas.errors import Error
 from api.schemas.user import UserCreate, UserResponse, UserUpdate
-from svc import HANDLERS, REPO
-from svc.users.exceptions import (
+from services import HANDLERS, REPO
+from services.users.exceptions import (
     EmailAlreadyRegisteredError,
     KennitalaAlreadyRegisteredError,
     RateLimitError,
     UserNotFoundError,
 )
-from svc.users.handler_interface import RegisterUserInput
+from services.users.handler_interface import RegisterUserInput
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser

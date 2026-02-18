@@ -17,20 +17,20 @@ from api.schemas.project import (
     ProjectResponse,
     SetMainImageRequest,
 )
-from api.services.storage import storage_service
 from apps.projects.models import (
     Project,
     ProjectImage,
     UploadStatus,
 )
-from svc import HANDLERS, REPO
-from svc.project.exceptions import (
+from services import HANDLERS, REPO
+from services.project.exceptions import (
     InvalidCompetitionError,
     InvalidProjectStateError,
     InvalidTagsError,
     ProjectNotFoundError,
 )
-from svc.project.handler_interface import CreateProjectInput, UpdateProjectInput
+from services.project.handler_interface import CreateProjectInput, UpdateProjectInput
+from services.storage import storage_service
 
 # Image upload configuration
 MAX_IMAGES_PER_PROJECT = 10

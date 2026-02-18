@@ -8,16 +8,16 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 
 from apps.users.models import EmailVerificationCode
-from svc.users.exceptions import (
+from services.users.exceptions import (
     EmailAlreadyRegisteredError,
     KennitalaAlreadyRegisteredError,
     RateLimitError,
 )
-from svc.users.handler_interface import UserHandlerInterface
+from services.users.handler_interface import UserHandlerInterface
 
 if TYPE_CHECKING:
     from apps.users.models import User
-    from svc.users.handler_interface import RegisterUserInput
+    from services.users.handler_interface import RegisterUserInput
 
 
 VERIFICATION_COOLDOWN_SECONDS = 60

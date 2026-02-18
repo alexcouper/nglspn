@@ -5,7 +5,7 @@ from uuid import UUID
 import jwt
 from django.conf import settings
 
-from svc import REPO
+from services import REPO
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser

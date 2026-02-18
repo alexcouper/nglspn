@@ -1,9 +1,9 @@
 import pytest
 
 from apps.projects.models import Project, ProjectStatus
-from svc.project.django_impl import DjangoProjectHandler
-from svc.project.exceptions import ProjectNotFoundError
-from svc.project.handler_interface import CreateProjectInput, UpdateProjectInput
+from services.project.django_impl import DjangoProjectHandler
+from services.project.exceptions import ProjectNotFoundError
+from services.project.handler_interface import CreateProjectInput, UpdateProjectInput
 from tests.factories import ProjectFactory, TagFactory, UserFactory
 
 handler = DjangoProjectHandler()

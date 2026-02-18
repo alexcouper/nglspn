@@ -3,17 +3,17 @@ from datetime import timedelta
 import pytest
 from django.utils import timezone
 
-from svc.users.django_impl import (
+from services.users.django_impl import (
     VERIFICATION_COOLDOWN_SECONDS,
     DjangoUserHandler,
     generate_verification_code,
 )
-from svc.users.exceptions import (
+from services.users.exceptions import (
     EmailAlreadyRegisteredError,
     KennitalaAlreadyRegisteredError,
     RateLimitError,
 )
-from svc.users.handler_interface import RegisterUserInput
+from services.users.handler_interface import RegisterUserInput
 from tests.factories import EmailVerificationCodeFactory, UserFactory
 
 handler = DjangoUserHandler()

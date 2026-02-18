@@ -3,8 +3,8 @@ from uuid import uuid4
 import pytest
 
 from apps.projects.models import ProjectStatus
-from svc.project.django_impl import DjangoProjectQuery, get_title_from_url
-from svc.project.exceptions import ProjectNotFoundError
+from services.project.django_impl import DjangoProjectQuery, get_title_from_url
+from services.project.exceptions import ProjectNotFoundError
 from tests.factories import ProjectFactory, UserFactory
 
 query = DjangoProjectQuery()

@@ -8,8 +8,8 @@ from api.auth.jwt import get_user_from_token
 from api.schemas.errors import Error
 from api.schemas.project import ProjectListResponse, ProjectResponse
 from apps.projects.models import Project, ProjectStatus
-from svc import REPO
-from svc.project.exceptions import ProjectNotFoundError
+from services import REPO
+from services.project.exceptions import ProjectNotFoundError
 
 if TYPE_CHECKING:
     from apps.users.models import User

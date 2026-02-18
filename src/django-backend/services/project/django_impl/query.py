@@ -6,8 +6,8 @@ from uuid import UUID
 from django.db.models import Q, QuerySet
 
 from apps.projects.models import Project, ProjectStatus
-from svc.project.exceptions import ProjectNotFoundError
-from svc.project.query_interface import ProjectQueryInterface
+from services.project.exceptions import ProjectNotFoundError
+from services.project.query_interface import ProjectQueryInterface
 
 
 def _base_queryset() -> QuerySet[Project]:

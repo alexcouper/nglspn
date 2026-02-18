@@ -39,8 +39,8 @@ export default function SubmitPage() {
     setIsLoading(true);
 
     try {
-      await api.myProjects.create({ website_url: url, description });
-      router.push("/my-projects");
+      const project = await api.myProjects.create({ website_url: url, description });
+      router.push(`/my-projects/${project.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit project");
     } finally {

@@ -3,7 +3,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from api.tasks.web_ui import revalidate_project
 from apps.projects.models import (
     Competition,
     CompetitionStatus,
@@ -93,8 +92,6 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         if competition:
             competition.projects.add(project)
 
-        revalidate_project.enqueue(str(project.id))
-
         return project
 
     def update(
@@ -141,7 +138,6 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         else:
             project.tags.clear()
 
-        revalidate_project.enqueue(str(project.id))
         return project
 
     def delete(self, project_id: UUID, owner_id: UUID) -> None:
@@ -149,9 +145,7 @@ class DjangoProjectHandler(ProjectHandlerInterface):
             project = Project.objects.get(id=project_id, owner_id=owner_id)
         except Project.DoesNotExist:
             raise ProjectNotFoundError from None
-        pid = str(project.id)
         project.delete()
-        revalidate_project.enqueue(pid)
 
     def resubmit(self, project_id: UUID, owner_id: UUID) -> Project:
         try:

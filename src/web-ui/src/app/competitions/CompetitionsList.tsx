@@ -18,13 +18,27 @@ function formatDateRange(startDate: string, endDate: string): string {
   return `${start.toLocaleDateString("en-US", options)} - ${end.toLocaleDateString("en-US", options)}`;
 }
 
-export function CompetitionsList() {
-  const [competitions, setCompetitions] = useState<CompetitionOverview[]>([]);
-  const [pendingProjectsCount, setPendingProjectsCount] = useState(0);
-  const [isLoading, setIsLoading] = useState(true);
+interface CompetitionsListProps {
+  initialCompetitions?: CompetitionOverview[] | null;
+  initialPendingCount?: number;
+}
+
+export function CompetitionsList({
+  initialCompetitions,
+  initialPendingCount = 0,
+}: CompetitionsListProps) {
+  const hasInitialData = initialCompetitions != null;
+  const [competitions, setCompetitions] = useState<CompetitionOverview[]>(
+    initialCompetitions ?? []
+  );
+  const [pendingProjectsCount, setPendingProjectsCount] =
+    useState(initialPendingCount);
+  const [isLoading, setIsLoading] = useState(!hasInitialData);
   const [error, setError] = useState("");
 
   useEffect(() => {
+    if (hasInitialData) return;
+
     const fetchCompetitions = async () => {
       setIsLoading(true);
       setError("");
@@ -45,7 +59,7 @@ export function CompetitionsList() {
     };
 
     fetchCompetitions();
-  }, []);
+  }, [hasInitialData]);
 
   if (isLoading) {
     return (

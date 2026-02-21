@@ -24,15 +24,27 @@ import { TagBadge } from "@/components/TagBadge";
 type SortBy = "created_at" | "title";
 type ViewMode = "list" | "competition";
 
-export function ProjectsListing() {
+interface ProjectsListingProps {
+  initialProjects?: Project[] | null;
+  initialPendingCount?: number;
+}
+
+export function ProjectsListing({
+  initialProjects,
+  initialPendingCount = 0,
+}: ProjectsListingProps) {
   const searchParams = useSearchParams();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const hasInitialData = initialProjects != null;
+  const [projects, setProjects] = useState<Project[]>(initialProjects ?? []);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
-  const [pendingProjectsCount, setPendingProjectsCount] = useState(0);
+  const [pendingProjectsCount, setPendingProjectsCount] = useState(
+    initialPendingCount
+  );
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [sortBy, setSortBy] = useState<SortBy>("title");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(!hasInitialData);
   const [error, setError] = useState("");
+  const isInitialMount = useRef(true);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
@@ -40,6 +52,16 @@ export function ProjectsListing() {
   const selectedTags = searchParams.get("tags")?.split(",").filter(Boolean) || [];
 
   useEffect(() => {
+    // Skip initial fetch if we have server-rendered data and params match defaults
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      const tags =
+        searchParams.get("tags")?.split(",").filter(Boolean) || [];
+      if (hasInitialData && viewMode === "list" && sortBy === "title" && tags.length === 0) {
+        return;
+      }
+    }
+
     const fetchData = async () => {
       setIsLoading(true);
       setError("");
@@ -66,7 +88,7 @@ export function ProjectsListing() {
     };
 
     fetchData();
-  }, [viewMode, sortBy, searchParams]);
+  }, [viewMode, sortBy, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {

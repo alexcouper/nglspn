@@ -1,8 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import Link from "next/link";
-import { api, type CompetitionSummary } from "@/lib/api";
+import type { CompetitionSummary } from "@/lib/api";
 
 function formatPrizeAmount(amount: string | null): string {
   if (!amount) return "";
@@ -80,49 +79,12 @@ function CompetitionCard({ competition }: { competition: CompetitionSummary }) {
   );
 }
 
-export function CompetitionHighlight() {
-  const [active, setActive] = useState<CompetitionSummary | null>(null);
-  const [recent, setRecent] = useState<CompetitionSummary | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
+interface CompetitionHighlightProps {
+  active: CompetitionSummary | null;
+  recent: CompetitionSummary | null;
+}
 
-  useEffect(() => {
-    const fetchCompetitions = async () => {
-      setIsLoading(true);
-      setError("");
-      try {
-        const data = await api.competitions.getActiveOrRecent();
-        setActive(data.active ?? null);
-        setRecent(data.recent ?? null);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch competitions"
-        );
-      }
-      setIsLoading(false);
-    };
-
-    fetchCompetitions();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center gap-6 flex-wrap">
-        {[1, 2].map((i) => (
-          <div key={i} className="w-full max-w-sm">
-            <div className="skeleton aspect-[16/10] rounded-t-xl" />
-            <div className="p-4 border border-t-0 border-border rounded-b-xl">
-              <div className="skeleton h-4 w-2/3 mb-3" />
-              <div className="skeleton h-3 w-1/2" />
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (error) return null;
-
+export function CompetitionHighlight({ active, recent }: CompetitionHighlightProps) {
   if (!active && !recent) {
     return (
       <div className="text-center py-8">

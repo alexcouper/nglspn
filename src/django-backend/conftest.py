@@ -13,6 +13,15 @@ def _allow_admin_ip(settings):
 
 
 @pytest.fixture(autouse=True)
+def _use_immediate_task_backend(settings):
+    settings.TASKS = {
+        "default": {
+            "BACKEND": "django_tasks.backends.immediate.ImmediateBackend",
+        },
+    }
+
+
+@pytest.fixture(autouse=True)
 def _use_in_memory_storage(settings):
     settings.STORAGES = {
         **settings.STORAGES,

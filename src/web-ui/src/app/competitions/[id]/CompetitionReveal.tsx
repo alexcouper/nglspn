@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { TrophyIcon } from "@heroicons/react/24/solid";
 import {
-  api,
   type Competition,
   type CompetitionProject,
 } from "@/lib/api";
@@ -25,36 +24,14 @@ function formatDateRange(startDate: string, endDate: string): string {
 }
 
 interface CompetitionRevealProps {
-  competitionId: string;
+  initialCompetition: Competition;
 }
 
-export function CompetitionReveal({ competitionId }: CompetitionRevealProps) {
-  const [competition, setCompetition] = useState<Competition | null>(null);
+export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps) {
+  const [competition] = useState<Competition>(initialCompetition);
   const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const fetchCompetition = async () => {
-      setIsLoading(true);
-      setError("");
-      try {
-        const data = await api.competitions.get(competitionId);
-        setCompetition(data);
-      } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to fetch competition"
-        );
-      }
-      setIsLoading(false);
-    };
-
-    fetchCompetition();
-  }, [competitionId]);
 
   const { tags, categories } = useMemo(() => {
-    if (!competition) return { tags: [], categories: [] };
-
     const tagMap = new Map<string, {
       id: string;
       name: string;
@@ -96,50 +73,11 @@ export function CompetitionReveal({ competitionId }: CompetitionRevealProps) {
   }, [competition]);
 
   const filteredProjects = useMemo(() => {
-    if (!competition) return [];
     if (selectedTagIds.length === 0) return competition.projects;
     return competition.projects.filter((project) =>
       project.tags.some((tag) => selectedTagIds.includes(tag.id))
     );
   }, [competition, selectedTagIds]);
-
-  if (isLoading) {
-    return (
-      <div className="bg-white rounded-xl border border-border p-8">
-        <div className="flex items-center gap-4 mb-6">
-          <div className="skeleton w-14 h-14 rounded-full" />
-          <div>
-            <div className="skeleton h-6 w-48 mb-2" />
-            <div className="skeleton h-4 w-32" />
-          </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <div key={i}>
-              <div className="skeleton aspect-video rounded-t-lg" />
-              <div className="bg-white border border-t-0 border-border rounded-b-lg p-3">
-                <div className="skeleton h-4 w-2/3" />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-        {error}
-      </div>
-    );
-  }
-
-  if (!competition) {
-    return (
-      <p className="text-muted-foreground text-sm text-center py-12">Competition not found.</p>
-    );
-  }
 
   const isAcceptingApplications =
     competition.status === "accepting_applications";

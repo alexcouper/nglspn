@@ -28,8 +28,12 @@ COPY . .
 # Collect static files
 RUN uv run python manage.py collectstatic --noinput
 
+# Copy and set entrypoint
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
+
 # Expose port
 EXPOSE 8000
 
-# Run the application with gunicorn
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["uv", "run", "gunicorn", "-c", "gunicorn.conf.py", "project_showcase.wsgi:application"]

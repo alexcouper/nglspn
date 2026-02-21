@@ -9,6 +9,8 @@ from services.project.query_interface import ProjectQueryInterface
 from services.users.django_impl import DjangoUserHandler, DjangoUserQuery
 from services.users.handler_interface import UserHandlerInterface
 from services.users.query_interface import UserQueryInterface
+from services.web_ui.django_impl import DjangoWebUIHandler
+from services.web_ui.handler_interface import WebUIHandlerInterface
 
 
 @dataclass(frozen=True)
@@ -16,6 +18,7 @@ class HandlerServices:
     email: EmailHandlerInterface = field(default_factory=DjangoEmailHandler)
     project: ProjectHandlerInterface = field(default_factory=DjangoProjectHandler)
     users: UserHandlerInterface = field(default_factory=DjangoUserHandler)
+    web_ui: WebUIHandlerInterface = field(default_factory=DjangoWebUIHandler)
 
 
 @dataclass(frozen=True)

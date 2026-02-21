@@ -12,6 +12,7 @@ from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from api.tasks import email as email_tasks
+from api.tasks import web_ui as web_ui_tasks
 
 from .models import (
     Competition,
@@ -193,6 +194,12 @@ class ProjectAdmin(admin.ModelAdmin):
                 logger.exception(
                     "Failed to send approval email for project %s", project.id
                 )
+            try:
+                web_ui_tasks.revalidate_project.enqueue(str(project.id))
+            except Exception:
+                logger.exception(
+                    "Failed to enqueue revalidation for project %s", project.id
+                )
         self.message_user(request, f"{updated} projects were approved.")
 
     @admin.action(description="Reject selected projects")
@@ -201,10 +208,18 @@ class ProjectAdmin(admin.ModelAdmin):
         request: HttpRequest,
         queryset: QuerySet[Project],
     ) -> None:
+        pending = list(queryset.filter(status=ProjectStatus.PENDING))
         updated = queryset.filter(status=ProjectStatus.PENDING).update(
             status=ProjectStatus.REJECTED,
             approved_by=request.user,
         )
+        for project in pending:
+            try:
+                web_ui_tasks.revalidate_project.enqueue(str(project.id))
+            except Exception:
+                logger.exception(
+                    "Failed to enqueue revalidation for project %s", project.id
+                )
         self.message_user(request, f"{updated} projects were rejected.")
 
     @admin.action(description="Feature selected projects")

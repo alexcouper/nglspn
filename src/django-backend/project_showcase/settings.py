@@ -271,6 +271,7 @@ EMAIL_USE_TLS = os.getenv("EMAIL_USE_TLS", "True").lower() == "true"
 DEFAULT_FROM_EMAIL = os.getenv("DEFAULT_FROM_EMAIL", "noreply@naglasupan.is")
 ADMIN_FROM_EMAIL = os.getenv("ADMIN_FROM_EMAIL", "alex@naglasupan.is")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "https://naglasupan.is")
+REVALIDATION_SECRET = os.getenv("REVALIDATION_SECRET", "")
 
 # Logging configuration - JSON format for Grafana/Cockpit filtering
 LOGGING = {

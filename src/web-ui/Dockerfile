@@ -17,6 +17,11 @@ COPY . .
 # Build with placeholder - will be replaced at runtime
 ENV NEXT_PUBLIC_API_URL=__NEXT_PUBLIC_API_URL_PLACEHOLDER__
 ENV NEXT_PUBLIC_MAINTENANCE_BYPASS_SECRET=__NEXT_PUBLIC_MAINTENANCE_BYPASS_SECRET_PLACEHOLDER__
+
+# Server-side API URL for build-time pre-rendering (generateStaticParams)
+ARG API_URL
+ENV API_URL=${API_URL}
+
 RUN npm run build
 
 # Production image, copy all the files and run next

@@ -24,6 +24,9 @@ dev:
 	echo "Starting Next.js on port $$PORT (backend at $${NEXT_PUBLIC_API_URL:-http://localhost:8000})" && \
 	PORT=$$PORT npm run dev
 
+build:
+	./scripts/build.sh
+
 build-app:
 	npm run build
 

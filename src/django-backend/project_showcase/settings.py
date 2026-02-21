@@ -57,6 +57,8 @@ INSTALLED_APPS = [
     "apps.projects",
     "apps.tags",
     "apps.emails",
+    "django_tasks",
+    "django_tasks_db",
 ]
 
 MIDDLEWARE = [
@@ -190,6 +192,15 @@ STORAGES = {
     },
 }
 
+
+# Background tasks
+TASKS = {
+    "default": {
+        "BACKEND": "django_tasks.backends.immediate.ImmediateBackend"
+        if DEBUG
+        else "django_tasks_db.backend.DatabaseBackend",
+    },
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field

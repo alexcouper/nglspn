@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
-from services import HANDLERS
+from api.tasks import email as email_tasks
 
 from .models import (
     Competition,
@@ -188,7 +188,7 @@ class ProjectAdmin(admin.ModelAdmin):
         )
         for project in pending:
             try:
-                HANDLERS.email.send_project_approved_email(project)
+                email_tasks.send_project_approved_email.enqueue(str(project.id))
             except Exception:
                 logger.exception(
                     "Failed to send approval email for project %s", project.id

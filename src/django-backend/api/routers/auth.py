@@ -21,6 +21,7 @@ from api.schemas.auth import (
 )
 from api.schemas.errors import Error
 from api.schemas.user import UserCreate, UserResponse, UserUpdate
+from api.tasks import email as email_tasks
 from services import HANDLERS, REPO
 from services.users.exceptions import (
     EmailAlreadyRegisteredError,
@@ -68,8 +69,8 @@ def register(
         verification = HANDLERS.users.create_verification_code(
             user, VERIFICATION_CODE_EXPIRY_MINUTES
         )
-        HANDLERS.email.send_verification_email(
-            user, verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
+        email_tasks.send_verification_email.enqueue(
+            str(user.id), verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
         )
     except Exception:
         logger.exception("Failed to send verification email during registration")
@@ -96,8 +97,8 @@ def login(
             verification = HANDLERS.users.create_verification_code(
                 user, VERIFICATION_CODE_EXPIRY_MINUTES
             )
-            HANDLERS.email.send_verification_email(
-                user, verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
+            email_tasks.send_verification_email.enqueue(
+                str(user.id), verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
             )
         except RateLimitError:
             pass  # Ignore rate limit - user already has a recent code
@@ -220,8 +221,8 @@ def resend_verification(
         verification = HANDLERS.users.create_verification_code(
             user, VERIFICATION_CODE_EXPIRY_MINUTES
         )
-        HANDLERS.email.send_verification_email(
-            user, verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
+        email_tasks.send_verification_email.enqueue(
+            str(user.id), verification.code, VERIFICATION_CODE_EXPIRY_MINUTES
         )
         return ResendVerificationResponse(message="Verification email sent")
     except RateLimitError:

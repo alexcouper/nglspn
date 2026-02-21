@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { CompetitionHighlight } from "./components/CompetitionHighlight";
 import { fetchActiveOrRecentCompetition } from "@/lib/api/server";
-
-export const revalidate = 60;
+export const revalidate = 3600;
 
 export default async function Home() {
   const { active, recent } = await fetchActiveOrRecentCompetition().catch(

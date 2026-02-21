@@ -1,7 +1,6 @@
 import { ProjectsListing } from "./ProjectsListing";
 import { fetchProjects } from "@/lib/api/server";
-
-export const revalidate = 60;
+export const revalidate = 3600;
 
 export default async function ProjectsPage() {
   const data = await fetchProjects({

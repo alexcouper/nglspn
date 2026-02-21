@@ -1,6 +1,6 @@
 """Gunicorn configuration for production."""
 
-import logging
+from gunicorn_logger import StructuredLogger
 
 # Server socket
 bind = "0.0.0.0:8000"
@@ -8,18 +8,10 @@ bind = "0.0.0.0:8000"
 # Worker timeout — OTEL + Django init can exceed the 30s default on constrained CPUs
 timeout = 120
 
-# Logging - use logconfig_dict for JSON structured logs
+# Custom logger class: structured JSON fields, filters kube-probe + health checks
+logger_class = StructuredLogger
 accesslog = "-"
 errorlog = "-"
-
-
-class HealthCheckFilter(logging.Filter):
-    """Filter out health check requests from access logs."""
-
-    def filter(self, record: logging.LogRecord) -> bool:
-        message = record.getMessage()
-        return "GET /health" not in message
-
 
 # JSON logging configuration for Grafana/Cockpit filtering
 logconfig_dict = {
@@ -31,16 +23,10 @@ logconfig_dict = {
             "format": "%(asctime)s %(levelname)s %(name)s %(message)s",
         },
     },
-    "filters": {
-        "health_check": {
-            "()": HealthCheckFilter,
-        },
-    },
     "handlers": {
         "console": {
             "class": "logging.StreamHandler",
             "formatter": "json",
-            "filters": ["health_check"],
         },
         "error_console": {
             "class": "logging.StreamHandler",

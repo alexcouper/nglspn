@@ -1,7 +1,6 @@
 import { CompetitionsList } from "./CompetitionsList";
 import { fetchCompetitions } from "@/lib/api/server";
-
-export const revalidate = 60;
+export const revalidate = 3600;
 
 export default async function CompetitionsPage() {
   const data = await fetchCompetitions().catch(() => null);

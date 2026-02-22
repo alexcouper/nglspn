@@ -104,7 +104,7 @@ export function ProjectsListing({
   }, []);
 
   return (
-    <div className="flex gap-8">
+    <div className="flex flex-col md:flex-row gap-8">
       {/* Sidebar filters */}
       <div
         className={`${

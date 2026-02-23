@@ -12,7 +12,7 @@ export default function PrivacyPolicyPage() {
           Privacy Policy
         </h1>
         <p className="text-xs text-muted-foreground mb-8">
-          Last updated: 22 February 2025
+          Last updated: 23 February 2025
         </p>
 
         <div className="space-y-8 text-sm text-foreground leading-relaxed">
@@ -37,11 +37,12 @@ export default function PrivacyPolicyPage() {
               <li>A password (stored securely as a hash, never in plain text)</li>
             </ul>
             <p className="mt-3 mb-2">
-              When you submit a project, we collect:
+              When you use the platform, we may collect:
             </p>
             <ul className="list-disc pl-5 space-y-1">
-              <li>Project details (title, description, URLs, tech stack)</li>
-              <li>Images you upload</li>
+              <li>Content you submit, such as projects, comments, reactions,
+                announcements, and any associated images or links</li>
+              <li>Your preferences and settings</li>
             </ul>
             <p className="mt-3 mb-2">
               When anyone views a project page, we record:
@@ -56,12 +57,13 @@ export default function PrivacyPolicyPage() {
           <div>
             <h2 className="font-semibold mb-2">How we use your data</h2>
             <ul className="list-disc pl-5 space-y-1">
-              <li>To operate your account and let you manage your projects</li>
-              <li>To display approved projects publicly on the platform</li>
+              <li>To operate your account and let you manage your content</li>
+              <li>To display approved content publicly on the platform</li>
               <li>To run competitions and communicate results</li>
               <li>To send you emails you have opted in to (platform updates,
                 competition results)</li>
-              <li>To generate aggregate view counts for projects</li>
+              <li>To generate aggregate view counts and usage statistics</li>
+              <li>To monitor and improve platform performance and reliability</li>
             </ul>
           </div>
 
@@ -93,11 +95,14 @@ export default function PrivacyPolicyPage() {
           </div>
 
           <div>
-            <h2 className="font-semibold mb-2">Cookies and tracking</h2>
+            <h2 className="font-semibold mb-2">Cookies, tracking, and performance monitoring</h2>
             <p>
               We do not use any third-party analytics or tracking services. The
               site uses only the cookies strictly necessary for authentication
-              and session management.
+              and session management. We use OpenTelemetry to collect anonymous
+              performance data (page load times, error rates) to help us
+              improve the reliability of the platform. This data does not
+              identify individual users.
             </p>
           </div>
 

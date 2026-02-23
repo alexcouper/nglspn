@@ -1,137 +1,91 @@
 import type { Metadata } from "next";
+import html from "remark-html";
+import { remark } from "remark";
 
 export const metadata: Metadata = {
   title: "Privacy Policy - Naglasúpan",
 };
 
-export default function PrivacyPolicyPage() {
+const content = `
+# Privacy Policy
+
+*Last updated: 23 February 2025*
+
+## Who we are
+
+Naglasupan is a platform for Iceland-based developers to showcase their projects, participate in competitions, and connect with the local tech community. The site is operated from Iceland.
+
+## What data we collect
+
+When you create an account, we collect:
+
+- Email address
+- First and last name
+- Kennitala (Icelandic national ID number)
+- A password (stored securely as a hash, never in plain text)
+
+When you use the platform, we may collect:
+
+- Content you submit, such as projects, comments, reactions, announcements, and any associated images or links
+- Your preferences and settings
+
+When anyone views a project page, we record:
+
+- The visitor's IP address and browser user-agent string, used solely to produce an accurate view count (one count per unique visitor)
+
+## How we use your data
+
+- To operate your account and let you manage your content
+- To display approved content publicly on the platform
+- To run competitions and communicate results
+- To send you emails you have opted in to (platform updates, competition results)
+- To generate aggregate view counts and usage statistics
+- To monitor and improve platform performance and reliability
+
+## Data sharing
+
+We do not share your personal data with any third parties.
+
+## Project promotion
+
+Projects submitted to Naglasupan may be promoted on external platforms (for example, LinkedIn or social media) to support the Icelandic developer community. If you prefer your projects not to be featured externally, you can opt out at any time in your profile settings.
+
+## Where your data is stored
+
+Your data is stored on servers operated by Scaleway, located in France (EU). Uploaded images are served through a CDN. All data transfers are encrypted in transit using TLS.
+
+## Cookies, tracking, and performance monitoring
+
+We do not use any third-party analytics or tracking services. The site uses only the cookies strictly necessary for authentication and session management. We use OpenTelemetry to collect anonymous performance data (page load times, error rates) to help us improve the reliability of the platform. This data does not identify individual users.
+
+## Your rights
+
+You have the right to:
+
+- Access the personal data we hold about you
+- Correct any inaccurate data
+- Request deletion of your account and associated data
+- Opt out of promotional emails and external project promotion via your profile settings
+
+## Contact
+
+If you have questions about this policy or wish to exercise your rights, contact us at [alex@naglasupan.is](mailto:alex@naglasupan.is).
+`;
+
+async function processMarkdown(markdown: string) {
+  const file = await remark().use(html).process(markdown);
+  return file.toString();
+}
+
+export default async function PrivacyPolicyPage() {
+  const contentHtml = await processMarkdown(content);
+
   return (
     <section className="py-12 px-4 sm:px-6 bg-white">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-lg font-semibold text-foreground tracking-tight mb-6">
-          Privacy Policy
-        </h1>
-        <p className="text-xs text-muted-foreground mb-8">
-          Last updated: 23 February 2025
-        </p>
-
-        <div className="space-y-8 text-sm text-foreground leading-relaxed">
-          <div>
-            <h2 className="font-semibold mb-2">Who we are</h2>
-            <p>
-              Naglasúpan is a platform for Iceland-based developers to showcase
-              their projects, participate in competitions, and connect with the
-              local tech community. The site is operated from Iceland.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="font-semibold mb-2">What data we collect</h2>
-            <p className="mb-2">
-              When you create an account, we collect:
-            </p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Email address</li>
-              <li>First and last name</li>
-              <li>Kennitala (Icelandic national ID number)</li>
-              <li>A password (stored securely as a hash, never in plain text)</li>
-            </ul>
-            <p className="mt-3 mb-2">
-              When you use the platform, we may collect:
-            </p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Content you submit, such as projects, comments, reactions,
-                announcements, and any associated images or links</li>
-              <li>Your preferences and settings</li>
-            </ul>
-            <p className="mt-3 mb-2">
-              When anyone views a project page, we record:
-            </p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>The visitor&apos;s IP address and browser user-agent string,
-                used solely to produce an accurate view count (one count per
-                unique visitor)</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2 className="font-semibold mb-2">How we use your data</h2>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>To operate your account and let you manage your content</li>
-              <li>To display approved content publicly on the platform</li>
-              <li>To run competitions and communicate results</li>
-              <li>To send you emails you have opted in to (platform updates,
-                competition results)</li>
-              <li>To generate aggregate view counts and usage statistics</li>
-              <li>To monitor and improve platform performance and reliability</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2 className="font-semibold mb-2">Data sharing</h2>
-            <p>
-              We do not share your personal data with any third parties.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="font-semibold mb-2">Project promotion</h2>
-            <p>
-              Projects submitted to Naglasúpan may be promoted on external
-              platforms (for example, LinkedIn or social media) to support the
-              Icelandic developer community. If you prefer your projects not to
-              be featured externally, you can opt out at any time in your
-              profile settings.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="font-semibold mb-2">Where your data is stored</h2>
-            <p>
-              Your data is stored on servers operated by Scaleway, located in
-              France (EU). Uploaded images are served through a CDN. All data
-              transfers are encrypted in transit using TLS.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="font-semibold mb-2">Cookies, tracking, and performance monitoring</h2>
-            <p>
-              We do not use any third-party analytics or tracking services. The
-              site uses only the cookies strictly necessary for authentication
-              and session management. We use OpenTelemetry to collect anonymous
-              performance data (page load times, error rates) to help us
-              improve the reliability of the platform. This data does not
-              identify individual users.
-            </p>
-          </div>
-
-          <div>
-            <h2 className="font-semibold mb-2">Your rights</h2>
-            <p className="mb-2">You have the right to:</p>
-            <ul className="list-disc pl-5 space-y-1">
-              <li>Access the personal data we hold about you</li>
-              <li>Correct any inaccurate data</li>
-              <li>Request deletion of your account and associated data</li>
-              <li>Opt out of promotional emails and external project promotion
-                via your profile settings</li>
-            </ul>
-          </div>
-
-          <div>
-            <h2 className="font-semibold mb-2">Contact</h2>
-            <p>
-              If you have questions about this policy or wish to exercise your
-              rights, contact us at{" "}
-              <a
-                href="mailto:alex@naglasupan.is"
-                className="text-accent hover:text-accent-hover transition-colors"
-              >
-                alex@naglasupan.is
-              </a>.
-            </p>
-          </div>
-        </div>
+        <article className="article markdown">
+          <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
+        </article>
       </div>
     </section>
   );

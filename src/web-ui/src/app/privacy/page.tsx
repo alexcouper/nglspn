@@ -13,63 +13,43 @@ const content = `
 
 ## Who we are
 
-Naglasupan is a platform for Iceland-based developers to showcase their projects, participate in competitions, and connect with the local tech community. The site is operated from Iceland.
+Naglasupan is a community platform for Iceland-based developers. The site is operated from Iceland.
 
-## What data we collect
+## What we collect
 
-When you create an account, we collect:
+We collect the personal information you provide when you create an account or use the platform. This includes things like your name, contact details, identity verification, and any content you choose to submit or interact with.
 
-- Email address
-- First and last name
-- Kennitala (Icelandic national ID number)
-- A password (stored securely as a hash, never in plain text)
+We also collect technical data automatically when you use the site, such as your IP address and browser information. This is used for security, to operate the service, and to understand how the platform is used in aggregate.
 
-When you use the platform, we may collect:
+Passwords are stored securely as hashes and are never kept in plain text.
 
-- Content you submit, such as projects, comments, reactions, announcements, and any associated images or links
-- Your preferences and settings
+## How we use it
 
-When anyone views a project page, we record:
+We use your data to operate and improve the platform. This includes running your account, displaying content you publish, communicating with you about things you have opted in to, and monitoring the health and performance of the service.
 
-- The visitor's IP address and browser user-agent string, used solely to produce an accurate view count (one count per unique visitor)
-
-## How we use your data
-
-- To operate your account and let you manage your content
-- To display approved content publicly on the platform
-- To run competitions and communicate results
-- To send you emails you have opted in to (platform updates, competition results)
-- To generate aggregate view counts and usage statistics
-- To monitor and improve platform performance and reliability
+We do not use third-party analytics or advertising services.
 
 ## Data sharing
 
-We do not share your personal data with any third parties.
+We do not sell or share your personal data with third parties.
 
-## Project promotion
-
-Projects submitted to Naglasupan may be promoted on external platforms (for example, LinkedIn or social media) to support the Icelandic developer community. If you prefer your projects not to be featured externally, you can opt out at any time in your profile settings.
+Content you publish on the platform is public by nature. Projects and other public content may be promoted on external channels (such as social media) to support the Icelandic developer community. You can opt out of external promotion in your profile settings.
 
 ## Where your data is stored
 
-Your data is stored on servers operated by Scaleway, located in France (EU). Uploaded images are served through a CDN. All data transfers are encrypted in transit using TLS.
+Your data is stored on servers located in the EU. All data is encrypted in transit.
 
-## Cookies, tracking, and performance monitoring
+## Cookies and tracking
 
-We do not use any third-party analytics or tracking services. The site uses only the cookies strictly necessary for authentication and session management. We use OpenTelemetry to collect anonymous performance data (page load times, error rates) to help us improve the reliability of the platform. This data does not identify individual users.
+We use only the cookies necessary to keep you logged in. We collect anonymous performance metrics to maintain site reliability. We do not use any third-party tracking.
 
 ## Your rights
 
-You have the right to:
-
-- Access the personal data we hold about you
-- Correct any inaccurate data
-- Request deletion of your account and associated data
-- Opt out of promotional emails and external project promotion via your profile settings
+You can access, correct, or delete your personal data at any time. You can manage your communication and promotion preferences in your profile settings. To exercise any of these rights, contact us.
 
 ## Contact
 
-If you have questions about this policy or wish to exercise your rights, contact us at [alex@naglasupan.is](mailto:alex@naglasupan.is).
+If you have questions about this policy, contact us at [alex@naglasupan.is](mailto:alex@naglasupan.is).
 `;
 
 async function processMarkdown(markdown: string) {

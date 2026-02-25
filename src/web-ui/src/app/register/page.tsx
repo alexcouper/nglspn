@@ -107,6 +107,13 @@ export default function RegisterPage() {
               />
             </div>
 
+            <p className="text-xs text-muted-foreground">
+              By creating an account, you agree to our{" "}
+              <Link href="/privacy" className="text-accent hover:text-accent-hover transition-colors">
+                Privacy Policy
+              </Link>.
+            </p>
+
             <button
               type="submit"
               disabled={isLoading}

@@ -42,7 +42,7 @@ export default function MyReviewsLayout({
           <p className="text-muted-foreground text-sm">
             Interested in helping rank the next set of projects? Get in touch:{" "}
             <a
-              href="mailto:alex@naglasupan.is"
+              href="mailto:admin@naglasupan.is"
               className="text-accent hover:text-accent-hover transition-colors"
             >
               alex@naglasupan.is

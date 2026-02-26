@@ -16,3 +16,8 @@ class EmailAlreadyRegisteredError(Exception):
 class KennitalaAlreadyRegisteredError(Exception):
     def __init__(self) -> None:
         super().__init__("Kennitala already registered")
+
+
+class CodeExhaustedError(Exception):
+    def __init__(self) -> None:
+        super().__init__("Too many failed attempts. Please request a new code.")

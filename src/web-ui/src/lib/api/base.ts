@@ -5,6 +5,15 @@ export const API_BASE_URL =
 
 type ApiError = components["schemas"]["Error"];
 
+export class ApiRequestError extends Error {
+  constructor(
+    message: string,
+    public body: Record<string, unknown>,
+  ) {
+    super(message);
+  }
+}
+
 export class APIClient {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
@@ -126,8 +135,9 @@ export class APIClient {
     }
 
     if (!response.ok) {
-      const error: ApiError = await response.json();
-      throw new Error(error.detail || "Request failed");
+      const body = await response.json();
+      const error = body as ApiError;
+      throw new ApiRequestError(error.detail || "Request failed", body);
     }
 
     if (response.status === 204) {

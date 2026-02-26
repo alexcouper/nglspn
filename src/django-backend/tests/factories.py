@@ -14,7 +14,7 @@ from apps.projects.models import (
     ProjectStatus,
 )
 from apps.tags.models import Tag, TagCategory, TagStatus
-from apps.users.models import EmailVerificationCode
+from apps.users.models import EmailVerificationCode, PasswordResetCode
 
 User = get_user_model()
 
@@ -157,4 +157,14 @@ class EmailVerificationCodeFactory(factory.django.DjangoModelFactory):
 
     user = factory.SubFactory(UserFactory)
     code = factory.Sequence(lambda n: f"{n:06d}")
+    expires_at = factory.LazyFunction(lambda: timezone.now() + timedelta(minutes=15))
+
+
+class PasswordResetCodeFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = PasswordResetCode
+
+    user = factory.SubFactory(UserFactory)
+    code = factory.Sequence(lambda n: f"{n:06d}")
+    attempts = 0
     expires_at = factory.LazyFunction(lambda: timezone.now() + timedelta(minutes=15))

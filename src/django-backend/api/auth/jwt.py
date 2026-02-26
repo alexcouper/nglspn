@@ -41,6 +41,24 @@ def create_refresh_token(user_id: str) -> str:
     )
 
 
+RESET_TOKEN_EXPIRE_MINUTES = 10
+
+
+def create_reset_token(user_id: str) -> str:
+    now = datetime.now(tz=UTC)
+    payload = {
+        "user_id": str(user_id),
+        "exp": now + timedelta(minutes=RESET_TOKEN_EXPIRE_MINUTES),
+        "iat": now,
+        "type": "reset",
+    }
+    return jwt.encode(
+        payload,
+        settings.JWT_SECRET_KEY,
+        algorithm=settings.JWT_ALGORITHM,
+    )
+
+
 def verify_token(token: str) -> dict[str, Any] | None:
     try:
         return jwt.decode(
@@ -57,6 +75,9 @@ def verify_token(token: str) -> dict[str, Any] | None:
 def get_user_from_token(token: str) -> "AbstractUser | None":
     payload = verify_token(token)
     if not payload:
+        return None
+
+    if payload.get("type") != "access":
         return None
 
     return REPO.users.get_active_by_id(UUID(payload["user_id"]))

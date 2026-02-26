@@ -19,6 +19,11 @@ class EmailHandlerInterface(ABC):
     def send_project_approved_email(self, project: Project) -> None: ...
 
     @abstractmethod
+    def send_password_reset_email(
+        self, user: User, code: str, expires_minutes: int
+    ) -> None: ...
+
+    @abstractmethod
     def send_broadcast(
         self, broadcast: BroadcastEmail, sent_by_user: User
     ) -> tuple[int, int]: ...

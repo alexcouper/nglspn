@@ -352,6 +352,122 @@
         ]
       }
     },
+    "/api/auth/forgot-password": {
+      "post": {
+        "operationId": "api_routers_auth_forgot_password",
+        "summary": "Forgot Password",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForgotPasswordResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/auth/forgot-password/verify": {
+      "post": {
+        "operationId": "api_routers_auth_forgot_password_verify",
+        "summary": "Forgot Password Verify",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForgotPasswordVerifyResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ForgotPasswordVerifyError"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ForgotPasswordVerifyRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
+    "/api/auth/reset-password": {
+      "post": {
+        "operationId": "api_routers_auth_reset_password",
+        "summary": "Reset Password",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResetPasswordResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordRequest"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/projects": {
       "get": {
         "operationId": "api_routers_projects_list_projects",
@@ -2288,6 +2404,112 @@
           "message"
         ],
         "title": "ResendVerificationResponse",
+        "type": "object"
+      },
+      "ForgotPasswordResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ForgotPasswordResponse",
+        "type": "object"
+      },
+      "ForgotPasswordRequest": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ],
+        "title": "ForgotPasswordRequest",
+        "type": "object"
+      },
+      "ForgotPasswordVerifyResponse": {
+        "properties": {
+          "reset_token": {
+            "title": "Reset Token",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reset_token"
+        ],
+        "title": "ForgotPasswordVerifyResponse",
+        "type": "object"
+      },
+      "ForgotPasswordVerifyError": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "attempts_remaining": {
+            "title": "Attempts Remaining",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "detail",
+          "attempts_remaining"
+        ],
+        "title": "ForgotPasswordVerifyError",
+        "type": "object"
+      },
+      "ForgotPasswordVerifyRequest": {
+        "properties": {
+          "email": {
+            "title": "Email",
+            "type": "string"
+          },
+          "code": {
+            "title": "Code",
+            "type": "string"
+          }
+        },
+        "required": [
+          "email",
+          "code"
+        ],
+        "title": "ForgotPasswordVerifyRequest",
+        "type": "object"
+      },
+      "ResetPasswordResponse": {
+        "properties": {
+          "message": {
+            "title": "Message",
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ],
+        "title": "ResetPasswordResponse",
+        "type": "object"
+      },
+      "ResetPasswordRequest": {
+        "properties": {
+          "reset_token": {
+            "title": "Reset Token",
+            "type": "string"
+          },
+          "new_password": {
+            "title": "New Password",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reset_token",
+          "new_password"
+        ],
+        "title": "ResetPasswordRequest",
         "type": "object"
       },
       "ProjectImageResponse": {

@@ -33,3 +33,34 @@ class VerifyEmailResponse(Schema):
 
 class ResendVerificationResponse(Schema):
     message: str
+
+
+class ForgotPasswordRequest(Schema):
+    email: str
+
+
+class ForgotPasswordResponse(Schema):
+    message: str
+
+
+class ForgotPasswordVerifyRequest(Schema):
+    email: str
+    code: str
+
+
+class ForgotPasswordVerifyResponse(Schema):
+    reset_token: str
+
+
+class ForgotPasswordVerifyError(Schema):
+    detail: str
+    attempts_remaining: int
+
+
+class ResetPasswordRequest(Schema):
+    reset_token: str
+    new_password: str
+
+
+class ResetPasswordResponse(Schema):
+    message: str

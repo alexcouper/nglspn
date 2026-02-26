@@ -8,13 +8,25 @@ from django.contrib.auth import authenticate
 from django.http import HttpRequest
 from ninja import Router
 
-from api.auth.jwt import create_access_token, create_refresh_token, verify_token
+from api.auth.jwt import (
+    create_access_token,
+    create_refresh_token,
+    create_reset_token,
+    verify_token,
+)
 from api.auth.security import auth
 from api.schemas.auth import (
     AccessToken,
+    ForgotPasswordRequest,
+    ForgotPasswordResponse,
+    ForgotPasswordVerifyError,
+    ForgotPasswordVerifyRequest,
+    ForgotPasswordVerifyResponse,
     LoginRequest,
     RefreshRequest,
     ResendVerificationResponse,
+    ResetPasswordRequest,
+    ResetPasswordResponse,
     Token,
     VerifyEmailRequest,
     VerifyEmailResponse,
@@ -24,6 +36,7 @@ from api.schemas.user import UserCreate, UserResponse, UserUpdate
 from api.tasks import email as email_tasks
 from services import HANDLERS, REPO
 from services.users.exceptions import (
+    CodeExhaustedError,
     EmailAlreadyRegisteredError,
     KennitalaAlreadyRegisteredError,
     RateLimitError,
@@ -231,3 +244,89 @@ def resend_verification(
     except Exception:
         logger.exception("Failed to send verification email")
         return 400, Error(detail="Failed to send verification email")
+
+
+RESET_CODE_EXPIRY_MINUTES = 15
+FORGOT_RESET_GENERIC_MESSAGE = (
+    "If an account exists with that email, we've sent a reset code"
+)
+
+
+@router.post(
+    "/forgot-password",
+    response={200: ForgotPasswordResponse},
+    tags=["Authentication"],
+)
+def forgot_password(
+    request: HttpRequest,
+    payload: ForgotPasswordRequest,
+) -> ForgotPasswordResponse:
+    try:
+        reset_code = HANDLERS.users.create_password_reset_code(
+            payload.email, RESET_CODE_EXPIRY_MINUTES
+        )
+        if reset_code:
+            email_tasks.send_password_reset_email.enqueue(
+                str(reset_code.user.id),
+                reset_code.code,
+                RESET_CODE_EXPIRY_MINUTES,
+            )
+    except RateLimitError:
+        pass  # Silently ignore — don't reveal rate limiting
+    except Exception:
+        logger.exception("Failed to process forgot password request")
+
+    return ForgotPasswordResponse(message=FORGOT_RESET_GENERIC_MESSAGE)
+
+
+@router.post(
+    "/forgot-password/verify",
+    response={200: ForgotPasswordVerifyResponse, 400: ForgotPasswordVerifyError},
+    tags=["Authentication"],
+)
+def forgot_password_verify(
+    request: HttpRequest,
+    payload: ForgotPasswordVerifyRequest,
+) -> ForgotPasswordVerifyResponse | tuple[int, ForgotPasswordVerifyError]:
+    try:
+        result = HANDLERS.users.verify_password_reset_code(payload.email, payload.code)
+    except CodeExhaustedError:
+        return 400, ForgotPasswordVerifyError(
+            detail="Too many failed attempts. Please request a new code.",
+            attempts_remaining=0,
+        )
+
+    if result.user is None:
+        return 400, ForgotPasswordVerifyError(
+            detail="Invalid or expired code",
+            attempts_remaining=result.attempts_remaining,
+        )
+
+    reset_token = create_reset_token(result.user.id)
+    return ForgotPasswordVerifyResponse(reset_token=reset_token)
+
+
+@router.post(
+    "/reset-password",
+    response={200: ResetPasswordResponse, 400: Error},
+    tags=["Authentication"],
+)
+def reset_password(
+    request: HttpRequest,
+    payload: ResetPasswordRequest,
+) -> ResetPasswordResponse | tuple[int, Error]:
+    token_payload = verify_token(payload.reset_token)
+
+    if not token_payload:
+        return 400, Error(detail="Invalid or expired reset token")
+
+    if token_payload.get("type") != "reset":
+        return 400, Error(detail="Invalid token type")
+
+    try:
+        user = REPO.users.get_by_id(UUID(token_payload["user_id"]))
+    except UserNotFoundError:
+        return 400, Error(detail="Invalid or expired reset token")
+
+    HANDLERS.users.reset_password(user, payload.new_password)
+    return ResetPasswordResponse(message="Password updated successfully")

@@ -2,7 +2,7 @@
 export { api, API } from "./api";
 
 // Base client
-export { APIClient, API_BASE_URL } from "./base";
+export { APIClient, API_BASE_URL, ApiRequestError } from "./base";
 
 // Sub-clients
 export { AuthClient } from "./auth";
@@ -15,6 +15,7 @@ export { TagsClient } from "./tags";
 
 // Types - Auth
 export type { User, TokenResponse, VerifyEmailResponse, ResendVerificationResponse } from "./auth";
+export { VerifyCodeError } from "./auth";
 
 // Types - Competitions
 export type {

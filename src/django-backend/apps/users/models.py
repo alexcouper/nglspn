@@ -99,3 +99,22 @@ class EmailVerificationCode(models.Model):
 
     def __str__(self) -> str:
         return f"Verification code for {self.user.email}"
+
+
+class PasswordResetCode(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        User, on_delete=models.CASCADE, related_name="password_reset_codes"
+    )
+    code = models.CharField(max_length=6)
+    attempts = models.IntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    expires_at = models.DateTimeField()
+    used_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "password_reset_codes"
+        indexes = [models.Index(fields=["user", "code"])]
+
+    def __str__(self) -> str:
+        return f"Password reset code for {self.user.email}"

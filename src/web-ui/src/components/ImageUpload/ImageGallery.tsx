@@ -79,6 +79,7 @@ export function ImageGallery({
             fill
             className="object-contain"
             sizes="(max-width: 768px) 100vw, 50vw"
+            priority
           />
           {editable && (
             <div className="absolute top-2 right-2 flex gap-1">

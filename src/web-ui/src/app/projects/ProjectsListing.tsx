@@ -209,8 +209,8 @@ export function ProjectsListing({
           </div>
         ) : viewMode === "list" ? (
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+            {projects.map((project, index) => (
+              <ProjectCard key={project.id} project={project} priority={index < 6} />
             ))}
             {projects.length === 0 && (
               <p className="col-span-full text-muted-foreground text-sm text-center py-12">
@@ -230,8 +230,8 @@ export function ProjectsListing({
                   {competition.name}
                 </h2>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {competition.projects.map((project) => (
-                    <CompetitionProjectCard key={project.id} project={project} />
+                  {competition.projects.map((project, index) => (
+                    <CompetitionProjectCard key={project.id} project={project} priority={index < 6} />
                   ))}
                   {competition.projects.length === 0 && (
                     <p className="col-span-full text-muted-foreground text-sm text-center py-6">
@@ -257,7 +257,7 @@ export function ProjectsListing({
   );
 }
 
-function ProjectCard({ project }: { project: Project }) {
+function ProjectCard({ project, priority }: { project: Project; priority?: boolean }) {
   const mainImage =
     project.images?.find((img) => img.is_main) || project.images?.[0];
   const placeholderColor = getPlaceholderColor(project.id);
@@ -276,6 +276,7 @@ function ProjectCard({ project }: { project: Project }) {
             fill
             className="object-contain"
             sizes="(max-width: 768px) 50vw, 33vw"
+            priority={priority}
           />
         )}
         {isWinner && (
@@ -306,7 +307,7 @@ function ProjectCard({ project }: { project: Project }) {
   );
 }
 
-function CompetitionProjectCard({ project }: { project: CompetitionProject }) {
+function CompetitionProjectCard({ project, priority }: { project: CompetitionProject; priority?: boolean }) {
   const placeholderColor = getPlaceholderColor(project.id);
 
   return (
@@ -322,6 +323,7 @@ function CompetitionProjectCard({ project }: { project: CompetitionProject }) {
             fill
             className="object-contain"
             sizes="(max-width: 768px) 50vw, 33vw"
+            priority={priority}
           />
         )}
       </div>

@@ -6,6 +6,7 @@ import markdown
 from django.conf import settings
 from django.utils import timezone
 
+from services.email import EMAIL_LOGO_URL
 from services.email.query_interface import EmailQueryInterface
 from services.users.django_impl import DjangoUserQuery
 
@@ -28,7 +29,7 @@ class DjangoEmailQuery(EmailQueryInterface):
             "body_html": body_html,
             "body_markdown": broadcast.body_markdown,
             "profile_url": f"{settings.FRONTEND_URL}/profile",
-            "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
+            "logo_url": EMAIL_LOGO_URL,
             "current_year": timezone.now().year,
         }
         return render_email("broadcast", context)

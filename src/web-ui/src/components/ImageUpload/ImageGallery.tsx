@@ -5,6 +5,7 @@ import Image from "next/image";
 import { StarIcon, TrashIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import type { ProjectImage } from "@/lib/api";
+import { pickVariant } from "@/lib/utils";
 
 interface ImageGalleryProps {
   images: ProjectImage[];
@@ -64,6 +65,7 @@ export function ImageGallery({
   const mainImage = images.find((img) => img.is_main) || images[0];
   const otherImages = images.filter((img) => img.id !== mainImage?.id);
   const mainImageIndex = images.findIndex((img) => img.id === mainImage?.id);
+  const mainVariantUrl = mainImage ? pickVariant(mainImage.variants, "medium") : null;
 
   return (
     <div className="space-y-4">
@@ -73,14 +75,23 @@ export function ImageGallery({
           className={`relative aspect-video rounded-xl overflow-hidden bg-muted ${!editable ? "cursor-pointer" : ""}`}
           onClick={() => openLightbox(mainImageIndex)}
         >
-          <Image
-            src={mainImage.url}
-            alt="Main project image"
-            fill
-            className="object-contain"
-            sizes="(max-width: 768px) 100vw, 50vw"
-            priority
-          />
+          {mainVariantUrl ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={mainVariantUrl}
+              alt="Main project image"
+              className="absolute inset-0 w-full h-full object-contain"
+            />
+          ) : (
+            <Image
+              src={mainImage.url}
+              alt="Main project image"
+              fill
+              className="object-contain"
+              sizes="(max-width: 768px) 100vw, 50vw"
+              priority
+            />
+          )}
           {editable && (
             <div className="absolute top-2 right-2 flex gap-1">
               <span className="bg-accent text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
@@ -181,14 +192,26 @@ export function ImageGallery({
             className="relative max-w-[90vw] max-h-[90vh]"
             onClick={(e) => e.stopPropagation()}
           >
-            <Image
-              src={images[lightboxIndex].url}
-              alt={images[lightboxIndex].original_filename}
-              width={images[lightboxIndex].width || 1200}
-              height={images[lightboxIndex].height || 800}
-              className="max-w-[90vw] max-h-[90vh] object-contain"
-              priority
-            />
+            {(() => {
+              const lightboxVariantUrl = pickVariant(images[lightboxIndex].variants, "large");
+              return lightboxVariantUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={lightboxVariantUrl}
+                  alt={images[lightboxIndex].original_filename}
+                  className="max-w-[90vw] max-h-[90vh] object-contain"
+                />
+              ) : (
+                <Image
+                  src={images[lightboxIndex].url}
+                  alt={images[lightboxIndex].original_filename}
+                  width={images[lightboxIndex].width || 1200}
+                  height={images[lightboxIndex].height || 800}
+                  className="max-w-[90vw] max-h-[90vh] object-contain"
+                  priority
+                />
+              );
+            })()}
           </div>
 
           {/* Next button */}

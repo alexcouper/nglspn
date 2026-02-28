@@ -22,6 +22,15 @@ class ProjectCreate(Schema):
     competition_id: UUID | None = None
 
 
+class ImageVariantResponse(Schema):
+    """Response schema for a pre-generated image variant."""
+
+    size: str
+    url: str
+    width: int
+    height: int
+
+
 class ProjectImageResponse(Schema):
     """Response schema for project images."""
 
@@ -36,6 +45,11 @@ class ProjectImageResponse(Schema):
     display_order: int
     upload_status: str
     created_at: datetime
+    variants: list[ImageVariantResponse] = []
+
+    @staticmethod
+    def resolve_variants(obj: Any) -> list[Any]:
+        return list(obj.variants.all())
 
 
 class WonCompetitionInfo(Schema):

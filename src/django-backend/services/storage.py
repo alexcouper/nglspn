@@ -67,6 +67,30 @@ class StorageService:
             },
         }
 
+    def download_object(self, key: str) -> bytes:
+        """Download an object from storage and return its contents."""
+        response = self.client.get_object(
+            Bucket=settings.S3_BUCKET_NAME,
+            Key=key,
+        )
+        return response["Body"].read()
+
+    def upload_object(
+        self,
+        key: str,
+        data: bytes,
+        content_type: str,
+        acl: str = "public-read",
+    ) -> None:
+        """Upload bytes to storage."""
+        self.client.put_object(
+            Bucket=settings.S3_BUCKET_NAME,
+            Key=key,
+            Body=data,
+            ContentType=content_type,
+            ACL=acl,
+        )
+
     def delete_object(self, key: str) -> None:
         """Delete an object from storage."""
         self.client.delete_object(

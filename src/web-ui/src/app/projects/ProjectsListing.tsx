@@ -17,7 +17,7 @@ import {
   type Competition,
   type CompetitionProject,
 } from "@/lib/api";
-import { getPlaceholderColor } from "@/lib/utils";
+import { getPlaceholderColor, pickVariant } from "@/lib/utils";
 import { TagFilterUnified } from "@/components/TagFilterUnified";
 import { TagBadge } from "@/components/TagBadge";
 
@@ -262,6 +262,7 @@ function ProjectCard({ project, priority }: { project: Project; priority?: boole
     project.images?.find((img) => img.is_main) || project.images?.[0];
   const placeholderColor = getPlaceholderColor(project.id);
   const isWinner = project.won_competitions && project.won_competitions.length > 0;
+  const variantUrl = mainImage ? pickVariant(mainImage.variants, "thumb") : null;
 
   return (
     <Link
@@ -269,7 +270,15 @@ function ProjectCard({ project, priority }: { project: Project; priority?: boole
       className={`card card-interactive group ${isWinner ? "border-amber-300 ring-1 ring-amber-200" : ""}`}
     >
       <div className={`relative aspect-video ${!mainImage ? placeholderColor : "bg-slate-100"}`}>
-        {mainImage && (
+        {mainImage && variantUrl ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={variantUrl}
+            alt={project.title}
+            className="absolute inset-0 w-full h-full object-contain"
+            loading={priority ? "eager" : "lazy"}
+          />
+        ) : mainImage ? (
           <Image
             src={mainImage.url}
             alt={project.title}
@@ -278,7 +287,7 @@ function ProjectCard({ project, priority }: { project: Project; priority?: boole
             sizes="(max-width: 768px) 50vw, 33vw"
             priority={priority}
           />
-        )}
+        ) : null}
         {isWinner && (
           <div className="absolute top-2 right-2 bg-amber-500 text-white p-1 rounded-full shadow-sm">
             <TrophyIcon className="w-3.5 h-3.5" />

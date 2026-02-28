@@ -28,10 +28,17 @@ export function proxy(request: NextRequest) {
       const response = NextResponse.redirect(url);
       response.cookies.set("maintenance_bypass", bypassSecret, {
         path: "/",
-        httpOnly: true,
         sameSite: "lax",
         secure: process.env.NODE_ENV === "production",
       });
+      return response;
+    }
+
+    // Validate existing bypass cookie on every request
+    const bypassCookie = request.cookies.get("maintenance_bypass");
+    if (bypassCookie && bypassCookie.value !== bypassSecret) {
+      const response = NextResponse.next();
+      response.cookies.delete("maintenance_bypass");
       return response;
     }
   }

@@ -93,7 +93,7 @@ class TestVerifyEmailEndpoint:
     def test_verifies_valid_code(self, client):
         user = UserFactory(is_verified=False)
         EmailVerificationCodeFactory(user=user, code="123456")
-        token = self._get_token(client, user)
+        token = create_access_token(user.id)
 
         response = client.post(
             "/api/auth/verify-email",
@@ -110,7 +110,7 @@ class TestVerifyEmailEndpoint:
     def test_rejects_invalid_code(self, client):
         user = UserFactory(is_verified=False)
         EmailVerificationCodeFactory(user=user, code="123456")
-        token = self._get_token(client, user)
+        token = create_access_token(user.id)
 
         response = client.post(
             "/api/auth/verify-email",
@@ -124,7 +124,7 @@ class TestVerifyEmailEndpoint:
 
     def test_returns_already_verified(self, client):
         user = UserFactory(is_verified=True)
-        token = self._get_token(client, user)
+        token = create_access_token(user.id)
 
         response = client.post(
             "/api/auth/verify-email",
@@ -147,15 +147,12 @@ class TestVerifyEmailEndpoint:
 
         assert response.status_code == 401
 
-    def _get_token(self, client, user):
-        return create_access_token(user.id)
-
 
 @pytest.mark.django_db
 class TestResendVerificationEndpoint:
     def test_sends_verification_email(self, client):
         user = UserFactory(is_verified=False)
-        token = self._get_token(client, user)
+        token = create_access_token(user.id)
 
         # Wait for cooldown to pass
         cooldown_offset = timedelta(seconds=VERIFICATION_COOLDOWN_SECONDS + 1)
@@ -176,7 +173,7 @@ class TestResendVerificationEndpoint:
 
     def test_rejects_for_verified_user(self, client):
         user = UserFactory(is_verified=True)
-        token = self._get_token(client, user)
+        token = create_access_token(user.id)
 
         response = client.post(
             "/api/auth/resend-verification",
@@ -189,7 +186,7 @@ class TestResendVerificationEndpoint:
 
     def test_rate_limits_requests(self, client):
         user = UserFactory(is_verified=False)
-        token = self._get_token(client, user)
+        token = create_access_token(user.id)
 
         # Create a recent verification code so the cooldown is active
         EmailVerificationCodeFactory(user=user)
@@ -210,6 +207,3 @@ class TestResendVerificationEndpoint:
         )
 
         assert response.status_code == 401
-
-    def _get_token(self, client, user):
-        return create_access_token(user.id)

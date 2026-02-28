@@ -14,7 +14,7 @@ from hamcrest import (
 )
 from moto import mock_aws
 
-from apps.projects.models import ProjectImage, UploadStatus
+from apps.projects.models import ImageVariant, ProjectImage, UploadStatus, VariantSize
 from tests.factories import ProjectFactory
 
 # Test bucket configuration
@@ -221,6 +221,39 @@ class TestCompleteUpload:
         assert_that(image.width, equal_to(800))
         assert_that(image.height, equal_to(600))
 
+    def test_enqueues_variant_generation_task(
+        self,
+        client,
+        project,
+        auth_headers,
+        mock_storage_service,
+    ) -> None:
+        image = ProjectImage.objects.create(
+            project=project,
+            storage_key="test/key.png",
+            original_filename="test.png",
+            content_type="image/png",
+            file_size=1024,
+            upload_status=UploadStatus.PENDING,
+        )
+
+        mock_storage_service.put_object(
+            Bucket=TEST_BUCKET,
+            Key="test/key.png",
+            Body=b"test",
+        )
+
+        with patch("api.routers.my_projects.generate_image_variants") as mock_task:
+            response = client.post(
+                f"/api/my/projects/{project.id}/images/{image.id}/complete",
+                data=json.dumps({"width": 800, "height": 600}),
+                content_type="application/json",
+                **auth_headers,
+            )
+
+        assert_that(response.status_code, equal_to(200))
+        mock_task.enqueue.assert_called_once_with(str(image.id))
+
     def test_first_image_becomes_main(
         self,
         client,
@@ -311,6 +344,52 @@ class TestDeleteImage:
 
         assert_that(response.status_code, equal_to(204))
         assert_that(ProjectImage.objects.filter(id=image.id).exists(), is_(False))
+
+    def test_deletes_variant_files_and_db_rows(
+        self,
+        client,
+        project,
+        auth_headers,
+        mock_storage_service,
+    ) -> None:
+        image = ProjectImage.objects.create(
+            project=project,
+            storage_key="test/delete-me.jpg",
+            original_filename="delete-me.jpg",
+            content_type="image/jpeg",
+            file_size=1024,
+            upload_status=UploadStatus.UPLOADED,
+        )
+
+        # Create variant records and S3 objects
+        for size, key_suffix in [
+            (VariantSize.THUMB, "test/delete-me/thumb.webp"),
+            (VariantSize.MEDIUM, "test/delete-me/medium.webp"),
+        ]:
+            ImageVariant.objects.create(
+                image=image,
+                size=size,
+                storage_key=key_suffix,
+                width=384,
+                height=216,
+                file_size=512,
+            )
+            mock_storage_service.put_object(
+                Bucket=TEST_BUCKET, Key=key_suffix, Body=b"webp"
+            )
+
+        mock_storage_service.put_object(
+            Bucket=TEST_BUCKET, Key="test/delete-me.jpg", Body=b"jpg"
+        )
+
+        response = client.delete(
+            f"/api/my/projects/{project.id}/images/{image.id}",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(204))
+        assert_that(ProjectImage.objects.filter(id=image.id).exists(), is_(False))
+        assert_that(ImageVariant.objects.filter(image_id=image.id).count(), equal_to(0))
 
     def test_promotes_next_image_to_main_when_main_deleted(
         self,

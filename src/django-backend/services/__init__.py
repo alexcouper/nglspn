@@ -3,6 +3,8 @@ from dataclasses import dataclass, field
 from services.email.django_impl import DjangoEmailHandler, DjangoEmailQuery
 from services.email.handler_interface import EmailHandlerInterface
 from services.email.query_interface import EmailQueryInterface
+from services.image.django_impl import DjangoImageHandler
+from services.image.handler_interface import ImageHandlerInterface
 from services.project.django_impl import DjangoProjectHandler, DjangoProjectQuery
 from services.project.handler_interface import ProjectHandlerInterface
 from services.project.query_interface import ProjectQueryInterface
@@ -16,6 +18,7 @@ from services.web_ui.handler_interface import WebUIHandlerInterface
 @dataclass(frozen=True)
 class HandlerServices:
     email: EmailHandlerInterface = field(default_factory=DjangoEmailHandler)
+    image: ImageHandlerInterface = field(default_factory=DjangoImageHandler)
     project: ProjectHandlerInterface = field(default_factory=DjangoProjectHandler)
     users: UserHandlerInterface = field(default_factory=DjangoUserHandler)
     web_ui: WebUIHandlerInterface = field(default_factory=DjangoWebUIHandler)

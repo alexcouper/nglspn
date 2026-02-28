@@ -173,6 +173,48 @@ class ProjectImage(models.Model):
         return f"{settings.S3_PUBLIC_URL_BASE}/{self.storage_key}"
 
 
+class VariantSize(models.TextChoices):
+    THUMB = "thumb", "Thumb (384w)"
+    MEDIUM = "medium", "Medium (768w)"
+    LARGE = "large", "Large (1536w)"
+
+
+VARIANT_SIZE_WIDTHS: dict[str, int] = {
+    VariantSize.THUMB: 384,
+    VariantSize.MEDIUM: 768,
+    VariantSize.LARGE: 1536,
+}
+
+
+class ImageVariant(models.Model):
+    """A pre-generated size variant of a ProjectImage, stored as WebP in S3."""
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    image = models.ForeignKey(
+        ProjectImage,
+        on_delete=models.CASCADE,
+        related_name="variants",
+    )
+    size = models.CharField(max_length=20, choices=VariantSize.choices)
+    storage_key = models.CharField(max_length=500)
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    file_size = models.PositiveIntegerField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "project_image_variants"
+        unique_together = ("image", "size")
+
+    def __str__(self) -> str:
+        return f"{self.image.original_filename} - {self.size}"
+
+    @property
+    def url(self) -> str:
+        """Returns the public CDN URL for this variant."""
+        return f"{settings.S3_PUBLIC_URL_BASE}/{self.storage_key}"
+
+
 class CompetitionStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     ACCEPTING_APPLICATIONS = "accepting_applications", "Accepting Applications"

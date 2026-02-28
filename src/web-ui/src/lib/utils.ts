@@ -18,6 +18,34 @@ export function getPlaceholderColor(id: string): string {
   return PLACEHOLDER_COLORS[Math.abs(hash) % PLACEHOLDER_COLORS.length];
 }
 
+type ImageVariant = { size: string; url: string; width: number; height: number };
+
+const VARIANT_SIZE_ORDER = ["thumb", "medium", "large"] as const;
+
+/**
+ * Pick the best available variant for a rendering context.
+ * Prefers the requested size, then falls up to larger sizes.
+ * Returns the variant URL, or null if no suitable variant exists.
+ */
+export function pickVariant(
+  variants: ImageVariant[] | undefined,
+  preferred: string
+): string | null {
+  if (!variants || variants.length === 0) return null;
+
+  const startIndex = VARIANT_SIZE_ORDER.indexOf(
+    preferred as (typeof VARIANT_SIZE_ORDER)[number]
+  );
+  if (startIndex === -1) return null;
+
+  for (let i = startIndex; i < VARIANT_SIZE_ORDER.length; i++) {
+    const match = variants.find((v) => v.size === VARIANT_SIZE_ORDER[i]);
+    if (match) return match.url;
+  }
+
+  return null;
+}
+
 export function getContrastColor(hexColor: string): string {
   const hex = hexColor.replace("#", "");
   const r = parseInt(hex.substring(0, 2), 16);

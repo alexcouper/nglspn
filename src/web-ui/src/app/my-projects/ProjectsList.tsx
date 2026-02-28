@@ -6,6 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuth } from "@/contexts/auth";
 import { api, type Project } from "@/lib/api";
+import { pickVariant } from "@/lib/utils";
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
@@ -108,6 +109,7 @@ export function ProjectsList() {
         <div className="space-y-3">
           {projects.map((project) => {
             const mainImage = project.images?.find((img) => img.is_main) || project.images?.[0];
+            const thumbUrl = mainImage ? pickVariant(mainImage.variants, "thumb") : null;
             return (
               <Link
                 key={project.id}
@@ -117,13 +119,23 @@ export function ProjectsList() {
                 <div className="flex gap-4">
                   {mainImage && (
                     <div className="relative w-32 aspect-video flex-shrink-0 rounded-lg overflow-hidden bg-slate-100">
-                      <Image
-                        src={mainImage.url}
-                        alt={project.title || "Project image"}
-                        fill
-                        className="object-contain"
-                        sizes="128px"
-                      />
+                      {thumbUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={thumbUrl}
+                          alt={project.title || "Project image"}
+                          className="absolute inset-0 w-full h-full object-contain"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <Image
+                          src={mainImage.url}
+                          alt={project.title || "Project image"}
+                          fill
+                          className="object-contain"
+                          sizes="128px"
+                        />
+                      )}
                     </div>
                   )}
                   <div className="flex-1 min-w-0">

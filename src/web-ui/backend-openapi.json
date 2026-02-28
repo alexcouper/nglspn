@@ -2540,6 +2540,35 @@
         "title": "ResetPasswordRequest",
         "type": "object"
       },
+      "ImageVariantResponse": {
+        "description": "Response schema for a pre-generated image variant.",
+        "properties": {
+          "size": {
+            "title": "Size",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "size",
+          "url",
+          "width",
+          "height"
+        ],
+        "title": "ImageVariantResponse",
+        "type": "object"
+      },
       "ProjectImageResponse": {
         "description": "Response schema for project images.",
         "properties": {
@@ -2602,6 +2631,14 @@
             "format": "date-time",
             "title": "Created At",
             "type": "string"
+          },
+          "variants": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ImageVariantResponse"
+            },
+            "title": "Variants",
+            "type": "array"
           }
         },
         "required": [

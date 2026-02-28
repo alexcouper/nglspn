@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from django.db.models import QuerySet
@@ -17,6 +18,7 @@ from api.schemas.project import (
     ProjectResponse,
     SetMainImageRequest,
 )
+from api.tasks.images import generate_image_variants
 from apps.projects.models import (
     Project,
     ProjectImage,
@@ -267,6 +269,10 @@ def complete_upload(
         image.is_main = True
 
     image.save()
+
+    # Enqueue async variant generation
+    generate_image_variants.enqueue(str(image.id))
+
     return image
 
 
@@ -315,7 +321,16 @@ def delete_image(
     project = get_object_or_404(Project, id=project_id, owner=request.auth)
     image = get_object_or_404(ProjectImage, id=image_id, project=project)
 
-    # Delete from storage
+    # Delete variant files from S3 (DB rows cascade-delete with the image)
+    for variant in image.variants.all():
+        try:
+            storage_service.delete_object(variant.storage_key)
+        except Exception:
+            logging.getLogger(__name__).exception(
+                "Failed to delete variant %s from S3", variant.storage_key
+            )
+
+    # Delete original from storage
     storage_service.delete_object(image.storage_key)
 
     was_main = image.is_main

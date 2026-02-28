@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from django.utils import timezone
 
+from api.auth.jwt import create_access_token
 from apps.users.models import EmailVerificationCode
 from services import HANDLERS
 from services.users.django_impl import (
@@ -162,13 +163,7 @@ class TestVerifyEmailEndpoint:
         assert response.status_code == 401
 
     def _get_token(self, client, user):
-        with patch.object(HANDLERS.email, "send_verification_email"):
-            response = client.post(
-                "/api/auth/login",
-                data={"email": user.email, "password": "testpassword123"},
-                content_type="application/json",
-            )
-        return response.json()["access_token"]
+        return create_access_token(user.id)
 
 
 @pytest.mark.django_db
@@ -211,6 +206,9 @@ class TestResendVerificationEndpoint:
         user = UserFactory(is_verified=False)
         token = self._get_token(client, user)
 
+        # Create a recent verification code so the cooldown is active
+        EmailVerificationCodeFactory(user=user)
+
         response = client.post(
             "/api/auth/resend-verification",
             content_type="application/json",
@@ -229,10 +227,4 @@ class TestResendVerificationEndpoint:
         assert response.status_code == 401
 
     def _get_token(self, client, user):
-        with patch.object(HANDLERS.email, "send_verification_email"):
-            response = client.post(
-                "/api/auth/login",
-                data={"email": user.email, "password": "testpassword123"},
-                content_type="application/json",
-            )
-        return response.json()["access_token"]
+        return create_access_token(user.id)

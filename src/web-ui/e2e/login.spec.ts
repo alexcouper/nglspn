@@ -15,7 +15,7 @@ test.describe("Login", () => {
     await page.goto("/login");
 
     // Verify we're on the login page
-    await expect(page.locator("h1")).toHaveText("Log In");
+    await expect(page.locator("h1")).toHaveText("Welcome back");
 
     // Fill in credentials
     await page.fill("#email", email);

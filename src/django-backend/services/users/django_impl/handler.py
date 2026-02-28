@@ -61,6 +61,12 @@ class DjangoUserHandler(UserHandlerInterface):
         if recent_code:
             raise RateLimitError
 
+        # Delete old unexpired codes to prevent brute force across multiple codes
+        EmailVerificationCode.objects.filter(
+            user=user,
+            used_at__isnull=True,
+        ).delete()
+
         code = generate_verification_code()
         expires_at = now + timedelta(minutes=expires_minutes)
 

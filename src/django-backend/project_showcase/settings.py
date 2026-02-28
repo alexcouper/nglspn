@@ -36,9 +36,14 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 ADMIN_ALLOWED_IPS = [
     ip.strip() for ip in os.getenv("ADMIN_ALLOWED_IPS", "").split(",") if ip.strip()
 ]
-ALLOWED_HOSTS = (
-    os.getenv("ALLOWED_HOSTS", "").split(",") if os.getenv("ALLOWED_HOSTS") else ["*"]
-)
+ALLOWED_HOSTS = os.getenv(
+    "ALLOWED_HOSTS", "naglasupan.is,api.naglasupan.is,localhost"
+).split(",")
+
+# Security settings
+SECURE_HSTS_SECONDS = 31536000
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_CONTENT_TYPE_NOSNIFF = True
 
 
 # Application definition
@@ -192,6 +197,14 @@ STORAGES = {
     },
 }
 
+
+# Cache configuration (used for rate limiting)
+CACHES = {
+    "default": {
+        "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+        "LOCATION": "unique-snowflake",
+    }
+}
 
 # Background tasks
 TASKS = {

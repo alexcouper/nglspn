@@ -19,7 +19,6 @@ const MaintenanceContext = createContext<MaintenanceContextType | undefined>(und
 
 const CDN_CONFIG_URL = "https://cdn.naglasupan.is/maintenance/config.json";
 const LOCAL_CONFIG_URL = "/maintenance.json";
-const BYPASS_KEY = "maintenance_bypass";
 
 function getConfigUrl(): string {
   if (process.env.NEXT_PUBLIC_USE_LOCAL_MAINTENANCE === "true") {
@@ -28,24 +27,9 @@ function getConfigUrl(): string {
   return CDN_CONFIG_URL;
 }
 
-function checkBypass(): boolean {
-  if (typeof window === "undefined") return false;
-
-  const bypassSecret = process.env.NEXT_PUBLIC_MAINTENANCE_BYPASS_SECRET;
-  if (!bypassSecret) return false;
-
-  // Check query parameter first
-  const params = new URLSearchParams(window.location.search);
-  const queryBypass = params.get("bypass_maintenance");
-
-  if (queryBypass === bypassSecret) {
-    localStorage.setItem(BYPASS_KEY, bypassSecret);
-    return true;
-  }
-
-  // Check localStorage for previously stored bypass
-  const storedBypass = localStorage.getItem(BYPASS_KEY);
-  return storedBypass === bypassSecret;
+function hasBypassCookie(): boolean {
+  if (typeof document === "undefined") return false;
+  return document.cookie.split(";").some((c) => c.trim().startsWith("maintenance_bypass="));
 }
 
 export function MaintenanceProvider({ children }: { children: ReactNode }) {
@@ -81,7 +65,7 @@ export function MaintenanceProvider({ children }: { children: ReactNode }) {
     fetchMaintenanceConfig();
   }, []);
 
-  const hasBypass = checkBypass();
+  const hasBypass = hasBypassCookie();
   const isMaintenanceMode = (config?.enabled ?? false) && !hasBypass;
 
   if (isLoading) {

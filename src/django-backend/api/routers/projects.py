@@ -17,7 +17,7 @@ if TYPE_CHECKING:
 router = Router()
 
 
-@router.get("", response={200: ProjectListResponse}, tags=["Projects"])
+@router.get("", response={200: ProjectListResponse, 400: Error}, tags=["Projects"])
 def list_projects(
     request: HttpRequest,
     tags: list[str] | None = Query(None),
@@ -27,16 +27,19 @@ def list_projects(
     search: str | None = Query(None),
     page: int = Query(1),
     per_page: int = Query(20),
-) -> dict[str, Any]:
-    result = REPO.project.list_approved(
-        tags=tags,
-        tech_stack=tech_stack,
-        search=search,
-        sort_by=sort_by,
-        sort_order=sort_order,
-        page=page,
-        per_page=per_page,
-    )
+) -> dict[str, Any] | tuple[int, dict[str, str]]:
+    try:
+        result = REPO.project.list_approved(
+            tags=tags,
+            tech_stack=tech_stack,
+            search=search,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            page=page,
+            per_page=per_page,
+        )
+    except ValueError as e:
+        return 400, {"detail": str(e)}
     result["pending_projects_count"] = REPO.project.count_pending()
     return result
 

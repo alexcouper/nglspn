@@ -1,10 +1,17 @@
 import pytest
+from django.core.cache import cache
 from django.core.files.storage import InMemoryStorage
 from django.test import Client
 
 from api.auth.jwt import create_access_token, create_refresh_token
 from apps.emails.models import BroadcastEmailImage
 from tests.factories import ProjectFactory, TagFactory, UserFactory
+
+
+@pytest.fixture(autouse=True)
+def _clear_rate_limit_cache():
+    """Clear rate limit cache between tests to prevent cross-test interference."""
+    cache.clear()
 
 
 @pytest.fixture(autouse=True)

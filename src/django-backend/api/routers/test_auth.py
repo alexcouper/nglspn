@@ -2,6 +2,7 @@ import json
 from datetime import UTC, datetime, timedelta
 
 import jwt
+import pytest
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
@@ -10,7 +11,9 @@ from hamcrest import (
     contains_inanyorder,
     equal_to,
     has_entries,
+    has_key,
     is_not,
+    not_,
 )
 
 from api.auth.jwt import create_access_token, create_refresh_token, verify_token
@@ -377,3 +380,137 @@ class TestUpdateCurrentUser:
         assert_that(user.first_name, equal_to("Original"))
         assert_that(user.last_name, equal_to("Name"))
         assert_that(user.info, equal_to("Updated info"))
+
+
+@pytest.mark.django_db
+class TestKennitalaNotExposed:
+    def test_me_does_not_return_kennitala(self, client, user, auth_headers) -> None:
+        response = client.get("/api/auth/me", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), not_(has_key("kennitala")))
+
+    def test_register_does_not_return_kennitala(self, client, db) -> None:
+        response = client.post(
+            "/api/auth/register",
+            data=json.dumps(
+                {
+                    "email": "newuser@example.com",
+                    "password": "securepassword123",
+                    "kennitala": "1234567890",
+                    "first_name": "Test",
+                    "last_name": "User",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(201))
+        assert_that(response.json(), not_(has_key("kennitala")))
+
+
+@pytest.mark.django_db
+class TestLoginRateLimit:
+    def test_login_rate_limited_after_max_attempts(self, client, user) -> None:
+        for i in range(5):
+            client.post(
+                "/api/auth/login",
+                data=json.dumps({"email": user.email, "password": f"wrongpassword{i}"}),
+                content_type="application/json",
+            )
+
+        # 6th attempt should be rate limited
+        response = client.post(
+            "/api/auth/login",
+            data=json.dumps({"email": user.email, "password": "wrongpassword"}),
+            content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(429))
+
+
+@pytest.mark.django_db
+class TestVerifyEmailRateLimit:
+    def test_verify_email_rate_limited(self, client, user, auth_headers) -> None:
+        for i in range(5):
+            client.post(
+                "/api/auth/verify-email",
+                data=json.dumps({"code": f"{i:06d}"}),
+                content_type="application/json",
+                **auth_headers,
+            )
+
+        # 6th attempt should be rate limited
+        response = client.post(
+            "/api/auth/verify-email",
+            data=json.dumps({"code": "999999"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(429))
+
+
+@pytest.mark.django_db
+class TestUserEnumeration:
+    def test_register_existing_email_generic_error(self, client, user) -> None:
+        response = client.post(
+            "/api/auth/register",
+            data=json.dumps(
+                {
+                    "email": user.email,
+                    "password": "securepassword123",
+                    "kennitala": "9999999999",
+                    "first_name": "Test",
+                    "last_name": "User",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(
+            response.json(),
+            has_entries(
+                detail="Registration failed."
+                " Please check your information and try again."
+            ),
+        )
+
+    def test_register_existing_kennitala_generic_error(self, client, user) -> None:
+        response = client.post(
+            "/api/auth/register",
+            data=json.dumps(
+                {
+                    "email": "unique@example.com",
+                    "password": "securepassword123",
+                    "kennitala": user.kennitala,
+                    "first_name": "Test",
+                    "last_name": "User",
+                }
+            ),
+            content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(
+            response.json(),
+            has_entries(
+                detail="Registration failed."
+                " Please check your information and try again."
+            ),
+        )
+
+    def test_login_inactive_same_as_invalid(self, client, db) -> None:
+        inactive_user = UserFactory(is_active=False)
+
+        response = client.post(
+            "/api/auth/login",
+            data=json.dumps(
+                {"email": inactive_user.email, "password": "testpassword123"},
+            ),
+            content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(401))
+        assert_that(response.json(), has_entries(detail="Invalid credentials"))

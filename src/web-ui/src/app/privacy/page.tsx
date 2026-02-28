@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import html from "remark-html";
-import { remark } from "remark";
+import ReactMarkdown from "react-markdown";
 
 export const metadata: Metadata = {
   title: "Privacy Policy - Naglasúpan",
@@ -88,19 +87,12 @@ If we make material changes to this policy, we will notify registered users by e
 If you have questions about this policy, contact [admin@naglasupan.is](mailto:admin@naglasupan.is).
 `;
 
-async function processMarkdown(markdown: string) {
-  const file = await remark().use(html).process(markdown);
-  return file.toString();
-}
-
-export default async function PrivacyPolicyPage() {
-  const contentHtml = await processMarkdown(content);
-
+export default function PrivacyPolicyPage() {
   return (
     <section className="py-12 px-4 sm:px-6 bg-white">
       <div className="max-w-3xl mx-auto">
         <article className="article markdown">
-          <div dangerouslySetInnerHTML={{ __html: contentHtml }} />
+          <ReactMarkdown>{content}</ReactMarkdown>
         </article>
       </div>
     </section>

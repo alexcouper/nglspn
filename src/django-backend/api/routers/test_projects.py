@@ -19,6 +19,23 @@ class TestListProjects:
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json()["pending_projects_count"], equal_to(2))
 
+    def test_sort_by_rejects_invalid_field(self, client) -> None:
+        response = client.get("/api/projects?sort_by=nonexistent")
+
+        assert_that(response.status_code, equal_to(400))
+
+    def test_sort_by_rejects_related_field_traversal(self, client) -> None:
+        response = client.get("/api/projects?sort_by=owner__email")
+
+        assert_that(response.status_code, equal_to(400))
+
+    def test_sort_by_accepts_valid_fields(self, client) -> None:
+        ProjectFactory(status=ProjectStatus.APPROVED)
+
+        for field in ["created_at", "title"]:
+            response = client.get(f"/api/projects?sort_by={field}")
+            assert_that(response.status_code, equal_to(200))
+
 
 @pytest.mark.django_db
 class TestGetPublicProject:

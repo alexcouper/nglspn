@@ -15,10 +15,11 @@ class AdminIPMiddleware:
         if request.path.startswith("/admin"):
             allowed_ips: list[Any] = getattr(settings, "ADMIN_ALLOWED_IPS", [])
             # Get client IP from X-Forwarded-For (set by Scaleway) or fall back
-            # to REMOTE_ADDR
+            # to REMOTE_ADDR. Use rightmost IP (added by trusted proxy) to
+            # prevent spoofing via client-controlled left entries.
             x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
             if x_forwarded_for:
-                client_ip = x_forwarded_for.split(",")[0].strip()
+                client_ip = x_forwarded_for.split(",")[-1].strip()
             else:
                 client_ip = request.META.get("REMOTE_ADDR", "")
             if client_ip not in allowed_ips:

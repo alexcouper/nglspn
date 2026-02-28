@@ -15,6 +15,7 @@ from api.auth.jwt import (
     verify_token,
 )
 from api.auth.security import auth
+from api.rate_limit import check_rate_limit
 from api.schemas.auth import (
     AccessToken,
     ForgotPasswordRequest,
@@ -55,13 +56,17 @@ VERIFICATION_CODE_EXPIRY_MINUTES = 15
 
 @router.post(
     "/register",
-    response={201: UserResponse, 400: Error},
+    response={201: UserResponse, 400: Error, 429: Error},
     tags=["Authentication"],
 )
 def register(
     request: HttpRequest,
     payload: UserCreate,
 ) -> tuple[int, AbstractUser | Error]:
+    rate_limit_response = check_rate_limit(request, "register", "5/m")
+    if rate_limit_response:
+        return rate_limit_response
+
     try:
         user = HANDLERS.users.register(
             RegisterUserInput(
@@ -72,10 +77,10 @@ def register(
                 last_name=payload.last_name,
             )
         )
-    except EmailAlreadyRegisteredError:
-        return 400, Error(detail="Email already registered")
-    except KennitalaAlreadyRegisteredError:
-        return 400, Error(detail="Kennitala already registered")
+    except (EmailAlreadyRegisteredError, KennitalaAlreadyRegisteredError):
+        return 400, Error(
+            detail="Registration failed. Please check your information and try again."
+        )
 
     # Send verification email
     try:
@@ -91,18 +96,21 @@ def register(
     return 201, user
 
 
-@router.post("/login", response={200: Token, 401: Error}, tags=["Authentication"])
+@router.post(
+    "/login", response={200: Token, 401: Error, 429: Error}, tags=["Authentication"]
+)
 def login(
     request: HttpRequest,
     payload: LoginRequest,
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
+    rate_limit_response = check_rate_limit(request, "login", "5/m")
+    if rate_limit_response:
+        return rate_limit_response
+
     user = authenticate(request, username=payload.email, password=payload.password)
 
     if not user:
         return 401, {"detail": "Invalid credentials"}
-
-    if not user.is_active:
-        return 401, {"detail": "Account is inactive"}
 
     # Send verification email if user is not verified
     if not user.is_verified:
@@ -191,7 +199,7 @@ def update_current_user(
 
 @router.post(
     "/verify-email",
-    response={200: VerifyEmailResponse, 400: Error, 401: Error},
+    response={200: VerifyEmailResponse, 400: Error, 401: Error, 429: Error},
     auth=auth,
     tags=["Authentication"],
 )
@@ -199,6 +207,10 @@ def verify_email(
     request: HttpRequest,
     payload: VerifyEmailRequest,
 ) -> VerifyEmailResponse | tuple[int, Error]:
+    rate_limit_response = check_rate_limit(request, "verify_email", "5/m")
+    if rate_limit_response:
+        return rate_limit_response
+
     user = request.auth
 
     if user.is_verified:

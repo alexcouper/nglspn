@@ -9,6 +9,8 @@ from apps.projects.models import Project, ProjectStatus
 from services.project.exceptions import ProjectNotFoundError
 from services.project.query_interface import ProjectQueryInterface
 
+ALLOWED_SORT_FIELDS = {"created_at", "title", "updated_at"}
+
 
 def _base_queryset() -> QuerySet[Project]:
     return Project.objects.select_related("owner").prefetch_related(
@@ -56,6 +58,11 @@ class DjangoProjectQuery(ProjectQueryInterface):
         page: int = 1,
         per_page: int = 20,
     ) -> dict[str, Any]:
+        if sort_by not in ALLOWED_SORT_FIELDS:
+            allowed = ", ".join(sorted(ALLOWED_SORT_FIELDS))
+            msg = f"Invalid sort field: {sort_by}. Allowed: {allowed}"
+            raise ValueError(msg)
+
         queryset = _base_queryset().filter(status=ProjectStatus.APPROVED)
 
         if tags:

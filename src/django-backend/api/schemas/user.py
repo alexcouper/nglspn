@@ -18,7 +18,6 @@ class UserResponse(Schema):
     email: str
     first_name: str
     last_name: str
-    kennitala: str | None
     info: str
     is_verified: bool
     created_at: datetime

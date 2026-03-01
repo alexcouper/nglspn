@@ -5,7 +5,11 @@ from ninja import Query, Router
 
 from api.auth.jwt import get_user_from_token
 from api.schemas.errors import Error
-from api.schemas.project import ProjectListResponse, ProjectResponse
+from api.schemas.project import (
+    ProjectListItemResponse,
+    ProjectListResponse,
+    ProjectResponse,
+)
 from apps.projects.models import Project, ProjectStatus
 from services import REPO
 from services.project.exceptions import ProjectNotFoundError
@@ -39,6 +43,9 @@ def list_projects(
         )
     except ValueError as e:
         return 400, {"detail": str(e)}
+    result["projects"] = [
+        ProjectListItemResponse.from_project(p) for p in result["projects"]
+    ]
     result["pending_projects_count"] = REPO.project.count_pending()
     return result
 

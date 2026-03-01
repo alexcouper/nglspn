@@ -77,8 +77,8 @@ class ProjectResponse(Schema):
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:
-        """Only return uploaded images."""
-        return list(obj.images.filter(upload_status="uploaded"))
+        """Return uploaded images. Uses prefetch cache from _base_queryset."""
+        return list(obj.images.all())
 
     @staticmethod
     def resolve_tags(obj: Any) -> list[Any]:
@@ -134,8 +134,50 @@ class SetMainImageRequest(Schema):
     image_id: UUID
 
 
+class ProjectListItemResponse(Schema):
+    id: UUID
+    title: str
+    tagline: str
+    status: str
+    is_featured: bool
+    created_at: datetime
+    tags: list[TagWithCategoryResponse] = []
+    won_competitions: list[WonCompetitionInfo] = []
+    main_image_url: str | None = None
+    main_image_thumb_url: str | None = None
+
+    @classmethod
+    def from_project(cls, project: Any) -> "ProjectListItemResponse":
+        images = list(project.images.all())
+        main_image = next((img for img in images if img.is_main), None)
+        if not main_image and images:
+            main_image = images[0]
+
+        thumb_url = None
+        if main_image:
+            thumb = next(
+                (v for v in main_image.variants.all() if v.size == "thumb"),
+                None,
+            )
+            if thumb:
+                thumb_url = thumb.url
+
+        return cls(
+            id=project.id,
+            title=project.title,
+            tagline=project.tagline,
+            status=project.status,
+            is_featured=project.is_featured,
+            created_at=project.created_at,
+            tags=[t for t in project.tags.all() if t.status != "rejected"],
+            won_competitions=list(project.won_competitions.all()),
+            main_image_url=main_image.url if main_image else None,
+            main_image_thumb_url=thumb_url,
+        )
+
+
 class ProjectListResponse(Schema):
-    projects: list[ProjectResponse]
+    projects: list[ProjectListItemResponse]
     total: int
     page: int
     per_page: int

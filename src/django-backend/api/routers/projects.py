@@ -1,12 +1,15 @@
 from typing import TYPE_CHECKING, Any
 
-from django.db.models import QuerySet
 from django.http import HttpRequest
 from ninja import Query, Router
 
 from api.auth.jwt import get_user_from_token
 from api.schemas.errors import Error
-from api.schemas.project import ProjectListResponse, ProjectResponse
+from api.schemas.project import (
+    ProjectListItemResponse,
+    ProjectListResponse,
+    ProjectResponse,
+)
 from apps.projects.models import Project, ProjectStatus
 from services import REPO
 from services.project.exceptions import ProjectNotFoundError
@@ -40,22 +43,37 @@ def list_projects(
         )
     except ValueError as e:
         return 400, {"detail": str(e)}
+    result["projects"] = [
+        ProjectListItemResponse.from_project(p) for p in result["projects"]
+    ]
     result["pending_projects_count"] = REPO.project.count_pending()
     return result
 
 
-@router.get("/featured", response={200: list[ProjectResponse]}, tags=["Projects"])
+@router.get(
+    "/featured",
+    response={200: list[ProjectListItemResponse]},
+    tags=["Projects"],
+)
 def get_featured_projects(
     request: HttpRequest,
-) -> QuerySet[Project]:
-    return REPO.project.list_featured()
+) -> list[ProjectListItemResponse]:
+    return [
+        ProjectListItemResponse.from_project(p) for p in REPO.project.list_featured()
+    ]
 
 
-@router.get("/trending", response={200: list[ProjectResponse]}, tags=["Projects"])
+@router.get(
+    "/trending",
+    response={200: list[ProjectListItemResponse]},
+    tags=["Projects"],
+)
 def get_trending_projects(
     request: HttpRequest,
-) -> QuerySet[Project]:
-    return REPO.project.list_trending()
+) -> list[ProjectListItemResponse]:
+    return [
+        ProjectListItemResponse.from_project(p) for p in REPO.project.list_trending()
+    ]
 
 
 def _get_user_from_request(request: HttpRequest) -> "User | None":

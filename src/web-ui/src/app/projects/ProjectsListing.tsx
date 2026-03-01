@@ -13,11 +13,11 @@ import {
 import { TrophyIcon } from "@heroicons/react/24/solid";
 import {
   api,
-  type Project,
+  type ProjectListItem,
   type Competition,
   type CompetitionProject,
 } from "@/lib/api";
-import { getPlaceholderColor, pickVariant } from "@/lib/utils";
+import { getPlaceholderColor } from "@/lib/utils";
 import { TagFilterUnified } from "@/components/TagFilterUnified";
 import { TagBadge } from "@/components/TagBadge";
 
@@ -25,7 +25,7 @@ type SortBy = "created_at" | "title";
 type ViewMode = "list" | "competition";
 
 interface ProjectsListingProps {
-  initialProjects?: Project[] | null;
+  initialProjects?: ProjectListItem[] | null;
   initialPendingCount?: number;
 }
 
@@ -35,7 +35,7 @@ export function ProjectsListing({
 }: ProjectsListingProps) {
   const searchParams = useSearchParams();
   const hasInitialData = initialProjects != null;
-  const [projects, setProjects] = useState<Project[]>(initialProjects ?? []);
+  const [projects, setProjects] = useState<ProjectListItem[]>(initialProjects ?? []);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
   const [pendingProjectsCount, setPendingProjectsCount] = useState(
     initialPendingCount
@@ -257,37 +257,34 @@ export function ProjectsListing({
   );
 }
 
-function ProjectCard({ project, priority }: { project: Project; priority?: boolean }) {
-  const mainImage =
-    project.images?.find((img) => img.is_main) || project.images?.[0];
+function ProjectCard({ project, priority }: { project: ProjectListItem; priority?: boolean }) {
   const placeholderColor = getPlaceholderColor(project.id);
   const isWinner = project.won_competitions && project.won_competitions.length > 0;
-  const variantUrl = mainImage ? pickVariant(mainImage.variants, "thumb") : null;
 
   return (
     <Link
       href={`/projects/${project.id}`}
       className={`card card-interactive group ${isWinner ? "border-amber-300 ring-1 ring-amber-200" : ""}`}
     >
-      <div className={`relative aspect-video ${!mainImage ? placeholderColor : "bg-slate-100"}`}>
-        {mainImage && variantUrl ? (
+      <div className={`relative aspect-video ${!project.main_image_url ? placeholderColor : "bg-slate-100"}`}>
+        {project.main_image_url && (project.main_image_thumb_url ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
-            src={variantUrl}
+            src={project.main_image_thumb_url}
             alt={project.title}
             className="absolute inset-0 w-full h-full object-contain"
             loading={priority ? "eager" : "lazy"}
           />
-        ) : mainImage ? (
+        ) : (
           <Image
-            src={mainImage.url}
+            src={project.main_image_url}
             alt={project.title}
             fill
             className="object-contain"
             sizes="(max-width: 768px) 50vw, 33vw"
             priority={priority}
           />
-        ) : null}
+        ))}
         {isWinner && (
           <div className="absolute top-2 right-2 bg-amber-500 text-white p-1 rounded-full shadow-sm">
             <TrophyIcon className="w-3.5 h-3.5" />

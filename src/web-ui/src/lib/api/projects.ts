@@ -2,6 +2,7 @@ import type { components } from "../api-types";
 import type { APIClient } from "./base";
 
 export type Project = components["schemas"]["ProjectResponse"];
+export type ProjectListItem = components["schemas"]["ProjectListItemResponse"];
 export type ProjectListResponse = components["schemas"]["ProjectListResponse"];
 
 export interface ListProjectsParams {

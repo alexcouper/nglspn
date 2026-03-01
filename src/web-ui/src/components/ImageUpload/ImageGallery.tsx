@@ -115,19 +115,29 @@ export function ImageGallery({
         <div className="flex gap-2 overflow-x-auto pb-1">
           {otherImages.map((image) => {
             const imageIndex = images.findIndex((img) => img.id === image.id);
+            const thumbUrl = pickVariant(image.variants, "thumb");
             return (
               <div
                 key={image.id}
                 className={`relative w-20 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-muted group ${!editable ? "cursor-pointer hover:ring-2 hover:ring-accent/50" : ""}`}
                 onClick={() => openLightbox(imageIndex)}
               >
-                <Image
-                  src={image.url}
-                  alt={image.original_filename}
-                  fill
-                  className="object-cover"
-                  sizes="80px"
-                />
+                {thumbUrl ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={thumbUrl}
+                    alt={image.original_filename}
+                    className="absolute inset-0 w-full h-full object-cover"
+                  />
+                ) : (
+                  <Image
+                    src={image.url}
+                    alt={image.original_filename}
+                    fill
+                    className="object-cover"
+                    sizes="80px"
+                  />
+                )}
                 {editable && (
                   <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                     <button

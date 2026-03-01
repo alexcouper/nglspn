@@ -1,10 +1,28 @@
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
 from typing import Any
 from uuid import UUID
 
 from django.db.models import QuerySet
 
 from apps.projects.models import Project
+
+
+@dataclass(frozen=True)
+class ProjectListItem:
+    project: Project
+    main_image_url: str | None = None
+    main_image_thumb_url: str | None = None
+    tags: list = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class PaginatedProjects:
+    projects: list[ProjectListItem]
+    total: int
+    page: int
+    per_page: int
+    pages: int
 
 
 class ProjectQueryInterface(ABC):
@@ -25,7 +43,7 @@ class ProjectQueryInterface(ABC):
         sort_order: str = "desc",
         page: int = 1,
         per_page: int = 20,
-    ) -> dict[str, Any]: ...
+    ) -> PaginatedProjects: ...
 
     @abstractmethod
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]: ...

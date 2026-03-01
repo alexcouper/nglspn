@@ -2488,6 +2488,216 @@
         "title": "ResetPasswordRequest",
         "type": "object"
       },
+      "ProjectListItemResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "tags": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/TagWithCategoryResponse"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "won_competitions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/WonCompetitionInfo"
+            },
+            "title": "Won Competitions",
+            "type": "array"
+          },
+          "main_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Image Url"
+          },
+          "main_image_thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Image Thumb Url"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "tagline",
+          "status",
+          "created_at"
+        ],
+        "title": "ProjectListItemResponse",
+        "type": "object"
+      },
+      "ProjectListResponse": {
+        "properties": {
+          "projects": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectListItemResponse"
+            },
+            "title": "Projects",
+            "type": "array"
+          },
+          "total": {
+            "title": "Total",
+            "type": "integer"
+          },
+          "page": {
+            "title": "Page",
+            "type": "integer"
+          },
+          "per_page": {
+            "title": "Per Page",
+            "type": "integer"
+          },
+          "pages": {
+            "title": "Pages",
+            "type": "integer"
+          },
+          "pending_projects_count": {
+            "title": "Pending Projects Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "projects",
+          "total",
+          "page",
+          "per_page",
+          "pages",
+          "pending_projects_count"
+        ],
+        "title": "ProjectListResponse",
+        "type": "object"
+      },
+      "TagWithCategoryResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "color": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Color"
+          },
+          "category_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Id"
+          },
+          "category_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Slug"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "description",
+          "color",
+          "category_id",
+          "category_slug",
+          "status"
+        ],
+        "title": "TagWithCategoryResponse",
+        "type": "object"
+      },
+      "WonCompetitionInfo": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "slug"
+        ],
+        "title": "WonCompetitionInfo",
+        "type": "object"
+      },
       "ImageVariantResponse": {
         "description": "Response schema for a pre-generated image variant.",
         "properties": {
@@ -2603,47 +2813,6 @@
           "created_at"
         ],
         "title": "ProjectImageResponse",
-        "type": "object"
-      },
-      "ProjectListResponse": {
-        "properties": {
-          "projects": {
-            "items": {
-              "$ref": "#/components/schemas/ProjectResponse"
-            },
-            "title": "Projects",
-            "type": "array"
-          },
-          "total": {
-            "title": "Total",
-            "type": "integer"
-          },
-          "page": {
-            "title": "Page",
-            "type": "integer"
-          },
-          "per_page": {
-            "title": "Per Page",
-            "type": "integer"
-          },
-          "pages": {
-            "title": "Pages",
-            "type": "integer"
-          },
-          "pending_projects_count": {
-            "title": "Pending Projects Count",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "projects",
-          "total",
-          "page",
-          "per_page",
-          "pages",
-          "pending_projects_count"
-        ],
-        "title": "ProjectListResponse",
         "type": "object"
       },
       "ProjectResponse": {
@@ -2803,102 +2972,6 @@
           "info"
         ],
         "title": "PublicUserProfile",
-        "type": "object"
-      },
-      "TagWithCategoryResponse": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          },
-          "description": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Description"
-          },
-          "color": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Color"
-          },
-          "category_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Id"
-          },
-          "category_slug": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Category Slug"
-          },
-          "status": {
-            "title": "Status",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name",
-          "slug",
-          "description",
-          "color",
-          "category_id",
-          "category_slug",
-          "status"
-        ],
-        "title": "TagWithCategoryResponse",
-        "type": "object"
-      },
-      "WonCompetitionInfo": {
-        "properties": {
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "slug"
-        ],
-        "title": "WonCompetitionInfo",
         "type": "object"
       },
       "ProjectCreate": {
@@ -3768,6 +3841,17 @@
               }
             ],
             "title": "Main Image Url"
+          },
+          "main_image_thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Image Thumb Url"
           }
         },
         "required": [

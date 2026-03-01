@@ -1,3 +1,4 @@
+from django.db.models import Prefetch
 from django.http import HttpRequest
 from ninja import Router
 
@@ -17,6 +18,7 @@ from apps.projects.models import (
     Competition,
     CompetitionReviewer,
     Project,
+    ProjectImage,
     ProjectRanking,
     ProjectStatus,
     ReviewStatus,
@@ -219,7 +221,17 @@ def get_review_project(
     try:
         project = (
             Project.objects.select_related("owner")
-            .prefetch_related("tags", "tags__category", "images", "won_competitions")
+            .prefetch_related(
+                "tags",
+                "tags__category",
+                Prefetch(
+                    "images",
+                    queryset=ProjectImage.objects.filter(
+                        upload_status="uploaded"
+                    ).prefetch_related("variants"),
+                ),
+                "won_competitions",
+            )
             .exclude(status__in=EXCLUDED_PROJECT_STATUSES)
             .get(id=project_id)
         )

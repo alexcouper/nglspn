@@ -5,7 +5,11 @@ from ninja import Query, Router
 
 from api.auth.jwt import get_user_from_token
 from api.schemas.errors import Error
-from api.schemas.project import ProjectListResponse, ProjectResponse
+from api.schemas.project import (
+    ProjectListItemResponse,
+    ProjectListResponse,
+    ProjectResponse,
+)
 from apps.projects.models import Project, ProjectStatus
 from services import REPO
 from services.project.exceptions import ProjectNotFoundError
@@ -39,8 +43,16 @@ def list_projects(
         )
     except ValueError as e:
         return 400, {"detail": str(e)}
-    result["pending_projects_count"] = REPO.project.count_pending()
-    return result
+    return {
+        "projects": [
+            ProjectListItemResponse.from_list_item(p) for p in result.projects
+        ],
+        "total": result.total,
+        "page": result.page,
+        "per_page": result.per_page,
+        "pages": result.pages,
+        "pending_projects_count": REPO.project.count_pending(),
+    }
 
 
 def _get_user_from_request(request: HttpRequest) -> "User | None":

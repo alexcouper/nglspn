@@ -3,18 +3,30 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from django.db.models import Q, QuerySet
+from django.db.models import Prefetch, Q, QuerySet
 
-from apps.projects.models import Project, ProjectStatus
+from apps.projects.models import Project, ProjectImage, ProjectStatus
 from services.project.exceptions import ProjectNotFoundError
-from services.project.query_interface import ProjectQueryInterface
+from services.project.query_interface import (
+    PaginatedProjects,
+    ProjectListItem,
+    ProjectQueryInterface,
+)
 
 ALLOWED_SORT_FIELDS = {"created_at", "title", "updated_at"}
 
 
 def _base_queryset() -> QuerySet[Project]:
     return Project.objects.select_related("owner").prefetch_related(
-        "tags", "tags__category", "won_competitions"
+        "tags",
+        "tags__category",
+        "won_competitions",
+        Prefetch(
+            "images",
+            queryset=ProjectImage.objects.filter(
+                upload_status="uploaded"
+            ).prefetch_related("variants"),
+        ),
     )
 
 
@@ -32,6 +44,29 @@ def get_title_from_url(url: str) -> str:
             return path_parts[1]
 
     return domain or "Untitled Project"
+
+
+def to_list_item(project: Project) -> ProjectListItem:
+    images = list(project.images.all())
+    main_image = next((img for img in images if img.is_main), None)
+    if not main_image and images:
+        main_image = images[0]
+
+    thumb_url = None
+    if main_image:
+        thumb = next(
+            (v for v in main_image.variants.all() if v.size == "thumb"),
+            None,
+        )
+        if thumb:
+            thumb_url = thumb.url
+
+    return ProjectListItem(
+        project=project,
+        main_image_url=main_image.url if main_image else None,
+        main_image_thumb_url=thumb_url,
+        tags=[t for t in project.tags.all() if t.status != "rejected"],
+    )
 
 
 class DjangoProjectQuery(ProjectQueryInterface):
@@ -57,7 +92,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
         sort_order: str = "desc",
         page: int = 1,
         per_page: int = 20,
-    ) -> dict[str, Any]:
+    ) -> PaginatedProjects:
         if sort_by not in ALLOWED_SORT_FIELDS:
             allowed = ", ".join(sorted(ALLOWED_SORT_FIELDS))
             msg = f"Invalid sort field: {sort_by}. Allowed: {allowed}"
@@ -85,13 +120,13 @@ class DjangoProjectQuery(ProjectQueryInterface):
         offset = (page - 1) * per_page
         projects = queryset[offset : offset + per_page]
 
-        return {
-            "projects": projects,
-            "total": total,
-            "page": page,
-            "per_page": per_page,
-            "pages": pages,
-        }
+        return PaginatedProjects(
+            projects=[to_list_item(p) for p in projects],
+            total=total,
+            page=page,
+            per_page=per_page,
+            pages=pages,
+        )
 
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]:
         return _base_queryset().filter(owner_id=owner_id)

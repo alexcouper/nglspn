@@ -77,8 +77,8 @@ class ProjectResponse(Schema):
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:
-        """Only return uploaded images."""
-        return list(obj.images.filter(upload_status="uploaded"))
+        """Return uploaded images. Uses prefetch cache from _base_queryset."""
+        return list(obj.images.all())
 
     @staticmethod
     def resolve_tags(obj: Any) -> list[Any]:
@@ -134,8 +134,34 @@ class SetMainImageRequest(Schema):
     image_id: UUID
 
 
+class ProjectListItemResponse(Schema):
+    id: UUID
+    title: str
+    tagline: str
+    status: str
+    created_at: datetime
+    tags: list[TagWithCategoryResponse] = []
+    won_competitions: list[WonCompetitionInfo] = []
+    main_image_url: str | None = None
+    main_image_thumb_url: str | None = None
+
+    @classmethod
+    def from_list_item(cls, item: Any) -> "ProjectListItemResponse":
+        return cls(
+            id=item.project.id,
+            title=item.project.title,
+            tagline=item.project.tagline,
+            status=item.project.status,
+            created_at=item.project.created_at,
+            tags=item.tags,
+            won_competitions=list(item.project.won_competitions.all()),
+            main_image_url=item.main_image_url,
+            main_image_thumb_url=item.main_image_thumb_url,
+        )
+
+
 class ProjectListResponse(Schema):
-    projects: list[ProjectResponse]
+    projects: list[ProjectListItemResponse]
     total: int
     page: int
     per_page: int

@@ -51,7 +51,7 @@ class TestListApproved:
 
         result = query.list_approved()
 
-        assert result["total"] == 1
+        assert result.total == 1
 
     def test_paginates_results(self):
         for _ in range(3):
@@ -59,9 +59,9 @@ class TestListApproved:
 
         result = query.list_approved(per_page=2, page=1)
 
-        assert len(result["projects"]) == 2
-        assert result["total"] == 3
-        assert result["pages"] == 2
+        assert len(result.projects) == 2
+        assert result.total == 3
+        assert result.pages == 2
 
 
 @pytest.mark.django_db

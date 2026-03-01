@@ -30,7 +30,7 @@ export type {
 } from "./competitions";
 
 // Types - Projects
-export type { Project, ProjectListResponse, ListProjectsParams } from "./projects";
+export type { Project, ProjectListItem, ProjectListResponse, ListProjectsParams } from "./projects";
 
 // Types - My Projects
 export type {

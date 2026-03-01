@@ -3,9 +3,10 @@ from __future__ import annotations
 import logging
 
 from django.core.management.base import BaseCommand
-from django.db.models import Count
+from django.db.models import Case, Count, F, IntegerField, Value, When
 
 from apps.projects.models import (
+    VARIANT_SIZE_WIDTHS,
     ProjectImage,
     UploadStatus,
     VariantSize,
@@ -19,18 +20,31 @@ class Command(BaseCommand):
     help = "Generate missing image variants for all uploaded project images."
 
     def handle(self, *args, **options) -> None:
-        all_sizes = list(VariantSize)
-        expected_count = len(all_sizes)
+        # Build an expression that counts how many variant sizes apply to each
+        # image based on its width (only sizes with target_width < original_width
+        # are generated). Images with unknown width get the max count so they
+        # are still processed (the handler backfills dimensions on first run).
+        applicable_count = Value(0, output_field=IntegerField())
+        for target_width in VARIANT_SIZE_WIDTHS.values():
+            applicable_count = applicable_count + Case(
+                When(width__gt=target_width, then=Value(1)),
+                default=Value(0),
+                output_field=IntegerField(),
+            )
 
-        # Find uploaded images that are missing at least one expected variant.
-        # We can't filter on "missing for original width" here because that
-        # depends on per-image width, so we grab all images with fewer than
-        # the max possible variants and let the handler skip sizes that don't
-        # apply (>= original width) or already exist.
+        expected_variants = Case(
+            When(width__isnull=True, then=Value(len(VariantSize))),
+            default=applicable_count,
+            output_field=IntegerField(),
+        )
+
         images = (
             ProjectImage.objects.filter(upload_status=UploadStatus.UPLOADED)
-            .annotate(variant_count=Count("variants"))
-            .filter(variant_count__lt=expected_count)
+            .annotate(
+                variant_count=Count("variants"),
+                expected_variants=expected_variants,
+            )
+            .filter(variant_count__lt=F("expected_variants"))
             .order_by("created_at")
         )
 

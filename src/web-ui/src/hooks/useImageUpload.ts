@@ -54,9 +54,6 @@ export function useImageUpload({
         return;
       }
 
-      // Get image dimensions
-      const dimensions = await getImageDimensions(file);
-
       try {
         // Step 1: Get presigned URL from backend
         const presigned = await api.myProjects.getImageUploadUrl(
@@ -110,8 +107,7 @@ export function useImageUpload({
         // Step 3: Notify backend of completion
         const completedImage = await api.myProjects.completeImageUpload(
           projectId,
-          presigned.image_id,
-          dimensions
+          presigned.image_id
         );
 
         updateUpload(presigned.image_id, { status: "complete", progress: 100 });
@@ -155,18 +151,4 @@ export function useImageUpload({
       (u) => u.status === "uploading" || u.status === "processing"
     ),
   };
-}
-
-function getImageDimensions(
-  file: File
-): Promise<{ width: number; height: number } | undefined> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      resolve({ width: img.width, height: img.height });
-      URL.revokeObjectURL(img.src);
-    };
-    img.onerror = () => resolve(undefined);
-    img.src = URL.createObjectURL(file);
-  });
 }

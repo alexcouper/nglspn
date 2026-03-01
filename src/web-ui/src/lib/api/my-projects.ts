@@ -63,14 +63,13 @@ export class MyProjectsClient {
 
   async completeImageUpload(
     projectId: string,
-    imageId: string,
-    dimensions?: { width: number; height: number }
+    imageId: string
   ): Promise<ProjectImage> {
     return this.client.request<ProjectImage>(
       `/api/my/projects/${projectId}/images/${imageId}/complete`,
       {
         method: "POST",
-        body: JSON.stringify(dimensions || {}),
+        body: JSON.stringify({}),
       }
     );
   }

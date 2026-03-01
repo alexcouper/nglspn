@@ -317,3 +317,11 @@ LOGGING = {
         },
     },
 }
+
+DB_DEBUG = os.getenv("DB_DEBUG", "False").lower() == "true"
+if DB_DEBUG:
+    LOGGING["loggers"]["django.db.backends"] = {
+        "handlers": ["console"],
+        "level": "DEBUG",
+        "propagate": False,
+    }

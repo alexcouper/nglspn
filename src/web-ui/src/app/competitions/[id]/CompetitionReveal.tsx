@@ -109,6 +109,12 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
             <p className="text-sm text-muted-foreground mt-0.5">
               {formatDateRange(competition.start_date, competition.end_date)}
             </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {competition.project_count} project
+              {competition.project_count !== 1 ? "s" : ""}
+              {competition.pending_projects_count > 0 &&
+                ` (${competition.pending_projects_count} pending)`}
+            </p>
           </div>
         </div>
         {isAcceptingApplications && (

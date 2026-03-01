@@ -20,10 +20,9 @@ class TestAdminIPMiddleware:
         # Should not be 404 (will be 302 redirect to login)
         assert_that(response.status_code, is_not(equal_to(404)))
 
-    @override_settings(ADMIN_ALLOWED_IPS=["10.0.0.1"])
-    def test_admin_uses_rightmost_xff_ip(self) -> None:
+    @override_settings(ADMIN_ALLOWED_IPS=["10.0.0.1"], NUM_TRUSTED_PROXIES=1)
+    def test_single_proxy_uses_rightmost_xff_entry(self) -> None:
         client = Client()
-        # Rightmost IP is the one added by trusted proxy
         response = client.get(
             "/admin/",
             REMOTE_ADDR="192.168.1.1",
@@ -32,10 +31,9 @@ class TestAdminIPMiddleware:
 
         assert_that(response.status_code, is_not(equal_to(404)))
 
-    @override_settings(ADMIN_ALLOWED_IPS=["10.0.0.1"])
-    def test_admin_ignores_spoofed_first_xff(self) -> None:
+    @override_settings(ADMIN_ALLOWED_IPS=["10.0.0.1"], NUM_TRUSTED_PROXIES=1)
+    def test_single_proxy_ignores_spoofed_first_xff(self) -> None:
         client = Client()
-        # Attacker puts allowed IP first, but their real IP is rightmost
         response = client.get(
             "/admin/",
             REMOTE_ADDR="192.168.1.1",
@@ -43,3 +41,41 @@ class TestAdminIPMiddleware:
         )
 
         assert_that(response.status_code, equal_to(404))
+
+    @override_settings(ADMIN_ALLOWED_IPS=["10.0.0.1"], NUM_TRUSTED_PROXIES=2)
+    def test_two_proxies_skips_proxy_ip(self) -> None:
+        client = Client()
+        # Client(10.0.0.1) → CDN → LB → Django
+        # CDN sets XFF: "10.0.0.1", LB appends: "10.0.0.1, <cdn_ip>"
+        response = client.get(
+            "/admin/",
+            REMOTE_ADDR="192.168.1.1",
+            HTTP_X_FORWARDED_FOR="10.0.0.1, 172.16.0.1",
+        )
+
+        assert_that(response.status_code, is_not(equal_to(404)))
+
+    @override_settings(ADMIN_ALLOWED_IPS=["10.0.0.1"], NUM_TRUSTED_PROXIES=2)
+    def test_two_proxies_ignores_spoofed_first_xff(self) -> None:
+        client = Client()
+        # Attacker spoofs XFF, so CDN appends real IP, LB appends CDN IP
+        # XFF: <spoofed>, <real_client>, <cdn_ip>
+        response = client.get(
+            "/admin/",
+            REMOTE_ADDR="192.168.1.1",
+            HTTP_X_FORWARDED_FOR="10.0.0.1, 192.168.99.99, 172.16.0.1",
+        )
+
+        assert_that(response.status_code, equal_to(404))
+
+    @override_settings(ADMIN_ALLOWED_IPS=["10.0.0.1"], NUM_TRUSTED_PROXIES=2)
+    def test_fewer_xff_entries_than_proxies_uses_leftmost(self) -> None:
+        client = Client()
+        # Only 1 entry but NUM_TRUSTED_PROXIES=2, should clamp to index 0
+        response = client.get(
+            "/admin/",
+            REMOTE_ADDR="192.168.1.1",
+            HTTP_X_FORWARDED_FOR="10.0.0.1",
+        )
+
+        assert_that(response.status_code, is_not(equal_to(404)))

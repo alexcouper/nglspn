@@ -4,7 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from django.contrib import admin
-from django.db.models import QuerySet
+from django.db.models import Count, QuerySet
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils import timezone
@@ -17,6 +17,7 @@ from api.tasks import web_ui as web_ui_tasks
 from .models import (
     Competition,
     CompetitionReviewer,
+    ImageVariant,
     Project,
     ProjectImage,
     ProjectRanking,
@@ -285,6 +286,27 @@ class ProjectViewAdmin(admin.ModelAdmin):
         return False
 
 
+class ImageVariantInline(admin.TabularInline):
+    model = ImageVariant
+    extra = 0
+    fields = ("size", "width", "height", "file_size", "storage_key", "created_at")
+    readonly_fields = fields
+
+    def has_add_permission(
+        self,
+        request: HttpRequest,
+        obj: ProjectImage | None = None,
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self,
+        request: HttpRequest,
+        obj: ProjectImage | None = None,
+    ) -> bool:
+        return False
+
+
 @admin.register(ProjectImage)
 class ProjectImageAdmin(admin.ModelAdmin):
     list_display = (
@@ -295,11 +317,13 @@ class ProjectImageAdmin(admin.ModelAdmin):
         "upload_status",
         "file_size_display",
         "dimensions",
+        "variant_count",
         "created_at",
     )
     list_filter = ("is_main", "upload_status", "content_type", "created_at")
     search_fields = ("original_filename", "project__title", "project__owner__email")
     ordering = ("-created_at",)
+    inlines = (ImageVariantInline,)
     readonly_fields = (
         "id",
         "thumbnail_large",
@@ -373,8 +397,17 @@ class ProjectImageAdmin(admin.ModelAdmin):
             return f"{obj.width} x {obj.height}"
         return "-"
 
+    @admin.display(description="Variants", ordering="variant_count")
+    def variant_count(self, obj: ProjectImage) -> int:
+        return obj.variant_count
+
     def get_queryset(self, request: HttpRequest) -> QuerySet[ProjectImage]:
-        return super().get_queryset(request).select_related("project", "project__owner")
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("project", "project__owner")
+            .annotate(variant_count=Count("variants"))
+        )
 
 
 class CompetitionReviewerInline(admin.TabularInline):

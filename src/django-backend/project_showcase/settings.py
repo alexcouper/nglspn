@@ -36,8 +36,10 @@ DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 ADMIN_ALLOWED_IPS = [
     ip.strip() for ip in os.getenv("ADMIN_ALLOWED_IPS", "").split(",") if ip.strip()
 ]
+# 127.0.0.1 is needed for load balancer health check probes that hit the
+# container directly rather than through the domain name.
 ALLOWED_HOSTS = os.getenv(
-    "ALLOWED_HOSTS", "naglasupan.is,api.naglasupan.is,localhost"
+    "ALLOWED_HOSTS", "naglasupan.is,api.naglasupan.is,localhost,127.0.0.1"
 ).split(",")
 
 # Security settings

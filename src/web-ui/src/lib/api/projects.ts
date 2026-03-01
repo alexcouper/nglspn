@@ -44,11 +44,4 @@ export class ProjectsClient {
     return this.client.request<Project>(`/api/projects/${projectId}`);
   }
 
-  async getFeatured(): Promise<Project[]> {
-    return this.client.request<Project[]>("/api/projects/featured");
-  }
-
-  async getTrending(): Promise<Project[]> {
-    return this.client.request<Project[]>("/api/projects/trending");
-  }
 }

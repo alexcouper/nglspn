@@ -96,18 +96,6 @@ class DjangoProjectQuery(ProjectQueryInterface):
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]:
         return _base_queryset().filter(owner_id=owner_id)
 
-    def list_featured(self, limit: int = 10) -> QuerySet[Project]:
-        return _base_queryset().filter(status=ProjectStatus.APPROVED, is_featured=True)[
-            :limit
-        ]
-
-    def list_trending(self, limit: int = 10) -> QuerySet[Project]:
-        return (
-            _base_queryset()
-            .filter(status=ProjectStatus.APPROVED)
-            .order_by("-monthly_visitors")[:limit]
-        )
-
     def count_pending(self) -> int:
         return Project.objects.filter(status=ProjectStatus.PENDING).count()
 

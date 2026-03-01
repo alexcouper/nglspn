@@ -625,58 +625,6 @@
         ]
       }
     },
-    "/api/projects/featured": {
-      "get": {
-        "operationId": "api_routers_projects_get_featured_projects",
-        "summary": "Get Featured Projects",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ProjectResponse"
-                  },
-                  "title": "Response",
-                  "type": "array"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Projects"
-        ]
-      }
-    },
-    "/api/projects/trending": {
-      "get": {
-        "operationId": "api_routers_projects_get_trending_projects",
-        "summary": "Get Trending Projects",
-        "parameters": [],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/ProjectResponse"
-                  },
-                  "title": "Response",
-                  "type": "array"
-                }
-              }
-            }
-          }
-        },
-        "tags": [
-          "Projects"
-        ]
-      }
-    },
     "/api/projects/{project_id}": {
       "get": {
         "operationId": "api_routers_projects_get_project",
@@ -2761,17 +2709,9 @@
             "title": "Tech Stack",
             "type": "array"
           },
-          "monthly_visitors": {
-            "title": "Monthly Visitors",
-            "type": "integer"
-          },
           "status": {
             "title": "Status",
             "type": "string"
-          },
-          "is_featured": {
-            "title": "Is Featured",
-            "type": "boolean"
           },
           "created_at": {
             "format": "date-time",
@@ -2827,9 +2767,7 @@
           "github_url",
           "demo_url",
           "tech_stack",
-          "monthly_visitors",
           "status",
-          "is_featured",
           "created_at",
           "approved_at",
           "owner",
@@ -3468,17 +3406,9 @@
             "title": "Tech Stack",
             "type": "array"
           },
-          "monthly_visitors": {
-            "title": "Monthly Visitors",
-            "type": "integer"
-          },
           "status": {
             "title": "Status",
             "type": "string"
-          },
-          "is_featured": {
-            "title": "Is Featured",
-            "type": "boolean"
           },
           "created_at": {
             "format": "date-time",
@@ -3534,9 +3464,7 @@
           "github_url",
           "demo_url",
           "tech_stack",
-          "monthly_visitors",
           "status",
-          "is_featured",
           "created_at",
           "approved_at",
           "owner",

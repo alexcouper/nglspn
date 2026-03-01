@@ -99,15 +99,12 @@ class ProjectAdmin(admin.ModelAdmin):
         "owner_link",
         "owner_promo_opt_in",
         "status",
-        "is_featured",
-        "monthly_visitors",
         "view_count",
         "submission_month",
         "created_at",
     )
     list_filter = (
         "status",
-        "is_featured",
         "owner__opt_in_to_external_promotions",
         "submission_month",
         "created_at",
@@ -144,11 +141,10 @@ class ProjectAdmin(admin.ModelAdmin):
                     "rejection_reason",
                     "approved_by",
                     "approved_at",
-                    "is_featured",
                 ),
             },
         ),
-        ("Metrics", {"fields": ("monthly_visitors", "view_count", "submission_month")}),
+        ("Metrics", {"fields": ("view_count", "submission_month")}),
         ("Ownership", {"fields": ("owner",)}),
         (
             "System",
@@ -188,8 +184,6 @@ class ProjectAdmin(admin.ModelAdmin):
     actions = [
         "approve_projects",
         "reject_projects",
-        "feature_projects",
-        "unfeature_projects",
     ]
 
     @admin.action(description="Approve selected projects")
@@ -240,24 +234,6 @@ class ProjectAdmin(admin.ModelAdmin):
                     "Failed to enqueue revalidation for project %s", project.id
                 )
         self.message_user(request, f"{updated} projects were rejected.")
-
-    @admin.action(description="Feature selected projects")
-    def feature_projects(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet[Project],
-    ) -> None:
-        updated = queryset.update(is_featured=True)
-        self.message_user(request, f"{updated} projects were featured.")
-
-    @admin.action(description="Unfeature selected projects")
-    def unfeature_projects(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet[Project],
-    ) -> None:
-        updated = queryset.update(is_featured=False)
-        self.message_user(request, f"{updated} projects were unfeatured.")
 
 
 @admin.register(ProjectView)

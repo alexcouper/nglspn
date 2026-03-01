@@ -1,6 +1,5 @@
 from typing import TYPE_CHECKING, Any
 
-from django.db.models import QuerySet
 from django.http import HttpRequest
 from ninja import Query, Router
 
@@ -42,20 +41,6 @@ def list_projects(
         return 400, {"detail": str(e)}
     result["pending_projects_count"] = REPO.project.count_pending()
     return result
-
-
-@router.get("/featured", response={200: list[ProjectResponse]}, tags=["Projects"])
-def get_featured_projects(
-    request: HttpRequest,
-) -> QuerySet[Project]:
-    return REPO.project.list_featured()
-
-
-@router.get("/trending", response={200: list[ProjectResponse]}, tags=["Projects"])
-def get_trending_projects(
-    request: HttpRequest,
-) -> QuerySet[Project]:
-    return REPO.project.list_trending()
 
 
 def _get_user_from_request(request: HttpRequest) -> "User | None":

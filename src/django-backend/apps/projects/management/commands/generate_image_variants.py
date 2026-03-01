@@ -41,7 +41,7 @@ class Command(BaseCommand):
 
         self.stdout.write(f"Processing {total} images...")
 
-        for i, image in enumerate(images.iterator(), start=1):
+        for i, image in enumerate(images, start=1):
             try:
                 HANDLERS.image.generate_variants(str(image.id))
             except Exception:

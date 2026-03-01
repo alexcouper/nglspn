@@ -3,9 +3,9 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from django.db.models import Q, QuerySet
+from django.db.models import Prefetch, Q, QuerySet
 
-from apps.projects.models import Project, ProjectStatus
+from apps.projects.models import Project, ProjectImage, ProjectStatus
 from services.project.exceptions import ProjectNotFoundError
 from services.project.query_interface import ProjectQueryInterface
 
@@ -14,7 +14,15 @@ ALLOWED_SORT_FIELDS = {"created_at", "title", "updated_at"}
 
 def _base_queryset() -> QuerySet[Project]:
     return Project.objects.select_related("owner").prefetch_related(
-        "tags", "tags__category", "won_competitions"
+        "tags",
+        "tags__category",
+        "won_competitions",
+        Prefetch(
+            "images",
+            queryset=ProjectImage.objects.filter(
+                upload_status="uploaded"
+            ).prefetch_related("variants"),
+        ),
     )
 
 

@@ -325,7 +325,15 @@ function CompetitionProjectCard({ project, priority }: { project: CompetitionPro
       className="card card-interactive group"
     >
       <div className={`relative aspect-video ${!project.main_image_url ? placeholderColor : "bg-slate-100"}`}>
-        {project.main_image_url && (
+        {project.main_image_url && (project.main_image_thumb_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={project.main_image_thumb_url}
+            alt={project.title}
+            className="absolute inset-0 w-full h-full object-contain"
+            loading={priority ? "eager" : "lazy"}
+          />
+        ) : (
           <Image
             src={project.main_image_url}
             alt={project.title}
@@ -334,7 +342,7 @@ function CompetitionProjectCard({ project, priority }: { project: CompetitionPro
             sizes="(max-width: 768px) 50vw, 33vw"
             priority={priority}
           />
-        )}
+        ))}
       </div>
       <div className="p-3.5">
         <h3 className="font-medium text-sm text-foreground truncate group-hover:text-accent transition-colors">

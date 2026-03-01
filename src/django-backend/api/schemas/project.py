@@ -79,8 +79,8 @@ class ProjectResponse(Schema):
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:
-        """Only return uploaded images."""
-        return list(obj.images.filter(upload_status="uploaded"))
+        """Return uploaded images. Uses prefetch cache from _base_queryset."""
+        return list(obj.images.all())
 
     @staticmethod
     def resolve_tags(obj: Any) -> list[Any]:

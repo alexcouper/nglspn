@@ -4,9 +4,10 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
+from django.db.models import Prefetch
 from ninja import Schema
 
-from apps.projects.models import ProjectStatus
+from apps.projects.models import ProjectImage, ProjectStatus
 
 from .tag import TagWithCategoryResponse
 
@@ -22,14 +23,24 @@ class CompetitionProjectResponse(Schema):
     title: str
     tags: list[TagWithCategoryResponse]
     main_image_url: str | None = None
+    main_image_thumb_url: str | None = None
 
     @classmethod
     def from_project(cls, project: Any) -> "CompetitionProjectResponse":
-        main_image = project.images.filter(
-            upload_status="uploaded", is_main=True
-        ).first()
-        if not main_image:
-            main_image = project.images.filter(upload_status="uploaded").first()
+        # Iterate prefetched images to avoid extra DB queries
+        images = list(project.images.all())
+        main_image = next((img for img in images if img.is_main), None)
+        if not main_image and images:
+            main_image = images[0]
+
+        thumb_url = None
+        if main_image:
+            thumb = next(
+                (v for v in main_image.variants.all() if v.size == "thumb"),
+                None,
+            )
+            if thumb:
+                thumb_url = thumb.url
 
         return cls(
             id=project.id,
@@ -45,9 +56,10 @@ class CompetitionProjectResponse(Schema):
                     category_slug=tag.category.slug if tag.category else None,
                     status=tag.status,
                 )
-                for tag in project.tags.select_related("category").all()
+                for tag in project.tags.all()
             ],
             main_image_url=main_image.url if main_image else None,
+            main_image_thumb_url=thumb_url,
         )
 
 
@@ -71,7 +83,15 @@ class CompetitionResponse(Schema):
         approved_projects = list(
             competition.projects.filter(status=ProjectStatus.APPROVED)
             .order_by("title")
-            .prefetch_related("images")
+            .prefetch_related(
+                Prefetch(
+                    "images",
+                    queryset=ProjectImage.objects.filter(
+                        upload_status="uploaded"
+                    ).prefetch_related("variants"),
+                ),
+                "tags__category",
+            )
         )
         return cls(
             id=competition.id,

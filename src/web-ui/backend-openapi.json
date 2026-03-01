@@ -3840,6 +3840,17 @@
               }
             ],
             "title": "Main Image Url"
+          },
+          "main_image_thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Image Thumb Url"
           }
         },
         "required": [

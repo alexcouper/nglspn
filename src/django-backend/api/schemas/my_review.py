@@ -102,8 +102,8 @@ class ReviewProjectDetailResponse(Schema):
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:
-        """Only return uploaded images."""
-        return list(obj.images.filter(upload_status="uploaded"))
+        """Return uploaded images. Uses prefetch cache when available."""
+        return list(obj.images.all())
 
     @staticmethod
     def resolve_won_competitions(obj: Any) -> list[Any]:

@@ -90,9 +90,7 @@ class ReviewProjectDetailResponse(Schema):
     github_url: str | None
     demo_url: str | None
     tech_stack: list[str]
-    monthly_visitors: int
     status: str
-    is_featured: bool
     created_at: datetime
     approved_at: datetime | None
     owner: UserResponse

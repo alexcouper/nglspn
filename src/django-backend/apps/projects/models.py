@@ -57,7 +57,6 @@ class Project(models.Model):
     github_url = models.URLField(max_length=2083, blank=True, null=True)
     demo_url = models.URLField(max_length=2083, blank=True, null=True)
     tech_stack = models.JSONField(default=list, blank=True)
-    monthly_visitors = models.PositiveIntegerField(default=0)
     status = models.CharField(
         max_length=20,
         choices=ProjectStatus.choices,
@@ -65,7 +64,6 @@ class Project(models.Model):
         db_index=True,
     )
     rejection_reason = models.TextField(blank=True, null=True)
-    is_featured = models.BooleanField(default=False)
     submission_month = models.CharField(max_length=7, db_index=True)  # YYYY-MM format
     approved_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -67,9 +67,7 @@ class ProjectResponse(Schema):
     github_url: str | None
     demo_url: str | None
     tech_stack: list[str]
-    monthly_visitors: int
     status: str
-    is_featured: bool
     created_at: datetime
     approved_at: datetime | None
     owner: PublicUserProfile
@@ -154,4 +152,3 @@ class AdminProjectResponse(ProjectResponse):
 class ProjectApproval(Schema):
     approved: bool
     rejection_reason: str | None = None
-    is_featured: bool = False

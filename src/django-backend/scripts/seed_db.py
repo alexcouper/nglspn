@@ -79,7 +79,6 @@ PROJECTS = [
         "website_url": "https://reykjavikbikes.example.com",
         "github_url": "https://github.com/example/reykjavik-bikes",
         "tech_stack": ["React", "Node.js", "PostgreSQL"],
-        "monthly_visitors": 12000,
         "status": ProjectStatus.APPROVED,
         "tag_names": ["React", "Node.js", "Web App", "Live", "Side Project"],
     },
@@ -90,7 +89,6 @@ PROJECTS = [
         "long_description": "Uses satellite data and machine learning to predict aurora visibility across Iceland. Sends push notifications when conditions are optimal for your location.",
         "website_url": "https://aurora.example.com",
         "tech_stack": ["Python", "React", "AWS"],
-        "monthly_visitors": 45000,
         "status": ProjectStatus.APPROVED,
         "tag_names": ["Python", "React", "AWS", "Web App", "Live", "Bootstrapped"],
     },
@@ -100,7 +98,6 @@ PROJECTS = [
         "description": "A curated collection of traditional and modern Icelandic recipes with ingredient sourcing.",
         "website_url": "https://recipes.example.com",
         "tech_stack": ["Next.js", "PostgreSQL"],
-        "monthly_visitors": 8500,
         "status": ProjectStatus.APPROVED,
         "tag_names": ["Next.js", "PostgreSQL", "Web App", "Live", "Side Project"],
     },
@@ -112,7 +109,6 @@ PROJECTS = [
         "website_url": "https://sagareader.example.com",
         "github_url": "https://github.com/example/saga-reader",
         "tech_stack": ["Svelte", "Django", "PostgreSQL"],
-        "monthly_visitors": 3200,
         "status": ProjectStatus.APPROVED,
         "tag_names": [
             "Svelte",
@@ -130,7 +126,6 @@ PROJECTS = [
         "description": "Early warning system for volcanic activity around Iceland with live seismic data.",
         "website_url": "https://volcanic.example.com",
         "tech_stack": ["Python", "TypeScript", "Redis", "Docker"],
-        "monthly_visitors": 22000,
         "status": ProjectStatus.APPROVED,
         "tag_names": [
             "Python",
@@ -141,7 +136,6 @@ PROJECTS = [
             "Open Source",
             "Society Impact",
         ],
-        "is_featured": True,
     },
     {
         "title": "Fish Market API",
@@ -151,7 +145,6 @@ PROJECTS = [
         "website_url": "https://fishapi.example.com",
         "github_url": "https://github.com/example/fish-market-api",
         "tech_stack": ["Django", "REST API", "PostgreSQL", "Docker"],
-        "monthly_visitors": 5400,
         "status": ProjectStatus.APPROVED,
         "tag_names": [
             "Django",
@@ -169,7 +162,6 @@ PROJECTS = [
         "description": "IoT monitoring dashboard for geothermal activity at popular tourist sites.",
         "website_url": "https://geyser.example.com",
         "tech_stack": ["Vue", "Go", "Redis"],
-        "monthly_visitors": 1800,
         "status": ProjectStatus.APPROVED,
         "tag_names": ["Vue", "Go", "Redis", "Web App", "Beta", "Pre-seed"],
     },
@@ -179,7 +171,6 @@ PROJECTS = [
         "description": "Community-driven event discovery platform for the greater Reykjavik area.",
         "website_url": "https://events.example.com",
         "tech_stack": ["Next.js", "Node.js", "MongoDB"],
-        "monthly_visitors": 15000,
         "status": ProjectStatus.APPROVED,
         "tag_names": [
             "Next.js",
@@ -190,7 +181,6 @@ PROJECTS = [
             "Bootstrapped",
             "Community Booster",
         ],
-        "is_featured": True,
     },
     {
         "title": "Wool Marketplace",
@@ -198,7 +188,6 @@ PROJECTS = [
         "description": "E-commerce platform connecting Icelandic wool producers with international buyers.",
         "website_url": "https://woolmarket.example.com",
         "tech_stack": ["Django", "React", "PostgreSQL", "AWS"],
-        "monthly_visitors": 6700,
         "status": ProjectStatus.PENDING,
         "tag_names": ["Django", "React", "PostgreSQL", "AWS", "Web App", "MVP", "Seed"],
     },
@@ -208,7 +197,6 @@ PROJECTS = [
         "description": "AI-powered Icelandic language learning app with speech recognition and grammar exercises.",
         "website_url": "https://learnIS.example.com",
         "tech_stack": ["React", "Python", "AWS"],
-        "monthly_visitors": 0,
         "status": ProjectStatus.PENDING,
         "tag_names": [
             "React",
@@ -226,7 +214,6 @@ PROJECTS = [
         "website_url": "https://puffins.example.com",
         "github_url": "https://github.com/example/puffin-tracker",
         "tech_stack": ["Python", "React", "PostgreSQL"],
-        "monthly_visitors": 2100,
         "status": ProjectStatus.APPROVED,
         "tag_names": [
             "Python",
@@ -244,7 +231,6 @@ PROJECTS = [
         "description": "GPS-based app for discovering natural hot springs across Iceland with safety ratings.",
         "website_url": "https://hotsprings.example.com",
         "tech_stack": ["React", "Node.js", "MongoDB"],
-        "monthly_visitors": 31000,
         "status": ProjectStatus.APPROVED,
         "tag_names": [
             "React",
@@ -261,7 +247,6 @@ PROJECTS = [
         "description": "Dashboard visualizing glacier retreat data across Iceland over the past century.",
         "website_url": "https://glacierwatch.example.com",
         "tech_stack": ["Svelte", "Python", "PostgreSQL"],
-        "monthly_visitors": 0,
         "status": ProjectStatus.PENDING,
         "tag_names": ["Svelte", "Python", "PostgreSQL", "Tool", "Idea", "Open Source"],
     },
@@ -271,7 +256,6 @@ PROJECTS = [
         "description": "Directory and networking platform for the Icelandic startup ecosystem.",
         "website_url": "https://startuphub.example.com",
         "tech_stack": ["Next.js", "Django", "PostgreSQL", "Vercel"],
-        "monthly_visitors": 9200,
         "status": ProjectStatus.APPROVED,
         "tag_names": [
             "Next.js",
@@ -283,7 +267,6 @@ PROJECTS = [
             "Seed",
             "Community Booster",
         ],
-        "is_featured": True,
     },
     {
         "title": "Renewable Energy Dashboard",
@@ -291,7 +274,6 @@ PROJECTS = [
         "description": "Real-time monitoring of Iceland's renewable energy grid including geothermal and hydro.",
         "website_url": "https://energy.example.com",
         "tech_stack": ["Angular", "Go", "GraphQL", "Docker"],
-        "monthly_visitors": 4300,
         "status": ProjectStatus.REJECTED,
         "rejection_reason": "Very similar to an existing approved project. Consider collaborating with the Volcanic Alert team.",
         "tag_names": ["Angular", "Go", "GraphQL", "Docker", "Tool", "In Development"],
@@ -302,7 +284,6 @@ PROJECTS = [
         "description": "Digital archive preserving historical Icelandic whaling records and photographs.",
         "website_url": "https://whalearchive.example.com",
         "tech_stack": ["Django", "PostgreSQL", "AWS"],
-        "monthly_visitors": 800,
         "status": ProjectStatus.ICE_BOX,
         "tag_names": [
             "Django",
@@ -533,10 +514,8 @@ def create_projects(users: list[User], admin: User | None) -> list[Project]:
             website_url=p["website_url"],
             github_url=p.get("github_url"),
             tech_stack=p.get("tech_stack", []),
-            monthly_visitors=p.get("monthly_visitors", 0),
             status=p["status"],
             rejection_reason=p.get("rejection_reason"),
-            is_featured=p.get("is_featured", False),
             submission_month=f"2025-{(i % 3) + 1:02d}",
             owner=owner,
             approved_by=admin if p["status"] == ProjectStatus.APPROVED else None,

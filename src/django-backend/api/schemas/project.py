@@ -139,7 +139,6 @@ class ProjectListItemResponse(Schema):
     title: str
     tagline: str
     status: str
-    is_featured: bool
     created_at: datetime
     tags: list[TagWithCategoryResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
@@ -147,32 +146,17 @@ class ProjectListItemResponse(Schema):
     main_image_thumb_url: str | None = None
 
     @classmethod
-    def from_project(cls, project: Any) -> "ProjectListItemResponse":
-        images = list(project.images.all())
-        main_image = next((img for img in images if img.is_main), None)
-        if not main_image and images:
-            main_image = images[0]
-
-        thumb_url = None
-        if main_image:
-            thumb = next(
-                (v for v in main_image.variants.all() if v.size == "thumb"),
-                None,
-            )
-            if thumb:
-                thumb_url = thumb.url
-
+    def from_list_item(cls, item: Any) -> "ProjectListItemResponse":
         return cls(
-            id=project.id,
-            title=project.title,
-            tagline=project.tagline,
-            status=project.status,
-            is_featured=project.is_featured,
-            created_at=project.created_at,
-            tags=[t for t in project.tags.all() if t.status != "rejected"],
-            won_competitions=list(project.won_competitions.all()),
-            main_image_url=main_image.url if main_image else None,
-            main_image_thumb_url=thumb_url,
+            id=item.project.id,
+            title=item.project.title,
+            tagline=item.project.tagline,
+            status=item.project.status,
+            created_at=item.project.created_at,
+            tags=item.tags,
+            won_competitions=list(item.project.won_competitions.all()),
+            main_image_url=item.main_image_url,
+            main_image_thumb_url=item.main_image_thumb_url,
         )
 
 

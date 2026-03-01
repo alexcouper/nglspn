@@ -2507,10 +2507,6 @@
             "title": "Status",
             "type": "string"
           },
-          "is_featured": {
-            "title": "Is Featured",
-            "type": "boolean"
-          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -2560,7 +2556,6 @@
           "title",
           "tagline",
           "status",
-          "is_featured",
           "created_at"
         ],
         "title": "ProjectListItemResponse",

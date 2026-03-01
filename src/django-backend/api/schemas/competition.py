@@ -8,6 +8,7 @@ from django.db.models import Prefetch
 from ninja import Schema
 
 from apps.projects.models import ProjectImage, ProjectStatus
+from services.project.django_impl import to_list_item
 
 from .tag import TagWithCategoryResponse
 
@@ -26,40 +27,13 @@ class CompetitionProjectResponse(Schema):
     main_image_thumb_url: str | None = None
 
     @classmethod
-    def from_project(cls, project: Any) -> "CompetitionProjectResponse":
-        # Iterate prefetched images to avoid extra DB queries
-        images = list(project.images.all())
-        main_image = next((img for img in images if img.is_main), None)
-        if not main_image and images:
-            main_image = images[0]
-
-        thumb_url = None
-        if main_image:
-            thumb = next(
-                (v for v in main_image.variants.all() if v.size == "thumb"),
-                None,
-            )
-            if thumb:
-                thumb_url = thumb.url
-
+    def from_list_item(cls, item: Any) -> "CompetitionProjectResponse":
         return cls(
-            id=project.id,
-            title=project.title,
-            tags=[
-                TagWithCategoryResponse(
-                    id=tag.id,
-                    name=tag.name,
-                    slug=tag.slug,
-                    description=tag.description,
-                    color=tag.color,
-                    category_id=tag.category.id if tag.category else None,
-                    category_slug=tag.category.slug if tag.category else None,
-                    status=tag.status,
-                )
-                for tag in project.tags.all()
-            ],
-            main_image_url=main_image.url if main_image else None,
-            main_image_thumb_url=thumb_url,
+            id=item.project.id,
+            title=item.project.title,
+            tags=item.tags,
+            main_image_url=item.main_image_url,
+            main_image_thumb_url=item.main_image_thumb_url,
         )
 
 
@@ -91,8 +65,11 @@ class CompetitionResponse(Schema):
                     ).prefetch_related("variants"),
                 ),
                 "tags__category",
+                "won_competitions",
             )
         )
+        project_items = [to_list_item(p) for p in approved_projects]
+        winner_item = to_list_item(competition.winner) if competition.winner else None
         return cls(
             id=competition.id,
             name=competition.name,
@@ -105,11 +82,12 @@ class CompetitionResponse(Schema):
             image_url=competition.image_url,
             project_count=competition.projects.count(),
             projects=[
-                CompetitionProjectResponse.from_project(p) for p in approved_projects
+                CompetitionProjectResponse.from_list_item(item)
+                for item in project_items
             ],
             winner=(
-                CompetitionProjectResponse.from_project(competition.winner)
-                if competition.winner
+                CompetitionProjectResponse.from_list_item(winner_item)
+                if winner_item
                 else None
             ),
             pending_projects_count=competition.projects.filter(

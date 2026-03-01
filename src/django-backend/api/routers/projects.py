@@ -43,11 +43,16 @@ def list_projects(
         )
     except ValueError as e:
         return 400, {"detail": str(e)}
-    result["projects"] = [
-        ProjectListItemResponse.from_project(p) for p in result["projects"]
-    ]
-    result["pending_projects_count"] = REPO.project.count_pending()
-    return result
+    return {
+        "projects": [
+            ProjectListItemResponse.from_list_item(p) for p in result.projects
+        ],
+        "total": result.total,
+        "page": result.page,
+        "per_page": result.per_page,
+        "pages": result.pages,
+        "pending_projects_count": REPO.project.count_pending(),
+    }
 
 
 def _get_user_from_request(request: HttpRequest) -> "User | None":

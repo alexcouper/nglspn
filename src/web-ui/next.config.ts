@@ -10,7 +10,7 @@ const securityHeaders = [
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: https://cdn.naglasupan.is https://*.s3.fr-par.scw.cloud",
-      `connect-src 'self' https://api.naglasupan.is https://cdn.naglasupan.is${isDev ? " http://localhost:* http://127.0.0.1:*" : ""}`,
+      `connect-src 'self' https://api.naglasupan.is https://cdn.naglasupan.is https://s3.fr-par.scw.cloud https://plausible.io${isDev ? " http://localhost:* http://127.0.0.1:*" : ""}`,
       "frame-ancestors 'none'",
     ].join("; "),
   },

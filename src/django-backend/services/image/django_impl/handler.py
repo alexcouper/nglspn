@@ -34,14 +34,6 @@ class DjangoImageHandler(ImageHandlerInterface):
             )
             return
 
-        original_width = image.width
-        if not original_width:
-            logger.warning(
-                "Image %s has no width metadata, skipping",
-                image_id,
-            )
-            return
-
         try:
             original_bytes = storage_service.download_object(image.storage_key)
         except Exception:
@@ -54,6 +46,20 @@ class DjangoImageHandler(ImageHandlerInterface):
         except Exception:
             logger.exception("Failed to decode image %s", image_id)
             return
+
+        original_width = image.width
+        if not original_width:
+            # Fallback: read dimensions from the decoded image and backfill the DB
+            original_width = img.width
+            image.width = img.width
+            image.height = img.height
+            image.save(update_fields=["width", "height"])
+            logger.info(
+                "Backfilled dimensions for image %s from Pillow (%dx%d)",
+                image_id,
+                img.width,
+                img.height,
+            )
 
         # Strip the file extension from the storage key to build variant paths
         p = PurePosixPath(image.storage_key)

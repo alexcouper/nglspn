@@ -195,6 +195,30 @@ class TestGenerateVariants:
 
         assert ImageVariant.objects.filter(image=image).count() == 0
 
+    def test_backfills_dimensions_when_width_missing(self, mock_storage, handler):
+        image_bytes = _create_test_image(4000, 2250)
+        mock_storage.put_object(
+            Bucket=TEST_BUCKET,
+            Key="projects/abc/def123/photo.jpg",
+            Body=image_bytes,
+        )
+
+        image = ProjectImageFactory(
+            storage_key="projects/abc/def123/photo.jpg",
+            width=None,
+            height=None,
+            upload_status=UploadStatus.UPLOADED,
+        )
+
+        handler.generate_variants(str(image.id))
+
+        image.refresh_from_db()
+        assert image.width == 4000
+        assert image.height == 2250
+
+        variants = ImageVariant.objects.filter(image=image).order_by("width")
+        assert variants.count() == 3
+
     def test_idempotent_skips_existing_variants(self, mock_storage, handler):
         image_bytes = _create_test_image(4000, 2250)
         mock_storage.put_object(

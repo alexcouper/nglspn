@@ -1,8 +1,11 @@
+import logging
 from collections.abc import Callable
 from typing import Any
 
 from django.conf import settings
 from django.http import Http404, HttpRequest, HttpResponse
+
+logger = logging.getLogger(__name__)
 
 
 class AdminIPMiddleware:
@@ -27,6 +30,13 @@ class AdminIPMiddleware:
             else:
                 client_ip = request.META.get("REMOTE_ADDR", "")
             if client_ip not in allowed_ips:
+                ip_source = "X-Forwarded-For" if x_forwarded_for else "REMOTE_ADDR"
+                logger.warning(
+                    "Admin access denied: client_ip=%s source=%s X-Forwarded-For=%s",
+                    client_ip,
+                    ip_source,
+                    x_forwarded_for,
+                )
                 raise Http404
 
         return self.get_response(request)

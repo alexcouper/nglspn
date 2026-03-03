@@ -4,6 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/auth";
+import { buildLoginPath } from "@/lib/auth-routing";
 import { UserMenu } from "./UserMenu";
 
 export function Navigation() {
@@ -31,6 +32,8 @@ export function Navigation() {
     }`;
 
   const closeMenu = () => setMenuOpen(false);
+  const loginHref = buildLoginPath(pathname);
+  const registerHref = pathname !== "/" ? `/register?next=${encodeURIComponent(pathname)}` : "/register";
 
   return (
     <>
@@ -76,9 +79,9 @@ export function Navigation() {
               <UserMenu />
             ) : (
               <div className="flex items-center gap-3">
-                <Link href="/login" className={linkClass("/login")}>Log in</Link>
+                <Link href={loginHref} className={linkClass("/login")}>Log in</Link>
                 <Link
-                  href="/register"
+                  href={registerHref}
                   className="text-sm font-medium bg-accent hover:bg-accent-hover text-white px-3.5 py-1.5 rounded-md transition-colors duration-150"
                 >
                   Register
@@ -150,14 +153,14 @@ export function Navigation() {
             ) : (
               <div className="pt-2 space-y-2">
                 <Link
-                  href="/login"
+                  href={loginHref}
                   className="block w-full text-center py-2.5 text-sm font-medium text-foreground border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
                   onClick={closeMenu}
                 >
                   Log in
                 </Link>
                 <Link
-                  href="/register"
+                  href={registerHref}
                   className="block w-full text-center py-2.5 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
                   onClick={closeMenu}
                 >

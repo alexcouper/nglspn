@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth";
 import { getPostAuthDestination } from "@/lib/auth-routing";
@@ -12,6 +12,8 @@ type FlowState = "login" | "forgot" | "code" | "reset";
 
 export default function LoginPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next");
   const { login } = useAuth();
   const [flowState, setFlowState] = useState<FlowState>("login");
   const [email, setEmail] = useState("");
@@ -40,7 +42,7 @@ export default function LoginPage() {
 
     try {
       const userData = await login(email, password);
-      router.push(getPostAuthDestination(userData));
+      router.push(getPostAuthDestination(userData, next));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
     } finally {
@@ -301,7 +303,7 @@ export default function LoginPage() {
           {flowState === "login" && (
             <p className="mt-6 text-center text-sm text-muted-foreground">
               Don&apos;t have an account?{" "}
-              <Link href="/register" className="text-accent hover:text-accent-hover font-medium transition-colors">
+              <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="text-accent hover:text-accent-hover font-medium transition-colors">
                 Create one
               </Link>
             </p>

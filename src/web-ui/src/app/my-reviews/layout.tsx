@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/auth";
+import { buildLoginPath } from "@/lib/auth-routing";
 import { BreadcrumbProvider } from "./BreadcrumbContext";
 import { Breadcrumbs } from "./Breadcrumbs";
 
@@ -12,15 +13,16 @@ export default function MyReviewsLayout({
   children: React.ReactNode;
 }) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
 
   const isReviewer = user?.groups?.includes("REVIEWERS") ?? false;
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push("/login");
+      router.push(buildLoginPath(pathname));
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, pathname, router]);
 
   if (!authLoading && !isAuthenticated) {
     return null;

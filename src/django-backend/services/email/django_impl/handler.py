@@ -15,7 +15,11 @@ from . import render_email
 from .query import DjangoEmailQuery
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from apps.discussions.models import Discussion
     from apps.emails.models import BroadcastEmail
+    from apps.notifications.models import Notification
     from apps.projects.models import Project
     from apps.users.models import User
 
@@ -134,3 +138,73 @@ class DjangoEmailHandler(EmailHandlerInterface):
         broadcast.save(update_fields=["sent_at", "sent_by"])
 
         return success_count, failure_count
+
+    def send_discussion_notification_email(
+        self, notification: Notification, discussion: Discussion
+    ) -> None:
+        author_name = "Someone"
+        if discussion.author:
+            author_name = discussion.author.full_name or discussion.author.email
+
+        recipient = notification.recipient
+        context = {
+            "recipient_name": recipient.first_name or "there",
+            "author_name": author_name,
+            "project_title": discussion.project.title,
+            "comment_body": discussion.body[:500],
+            "discussion_url": (
+                f"{settings.FRONTEND_URL}/projects/{discussion.project_id}/discussions"
+            ),
+            "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
+            "current_year": timezone.now().year,
+        }
+        html, text = render_email("discussion_notification", context)
+
+        email = EmailMultiAlternatives(
+            subject=f"New comment on {discussion.project.title} - Naglasúpan",
+            body=text,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[recipient.email],
+        )
+        email.attach_alternative(html, "text/html")
+        email.send(fail_silently=False)
+
+    def send_discussion_digest_email(
+        self, notifications: Sequence[Notification]
+    ) -> None:
+        if not notifications:
+            return
+
+        recipient = notifications[0].recipient
+        groups_dict: dict[str, dict] = {}
+        for n in notifications:
+            project_title = n.discussion.project.title
+            if project_title not in groups_dict:
+                groups_dict[project_title] = {
+                    "project_title": project_title,
+                    "comments": [],
+                }
+            author_name = "Someone"
+            if n.discussion.author:
+                author_name = n.discussion.author.full_name or n.discussion.author.email
+            groups_dict[project_title]["comments"].append(
+                {"author_name": author_name, "body": n.discussion.body[:500]}
+            )
+
+        context = {
+            "recipient_name": recipient.first_name or "there",
+            "groups": list(groups_dict.values()),
+            "site_url": settings.FRONTEND_URL,
+            "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
+            "current_year": timezone.now().year,
+        }
+        html, text = render_email("discussion_digest", context)
+
+        email = EmailMultiAlternatives(
+            subject="Discussion updates - Naglasúpan",
+            body=text,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[recipient.email],
+        )
+        email.attach_alternative(html, "text/html")
+        email.send(fail_silently=False)

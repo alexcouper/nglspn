@@ -1,0 +1,22 @@
+{% extends "email/base.mjml" %}
+
+{% block title %}New comment on {{ project_title }} - Naglasúpan{% endblock %}
+
+{% block content %}
+<mj-section background-color="#ffffff" border-radius="16px" padding="40px 30px">
+  <mj-column>
+    <mj-text font-size="24px" font-weight="600" align="center" padding-bottom="10px">
+      New comment on {{ project_title }}
+    </mj-text>
+    <mj-text align="center" padding-bottom="20px">
+      Hi {{ recipient_name }}, {{ author_name }} commented on a discussion:
+    </mj-text>
+    <mj-text padding="16px" background-color="#f3f4f6" border-radius="8px" font-style="italic">
+      {{ comment_body }}
+    </mj-text>
+    <mj-button href="{{ discussion_url }}" align="center" padding-top="30px">
+      View discussion
+    </mj-button>
+  </mj-column>
+</mj-section>
+{% endblock %}

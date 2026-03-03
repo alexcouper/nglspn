@@ -1,0 +1,16 @@
+Discussion updates - Naglasúpan
+================================
+
+Hi {{ recipient_name }}, here's what you missed:
+
+{% for group in groups %}
+{{ group.project_title }}
+{% for comment in group.comments %}- {{ comment.author_name }}: {{ comment.body }}
+{% endfor %}
+{% endfor %}
+View on Naglasúpan: {{ site_url }}
+
+---
+Byggjum, deilum, vöxum saman
+
+(c) {{ current_year }} Naglasúpan.

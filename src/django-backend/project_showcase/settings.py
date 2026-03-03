@@ -65,6 +65,8 @@ INSTALLED_APPS = [
     "apps.projects",
     "apps.tags",
     "apps.emails",
+    "apps.discussions",
+    "apps.notifications",
     "django_tasks",
     "django_tasks_db",
 ]

@@ -1,0 +1,29 @@
+{% extends "email/base.mjml" %}
+
+{% block title %}Discussion updates - Naglasúpan{% endblock %}
+
+{% block content %}
+<mj-section background-color="#ffffff" border-radius="16px" padding="40px 30px">
+  <mj-column>
+    <mj-text font-size="24px" font-weight="600" align="center" padding-bottom="10px">
+      Discussion updates
+    </mj-text>
+    <mj-text align="center" padding-bottom="20px">
+      Hi {{ recipient_name }}, here's what you missed:
+    </mj-text>
+    {% for group in groups %}
+    <mj-text font-size="18px" font-weight="600" padding-top="20px" padding-bottom="5px">
+      {{ group.project_title }}
+    </mj-text>
+    {% for comment in group.comments %}
+    <mj-text padding="12px" background-color="#f3f4f6" border-radius="8px" padding-bottom="8px">
+      <strong>{{ comment.author_name }}</strong>: {{ comment.body }}
+    </mj-text>
+    {% endfor %}
+    {% endfor %}
+    <mj-button href="{{ site_url }}" align="center" padding-top="30px">
+      View on Naglasúpan
+    </mj-button>
+  </mj-column>
+</mj-section>
+{% endblock %}

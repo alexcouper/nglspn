@@ -12,6 +12,7 @@ import {
 } from "@heroicons/react/24/solid";
 import type { Project } from "@/lib/api";
 import { TagGroup } from "@/components/TagBadge";
+import { InlineDiscussions } from "@/components/InlineDiscussions";
 import { ProjectPageLayout } from "@/components/ProjectPageLayout";
 import { ProjectTitleBanner } from "@/components/ProjectTitleBanner";
 import { pickVariant, groupTagsByCategory } from "@/lib/utils";
@@ -21,7 +22,7 @@ interface Props {
   projectId: string;
 }
 
-export function ProjectDetailContent({ project }: Props) {
+export function ProjectDetailContent({ project, projectId }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const tagsByCategory = useMemo(
@@ -208,6 +209,11 @@ export function ProjectDetailContent({ project }: Props) {
           <ReactMarkdown>{project.description}</ReactMarkdown>
         </article>
       ),
+    },
+    {
+      id: "discussions",
+      label: "Discussions",
+      content: <InlineDiscussions projectId={projectId} />,
     },
   ];
 

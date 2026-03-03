@@ -25,6 +25,7 @@ class UserResponse(Schema):
     email_opt_in_competition_results: bool
     email_opt_in_platform_updates: bool
     opt_in_to_external_promotions: bool
+    notification_frequency: str
 
     @staticmethod
     def resolve_groups(obj: Any) -> list[str]:
@@ -38,6 +39,7 @@ class UserUpdate(Schema):
     email_opt_in_competition_results: bool | None = None
     email_opt_in_platform_updates: bool | None = None
     opt_in_to_external_promotions: bool | None = None
+    notification_frequency: str | None = None
 
 
 class PublicUserProfile(Schema):

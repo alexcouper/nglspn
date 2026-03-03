@@ -4,7 +4,13 @@ import pytest
 
 from apps.emails.models import BroadcastEmailRecipient
 from services.email.django_impl import DjangoEmailHandler
-from tests.factories import BroadcastEmailFactory, ProjectFactory, UserFactory
+from tests.factories import (
+    BroadcastEmailFactory,
+    DiscussionFactory,
+    NotificationFactory,
+    ProjectFactory,
+    UserFactory,
+)
 
 handler = DjangoEmailHandler()
 
@@ -163,3 +169,73 @@ class TestSendBroadcast:
         handler.send_broadcast(broadcast, admin)
 
         assert mailoutbox[0].subject == "Big News - Naglasúpan"
+
+
+@pytest.mark.django_db
+class TestSendDiscussionNotificationEmail:
+    def test_sends_to_recipient(self, mailoutbox):
+        project = ProjectFactory(title="Cool Project")
+        discussion = DiscussionFactory(project=project, body="Great work!")
+        notification = NotificationFactory(discussion=discussion)
+
+        handler.send_discussion_notification_email(notification, discussion)
+
+        assert len(mailoutbox) == 1
+        assert mailoutbox[0].to == [notification.recipient.email]
+
+    def test_subject_includes_project_title(self, mailoutbox):
+        project = ProjectFactory(title="Cool Project")
+        discussion = DiscussionFactory(project=project)
+        notification = NotificationFactory(discussion=discussion)
+
+        handler.send_discussion_notification_email(notification, discussion)
+
+        assert mailoutbox[0].subject == "New comment on Cool Project - Naglasúpan"
+
+    def test_body_contains_comment_text(self, mailoutbox):
+        discussion = DiscussionFactory(body="This is my comment")
+        notification = NotificationFactory(discussion=discussion)
+
+        handler.send_discussion_notification_email(notification, discussion)
+
+        assert "This is my comment" in mailoutbox[0].body
+
+    def test_has_html_and_text_parts(self, mailoutbox):
+        discussion = DiscussionFactory(body="Hello there")
+        notification = NotificationFactory(discussion=discussion)
+
+        handler.send_discussion_notification_email(notification, discussion)
+
+        email = mailoutbox[0]
+        assert len(email.alternatives) == 1
+        html, mime = email.alternatives[0]
+        assert mime == "text/html"
+        assert "Hello there" in html
+
+    def test_uses_author_full_name(self, mailoutbox):
+        author = UserFactory(first_name="María", last_name="García")
+        discussion = DiscussionFactory(author=author)
+        notification = NotificationFactory(discussion=discussion)
+
+        handler.send_discussion_notification_email(notification, discussion)
+
+        assert "María García" in mailoutbox[0].body
+
+    def test_fallback_when_author_is_none(self, mailoutbox):
+        discussion = DiscussionFactory(author=None)
+        notification = NotificationFactory(discussion=discussion)
+
+        handler.send_discussion_notification_email(notification, discussion)
+
+        assert "Someone" in mailoutbox[0].body
+
+    def test_truncates_long_body(self, mailoutbox):
+        long_body = "x" * 1000
+        discussion = DiscussionFactory(body=long_body)
+        notification = NotificationFactory(discussion=discussion)
+
+        handler.send_discussion_notification_email(notification, discussion)
+
+        # The context passes body[:500], so the full 1000-char body should not appear
+        assert long_body not in mailoutbox[0].body
+        assert "x" * 500 in mailoutbox[0].body

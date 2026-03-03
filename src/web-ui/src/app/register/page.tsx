@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth";
 import { getPostAuthDestination } from "@/lib/auth-routing";
 
 export default function RegisterPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next");
   const { register } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -33,7 +35,7 @@ export default function RegisterPage() {
 
     try {
       const userData = await register(email, password, kennitala);
-      router.push(getPostAuthDestination(userData));
+      router.push(getPostAuthDestination(userData, next));
     } catch (err) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -125,7 +127,7 @@ export default function RegisterPage() {
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
             Already have an account?{" "}
-            <Link href="/login" className="text-accent hover:text-accent-hover font-medium transition-colors">
+            <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="text-accent hover:text-accent-hover font-medium transition-colors">
               Log in
             </Link>
           </p>

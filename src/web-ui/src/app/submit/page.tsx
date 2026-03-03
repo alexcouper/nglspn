@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth";
+import { buildLoginPath } from "@/lib/auth-routing";
 import { api } from "@/lib/api";
 
 export default function SubmitPage() {
   const router = useRouter();
+  const pathname = usePathname();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
@@ -16,9 +18,9 @@ export default function SubmitPage() {
 
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      router.push("/login");
+      router.push(buildLoginPath(pathname));
     }
-  }, [authLoading, isAuthenticated, router]);
+  }, [authLoading, isAuthenticated, pathname, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

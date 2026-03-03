@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/contexts/auth";
 import { PinInput } from "@/components/PinInput";
 import { getPostAuthDestination } from "@/lib/auth-routing";
 
 export default function VerifyEmailPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const next = searchParams.get("next");
   const { user, isLoading, isAuthenticated, verifyEmail, resendVerification, refreshUser } =
     useAuth();
   const [isVerifying, setIsVerifying] = useState(false);
@@ -21,10 +23,10 @@ export default function VerifyEmailPage() {
       if (!isAuthenticated) {
         router.push("/login");
       } else if (user?.is_verified) {
-        router.push(getPostAuthDestination(user));
+        router.push(getPostAuthDestination(user, next));
       }
     }
-  }, [isLoading, isAuthenticated, user, router]);
+  }, [isLoading, isAuthenticated, user, next, router]);
 
   useEffect(() => {
     if (resendCooldown > 0) {
@@ -42,7 +44,7 @@ export default function VerifyEmailPage() {
         await verifyEmail(code);
         const updatedUser = await refreshUser();
         if (updatedUser) {
-          router.push(getPostAuthDestination(updatedUser));
+          router.push(getPostAuthDestination(updatedUser, next));
         } else {
           router.push("/my-projects");
         }
@@ -53,7 +55,7 @@ export default function VerifyEmailPage() {
         setIsVerifying(false);
       }
     },
-    [verifyEmail, refreshUser, router]
+    [verifyEmail, refreshUser, next, router]
   );
 
   const handleResend = async () => {

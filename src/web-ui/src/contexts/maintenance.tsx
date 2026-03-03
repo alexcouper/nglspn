@@ -17,7 +17,8 @@ interface MaintenanceContextType {
 
 const MaintenanceContext = createContext<MaintenanceContextType | undefined>(undefined);
 
-const CDN_CONFIG_URL = "https://cdn.naglasupan.is/maintenance/config.json";
+const CDN_BASE_URL = process.env.NEXT_PUBLIC_CDN_URL || "https://cdn.naglasupan.is";
+const CDN_CONFIG_URL = `${CDN_BASE_URL}/maintenance/config.json`;
 const LOCAL_CONFIG_URL = "/maintenance.json";
 
 function getConfigUrl(): string {

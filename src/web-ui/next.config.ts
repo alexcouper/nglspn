@@ -2,6 +2,10 @@ import type { NextConfig } from "next";
 
 const isDev = process.env.NODE_ENV === "development";
 
+const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "https://api.naglasupan.is";
+const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || "https://cdn.naglasupan.is";
+const cdnHostname = new URL(cdnUrl).hostname;
+
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
@@ -9,8 +13,8 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://cdn.naglasupan.is https://*.s3.fr-par.scw.cloud",
-      `connect-src 'self' https://api.naglasupan.is https://cdn.naglasupan.is https://s3.fr-par.scw.cloud https://plausible.io${isDev ? " http://localhost:* http://127.0.0.1:*" : ""}`,
+      `img-src 'self' data: ${cdnUrl} https://*.s3.fr-par.scw.cloud`,
+      `connect-src 'self' ${apiUrl} ${cdnUrl} https://s3.fr-par.scw.cloud https://plausible.io${isDev ? " http://localhost:* http://127.0.0.1:*" : ""}`,
       "frame-ancestors 'none'",
     ].join("; "),
   },
@@ -48,7 +52,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: "https",
-        hostname: "cdn.naglasupan.is",
+        hostname: cdnHostname,
       },
     ],
   },

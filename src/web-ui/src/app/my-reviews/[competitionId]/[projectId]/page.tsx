@@ -6,7 +6,7 @@ import {
   api,
   ReviewProjectDetail as ReviewProjectDetailType,
 } from "@/lib/api";
-import { ReadOnlyProjectDetail } from "@/app/my-projects/[id]/ReadOnlyProjectDetail";
+import { ProjectDetailContent } from "@/app/projects/[id]/ProjectDetailContent";
 import { useBreadcrumbs } from "../../BreadcrumbContext";
 
 export default function ReviewProjectDetailPage() {
@@ -63,5 +63,5 @@ export default function ReviewProjectDetailPage() {
     return <p className="text-muted-foreground text-sm">Project not found</p>;
   }
 
-  return <ReadOnlyProjectDetail project={project} showStatus={false} />;
+  return <ProjectDetailContent project={project} projectId={projectId} />;
 }

@@ -3,16 +3,30 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
-import { PencilIcon, EyeIcon, CloudArrowUpIcon, TrashIcon, ArrowPathIcon } from "@heroicons/react/24/outline";
+import {
+  PencilIcon,
+  EyeIcon,
+  CloudArrowUpIcon,
+  TrashIcon,
+  ArrowPathIcon,
+} from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/auth";
 import { buildLoginPath } from "@/lib/auth-routing";
 import { api } from "@/lib/api";
 import type { Project, ProjectImage } from "@/lib/api";
-import { ReadOnlyProjectDetail } from "./ReadOnlyProjectDetail";
-import { EditProjectDetail, type ProjectFormData } from "./EditProjectDetail";
+import { ProjectDetailContent } from "@/app/projects/[id]/ProjectDetailContent";
+import { EditProjectContent } from "./EditProjectContent";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import type { SelectedTag } from "@/components/TagSelector";
+
+export interface ProjectFormData {
+  title: string;
+  tagline: string;
+  website_url: string;
+  description: string;
+  tag_ids: string[];
+}
 
 type ViewMode = "edit" | "preview";
 
@@ -209,11 +223,15 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   if (authLoading || isLoading) {
     return (
-      <div className="bg-white rounded-xl border border-border p-8">
-        <div className="skeleton h-6 w-1/3 mb-4" />
-        <div className="skeleton h-48 w-full mb-4 rounded-lg" />
-        <div className="skeleton h-4 w-2/3 mb-2" />
-        <div className="skeleton h-4 w-1/2" />
+      <div className="py-8 px-4 sm:px-6">
+        <div className="max-w-5xl mx-auto">
+          <div className="bg-white rounded-xl border border-border p-8">
+            <div className="skeleton h-6 w-1/3 mb-4" />
+            <div className="skeleton h-48 w-full mb-4 rounded-lg" />
+            <div className="skeleton h-4 w-2/3 mb-2" />
+            <div className="skeleton h-4 w-1/2" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -246,21 +264,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
   return (
     <>
-      {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm mb-4">
-          {error}
-        </div>
-      )}
-
-      {successMessage && (
-        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg text-sm mb-4">
-          {successMessage}
-        </div>
-      )}
-
-      <div className="bg-white rounded-xl border border-border">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-border">
+      {/* Sticky toolbar */}
+      <div className="sticky top-14 z-30 bg-white border-b border-border">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 flex items-center justify-between py-2">
           <div className="flex items-center gap-1">
             <button
               onClick={() => setViewMode("edit")}
@@ -287,6 +293,12 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           </div>
 
           <div className="flex items-center gap-2">
+            {successMessage && (
+              <span className="text-emerald-600 text-sm">{successMessage}</span>
+            )}
+            {error && project && (
+              <span className="text-red-600 text-sm">{error}</span>
+            )}
             <button
               onClick={handleSave}
               disabled={isSaving}
@@ -310,29 +322,32 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             </button>
           </div>
         </div>
-
-        {/* Content */}
-        <div className="p-5">
-          {viewMode === "edit" && formData ? (
-            <EditProjectDetail
-              project={project}
-              formData={formData}
-              onChange={handleFormChange}
-              onTagsChange={handleTagsChange}
-              images={images}
-              uploads={uploads}
-              isUploading={isUploading}
-              onFilesSelected={handleFilesSelected}
-              onSetMainImage={handleSetMainImage}
-              onDeleteImage={handleDeleteImage}
-            />
-          ) : (
-            previewProject && <ReadOnlyProjectDetail project={previewProject} />
-          )}
-        </div>
       </div>
 
-      <div className="mt-6 text-center">
+      {/* Content: edit or preview mode */}
+      {viewMode === "edit" && formData ? (
+        <EditProjectContent
+          project={project}
+          formData={formData}
+          onChange={handleFormChange}
+          onTagsChange={handleTagsChange}
+          images={images}
+          uploads={uploads}
+          isUploading={isUploading}
+          onFilesSelected={handleFilesSelected}
+          onSetMainImage={handleSetMainImage}
+          onDeleteImage={handleDeleteImage}
+        />
+      ) : (
+        previewProject && (
+          <ProjectDetailContent
+            project={previewProject}
+            projectId={projectId}
+          />
+        )
+      )}
+
+      <div className="py-6 text-center">
         <Link href="/my-projects" className="text-sm text-accent hover:text-accent-hover transition-colors">
           Back to my projects
         </Link>

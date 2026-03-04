@@ -22,15 +22,10 @@ type ImageVariant = { size: string; url: string; width: number; height: number }
 
 const VARIANT_SIZE_ORDER = ["thumb", "medium", "large"] as const;
 
-/**
- * Pick the best available variant for a rendering context.
- * Prefers the requested size, then falls up to larger sizes.
- * Returns the variant URL, or null if no suitable variant exists.
- */
-export function pickVariant(
+function findBestVariant(
   variants: ImageVariant[] | undefined,
   preferred: string
-): string | null {
+): ImageVariant | null {
   if (!variants || variants.length === 0) return null;
 
   const startIndex = VARIANT_SIZE_ORDER.indexOf(
@@ -40,10 +35,42 @@ export function pickVariant(
 
   for (let i = startIndex; i < VARIANT_SIZE_ORDER.length; i++) {
     const match = variants.find((v) => v.size === VARIANT_SIZE_ORDER[i]);
-    if (match) return match.url;
+    if (match) return match;
   }
 
   return null;
+}
+
+/**
+ * Pick the best available variant for a rendering context.
+ * Prefers the requested size, then falls up to larger sizes.
+ * Returns the variant URL, or null if no suitable variant exists.
+ */
+export function pickVariant(
+  variants: ImageVariant[] | undefined,
+  preferred: string
+): string | null {
+  return findBestVariant(variants, preferred)?.url ?? null;
+}
+
+export function getAuthorName(owner: { first_name: string; last_name: string }): string {
+  return [owner.first_name, owner.last_name].filter(Boolean).join(" ") || "Anonymous";
+}
+
+type TagWithCategory = { category_slug: string | null };
+
+export function groupTagsByCategory<T extends TagWithCategory>(tags: T[] | undefined) {
+  if (!tags || tags.length === 0) return [];
+
+  const groups = new Map<string, { categoryName: string; tags: T[] }>();
+  for (const tag of tags) {
+    const key = tag.category_slug || "other";
+    if (!groups.has(key)) {
+      groups.set(key, { categoryName: key.replace(/-/g, " "), tags: [] });
+    }
+    groups.get(key)!.tags.push(tag);
+  }
+  return Array.from(groups.values());
 }
 
 export function getContrastColor(hexColor: string): string {

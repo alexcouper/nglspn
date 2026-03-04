@@ -58,7 +58,7 @@ def build_digest_groups(notifications: Sequence[Notification]) -> list[dict]:
             groups_dict[project_key] = {
                 "project_title": project.title,
                 "project_url": (
-                    f"{settings.FRONTEND_URL}/projects/{project.id}/discussions"
+                    f"{settings.FRONTEND_URL}/projects/{project.id}#discussions"
                 ),
                 "comments": [],
             }
@@ -258,7 +258,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
             "project_title": discussion.project.title,
             "comment_body": discussion.body[:500],
             "discussion_url": (
-                f"{settings.FRONTEND_URL}/projects/{discussion.project_id}/discussions"
+                f"{settings.FRONTEND_URL}/projects/{discussion.project_id}#discussions"
             ),
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
             "current_year": timezone.now().year,

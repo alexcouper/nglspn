@@ -106,10 +106,10 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
             project.
           </p>
           <div className="flex justify-center gap-3">
-            <Link href={buildLoginPath(pathname)} className="btn-primary">
+            <Link href={buildLoginPath(`${pathname}#discussions`)} className="btn-primary">
               Log in
             </Link>
-            <Link href={`/register?next=${encodeURIComponent(pathname)}`} className="btn-secondary">
+            <Link href={`/register?next=${encodeURIComponent(`${pathname}#discussions`)}`} className="btn-secondary">
               Sign up
             </Link>
           </div>

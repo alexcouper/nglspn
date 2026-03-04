@@ -6,7 +6,9 @@ import { api } from "@/lib/api";
 import type { Discussion, Reply } from "@/lib/api";
 import { DiscussionList } from "@/app/projects/[id]/discussions/DiscussionList";
 import { NewDiscussionForm } from "@/app/projects/[id]/discussions/NewDiscussionForm";
+import { buildLoginPath } from "@/lib/auth-routing";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 interface InlineDiscussionsProps {
   projectId: string;
@@ -34,6 +36,7 @@ function DiscussionsSkeleton() {
 
 export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const pathname = usePathname();
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [fetched, setFetched] = useState(false);
   const [error, setError] = useState("");
@@ -103,10 +106,10 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
             project.
           </p>
           <div className="flex justify-center gap-3">
-            <Link href="/login" className="btn-primary">
+            <Link href={buildLoginPath(pathname)} className="btn-primary">
               Log in
             </Link>
-            <Link href="/register" className="btn-secondary">
+            <Link href={`/register?next=${encodeURIComponent(pathname)}`} className="btn-secondary">
               Sign up
             </Link>
           </div>

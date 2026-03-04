@@ -1,12 +1,10 @@
-Discussion updates - Naglasúpan
-================================
-
-Hi {{ recipient_name }}, here's what you missed:
+Hi {{ recipient_name }}, there's been some activity on your projects:
 
 {% for group in groups %}
-{{ group.project_title }}
-{% for comment in group.comments %}- {{ comment.author_name }}: {{ comment.body }}
-{% endfor %}
+{{ group.project_title }} ({{ group.project_url }})
+- {{ group.first_comment.author_name }}: {{ group.first_comment.body }}
+{% if group.extra_count %}+ {{ group.extra_count }} more comment{{ group.extra_count|pluralize }}
+{% endif %}
 {% endfor %}
 View on Naglasúpan: {{ site_url }}
 

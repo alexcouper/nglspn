@@ -48,6 +48,35 @@ def _log_sent_email(
         logger.exception("Failed to log sent email record for %s", to_email)
 
 
+def build_digest_groups(notifications: Sequence[Notification]) -> list[dict]:
+    """Group notifications by project for digest emails."""
+    groups_dict: dict[str, dict] = {}
+    for n in notifications:
+        project = n.discussion.project
+        project_key = str(project.id)
+        if project_key not in groups_dict:
+            groups_dict[project_key] = {
+                "project_title": project.title,
+                "project_url": (
+                    f"{settings.FRONTEND_URL}/projects/{project.id}/discussions"
+                ),
+                "comments": [],
+            }
+        author_name = "Someone"
+        if n.discussion.author:
+            author_name = n.discussion.author.full_name or n.discussion.author.email
+        groups_dict[project_key]["comments"].append(
+            {"author_name": author_name, "body": n.discussion.body[:500]}
+        )
+
+    for group in groups_dict.values():
+        all_comments = group["comments"]
+        group["first_comment"] = all_comments[0]
+        group["extra_count"] = len(all_comments) - 1
+
+    return list(groups_dict.values())
+
+
 class DjangoEmailHandler(EmailHandlerInterface):
     def send_verification_email(
         self,
@@ -270,24 +299,10 @@ class DjangoEmailHandler(EmailHandlerInterface):
             return
 
         recipient = notifications[0].recipient
-        groups_dict: dict[str, dict] = {}
-        for n in notifications:
-            project_title = n.discussion.project.title
-            if project_title not in groups_dict:
-                groups_dict[project_title] = {
-                    "project_title": project_title,
-                    "comments": [],
-                }
-            author_name = "Someone"
-            if n.discussion.author:
-                author_name = n.discussion.author.full_name or n.discussion.author.email
-            groups_dict[project_title]["comments"].append(
-                {"author_name": author_name, "body": n.discussion.body[:500]}
-            )
 
         context = {
             "recipient_name": recipient.first_name or "there",
-            "groups": list(groups_dict.values()),
+            "groups": build_digest_groups(notifications),
             "site_url": settings.FRONTEND_URL,
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
             "current_year": timezone.now().year,

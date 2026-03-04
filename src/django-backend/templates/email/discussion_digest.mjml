@@ -5,21 +5,21 @@
 {% block content %}
 <mj-section background-color="#ffffff" border-radius="16px" padding="40px 30px">
   <mj-column>
-    <mj-text font-size="24px" font-weight="600" align="center" padding-bottom="10px">
-      Discussion updates
-    </mj-text>
-    <mj-text align="center" padding-bottom="20px">
-      Hi {{ recipient_name }}, here's what you missed:
+    <mj-text font-size="16px" align="left" padding="0 0 20px 0">
+      Hi {{ recipient_name }}, there's been some activity on your projects:
     </mj-text>
     {% for group in groups %}
-    <mj-text font-size="18px" font-weight="600" padding-top="20px" padding-bottom="5px">
-      {{ group.project_title }}
+    <mj-text font-size="18px" font-weight="600" padding="20px 0 5px 0">
+      <a href="{{ group.project_url }}" style="color: #111827; text-decoration: none;">{{ group.project_title }}</a>
     </mj-text>
-    {% for comment in group.comments %}
-    <mj-text padding="12px" background-color="#f3f4f6" border-radius="8px" padding-bottom="8px">
-      <strong>{{ comment.author_name }}</strong>: {{ comment.body }}
+    <mj-text padding="12px" background-color="#f3f4f6" border-radius="8px">
+      <strong>{{ group.first_comment.author_name }}</strong>: {{ group.first_comment.body }}
     </mj-text>
-    {% endfor %}
+    {% if group.extra_count %}
+    <mj-text font-size="14px" color="#6b7280" padding="4px 0 0 0">
+      + {{ group.extra_count }} more comment{{ group.extra_count|pluralize }}
+    </mj-text>
+    {% endif %}
     {% endfor %}
     <mj-button href="{{ site_url }}" align="center" padding-top="30px">
       View on Naglasúpan

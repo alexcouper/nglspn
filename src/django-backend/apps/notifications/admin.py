@@ -12,6 +12,7 @@ from django.urls import path, reverse
 from django.utils import timezone
 
 from services.email.django_impl import render_email
+from services.email.django_impl.handler import build_digest_groups
 
 from .models import Notification
 
@@ -137,24 +138,10 @@ class NotificationAdmin(admin.ModelAdmin):
             )
 
         recipient = notifications[0].recipient
-        groups_dict: dict[str, dict] = {}
-        for n in notifications:
-            project_title = n.discussion.project.title
-            if project_title not in groups_dict:
-                groups_dict[project_title] = {
-                    "project_title": project_title,
-                    "comments": [],
-                }
-            author_name = "Someone"
-            if n.discussion.author:
-                author_name = n.discussion.author.full_name or n.discussion.author.email
-            groups_dict[project_title]["comments"].append(
-                {"author_name": author_name, "body": n.discussion.body[:500]}
-            )
 
         context = {
             "recipient_name": recipient.first_name or "there",
-            "groups": list(groups_dict.values()),
+            "groups": build_digest_groups(notifications),
             "site_url": settings.FRONTEND_URL,
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
             "current_year": timezone.now().year,

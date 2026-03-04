@@ -69,7 +69,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     notification_frequency = models.CharField(
         max_length=20,
         choices=NotificationCadence.choices,
-        default=NotificationCadence.IMMEDIATE,
+        default=NotificationCadence.NEVER,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

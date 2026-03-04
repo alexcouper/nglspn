@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
-from apps.emails.models import BroadcastEmailRecipient
+from apps.emails.models import BroadcastEmailRecipient, SentEmail, SentEmailType
 from services.email import EMAIL_LOGO_URL
 from services.email.handler_interface import EmailHandlerInterface
 
@@ -26,6 +26,28 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _log_sent_email(
+    *,
+    recipient: User | None,
+    email_type: str,
+    subject: str,
+    to_email: str,
+    success: bool = True,
+    error_message: str = "",
+) -> None:
+    try:
+        SentEmail.objects.create(
+            recipient=recipient,
+            email_type=email_type,
+            subject=subject,
+            to_email=to_email,
+            success=success,
+            error_message=error_message,
+        )
+    except Exception:
+        logger.exception("Failed to log sent email record for %s", to_email)
+
+
 class DjangoEmailHandler(EmailHandlerInterface):
     def send_verification_email(
         self,
@@ -42,14 +64,32 @@ class DjangoEmailHandler(EmailHandlerInterface):
         }
         html, text = render_email("verification_code", context)
 
+        subject = "Verify your email - Naglasúpan"
         email = EmailMultiAlternatives(
-            subject="Verify your email - Naglasúpan",
+            subject=subject,
             body=text,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[user.email],
         )
         email.attach_alternative(html, "text/html")
-        email.send(fail_silently=False)
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=user,
+                email_type=SentEmailType.VERIFICATION,
+                subject=subject,
+                to_email=user.email,
+                success=False,
+                error_message=f"Failed to send to {user.email}",
+            )
+            raise
+        _log_sent_email(
+            recipient=user,
+            email_type=SentEmailType.VERIFICATION,
+            subject=subject,
+            to_email=user.email,
+        )
 
     def send_password_reset_email(
         self,
@@ -66,14 +106,32 @@ class DjangoEmailHandler(EmailHandlerInterface):
         }
         html, text = render_email("password_reset_code", context)
 
+        subject = "Reset your password - Naglasúpan"
         email = EmailMultiAlternatives(
-            subject="Reset your password - Naglasúpan",
+            subject=subject,
             body=text,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[user.email],
         )
         email.attach_alternative(html, "text/html")
-        email.send(fail_silently=False)
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=user,
+                email_type=SentEmailType.PASSWORD_RESET,
+                subject=subject,
+                to_email=user.email,
+                success=False,
+                error_message=f"Failed to send to {user.email}",
+            )
+            raise
+        _log_sent_email(
+            recipient=user,
+            email_type=SentEmailType.PASSWORD_RESET,
+            subject=subject,
+            to_email=user.email,
+        )
 
     def send_project_approved_email(self, project: Project) -> None:
         owner = project.owner
@@ -86,14 +144,32 @@ class DjangoEmailHandler(EmailHandlerInterface):
         }
         html, text = render_email("project_approved", context)
 
+        subject = "Your project has been approved - Naglasúpan"
         email = EmailMultiAlternatives(
-            subject="Your project has been approved - Naglasúpan",
+            subject=subject,
             body=text,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[owner.email],
         )
         email.attach_alternative(html, "text/html")
-        email.send(fail_silently=False)
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=owner,
+                email_type=SentEmailType.PROJECT_APPROVED,
+                subject=subject,
+                to_email=owner.email,
+                success=False,
+                error_message=f"Failed to send to {owner.email}",
+            )
+            raise
+        _log_sent_email(
+            recipient=owner,
+            email_type=SentEmailType.PROJECT_APPROVED,
+            subject=subject,
+            to_email=owner.email,
+        )
 
     def send_broadcast(
         self,
@@ -160,14 +236,32 @@ class DjangoEmailHandler(EmailHandlerInterface):
         }
         html, text = render_email("discussion_notification", context)
 
+        subject = f"New comment on {discussion.project.title} - Naglasúpan"
         email = EmailMultiAlternatives(
-            subject=f"New comment on {discussion.project.title} - Naglasúpan",
+            subject=subject,
             body=text,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[recipient.email],
         )
         email.attach_alternative(html, "text/html")
-        email.send(fail_silently=False)
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=recipient,
+                email_type=SentEmailType.DISCUSSION_NOTIFICATION,
+                subject=subject,
+                to_email=recipient.email,
+                success=False,
+                error_message=f"Failed to send to {recipient.email}",
+            )
+            raise
+        _log_sent_email(
+            recipient=recipient,
+            email_type=SentEmailType.DISCUSSION_NOTIFICATION,
+            subject=subject,
+            to_email=recipient.email,
+        )
 
     def send_discussion_digest_email(
         self, notifications: Sequence[Notification]
@@ -200,11 +294,29 @@ class DjangoEmailHandler(EmailHandlerInterface):
         }
         html, text = render_email("discussion_digest", context)
 
+        subject = "Discussion updates - Naglasúpan"
         email = EmailMultiAlternatives(
-            subject="Discussion updates - Naglasúpan",
+            subject=subject,
             body=text,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[recipient.email],
         )
         email.attach_alternative(html, "text/html")
-        email.send(fail_silently=False)
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=recipient,
+                email_type=SentEmailType.DISCUSSION_DIGEST,
+                subject=subject,
+                to_email=recipient.email,
+                success=False,
+                error_message=f"Failed to send to {recipient.email}",
+            )
+            raise
+        _log_sent_email(
+            recipient=recipient,
+            email_type=SentEmailType.DISCUSSION_DIGEST,
+            subject=subject,
+            to_email=recipient.email,
+        )

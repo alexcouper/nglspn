@@ -14,6 +14,8 @@ _SEND_EMAIL = (
     ".send_discussion_notification_email"
 )
 
+_IMMEDIATE = NotificationCadence.IMMEDIATE
+
 
 @pytest.fixture
 def handler():
@@ -23,7 +25,7 @@ def handler():
 @pytest.mark.django_db
 class TestRecipientDetermination:
     def test_root_discussion_notifies_project_owner(self, handler) -> None:
-        owner = UserFactory()
+        owner = UserFactory(notification_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
         author = UserFactory()
         discussion = DiscussionFactory(project=project, author=author)
@@ -45,9 +47,9 @@ class TestRecipientDetermination:
         assert_that(Notification.objects.count(), equal_to(0))
 
     def test_reply_notifies_project_owner_and_discussion_creator(self, handler) -> None:
-        owner = UserFactory()
+        owner = UserFactory(notification_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
-        discussion_author = UserFactory()
+        discussion_author = UserFactory(notification_frequency=_IMMEDIATE)
         root = DiscussionFactory(project=project, author=discussion_author)
         replier = UserFactory()
         reply = DiscussionFactory(project=project, author=replier, parent=root)
@@ -59,13 +61,13 @@ class TestRecipientDetermination:
         assert_that(recipient_ids, equal_to({owner.id, discussion_author.id}))
 
     def test_reply_notifies_previous_participants(self, handler) -> None:
-        owner = UserFactory()
+        owner = UserFactory(notification_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
-        root_author = UserFactory()
+        root_author = UserFactory(notification_frequency=_IMMEDIATE)
         root = DiscussionFactory(project=project, author=root_author)
-        participant_a = UserFactory()
+        participant_a = UserFactory(notification_frequency=_IMMEDIATE)
         DiscussionFactory(project=project, author=participant_a, parent=root)
-        participant_b = UserFactory()
+        participant_b = UserFactory(notification_frequency=_IMMEDIATE)
         DiscussionFactory(project=project, author=participant_b, parent=root)
         new_replier = UserFactory()
         reply = DiscussionFactory(project=project, author=new_replier, parent=root)
@@ -78,7 +80,7 @@ class TestRecipientDetermination:
         assert_that(recipient_ids, equal_to(expected))
 
     def test_deduplication_when_owner_is_also_discussion_creator(self, handler) -> None:
-        owner = UserFactory()
+        owner = UserFactory(notification_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
         root = DiscussionFactory(project=project, author=owner)
         replier = UserFactory()
@@ -91,9 +93,9 @@ class TestRecipientDetermination:
         assert_that(owner_notifications.count(), equal_to(1))
 
     def test_excludes_comment_author_from_notifications(self, handler) -> None:
-        owner = UserFactory()
+        owner = UserFactory(notification_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
-        author = UserFactory()
+        author = UserFactory(notification_frequency=_IMMEDIATE)
         discussion = DiscussionFactory(project=project, author=author)
 
         with patch(_SEND_EMAIL):

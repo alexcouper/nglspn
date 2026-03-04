@@ -1,0 +1,66 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}Digest Preview{% endblock %}
+
+{% block content %}
+<div style="max-width: 800px; margin: 20px auto; color: #1e293b;">
+  <h2>Digest Email Preview</h2>
+  <p style="color: #64748b;">
+    Preview what digest emails would look like if sent now. This does not send anything.
+  </p>
+
+  <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 16px; margin: 20px 0;">
+    <strong>{{ total_unsent }}</strong> unsent notification{{ total_unsent|pluralize }} across <strong>{{ recipients|length }}</strong> recipient{{ recipients|length|pluralize }}
+  </div>
+
+  {% if recipients %}
+  <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
+    <thead>
+      <tr style="border-bottom: 2px solid #e2e8f0;">
+        <th style="text-align: left; padding: 8px 12px;">Recipient</th>
+        <th style="text-align: left; padding: 8px 12px;">Notifications</th>
+        <th style="text-align: left; padding: 8px 12px;">Projects</th>
+        <th style="text-align: center; padding: 8px 12px;">Preview</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in recipients %}
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 8px 12px;">
+          {{ r.recipient.email }}
+          {% if r.recipient.full_name %}
+            <br><span style="color: #64748b; font-size: 12px;">{{ r.recipient.full_name }}</span>
+          {% endif %}
+        </td>
+        <td style="padding: 8px 12px;">{{ r.count }}</td>
+        <td style="padding: 8px 12px;">
+          {% for project, count in r.projects.items %}
+            <span style="background: #e0f2fe; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 4px;">
+              {{ project }} ({{ count }})
+            </span>
+          {% endfor %}
+        </td>
+        <td style="padding: 8px 12px; text-align: center;">
+          <a href="{{ r.preview_url }}" target="_blank" class="button" style="padding: 4px 12px; font-size: 12px;">
+            HTML
+          </a>
+          <a href="{{ r.preview_url }}?format=text" target="_blank" class="button" style="padding: 4px 12px; font-size: 12px; margin-left: 4px;">
+            Text
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <p style="color: #64748b; margin-top: 20px;">No unsent notifications.</p>
+  {% endif %}
+
+  <div style="margin-top: 20px;">
+    <a href="{% url 'admin:notifications_notification_changelist' %}" class="button" style="padding: 8px 16px;">
+      Back to notifications
+    </a>
+  </div>
+</div>
+{% endblock %}

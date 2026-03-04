@@ -1,0 +1,10 @@
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+  {{ block.super }}
+  {% if preview_digest_url %}
+  <li>
+    <a href="{{ preview_digest_url }}">Preview Digest Emails</a>
+  </li>
+  {% endif %}
+{% endblock %}

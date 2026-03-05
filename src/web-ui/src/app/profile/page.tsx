@@ -1,11 +1,10 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
-import { useRouter, usePathname } from "next/navigation";
 import { PencilIcon, EyeIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import { ArrowPathIcon } from "@heroicons/react/24/solid";
 import { useAuth } from "@/contexts/auth";
-import { buildLoginPath } from "@/lib/auth-routing";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
 import { EditProfile, type ProfileFormData } from "./EditProfile";
 import { ReadOnlyProfile } from "./ReadOnlyProfile";
@@ -14,21 +13,14 @@ import { Settings } from "./Settings";
 type ViewMode = "edit" | "preview";
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { user, isAuthenticated, isLoading: authLoading, refreshUser } = useAuth();
+  const { isLoading: authLoading } = useRequireAuth();
+  const { user, isAuthenticated, refreshUser } = useAuth();
 
   const [viewMode, setViewMode] = useState<ViewMode>("edit");
   const [formData, setFormData] = useState<ProfileFormData | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push(buildLoginPath(pathname));
-    }
-  }, [authLoading, isAuthenticated, pathname, router]);
 
   useEffect(() => {
     if (user && !formData) {

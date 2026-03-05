@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useAuth } from "@/contexts/auth";
@@ -14,7 +14,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
-  const { login } = useAuth();
+  const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
   const [flowState, setFlowState] = useState<FlowState>("login");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,6 +25,12 @@ export default function LoginPage() {
   const [resetToken, setResetToken] = useState("");
   const [attemptsRemaining, setAttemptsRemaining] = useState<number | null>(null);
   const [pinKey, setPinKey] = useState(0);
+
+  useEffect(() => {
+    if (!authLoading && isAuthenticated && user) {
+      router.replace(getPostAuthDestination(user, next));
+    }
+  }, [authLoading, isAuthenticated, user, next, router]);
 
   const goToLogin = () => {
     setFlowState("login");

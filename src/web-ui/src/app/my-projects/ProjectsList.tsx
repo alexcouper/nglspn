@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
-import { useAuth } from "@/contexts/auth";
-import { buildLoginPath } from "@/lib/auth-routing";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api, type Project } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
 
@@ -30,22 +28,13 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export function ProjectsList() {
-  const router = useRouter();
-  const pathname = usePathname();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isReady, isLoading: authLoading } = useRequireAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push(buildLoginPath(pathname));
-      return;
-    }
-
-    if (!isAuthenticated) {
-      return;
-    }
+    if (!isReady) return;
 
     let cancelled = false;
 
@@ -67,7 +56,7 @@ export function ProjectsList() {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, isAuthenticated, pathname, router]);
+  }, [isReady]);
 
   if (authLoading || isLoading) {
     return (

@@ -1,26 +1,18 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuth } from "@/contexts/auth";
-import { buildLoginPath } from "@/lib/auth-routing";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
 
 export default function SubmitPage() {
   const router = useRouter();
-  const pathname = usePathname();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isReady, isLoading: authLoading } = useRequireAuth();
   const [url, setUrl] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push(buildLoginPath(pathname));
-    }
-  }, [authLoading, isAuthenticated, pathname, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -50,7 +42,7 @@ export default function SubmitPage() {
     }
   };
 
-  if (authLoading || !isAuthenticated) {
+  if (authLoading || !isReady) {
     return (
       <main className="min-h-screen bg-muted flex items-center justify-center pt-14">
         <div className="text-muted-foreground text-sm">Loading...</div>

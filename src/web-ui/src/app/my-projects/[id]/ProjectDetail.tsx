@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   PencilIcon,
@@ -10,8 +10,7 @@ import {
   TrashIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
-import { useAuth } from "@/contexts/auth";
-import { buildLoginPath } from "@/lib/auth-routing";
+import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
 import type { Project, ProjectImage } from "@/lib/api";
 import { ProjectDetailContent } from "@/app/projects/[id]/ProjectDetailContent";
@@ -36,8 +35,7 @@ interface ProjectDetailProps {
 
 export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const router = useRouter();
-  const pathname = usePathname();
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isReady, isLoading: authLoading } = useRequireAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
@@ -62,14 +60,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   });
 
   useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      router.push(buildLoginPath(pathname));
-      return;
-    }
-
-    if (!isAuthenticated || !projectId) {
-      return;
-    }
+    if (!isReady || !projectId) return;
 
     let cancelled = false;
 
@@ -110,7 +101,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     return () => {
       cancelled = true;
     };
-  }, [authLoading, isAuthenticated, projectId, pathname, router, formInitialized]);
+  }, [isReady, projectId, formInitialized]);
 
   const handleFormChange = useCallback((data: ProjectFormData) => {
     setFormData(data);

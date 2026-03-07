@@ -15,6 +15,7 @@ class UserAdmin(BaseUserAdmin):
         "is_staff",
         "created_at",
         "kennitala",
+        "notification_frequency",
     )
     list_filter = ("is_verified", "is_active", "is_staff", "is_superuser", "created_at")
     search_fields = ("email", "first_name", "last_name", "kennitala")

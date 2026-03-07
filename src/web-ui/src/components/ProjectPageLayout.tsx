@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, type ReactNode } from "react";
 
 export interface TabDef {
   id: string;
-  label: string;
+  label: ReactNode;
   content: ReactNode;
 }
 

@@ -1,0 +1,15 @@
+New comment on {{ project_title }} - Naglasúpan
+===============================================
+
+Hi {{ recipient_name }},
+
+{{ author_name }} commented on a discussion:
+
+"{{ comment_body }}"
+
+View discussion: {{ discussion_url }}
+
+---
+Byggjum, deilum, vöxum saman
+
+(c) {{ current_year }} Naglasúpan.

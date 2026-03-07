@@ -4,7 +4,9 @@ import factory
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
+from apps.discussions.models import Discussion
 from apps.emails.models import BroadcastEmail, BroadcastEmailImage
+from apps.notifications.models import Notification, NotificationCadence
 from apps.projects.models import (
     Competition,
     CompetitionReviewer,
@@ -78,6 +80,25 @@ class ProjectFactory(factory.django.DjangoModelFactory):
         if not create or not extracted:
             return
         self.tags.add(*extracted)
+
+
+class DiscussionFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Discussion
+
+    project = factory.SubFactory(ProjectFactory)
+    author = factory.SubFactory(UserFactory)
+    body = factory.Faker("paragraph")
+    parent = None
+
+
+class NotificationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Notification
+
+    recipient = factory.SubFactory(UserFactory)
+    discussion = factory.SubFactory(DiscussionFactory)
+    cadence = NotificationCadence.IMMEDIATE
 
 
 class ProjectImageFactory(factory.django.DjangoModelFactory):

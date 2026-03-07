@@ -1,0 +1,14 @@
+Hi {{ recipient_name }}, there's been some activity on your projects:
+
+{% for group in groups %}
+{{ group.project_title }} ({{ group.project_url }})
+- {{ group.first_comment.author_name }}: {{ group.first_comment.body }}
+{% if group.extra_count %}+ {{ group.extra_count }} more comment{{ group.extra_count|pluralize }}
+{% endif %}
+{% endfor %}
+View on Naglasúpan: {{ site_url }}
+
+---
+Byggjum, deilum, vöxum saman
+
+(c) {{ current_year }} Naglasúpan.

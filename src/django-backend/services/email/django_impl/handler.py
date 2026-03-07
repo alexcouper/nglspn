@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
-from apps.emails.models import BroadcastEmailRecipient
+from apps.emails.models import BroadcastEmailRecipient, SentEmail, SentEmailType
 from services.email import EMAIL_LOGO_URL
 from services.email.handler_interface import EmailHandlerInterface
 
@@ -15,11 +15,66 @@ from . import render_email
 from .query import DjangoEmailQuery
 
 if TYPE_CHECKING:
+    from collections.abc import Sequence
+
+    from apps.discussions.models import Discussion
     from apps.emails.models import BroadcastEmail
+    from apps.notifications.models import Notification
     from apps.projects.models import Project
     from apps.users.models import User
 
 logger = logging.getLogger(__name__)
+
+
+def _log_sent_email(
+    *,
+    recipient: User | None,
+    email_type: str,
+    subject: str,
+    to_email: str,
+    success: bool = True,
+    error_message: str = "",
+) -> None:
+    try:
+        SentEmail.objects.create(
+            recipient=recipient,
+            email_type=email_type,
+            subject=subject,
+            to_email=to_email,
+            success=success,
+            error_message=error_message,
+        )
+    except Exception:
+        logger.exception("Failed to log sent email record for %s", to_email)
+
+
+def build_digest_groups(notifications: Sequence[Notification]) -> list[dict]:
+    """Group notifications by project for digest emails."""
+    groups_dict: dict[str, dict] = {}
+    for n in notifications:
+        project = n.discussion.project
+        project_key = str(project.id)
+        if project_key not in groups_dict:
+            groups_dict[project_key] = {
+                "project_title": project.title,
+                "project_url": (
+                    f"{settings.FRONTEND_URL}/projects/{project.id}#discussions"
+                ),
+                "comments": [],
+            }
+        author_name = "Someone"
+        if n.discussion.author:
+            author_name = n.discussion.author.full_name or n.discussion.author.email
+        groups_dict[project_key]["comments"].append(
+            {"author_name": author_name, "body": n.discussion.body[:500]}
+        )
+
+    for group in groups_dict.values():
+        all_comments = group["comments"]
+        group["first_comment"] = all_comments[0]
+        group["extra_count"] = len(all_comments) - 1
+
+    return list(groups_dict.values())
 
 
 class DjangoEmailHandler(EmailHandlerInterface):
@@ -38,14 +93,32 @@ class DjangoEmailHandler(EmailHandlerInterface):
         }
         html, text = render_email("verification_code", context)
 
+        subject = "Verify your email - Naglasúpan"
         email = EmailMultiAlternatives(
-            subject="Verify your email - Naglasúpan",
+            subject=subject,
             body=text,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[user.email],
         )
         email.attach_alternative(html, "text/html")
-        email.send(fail_silently=False)
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=user,
+                email_type=SentEmailType.VERIFICATION,
+                subject=subject,
+                to_email=user.email,
+                success=False,
+                error_message=f"Failed to send to {user.email}",
+            )
+            raise
+        _log_sent_email(
+            recipient=user,
+            email_type=SentEmailType.VERIFICATION,
+            subject=subject,
+            to_email=user.email,
+        )
 
     def send_password_reset_email(
         self,
@@ -62,14 +135,32 @@ class DjangoEmailHandler(EmailHandlerInterface):
         }
         html, text = render_email("password_reset_code", context)
 
+        subject = "Reset your password - Naglasúpan"
         email = EmailMultiAlternatives(
-            subject="Reset your password - Naglasúpan",
+            subject=subject,
             body=text,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[user.email],
         )
         email.attach_alternative(html, "text/html")
-        email.send(fail_silently=False)
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=user,
+                email_type=SentEmailType.PASSWORD_RESET,
+                subject=subject,
+                to_email=user.email,
+                success=False,
+                error_message=f"Failed to send to {user.email}",
+            )
+            raise
+        _log_sent_email(
+            recipient=user,
+            email_type=SentEmailType.PASSWORD_RESET,
+            subject=subject,
+            to_email=user.email,
+        )
 
     def send_project_approved_email(self, project: Project) -> None:
         owner = project.owner
@@ -82,14 +173,32 @@ class DjangoEmailHandler(EmailHandlerInterface):
         }
         html, text = render_email("project_approved", context)
 
+        subject = "Your project has been approved - Naglasúpan"
         email = EmailMultiAlternatives(
-            subject="Your project has been approved - Naglasúpan",
+            subject=subject,
             body=text,
             from_email=settings.DEFAULT_FROM_EMAIL,
             to=[owner.email],
         )
         email.attach_alternative(html, "text/html")
-        email.send(fail_silently=False)
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=owner,
+                email_type=SentEmailType.PROJECT_APPROVED,
+                subject=subject,
+                to_email=owner.email,
+                success=False,
+                error_message=f"Failed to send to {owner.email}",
+            )
+            raise
+        _log_sent_email(
+            recipient=owner,
+            email_type=SentEmailType.PROJECT_APPROVED,
+            subject=subject,
+            to_email=owner.email,
+        )
 
     def send_broadcast(
         self,
@@ -134,3 +243,95 @@ class DjangoEmailHandler(EmailHandlerInterface):
         broadcast.save(update_fields=["sent_at", "sent_by"])
 
         return success_count, failure_count
+
+    def send_discussion_notification_email(
+        self, notification: Notification, discussion: Discussion
+    ) -> None:
+        author_name = "Someone"
+        if discussion.author:
+            author_name = discussion.author.full_name or discussion.author.email
+
+        recipient = notification.recipient
+        context = {
+            "recipient_name": recipient.first_name or "there",
+            "author_name": author_name,
+            "project_title": discussion.project.title,
+            "comment_body": discussion.body[:500],
+            "discussion_url": (
+                f"{settings.FRONTEND_URL}/projects/{discussion.project_id}#discussions"
+            ),
+            "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
+            "current_year": timezone.now().year,
+        }
+        html, text = render_email("discussion_notification", context)
+
+        subject = f"New comment on {discussion.project.title} - Naglasúpan"
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[recipient.email],
+        )
+        email.attach_alternative(html, "text/html")
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=recipient,
+                email_type=SentEmailType.DISCUSSION_NOTIFICATION,
+                subject=subject,
+                to_email=recipient.email,
+                success=False,
+                error_message=f"Failed to send to {recipient.email}",
+            )
+            raise
+        _log_sent_email(
+            recipient=recipient,
+            email_type=SentEmailType.DISCUSSION_NOTIFICATION,
+            subject=subject,
+            to_email=recipient.email,
+        )
+
+    def send_discussion_digest_email(
+        self, notifications: Sequence[Notification]
+    ) -> None:
+        if not notifications:
+            return
+
+        recipient = notifications[0].recipient
+
+        context = {
+            "recipient_name": recipient.first_name or "there",
+            "groups": build_digest_groups(notifications),
+            "site_url": settings.FRONTEND_URL,
+            "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
+            "current_year": timezone.now().year,
+        }
+        html, text = render_email("discussion_digest", context)
+
+        subject = "Discussion updates - Naglasúpan"
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[recipient.email],
+        )
+        email.attach_alternative(html, "text/html")
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=recipient,
+                email_type=SentEmailType.DISCUSSION_DIGEST,
+                subject=subject,
+                to_email=recipient.email,
+                success=False,
+                error_message=f"Failed to send to {recipient.email}",
+            )
+            raise
+        _log_sent_email(
+            recipient=recipient,
+            email_type=SentEmailType.DISCUSSION_DIGEST,
+            subject=subject,
+            to_email=recipient.email,
+        )

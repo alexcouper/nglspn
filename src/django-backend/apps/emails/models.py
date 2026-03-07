@@ -98,6 +98,42 @@ def _broadcast_image_upload_path(instance: "BroadcastEmailImage", filename: str)
     return f"{instance.id}/{filename}"
 
 
+class SentEmailType(models.TextChoices):
+    VERIFICATION = "verification", "Verification"
+    PASSWORD_RESET = "password_reset", "Password Reset"
+    PROJECT_APPROVED = "project_approved", "Project Approved"
+    DISCUSSION_NOTIFICATION = "discussion_notification", "Discussion Notification"
+    DISCUSSION_DIGEST = "discussion_digest", "Discussion Digest"
+
+
+class SentEmail(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="sent_emails",
+        null=True,
+        blank=True,
+    )
+    email_type = models.CharField(
+        max_length=30,
+        choices=SentEmailType.choices,
+    )
+    subject = models.CharField(max_length=200)
+    to_email = models.EmailField()
+    success = models.BooleanField(default=True)
+    error_message = models.TextField(blank=True, default="")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "sent_emails"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        status = "OK" if self.success else "FAILED"
+        return f"[{status}] {self.email_type} to {self.to_email}"
+
+
 class BroadcastEmailImage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     broadcast_email = models.ForeignKey(

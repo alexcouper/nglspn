@@ -3,10 +3,18 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 
+const NOTIFICATION_OPTIONS = [
+  { value: "immediate", label: "Every time" },
+  { value: "hourly", label: "Hourly" },
+  { value: "daily", label: "Daily" },
+  { value: "never", label: "Never" },
+] as const;
+
 interface SettingsProps {
   emailOptInCompetitionResults: boolean;
   emailOptInPlatformUpdates: boolean;
   optInToExternalPromotions: boolean;
+  notificationFrequency: string;
 }
 
 interface ToggleProps {
@@ -55,10 +63,12 @@ export function Settings({
   emailOptInCompetitionResults,
   emailOptInPlatformUpdates,
   optInToExternalPromotions,
+  notificationFrequency,
 }: SettingsProps) {
   const [competitionResults, setCompetitionResults] = useState(emailOptInCompetitionResults);
   const [platformUpdates, setPlatformUpdates] = useState(emailOptInPlatformUpdates);
   const [externalPromotions, setExternalPromotions] = useState(optInToExternalPromotions);
+  const [frequency, setFrequency] = useState(notificationFrequency);
   const [saving, setSaving] = useState<string | null>(null);
 
   const handleToggle = async (
@@ -102,6 +112,45 @@ export function Settings({
           }
           disabled={saving === "email_opt_in_platform_updates"}
         />
+      </div>
+
+      <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">Notifications</h2>
+      <p className="text-xs text-muted-foreground mb-3">
+        How often you receive discussion notifications
+      </p>
+
+      <div className="flex rounded-lg border border-border overflow-hidden">
+        {NOTIFICATION_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            disabled={saving === "notification_frequency"}
+            onClick={async () => {
+              if (opt.value === frequency) return;
+              const prev = frequency;
+              setFrequency(opt.value);
+              setSaving("notification_frequency");
+              try {
+                await api.auth.updateCurrentUser({ notification_frequency: opt.value });
+              } catch {
+                setFrequency(prev);
+              } finally {
+                setSaving(null);
+              }
+            }}
+            className={`
+              flex-1 py-2 text-xs font-medium transition-colors
+              ${
+                frequency === opt.value
+                  ? "bg-accent text-white"
+                  : "bg-white text-muted-foreground hover:bg-muted hover:text-foreground"
+              }
+              ${saving === "notification_frequency" ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+            `}
+          >
+            {opt.label}
+          </button>
+        ))}
       </div>
 
       <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">Privacy</h2>

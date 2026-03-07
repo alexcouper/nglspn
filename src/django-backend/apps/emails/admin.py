@@ -10,7 +10,12 @@ from django.utils.html import format_html
 
 from services import HANDLERS, REPO
 
-from .models import BroadcastEmail, BroadcastEmailImage, BroadcastEmailRecipient
+from .models import (
+    BroadcastEmail,
+    BroadcastEmailImage,
+    BroadcastEmailRecipient,
+    SentEmail,
+)
 
 if TYPE_CHECKING:
     from django.http import HttpRequest
@@ -256,3 +261,40 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
             form_url,
             extra_context=extra_context,
         )
+
+
+@admin.register(SentEmail)
+class SentEmailAdmin(admin.ModelAdmin):
+    list_display = (
+        "created_at",
+        "email_type",
+        "to_email",
+        "subject",
+        "success",
+    )
+    list_filter = ("email_type", "success", "created_at")
+    search_fields = ("to_email", "subject")
+    readonly_fields = (
+        "id",
+        "recipient",
+        "email_type",
+        "subject",
+        "to_email",
+        "success",
+        "error_message",
+        "created_at",
+    )
+    ordering = ("-created_at",)
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
+        return False
+
+    def has_change_permission(
+        self, request: HttpRequest, obj: SentEmail | None = None
+    ) -> bool:
+        return False
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: SentEmail | None = None
+    ) -> bool:
+        return False

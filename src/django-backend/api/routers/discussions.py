@@ -61,7 +61,7 @@ def reply_to_discussion(
 ) -> tuple[int, Discussion] | tuple[int, dict[str, str]]:
     try:
         reply = HANDLERS.discussions.create_discussion(
-            project_id=project_id,
+            project_id=project_id,  # overridden by handler when parent_id is set
             author_id=request.auth.id,
             body=payload.body,
             parent_id=discussion_id,

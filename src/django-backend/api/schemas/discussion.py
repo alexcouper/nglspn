@@ -14,22 +14,24 @@ class DiscussionCreate(Schema):
     body: str
 
 
+def _resolve_author(obj: object) -> dict | None:
+    author = getattr(obj, "author", None)
+    if author is None:
+        return None
+    return {
+        "id": author.id,
+        "first_name": author.first_name,
+        "last_name": author.last_name,
+    }
+
+
 class ReplyResponse(Schema):
     id: UUID
     body: str
     created_at: datetime
     author: DiscussionAuthor | None
 
-    @staticmethod
-    def resolve_author(obj: object) -> dict | None:
-        author = getattr(obj, "author", None)
-        if author is None:
-            return None
-        return {
-            "id": author.id,
-            "first_name": author.first_name,
-            "last_name": author.last_name,
-        }
+    resolve_author = staticmethod(_resolve_author)
 
 
 class DiscussionResponse(Schema):
@@ -39,16 +41,7 @@ class DiscussionResponse(Schema):
     author: DiscussionAuthor | None
     replies: list[ReplyResponse] = []
 
-    @staticmethod
-    def resolve_author(obj: object) -> dict | None:
-        author = getattr(obj, "author", None)
-        if author is None:
-            return None
-        return {
-            "id": author.id,
-            "first_name": author.first_name,
-            "last_name": author.last_name,
-        }
+    resolve_author = staticmethod(_resolve_author)
 
     @staticmethod
     def resolve_replies(obj: object) -> list:

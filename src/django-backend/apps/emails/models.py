@@ -110,7 +110,7 @@ class SentEmail(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     recipient = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         related_name="sent_emails",
         null=True,
         blank=True,
@@ -123,6 +123,7 @@ class SentEmail(models.Model):
     to_email = models.EmailField()
     success = models.BooleanField(default=True)
     error_message = models.TextField(blank=True, default="")
+    html_body = models.TextField(blank=True, default="")
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:

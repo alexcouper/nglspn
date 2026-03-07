@@ -5,7 +5,7 @@
     <mj-attributes>
       <mj-all font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" />
       <mj-text font-size="16px" line-height="1.6" color="#0f172a" />
-      <mj-button background-color="#6366f1" border-radius="8px" font-size="16px" font-weight="600" />
+      <mj-button background-color="#6366f1" border-radius="8px" font-size="14px" font-weight="600" />
     </mj-attributes>
     <mj-style>
       .code-box {
@@ -23,23 +23,25 @@
       }
     </mj-style>
   </mj-head>
-  <mj-body background-color="#ffffff">
+  <mj-body background-color="#f8fafc">
     <mj-section padding="40px 20px 20px">
       <mj-column>
-        <mj-image src="{{ logo_url }}" alt="Naglasúpan" width="80px" align="center" />
+        <mj-text align="left" padding="0" font-size="14px" font-weight="600" color="#64748b">
+          <img src="{{ logo_url }}" alt="Naglasúpan" width="32" height="32" style="vertical-align: middle; display: inline-block;" />
+          <span style="vertical-align: middle; margin-left: 10px;">Naglasúpan</span>
+        </mj-text>
       </mj-column>
     </mj-section>
 
     {% block content %}{% endblock %}
 
-    <mj-section padding="20px 20px">
+    <mj-section padding="28px 20px 32px">
       <mj-column>
-        <mj-divider border-color="#e2e8f0" border-width="1px" />
         {% block footer_extra %}{% endblock %}
-        <mj-text align="center" font-size="14px" color="#64748b" padding-top="20px">
+        <mj-text align="center" font-size="13px" color="#94a3b8" padding="0 0 4px">
           Byggjum, deilum, vöxum saman
         </mj-text>
-        <mj-text align="center" font-size="12px" color="#9ca3af">
+        <mj-text align="center" font-size="12px" color="#cbd5e1" padding="0">
           &copy; {{ current_year }} Naglasúpan.
         </mj-text>
       </mj-column>

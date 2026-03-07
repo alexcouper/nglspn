@@ -143,6 +143,7 @@ class NotificationAdmin(admin.ModelAdmin):
             "recipient_name": recipient.first_name or "there",
             "groups": build_digest_groups(notifications),
             "site_url": settings.FRONTEND_URL,
+            "profile_url": f"{settings.FRONTEND_URL}/profile",
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
             "current_year": timezone.now().year,
         }

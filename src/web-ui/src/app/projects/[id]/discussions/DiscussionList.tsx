@@ -6,10 +6,12 @@ import type { Discussion, Reply } from "@/lib/api";
 import { ReplyForm } from "./ReplyForm";
 
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
+  return new Date(dateStr).toLocaleString("en-US", {
     year: "numeric",
     month: "short",
     day: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
   });
 }
 

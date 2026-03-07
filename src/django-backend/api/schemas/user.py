@@ -4,6 +4,8 @@ from uuid import UUID
 
 from ninja import Schema
 
+from apps.notifications.models import NotificationCadence
+
 
 class UserCreate(Schema):
     email: str
@@ -39,7 +41,7 @@ class UserUpdate(Schema):
     email_opt_in_competition_results: bool | None = None
     email_opt_in_platform_updates: bool | None = None
     opt_in_to_external_promotions: bool | None = None
-    notification_frequency: str | None = None
+    notification_frequency: NotificationCadence | None = None
 
 
 class PublicUserProfile(Schema):

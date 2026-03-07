@@ -88,14 +88,6 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
                 "Failed to send immediate notification %s", notification.id
             )
 
-    def send_immediate_notifications(self) -> None:
-        unsent = Notification.objects.filter(
-            cadence=NotificationCadence.IMMEDIATE, sent=False
-        ).select_related("recipient", "discussion", "discussion__project")
-
-        for notification in unsent:
-            self._send_immediate(notification, notification.discussion)
-
     def send_batch_notifications(self, cadence: str) -> None:
         unsent = (
             Notification.objects.filter(cadence=cadence, sent=False)

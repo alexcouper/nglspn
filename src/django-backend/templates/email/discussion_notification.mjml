@@ -3,20 +3,51 @@
 {% block title %}New comment on {{ project_title }} - Naglasúpan{% endblock %}
 
 {% block content %}
-<mj-section background-color="#ffffff" border-radius="16px" padding="40px 30px">
+<mj-section background-color="#ffffff" border-radius="12px" padding="0">
   <mj-column>
-    <mj-text font-size="24px" font-weight="600" align="center" padding-bottom="10px">
-      New comment on {{ project_title }}
+    <!-- Card header -->
+    <mj-text padding="28px 32px 20px">
+      <p style="margin: 0 0 2px; font-size: 12px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.06em;">New Comment</p>
+      <p style="margin: 0; font-size: 20px; font-weight: 700; color: #0f172a; line-height: 1.3;">
+        <a href="{{ project_url }}" style="color: #0f172a; text-decoration: none;">{{ project_title }}</a>
+      </p>
     </mj-text>
-    <mj-text align="center" padding-bottom="20px">
-      Hi {{ recipient_name }}, {{ author_name }} commented on a discussion:
+    <mj-divider border-color="#f1f5f9" border-width="1px" padding="0 32px" />
+    <!-- Author row + comment -->
+    <mj-text padding="24px 32px 0">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="margin-bottom: 20px;">
+        <tr>
+          <td width="36" valign="top">
+            <table cellpadding="0" cellspacing="0" border="0" role="presentation">
+              <tr>
+                <td width="36" height="36" align="center" valign="middle" style="background-color: #6366f1; border-radius: 18px; font-size: 14px; font-weight: 700; color: #ffffff;">{{ author_initial }}</td>
+              </tr>
+            </table>
+          </td>
+          <td valign="middle" style="padding-left: 12px;">
+            <p style="margin: 0; font-size: 14px; color: #0f172a; font-weight: 600; line-height: 1.3;">{{ author_name }}</p>
+            <p style="margin: 2px 0 0; font-size: 12px; color: #94a3b8;">commented just now</p>
+          </td>
+        </tr>
+      </table>
+      <table width="100%" cellpadding="0" cellspacing="0" border="0" role="presentation" style="background-color: #f8fafc; border-radius: 8px;">
+        <tr>
+          <td style="padding: 16px 20px;">
+            <p style="margin: 0; font-size: 15px; line-height: 1.7; color: #334155;">{{ comment_body }}</p>
+          </td>
+        </tr>
+      </table>
     </mj-text>
-    <mj-text padding="16px" background-color="#f3f4f6" border-radius="8px" font-style="italic">
-      {{ comment_body }}
-    </mj-text>
-    <mj-button href="{{ discussion_url }}" align="center" padding-top="30px">
+    <!-- CTA -->
+    <mj-button href="{{ discussion_url }}" align="center" padding="24px 32px 28px" width="100%">
       View discussion
     </mj-button>
   </mj-column>
 </mj-section>
+{% endblock %}
+
+{% block footer_extra %}
+<mj-text align="center" font-size="12px" color="#94a3b8" padding="0 0 12px">
+  You can <a href="{{ profile_url }}" style="color: #6366f1; text-decoration: underline;">change your notification frequency</a> in your profile settings.
+</mj-text>
 {% endblock %}

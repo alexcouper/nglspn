@@ -34,6 +34,7 @@ def _log_sent_email(
     to_email: str,
     success: bool = True,
     error_message: str = "",
+    html_body: str = "",
 ) -> None:
     try:
         SentEmail.objects.create(
@@ -43,6 +44,7 @@ def _log_sent_email(
             to_email=to_email,
             success=success,
             error_message=error_message,
+            html_body=html_body,
         )
     except Exception:
         logger.exception("Failed to log sent email record for %s", to_email)
@@ -60,19 +62,9 @@ def build_digest_groups(notifications: Sequence[Notification]) -> list[dict]:
                 "project_url": (
                     f"{settings.FRONTEND_URL}/projects/{project.id}#discussions"
                 ),
-                "comments": [],
+                "comment_count": 0,
             }
-        author_name = "Someone"
-        if n.discussion.author:
-            author_name = n.discussion.author.full_name or n.discussion.author.email
-        groups_dict[project_key]["comments"].append(
-            {"author_name": author_name, "body": n.discussion.body[:500]}
-        )
-
-    for group in groups_dict.values():
-        all_comments = group["comments"]
-        group["first_comment"] = all_comments[0]
-        group["extra_count"] = len(all_comments) - 1
+        groups_dict[project_key]["comment_count"] += 1
 
     return list(groups_dict.values())
 
@@ -111,6 +103,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
                 to_email=user.email,
                 success=False,
                 error_message=f"Failed to send to {user.email}",
+                html_body=html,
             )
             raise
         _log_sent_email(
@@ -118,6 +111,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
             email_type=SentEmailType.VERIFICATION,
             subject=subject,
             to_email=user.email,
+            html_body=html,
         )
 
     def send_password_reset_email(
@@ -153,6 +147,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
                 to_email=user.email,
                 success=False,
                 error_message=f"Failed to send to {user.email}",
+                html_body=html,
             )
             raise
         _log_sent_email(
@@ -160,6 +155,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
             email_type=SentEmailType.PASSWORD_RESET,
             subject=subject,
             to_email=user.email,
+            html_body=html,
         )
 
     def send_project_approved_email(self, project: Project) -> None:
@@ -191,6 +187,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
                 to_email=owner.email,
                 success=False,
                 error_message=f"Failed to send to {owner.email}",
+                html_body=html,
             )
             raise
         _log_sent_email(
@@ -198,6 +195,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
             email_type=SentEmailType.PROJECT_APPROVED,
             subject=subject,
             to_email=owner.email,
+            html_body=html,
         )
 
     def send_broadcast(
@@ -255,11 +253,16 @@ class DjangoEmailHandler(EmailHandlerInterface):
         context = {
             "recipient_name": recipient.first_name or "there",
             "author_name": author_name,
+            "author_initial": author_name[0].upper() if author_name else "?",
             "project_title": discussion.project.title,
             "comment_body": discussion.body[:500],
+            "project_url": (
+                f"{settings.FRONTEND_URL}/projects/{discussion.project_id}"
+            ),
             "discussion_url": (
                 f"{settings.FRONTEND_URL}/projects/{discussion.project_id}#discussions"
             ),
+            "profile_url": f"{settings.FRONTEND_URL}/profile",
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
             "current_year": timezone.now().year,
         }
@@ -283,6 +286,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
                 to_email=recipient.email,
                 success=False,
                 error_message=f"Failed to send to {recipient.email}",
+                html_body=html,
             )
             raise
         _log_sent_email(
@@ -290,6 +294,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
             email_type=SentEmailType.DISCUSSION_NOTIFICATION,
             subject=subject,
             to_email=recipient.email,
+            html_body=html,
         )
 
     def send_discussion_digest_email(
@@ -304,6 +309,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
             "recipient_name": recipient.first_name or "there",
             "groups": build_digest_groups(notifications),
             "site_url": settings.FRONTEND_URL,
+            "profile_url": f"{settings.FRONTEND_URL}/profile",
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
             "current_year": timezone.now().year,
         }
@@ -327,6 +333,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
                 to_email=recipient.email,
                 success=False,
                 error_message=f"Failed to send to {recipient.email}",
+                html_body=html,
             )
             raise
         _log_sent_email(
@@ -334,4 +341,5 @@ class DjangoEmailHandler(EmailHandlerInterface):
             email_type=SentEmailType.DISCUSSION_DIGEST,
             subject=subject,
             to_email=recipient.email,
+            html_body=html,
         )

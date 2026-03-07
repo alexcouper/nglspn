@@ -356,6 +356,40 @@ class TestUpdateCurrentUser:
 
         assert_that(response.status_code, equal_to(401))
 
+    def test_update_notification_frequency_with_valid_value(
+        self,
+        client,
+        user,
+        auth_headers,
+    ) -> None:
+        response = client.put(
+            "/api/auth/me",
+            data=json.dumps({"notification_frequency": "immediate"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(notification_frequency="immediate"))
+
+        user.refresh_from_db()
+        assert_that(user.notification_frequency, equal_to("immediate"))
+
+    def test_update_notification_frequency_with_invalid_value_returns_422(
+        self,
+        client,
+        user,
+        auth_headers,
+    ) -> None:
+        response = client.put(
+            "/api/auth/me",
+            data=json.dumps({"notification_frequency": "banana"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+
     def test_partial_update_preserves_other_fields(
         self,
         client,

@@ -1,12 +1,11 @@
 Hi {{ recipient_name }}, there's been some activity on your projects:
 
 {% for group in groups %}
-{{ group.project_title }} ({{ group.project_url }})
-- {{ group.first_comment.author_name }}: {{ group.first_comment.body }}
-{% if group.extra_count %}+ {{ group.extra_count }} more comment{{ group.extra_count|pluralize }}
-{% endif %}
+- {{ group.project_title }} ({{ group.comment_count }} new comment{{ group.comment_count|pluralize }}): {{ group.project_url }}
 {% endfor %}
 View on Naglasúpan: {{ site_url }}
+
+Change your notification frequency: {{ profile_url }}
 
 ---
 Byggjum, deilum, vöxum saman

@@ -7,7 +7,10 @@ Hi {{ recipient_name }},
 
 "{{ comment_body }}"
 
+View project: {{ project_url }}
 View discussion: {{ discussion_url }}
+
+Change your notification frequency: {{ profile_url }}
 
 ---
 Byggjum, deilum, vöxum saman

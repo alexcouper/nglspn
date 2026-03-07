@@ -271,6 +271,7 @@ class SentEmailAdmin(admin.ModelAdmin):
         "to_email",
         "subject",
         "success",
+        "preview_link",
     )
     list_filter = ("email_type", "success", "created_at")
     search_fields = ("to_email", "subject")
@@ -283,8 +284,36 @@ class SentEmailAdmin(admin.ModelAdmin):
         "success",
         "error_message",
         "created_at",
+        "preview_link",
     )
+    exclude = ("html_body",)
     ordering = ("-created_at",)
+
+    @admin.display(description="Preview")
+    def preview_link(self, obj: SentEmail) -> str:
+        if not obj.pk or not obj.html_body:
+            return "-"
+        url = reverse("admin:emails_sentemail_preview", args=[obj.pk])
+        return format_html('<a href="{}" target="_blank">View</a>', url)
+
+    def get_urls(self) -> list:
+        custom_urls = [
+            path(
+                "<uuid:pk>/preview/",
+                self.admin_site.admin_view(self.preview_view),
+                name="emails_sentemail_preview",
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    def preview_view(self, request: HttpRequest, pk: str) -> HttpResponse:
+        sent_email = get_object_or_404(SentEmail, pk=pk)
+        if not sent_email.html_body:
+            return HttpResponse(
+                "<p>No HTML preview available for this email.</p>",
+                content_type="text/html",
+            )
+        return HttpResponse(sent_email.html_body)
 
     def has_add_permission(self, request: HttpRequest) -> bool:
         return False

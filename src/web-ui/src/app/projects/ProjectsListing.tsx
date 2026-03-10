@@ -293,7 +293,7 @@ export function ProjectsListing({
             ))}
             {projects.length === 0 && (
               <p className="col-span-full text-muted-foreground text-sm text-center py-12">
-                {selectedTags.length > 0
+                {selectedTags.length > 0 || selectedCompetition
                   ? "No projects match the selected filters."
                   : pendingProjectsCount > 0
                     ? `${pendingProjectsCount} pending project${pendingProjectsCount !== 1 ? "s" : ""}`

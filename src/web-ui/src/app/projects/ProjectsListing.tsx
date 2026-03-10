@@ -74,6 +74,8 @@ export function ProjectsListing({
   useEffect(() => {
     api.competitions.list().then((data) => {
       setCompetitionOptions(data.competitions);
+    }).catch(() => {
+      // Competition filter will be unavailable but page remains functional
     });
   }, []);
 

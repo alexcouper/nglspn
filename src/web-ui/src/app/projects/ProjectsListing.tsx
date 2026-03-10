@@ -17,7 +17,6 @@ import {
   type ProjectListItem,
   type Competition,
   type CompetitionProject,
-  type CompetitionOverview,
 } from "@/lib/api";
 import { getPlaceholderColor } from "@/lib/utils";
 import { TagFilterUnified } from "@/components/TagFilterUnified";
@@ -29,11 +28,13 @@ type ViewMode = "list" | "competition";
 interface ProjectsListingProps {
   initialProjects?: ProjectListItem[] | null;
   initialPendingCount?: number;
+  initialCompetitions?: { name: string; slug: string }[];
 }
 
 export function ProjectsListing({
   initialProjects,
   initialPendingCount = 0,
+  initialCompetitions = [],
 }: ProjectsListingProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
@@ -51,7 +52,7 @@ export function ProjectsListing({
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
-  const [competitionOptions, setCompetitionOptions] = useState<CompetitionOverview[]>([]);
+  const [competitionOptions, setCompetitionOptions] = useState<{ name: string; slug: string }[]>(initialCompetitions);
   const [selectedCompetition, setSelectedCompetition] = useState<string | null>(
     searchParams.get("competition")
   );
@@ -70,14 +71,6 @@ export function ProjectsListing({
     }
     router.push(`?${params.toString()}`, { scroll: false });
   }, [searchParams, router]);
-
-  useEffect(() => {
-    api.competitions.list().then((data) => {
-      setCompetitionOptions(data.competitions);
-    }).catch(() => {
-      // Competition filter will be unavailable but page remains functional
-    });
-  }, []);
 
   useEffect(() => {
     setSelectedCompetition(searchParams.get("competition"));
@@ -113,6 +106,9 @@ export function ProjectsListing({
           });
           setProjects(data.projects);
           setPendingProjectsCount(data.pending_projects_count);
+          if (data.competitions) {
+            setCompetitionOptions(data.competitions);
+          }
         }
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to fetch data");
@@ -228,7 +224,7 @@ export function ProjectsListing({
                   </button>
                   {competitionOptions.map((comp) => (
                     <button
-                      key={comp.id}
+                      key={comp.slug}
                       onClick={() => { updateCompetition(comp.slug); setCompetitionDropdownOpen(false); }}
                       className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
                         selectedCompetition === comp.slug ? "text-foreground font-medium" : "text-muted-foreground"

@@ -26,6 +26,7 @@ export default async function ProjectsPage() {
           <ProjectsListing
             initialProjects={data?.projects ?? null}
             initialPendingCount={data?.pending_projects_count ?? 0}
+            initialCompetitions={data?.competitions ?? []}
           />
         </div>
       </section>

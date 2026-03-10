@@ -29,9 +29,7 @@ class TestListProjects:
 
         assert_that(response.status_code, equal_to(400))
 
-    def test_filter_by_competition_returns_only_matching_projects(
-        self, client
-    ) -> None:
+    def test_filter_by_competition_returns_only_matching_projects(self, client) -> None:
         project_in = ProjectFactory(status=ProjectStatus.APPROVED)
         project_out = ProjectFactory(status=ProjectStatus.APPROVED)
         competition = CompetitionFactory(projects=[project_in])
@@ -43,9 +41,7 @@ class TestListProjects:
         assert str(project_in.id) in ids
         assert str(project_out.id) not in ids
 
-    def test_filter_by_competition_with_no_match_returns_empty(
-        self, client
-    ) -> None:
+    def test_filter_by_competition_with_no_match_returns_empty(self, client) -> None:
         ProjectFactory(status=ProjectStatus.APPROVED)
 
         response = client.get("/api/projects?competition=nonexistent")

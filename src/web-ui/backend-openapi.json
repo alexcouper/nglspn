@@ -2770,6 +2770,24 @@
         "title": "ResetPasswordRequest",
         "type": "object"
       },
+      "CompetitionFilterOption": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "slug"
+        ],
+        "title": "CompetitionFilterOption",
+        "type": "object"
+      },
       "ProjectListItemResponse": {
         "properties": {
           "id": {
@@ -2871,6 +2889,14 @@
           "pending_projects_count": {
             "title": "Pending Projects Count",
             "type": "integer"
+          },
+          "competitions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CompetitionFilterOption"
+            },
+            "title": "Competitions",
+            "type": "array"
           }
         },
         "required": [

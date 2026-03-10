@@ -160,6 +160,11 @@ class ProjectListItemResponse(Schema):
         )
 
 
+class CompetitionFilterOption(Schema):
+    name: str
+    slug: str
+
+
 class ProjectListResponse(Schema):
     projects: list[ProjectListItemResponse]
     total: int
@@ -167,6 +172,7 @@ class ProjectListResponse(Schema):
     per_page: int
     pages: int
     pending_projects_count: int
+    competitions: list[CompetitionFilterOption] = []
 
 
 class AdminProjectResponse(ProjectResponse):

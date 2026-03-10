@@ -10,7 +10,7 @@ from api.schemas.project import (
     ProjectListResponse,
     ProjectResponse,
 )
-from apps.projects.models import Project, ProjectStatus
+from apps.projects.models import Competition, Project, ProjectStatus
 from services import REPO
 from services.project.exceptions import ProjectNotFoundError
 
@@ -45,6 +45,7 @@ def list_projects(
         )
     except ValueError as e:
         return 400, {"detail": str(e)}
+    competitions = Competition.objects.values("name", "slug").order_by("name")
     return {
         "projects": [
             ProjectListItemResponse.from_list_item(p) for p in result.projects
@@ -54,6 +55,7 @@ def list_projects(
         "per_page": result.per_page,
         "pages": result.pages,
         "pending_projects_count": REPO.project.count_pending(),
+        "competitions": list(competitions),
     }
 
 

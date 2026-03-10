@@ -196,76 +196,78 @@ export function ProjectsListing({
             </button>
           </div>
 
-          {viewMode === "list" && <div className="relative" ref={competitionDropdownRef}>
-            <button
-              onClick={() => setCompetitionDropdownOpen(!competitionDropdownOpen)}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-                selectedCompetition
-                  ? "bg-accent-subtle text-accent"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
-              }`}
-            >
-              <TrophyIconOutline className="w-4 h-4" />
-              <span className="hidden sm:inline">
-                {selectedCompetition
-                  ? competitionOptions.find((c) => c.slug === selectedCompetition)?.name ?? selectedCompetition
-                  : "Competition"}
-              </span>
-              <ChevronDownIcon className="w-3 h-3" />
-            </button>
-            {competitionDropdownOpen && (
-              <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border border-border py-1 z-10 min-w-[160px]">
-                <button
-                  onClick={() => { updateCompetition(null); setCompetitionDropdownOpen(false); }}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
-                    !selectedCompetition ? "text-foreground font-medium" : "text-muted-foreground"
-                  }`}
-                >
-                  All competitions
-                </button>
-                {competitionOptions.map((comp) => (
+          <div className="flex items-center gap-1">
+            {viewMode === "list" && <div className="relative" ref={competitionDropdownRef}>
+              <button
+                onClick={() => setCompetitionDropdownOpen(!competitionDropdownOpen)}
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                  selectedCompetition
+                    ? "bg-accent-subtle text-accent"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                }`}
+              >
+                <TrophyIconOutline className="w-4 h-4" />
+                <span className="hidden sm:inline">
+                  {selectedCompetition
+                    ? competitionOptions.find((c) => c.slug === selectedCompetition)?.name ?? selectedCompetition
+                    : "Competition"}
+                </span>
+                <ChevronDownIcon className="w-3 h-3" />
+              </button>
+              {competitionDropdownOpen && (
+                <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border border-border py-1 z-10 min-w-[160px]">
                   <button
-                    key={comp.id}
-                    onClick={() => { updateCompetition(comp.slug); setCompetitionDropdownOpen(false); }}
+                    onClick={() => { updateCompetition(null); setCompetitionDropdownOpen(false); }}
                     className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
-                      selectedCompetition === comp.slug ? "text-foreground font-medium" : "text-muted-foreground"
+                      !selectedCompetition ? "text-foreground font-medium" : "text-muted-foreground"
                     }`}
                   >
-                    {comp.name}
+                    All competitions
                   </button>
-                ))}
-              </div>
-            )}
-          </div>}
+                  {competitionOptions.map((comp) => (
+                    <button
+                      key={comp.id}
+                      onClick={() => { updateCompetition(comp.slug); setCompetitionDropdownOpen(false); }}
+                      className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
+                        selectedCompetition === comp.slug ? "text-foreground font-medium" : "text-muted-foreground"
+                      }`}
+                    >
+                      {comp.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>}
 
-          <div className="relative" ref={sortDropdownRef}>
-            <button
-              onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
-              title="Sort order"
-              className="p-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
-            >
-              <ArrowsUpDownIcon className="w-4.5 h-4.5" />
-            </button>
-            {sortDropdownOpen && (
-              <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border border-border py-1 z-10 min-w-[140px]">
-                <button
-                  onClick={() => { setSortBy("created_at"); setSortDropdownOpen(false); }}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
-                    sortBy === "created_at" ? "text-foreground font-medium" : "text-muted-foreground"
-                  }`}
-                >
-                  Date added
-                </button>
-                <button
-                  onClick={() => { setSortBy("title"); setSortDropdownOpen(false); }}
-                  className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
-                    sortBy === "title" ? "text-foreground font-medium" : "text-muted-foreground"
-                  }`}
-                >
-                  Name
-                </button>
-              </div>
-            )}
+            <div className="relative" ref={sortDropdownRef}>
+              <button
+                onClick={() => setSortDropdownOpen(!sortDropdownOpen)}
+                title="Sort order"
+                className="p-2 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <ArrowsUpDownIcon className="w-4.5 h-4.5" />
+              </button>
+              {sortDropdownOpen && (
+                <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border border-border py-1 z-10 min-w-[140px]">
+                  <button
+                    onClick={() => { setSortBy("created_at"); setSortDropdownOpen(false); }}
+                    className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
+                      sortBy === "created_at" ? "text-foreground font-medium" : "text-muted-foreground"
+                    }`}
+                  >
+                    Date added
+                  </button>
+                  <button
+                    onClick={() => { setSortBy("title"); setSortDropdownOpen(false); }}
+                    className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
+                      sortBy === "title" ? "text-foreground font-medium" : "text-muted-foreground"
+                    }`}
+                  >
+                    Name
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 

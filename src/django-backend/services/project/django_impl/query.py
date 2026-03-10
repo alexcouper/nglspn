@@ -105,7 +105,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
             queryset = queryset.filter(tags__slug__in=tags).distinct()
 
         if competition:
-            queryset = queryset.filter(competitions__slug=competition)
+            queryset = queryset.filter(competitions__slug=competition).distinct()
 
         if tech_stack:
             for tech in tech_stack:

@@ -3,7 +3,7 @@ from hamcrest import assert_that, equal_to, has_entries
 
 from api.auth.jwt import create_access_token
 from apps.projects.models import ProjectStatus
-from tests.factories import ProjectFactory, UserFactory
+from tests.factories import CompetitionFactory, ProjectFactory, UserFactory
 
 
 @pytest.mark.django_db
@@ -28,6 +28,30 @@ class TestListProjects:
         response = client.get("/api/projects?sort_by=owner__email")
 
         assert_that(response.status_code, equal_to(400))
+
+    def test_filter_by_competition_returns_only_matching_projects(
+        self, client
+    ) -> None:
+        project_in = ProjectFactory(status=ProjectStatus.APPROVED)
+        project_out = ProjectFactory(status=ProjectStatus.APPROVED)
+        competition = CompetitionFactory(projects=[project_in])
+
+        response = client.get(f"/api/projects?competition={competition.slug}")
+
+        assert_that(response.status_code, equal_to(200))
+        ids = [p["id"] for p in response.json()["projects"]]
+        assert str(project_in.id) in ids
+        assert str(project_out.id) not in ids
+
+    def test_filter_by_competition_with_no_match_returns_empty(
+        self, client
+    ) -> None:
+        ProjectFactory(status=ProjectStatus.APPROVED)
+
+        response = client.get("/api/projects?competition=nonexistent")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(len(response.json()["projects"]), equal_to(0))
 
     def test_sort_by_accepts_valid_fields(self, client) -> None:
         ProjectFactory(status=ProjectStatus.APPROVED)

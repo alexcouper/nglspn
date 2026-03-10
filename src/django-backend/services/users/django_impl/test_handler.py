@@ -49,6 +49,19 @@ class TestRegister:
         assert user.kennitala == "1234567890"
         assert user.check_password("securepass123")
 
+    def test_defaults_notification_frequency_to_hourly(self):
+        data = RegisterUserInput(
+            email="notify@example.com",
+            password="securepass123",
+            kennitala="9876543210",
+            first_name="Test",
+            last_name="User",
+        )
+
+        user = handler.register(data)
+
+        assert user.notification_frequency == "hourly"
+
     def test_raises_on_duplicate_email(self):
         UserFactory(email="taken@example.com")
         data = RegisterUserInput(

@@ -17,7 +17,14 @@ class UserAdmin(BaseUserAdmin):
         "kennitala",
         "notification_frequency",
     )
-    list_filter = ("is_verified", "is_active", "is_staff", "is_superuser", "created_at")
+    list_filter = (
+        "is_verified",
+        "is_active",
+        "is_staff",
+        "is_superuser",
+        "notification_frequency",
+        "created_at",
+    )
     search_fields = ("email", "first_name", "last_name", "kennitala")
     ordering = ("-created_at",)
     filter_horizontal = ("groups", "user_permissions")
@@ -30,6 +37,7 @@ class UserAdmin(BaseUserAdmin):
             _("Email preferences"),
             {
                 "fields": (
+                    "notification_frequency",
                     "email_opt_in_competition_results",
                     "email_opt_in_platform_updates",
                 ),

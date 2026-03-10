@@ -543,6 +543,22 @@
           },
           {
             "in": "query",
+            "name": "competition",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Competition"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
             "name": "sort_by",
             "schema": {
               "default": "created_at",
@@ -2512,6 +2528,16 @@
         "title": "RefreshRequest",
         "type": "object"
       },
+      "NotificationCadence": {
+        "enum": [
+          "immediate",
+          "hourly",
+          "daily",
+          "never"
+        ],
+        "title": "NotificationCadence",
+        "type": "string"
+      },
       "UserUpdate": {
         "properties": {
           "first_name": {
@@ -2583,13 +2609,12 @@
           "notification_frequency": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/NotificationCadence"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Notification Frequency"
+            ]
           }
         },
         "title": "UserUpdate",

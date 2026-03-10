@@ -87,6 +87,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
         *,
         tags: list[str] | None = None,
         tech_stack: list[str] | None = None,
+        competition: str | None = None,
         search: str | None = None,
         sort_by: str = "created_at",
         sort_order: str = "desc",
@@ -102,6 +103,9 @@ class DjangoProjectQuery(ProjectQueryInterface):
 
         if tags:
             queryset = queryset.filter(tags__slug__in=tags).distinct()
+
+        if competition:
+            queryset = queryset.filter(competitions__slug=competition)
 
         if tech_stack:
             for tech in tech_stack:

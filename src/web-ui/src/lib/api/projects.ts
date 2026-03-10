@@ -8,6 +8,7 @@ export type ProjectListResponse = components["schemas"]["ProjectListResponse"];
 export interface ListProjectsParams {
   tags?: string[];
   tech_stack?: string[];
+  competition?: string;
   sort_by?: string;
   sort_order?: "asc" | "desc";
   search?: string;
@@ -29,6 +30,7 @@ export class ProjectsClient {
         searchParams.append("tech_stack", tech)
       );
     }
+    if (params.competition) searchParams.set("competition", params.competition);
     if (params.sort_by) searchParams.set("sort_by", params.sort_by);
     if (params.sort_order) searchParams.set("sort_order", params.sort_order);
     if (params.search) searchParams.set("search", params.search);

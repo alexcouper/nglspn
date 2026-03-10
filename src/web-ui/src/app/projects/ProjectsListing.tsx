@@ -9,6 +9,7 @@ import {
   TrophyIcon as TrophyIconOutline,
   ArrowsUpDownIcon,
   FunnelIcon,
+  ChevronDownIcon,
 } from "@heroicons/react/24/outline";
 import { TrophyIcon } from "@heroicons/react/24/solid";
 import {
@@ -16,6 +17,7 @@ import {
   type ProjectListItem,
   type Competition,
   type CompetitionProject,
+  type CompetitionOverview,
 } from "@/lib/api";
 import { getPlaceholderColor } from "@/lib/utils";
 import { TagFilterUnified } from "@/components/TagFilterUnified";
@@ -48,8 +50,20 @@ export function ProjectsListing({
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
+  const [competitionOptions, setCompetitionOptions] = useState<CompetitionOverview[]>([]);
+  const [selectedCompetition, setSelectedCompetition] = useState<string | null>(
+    searchParams.get("competition")
+  );
+  const [competitionDropdownOpen, setCompetitionDropdownOpen] = useState(false);
+  const competitionDropdownRef = useRef<HTMLDivElement>(null);
 
   const selectedTags = searchParams.get("tags")?.split(",").filter(Boolean) || [];
+
+  useEffect(() => {
+    api.competitions.list().then((data) => {
+      setCompetitionOptions(data.competitions);
+    });
+  }, []);
 
   useEffect(() => {
     // Skip initial fetch if we have server-rendered data and params match defaults
@@ -57,7 +71,7 @@ export function ProjectsListing({
       isInitialMount.current = false;
       const tags =
         searchParams.get("tags")?.split(",").filter(Boolean) || [];
-      if (hasInitialData && viewMode === "list" && sortBy === "title" && tags.length === 0) {
+      if (hasInitialData && viewMode === "list" && sortBy === "title" && tags.length === 0 && !selectedCompetition) {
         return;
       }
     }
@@ -77,6 +91,7 @@ export function ProjectsListing({
             sort_by: sortBy,
             sort_order: sortOrder,
             tags: tags.length > 0 ? tags : undefined,
+            competition: selectedCompetition || undefined,
           });
           setProjects(data.projects);
           setPendingProjectsCount(data.pending_projects_count);
@@ -88,7 +103,7 @@ export function ProjectsListing({
     };
 
     fetchData();
-  }, [viewMode, sortBy, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [viewMode, sortBy, searchParams, selectedCompetition]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -97,6 +112,12 @@ export function ProjectsListing({
         !sortDropdownRef.current.contains(event.target as Node)
       ) {
         setSortDropdownOpen(false);
+      }
+      if (
+        competitionDropdownRef.current &&
+        !competitionDropdownRef.current.contains(event.target as Node)
+      ) {
+        setCompetitionDropdownOpen(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -157,6 +178,48 @@ export function ProjectsListing({
             >
               <TrophyIconOutline className="w-4.5 h-4.5" />
             </button>
+          </div>
+
+          <div className="relative" ref={competitionDropdownRef}>
+            <button
+              onClick={() => setCompetitionDropdownOpen(!competitionDropdownOpen)}
+              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                selectedCompetition
+                  ? "bg-accent-subtle text-accent"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              }`}
+            >
+              <TrophyIconOutline className="w-4 h-4" />
+              <span className="hidden sm:inline">
+                {selectedCompetition
+                  ? competitionOptions.find((c) => c.slug === selectedCompetition)?.name ?? selectedCompetition
+                  : "Competition"}
+              </span>
+              <ChevronDownIcon className="w-3 h-3" />
+            </button>
+            {competitionDropdownOpen && (
+              <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border border-border py-1 z-10 min-w-[160px]">
+                <button
+                  onClick={() => { setSelectedCompetition(null); setCompetitionDropdownOpen(false); }}
+                  className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
+                    !selectedCompetition ? "text-foreground font-medium" : "text-muted-foreground"
+                  }`}
+                >
+                  All competitions
+                </button>
+                {competitionOptions.map((comp) => (
+                  <button
+                    key={comp.id}
+                    onClick={() => { setSelectedCompetition(comp.slug); setCompetitionDropdownOpen(false); }}
+                    className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
+                      selectedCompetition === comp.slug ? "text-foreground font-medium" : "text-muted-foreground"
+                    }`}
+                  >
+                    {comp.name}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="relative" ref={sortDropdownRef}>

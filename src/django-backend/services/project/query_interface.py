@@ -38,6 +38,7 @@ class ProjectQueryInterface(ABC):
         *,
         tags: list[str] | None = None,
         tech_stack: list[str] | None = None,
+        competition: str | None = None,
         search: str | None = None,
         sort_by: str = "created_at",
         sort_order: str = "desc",

@@ -25,6 +25,7 @@ def list_projects(
     request: HttpRequest,
     tags: list[str] | None = Query(None),
     tech_stack: list[str] | None = Query(None),
+    competition: str | None = Query(None),
     sort_by: str = Query("created_at"),
     sort_order: str = Query("desc"),
     search: str | None = Query(None),
@@ -35,6 +36,7 @@ def list_projects(
         result = REPO.project.list_approved(
             tags=tags,
             tech_stack=tech_stack,
+            competition=competition,
             search=search,
             sort_by=sort_by,
             sort_order=sort_order,

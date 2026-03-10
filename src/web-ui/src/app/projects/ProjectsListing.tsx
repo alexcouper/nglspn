@@ -196,7 +196,7 @@ export function ProjectsListing({
             </button>
           </div>
 
-          <div className="relative" ref={competitionDropdownRef}>
+          {viewMode === "list" && <div className="relative" ref={competitionDropdownRef}>
             <button
               onClick={() => setCompetitionDropdownOpen(!competitionDropdownOpen)}
               className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors ${
@@ -236,7 +236,7 @@ export function ProjectsListing({
                 ))}
               </div>
             )}
-          </div>
+          </div>}
 
           <div className="relative" ref={sortDropdownRef}>
             <button

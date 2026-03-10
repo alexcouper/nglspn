@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import { useSearchParams } from "next/navigation";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
 import {
@@ -36,6 +36,7 @@ export function ProjectsListing({
   initialPendingCount = 0,
 }: ProjectsListingProps) {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const hasInitialData = initialProjects != null;
   const [projects, setProjects] = useState<ProjectListItem[]>(initialProjects ?? []);
   const [competitions, setCompetitions] = useState<Competition[]>([]);
@@ -59,11 +60,26 @@ export function ProjectsListing({
 
   const selectedTags = searchParams.get("tags")?.split(",").filter(Boolean) || [];
 
+  const updateCompetition = useCallback((slug: string | null) => {
+    setSelectedCompetition(slug);
+    const params = new URLSearchParams(searchParams.toString());
+    if (slug) {
+      params.set("competition", slug);
+    } else {
+      params.delete("competition");
+    }
+    router.push(`?${params.toString()}`, { scroll: false });
+  }, [searchParams, router]);
+
   useEffect(() => {
     api.competitions.list().then((data) => {
       setCompetitionOptions(data.competitions);
     });
   }, []);
+
+  useEffect(() => {
+    setSelectedCompetition(searchParams.get("competition"));
+  }, [searchParams]);
 
   useEffect(() => {
     // Skip initial fetch if we have server-rendered data and params match defaults
@@ -200,7 +216,7 @@ export function ProjectsListing({
             {competitionDropdownOpen && (
               <div className="absolute right-0 mt-1 bg-white rounded-lg shadow-lg border border-border py-1 z-10 min-w-[160px]">
                 <button
-                  onClick={() => { setSelectedCompetition(null); setCompetitionDropdownOpen(false); }}
+                  onClick={() => { updateCompetition(null); setCompetitionDropdownOpen(false); }}
                   className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
                     !selectedCompetition ? "text-foreground font-medium" : "text-muted-foreground"
                   }`}
@@ -210,7 +226,7 @@ export function ProjectsListing({
                 {competitionOptions.map((comp) => (
                   <button
                     key={comp.id}
-                    onClick={() => { setSelectedCompetition(comp.slug); setCompetitionDropdownOpen(false); }}
+                    onClick={() => { updateCompetition(comp.slug); setCompetitionDropdownOpen(false); }}
                     className={`w-full text-left px-3 py-2 text-sm transition-colors hover:bg-muted ${
                       selectedCompetition === comp.slug ? "text-foreground font-medium" : "text-muted-foreground"
                     }`}

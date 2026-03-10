@@ -49,6 +49,17 @@ class TestListProjects:
         assert_that(response.status_code, equal_to(200))
         assert_that(len(response.json()["projects"]), equal_to(0))
 
+    def test_list_projects_includes_competition_filter_options(self, client) -> None:
+        comp = CompetitionFactory()
+
+        response = client.get("/api/projects")
+
+        assert_that(response.status_code, equal_to(200))
+        competitions = response.json()["competitions"]
+        slugs = [c["slug"] for c in competitions]
+        assert comp.slug in slugs
+        assert_that(competitions[0], has_entries(name=comp.name, slug=comp.slug))
+
     def test_sort_by_accepts_valid_fields(self, client) -> None:
         ProjectFactory(status=ProjectStatus.APPROVED)
 

@@ -28,9 +28,7 @@ class EmailHandlerInterface(ABC):
     ) -> None: ...
 
     @abstractmethod
-    def send_broadcast(
-        self, broadcast: BroadcastEmail, sent_by_user: User
-    ) -> tuple[int, int]: ...
+    def send_broadcast(self, broadcast: BroadcastEmail) -> tuple[int, int]: ...
 
     @abstractmethod
     def send_discussion_notification_email(

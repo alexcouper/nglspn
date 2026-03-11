@@ -201,7 +201,6 @@ class DjangoEmailHandler(EmailHandlerInterface):
     def send_broadcast(
         self,
         broadcast: BroadcastEmail,
-        sent_by_user: User,
     ) -> tuple[int, int]:
         query = DjangoEmailQuery()
         html, text = query.render_broadcast_email(broadcast)
@@ -235,10 +234,6 @@ class DjangoEmailHandler(EmailHandlerInterface):
                 success=success,
                 error_message=error_message,
             )
-
-        broadcast.sent_at = timezone.now()
-        broadcast.sent_by = sent_by_user
-        broadcast.save(update_fields=["sent_at", "sent_by"])
 
         return success_count, failure_count
 

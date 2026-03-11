@@ -8,12 +8,13 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.utils.html import format_html
 
-from services import HANDLERS, REPO
+from services import REPO
 
 from .models import (
     BroadcastEmail,
     BroadcastEmailImage,
     BroadcastEmailRecipient,
+    BroadcastEmailStatus,
     SentEmail,
 )
 
@@ -82,7 +83,7 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
         (
             "Status",
             {
-                "fields": ("sent_at", "sent_by", "created_by"),
+                "fields": ("status", "sent_at", "sent_by", "created_by"),
             },
         ),
     )
@@ -92,8 +93,8 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
         request: HttpRequest,
         obj: BroadcastEmail | None = None,
     ) -> tuple[str, ...]:
-        always_readonly = ("sent_at", "sent_by", "created_by")
-        if obj and obj.is_sent:
+        always_readonly = ("status", "sent_at", "sent_by", "created_by")
+        if obj and obj.status != BroadcastEmailStatus.DRAFT:
             return (
                 "subject",
                 "body_markdown",
@@ -108,7 +109,7 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
         request: HttpRequest,
         obj: BroadcastEmail | None = None,
     ) -> list[type]:
-        if obj and obj.is_sent:
+        if obj and obj.status != BroadcastEmailStatus.DRAFT:
             return [BroadcastEmailRecipientInline]
         if obj:
             return [BroadcastEmailImageInline]
@@ -119,7 +120,7 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
         request: HttpRequest,
         obj: BroadcastEmail | None = None,
     ) -> bool:
-        if obj and obj.is_sent:
+        if obj and obj.status != BroadcastEmailStatus.DRAFT:
             return False
         return super().has_delete_permission(request, obj)
 
@@ -136,18 +137,19 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
 
     @admin.display(description="Status")
     def status_badge(self, obj: BroadcastEmail) -> str:
-        if obj.is_sent:
-            return format_html(
-                '<span style="background:{};color:#fff;padding:3px 8px;'
-                'border-radius:4px;font-size:11px;">{}</span>',
-                "#16a34a",
-                "Sent",
-            )
+        colors = {
+            BroadcastEmailStatus.DRAFT: "#6b7280",
+            BroadcastEmailStatus.QUEUED_FOR_SENDING: "#d97706",
+            BroadcastEmailStatus.SENDING: "#2563eb",
+            BroadcastEmailStatus.SENT: "#16a34a",
+            BroadcastEmailStatus.FAILED: "#dc2626",
+        }
+        color = colors.get(obj.status, "#6b7280")
         return format_html(
             '<span style="background:{};color:#fff;padding:3px 8px;'
             'border-radius:4px;font-size:11px;">{}</span>',
-            "#6b7280",
-            "Draft",
+            color,
+            obj.get_status_display(),
         )
 
     @admin.display(description="Recipients")
@@ -184,45 +186,34 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
         return HttpResponse(html)
 
     def send_view(self, request: HttpRequest, pk: str) -> HttpResponse:
-        broadcast = get_object_or_404(BroadcastEmail, pk=pk)
+        from api.tasks.email import send_broadcast_email  # noqa: PLC0415
 
-        if broadcast.is_sent:
-            messages.error(request, "This email has already been sent.")
-            return redirect(
-                reverse(
-                    "admin:emails_broadcastemail_change",
-                    args=[broadcast.pk],
-                )
-            )
+        broadcast = get_object_or_404(BroadcastEmail, pk=pk)
+        change_url = reverse(
+            "admin:emails_broadcastemail_change",
+            args=[broadcast.pk],
+        )
+
+        if broadcast.status != BroadcastEmailStatus.DRAFT:
+            messages.error(request, "This email can only be sent from draft status.")
+            return redirect(change_url)
 
         recipients = REPO.email.resolve_broadcast_recipients(broadcast)
         recipient_count = recipients.count()
 
         if recipient_count == 0:
             messages.error(request, "No recipients found for this email.")
-            return redirect(
-                reverse(
-                    "admin:emails_broadcastemail_change",
-                    args=[broadcast.pk],
-                )
-            )
+            return redirect(change_url)
 
         if request.method == "POST":
-            success_count, failure_count = HANDLERS.email.send_broadcast(
-                broadcast, request.user
-            )
+            broadcast.status = BroadcastEmailStatus.QUEUED_FOR_SENDING
+            broadcast.save(update_fields=["status"])
+            send_broadcast_email.enqueue(str(broadcast.pk), str(request.user.pk))
             messages.success(
                 request,
-                f"Email sent to {success_count} recipient(s)"
-                + (f" ({failure_count} failed)" if failure_count else "")
-                + ".",
+                f"Email to {recipient_count} recipient(s) has been queued for sending.",
             )
-            return redirect(
-                reverse(
-                    "admin:emails_broadcastemail_change",
-                    args=[broadcast.pk],
-                )
-            )
+            return redirect(change_url)
 
         context = {
             **self.admin_site.each_context(request),
@@ -246,7 +237,9 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
         extra_context = extra_context or {}
         obj = self.get_object(request, object_id)
         if obj:
-            extra_context["show_broadcast_buttons"] = not obj.is_sent
+            extra_context["show_broadcast_buttons"] = (
+                obj.status == BroadcastEmailStatus.DRAFT
+            )
             extra_context["preview_url"] = reverse(
                 "admin:emails_broadcastemail_preview",
                 args=[obj.pk],

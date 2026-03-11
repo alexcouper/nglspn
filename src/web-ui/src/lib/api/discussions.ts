@@ -38,6 +38,20 @@ export class DiscussionsClient {
     );
   }
 
+  async update(
+    projectId: string,
+    discussionId: string,
+    body: string
+  ): Promise<Discussion> {
+    return this.client.request<Discussion>(
+      `/api/projects/${projectId}/discussions/${discussionId}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({ body }),
+      }
+    );
+  }
+
   async delete(projectId: string, discussionId: string): Promise<void> {
     await this.client.request<void>(
       `/api/projects/${projectId}/discussions/${discussionId}`,

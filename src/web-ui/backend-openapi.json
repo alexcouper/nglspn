@@ -840,6 +840,90 @@
       }
     },
     "/api/projects/{project_id}/discussions/{discussion_id}": {
+      "patch": {
+        "operationId": "api_routers_discussions_update_discussion",
+        "summary": "Update Discussion",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "discussion_id",
+            "schema": {
+              "title": "Discussion Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiscussionResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Discussions"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DiscussionCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      },
       "delete": {
         "operationId": "api_routers_discussions_delete_discussion",
         "summary": "Delete Discussion",
@@ -2512,6 +2596,16 @@
         "title": "RefreshRequest",
         "type": "object"
       },
+      "NotificationCadence": {
+        "enum": [
+          "immediate",
+          "hourly",
+          "daily",
+          "never"
+        ],
+        "title": "NotificationCadence",
+        "type": "string"
+      },
       "UserUpdate": {
         "properties": {
           "first_name": {
@@ -2583,13 +2677,12 @@
           "notification_frequency": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/NotificationCadence"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Notification Frequency"
+            ]
           }
         },
         "title": "UserUpdate",
@@ -3281,6 +3374,10 @@
               }
             ]
           },
+          "is_edited": {
+            "title": "Is Edited",
+            "type": "boolean"
+          },
           "replies": {
             "default": [],
             "items": {
@@ -3294,7 +3391,8 @@
           "id",
           "body",
           "created_at",
-          "author"
+          "author",
+          "is_edited"
         ],
         "title": "DiscussionResponse",
         "type": "object"
@@ -3324,13 +3422,18 @@
                 "type": "null"
               }
             ]
+          },
+          "is_edited": {
+            "title": "Is Edited",
+            "type": "boolean"
           }
         },
         "required": [
           "id",
           "body",
           "created_at",
-          "author"
+          "author",
+          "is_edited"
         ],
         "title": "ReplyResponse",
         "type": "object"

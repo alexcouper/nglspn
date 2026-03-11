@@ -71,6 +71,31 @@ def reply_to_discussion(
     return 201, reply
 
 
+@router.patch(
+    "/{project_id}/discussions/{discussion_id}",
+    response={200: DiscussionResponse, 401: Error, 403: Error, 404: Error},
+    auth=auth,
+    tags=["Discussions"],
+)
+def update_discussion(
+    request: HttpRequest,
+    project_id: str,
+    discussion_id: str,
+    payload: DiscussionCreate,
+) -> tuple[int, Discussion] | tuple[int, dict[str, str]]:
+    try:
+        discussion = HANDLERS.discussions.update_discussion(
+            discussion_id=discussion_id,
+            requesting_user_id=request.auth.id,
+            body=payload.body,
+        )
+    except DiscussionNotFoundError:
+        return 404, {"detail": "Discussion not found"}
+    except NotDiscussionAuthorError:
+        return 403, {"detail": "You can only edit your own discussions"}
+    return 200, discussion
+
+
 @router.delete(
     "/{project_id}/discussions/{discussion_id}",
     response={204: None, 401: Error, 403: Error, 404: Error},

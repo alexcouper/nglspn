@@ -78,6 +78,25 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
     );
   };
 
+  const handleEdit = async (discussionId: string, body: string) => {
+    const updated = await api.discussions.update(projectId, discussionId, body);
+    setDiscussions((prev) =>
+      prev.map((d) => {
+        if (d.id === discussionId) {
+          return { ...d, body: updated.body, is_edited: updated.is_edited };
+        }
+        return {
+          ...d,
+          replies: d.replies.map((r) =>
+            r.id === discussionId
+              ? { ...r, body: updated.body, is_edited: updated.is_edited }
+              : r
+          ),
+        };
+      })
+    );
+  };
+
   const handleDelete = async (discussionId: string) => {
     await api.discussions.delete(projectId, discussionId);
     setDiscussions((prev) => {
@@ -130,6 +149,7 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
         discussions={discussions}
         currentUserId={user?.id}
         onReply={handleReply}
+        onEdit={handleEdit}
         onDelete={handleDelete}
       />
     </div>

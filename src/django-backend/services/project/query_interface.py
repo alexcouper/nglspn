@@ -13,6 +13,7 @@ class ProjectListItem:
     project: Project
     main_image_url: str | None = None
     main_image_thumb_url: str | None = None
+    main_image_variants: list = field(default_factory=list)
     tags: list = field(default_factory=list)
 
 

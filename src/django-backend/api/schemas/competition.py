@@ -10,6 +10,7 @@ from ninja import Schema
 from apps.projects.models import ProjectImage, ProjectStatus
 from services.project.django_impl import to_list_item
 
+from .project import ImageVariantResponse
 from .tag import TagWithCategoryResponse
 
 
@@ -25,6 +26,7 @@ class CompetitionProjectResponse(Schema):
     tags: list[TagWithCategoryResponse]
     main_image_url: str | None = None
     main_image_thumb_url: str | None = None
+    main_image_variants: list[ImageVariantResponse] = []
 
     @classmethod
     def from_list_item(cls, item: Any) -> "CompetitionProjectResponse":
@@ -34,6 +36,7 @@ class CompetitionProjectResponse(Schema):
             tags=item.tags,
             main_image_url=item.main_image_url,
             main_image_thumb_url=item.main_image_thumb_url,
+            main_image_variants=item.main_image_variants,
         )
 
 

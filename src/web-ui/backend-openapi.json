@@ -4329,6 +4329,14 @@
               }
             ],
             "title": "Main Image Thumb Url"
+          },
+          "main_image_variants": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ImageVariantResponse"
+            },
+            "title": "Main Image Variants",
+            "type": "array"
           }
         },
         "required": [

@@ -53,18 +53,19 @@ def to_list_item(project: Project) -> ProjectListItem:
         main_image = images[0]
 
     thumb_url = None
+    variants = []
     if main_image:
-        thumb = next(
-            (v for v in main_image.variants.all() if v.size == "thumb"),
-            None,
-        )
+        all_variants = list(main_image.variants.all())
+        thumb = next((v for v in all_variants if v.size == "thumb"), None)
         if thumb:
             thumb_url = thumb.url
+        variants = all_variants
 
     return ProjectListItem(
         project=project,
         main_image_url=main_image.url if main_image else None,
         main_image_thumb_url=thumb_url,
+        main_image_variants=variants,
         tags=[t for t in project.tags.all() if t.status != "rejected"],
     )
 

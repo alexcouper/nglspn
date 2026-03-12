@@ -348,13 +348,16 @@ class TestSendBroadcastEmailTask:
         assert broadcast.sent_at is None
 
     def test_task_sets_failed_on_exception(self):
-        """5.5 - Task sets status to failed on unhandled exception."""
+        """5.5 - Task sets status to failed on unhandled exception.
+
+        The handler itself manages the FAILED status transition.
+        """
 
         broadcast, user = self._create_queued_broadcast()
 
         with (
             patch(
-                "services.email.django_impl.handler.DjangoEmailHandler.send_broadcast",
+                "services.email.django_impl.handler.DjangoEmailQuery.resolve_broadcast_recipients",
                 side_effect=RuntimeError("SMTP down"),
             ),
             pytest.raises(RuntimeError, match="SMTP down"),

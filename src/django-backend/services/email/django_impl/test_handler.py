@@ -80,24 +80,24 @@ class TestSendBroadcast:
         return broadcast, admin, users
 
     def test_sends_to_all_resolved_recipients(self, mailoutbox):
-        broadcast, _admin, users = self._make_broadcast_with_recipients(2)
-        handler.send_broadcast(broadcast)
+        broadcast, admin, users = self._make_broadcast_with_recipients(2)
+        handler.send_broadcast(broadcast, admin)
 
         assert len(mailoutbox) == 2
         sent_to = {m.to[0] for m in mailoutbox}
         assert sent_to == {u.email for u in users}
 
-    def test_does_not_set_sent_at_or_sent_by(self):
-        broadcast, _admin, _ = self._make_broadcast_with_recipients(1)
-        handler.send_broadcast(broadcast)
+    def test_sets_sent_at_and_sent_by(self):
+        broadcast, admin, _ = self._make_broadcast_with_recipients(1)
+        handler.send_broadcast(broadcast, admin)
 
         broadcast.refresh_from_db()
-        assert broadcast.sent_at is None
-        assert broadcast.sent_by is None
+        assert broadcast.sent_at is not None
+        assert broadcast.sent_by == admin
 
     def test_creates_delivery_records(self):
-        broadcast, _admin, users = self._make_broadcast_with_recipients(1)
-        handler.send_broadcast(broadcast)
+        broadcast, admin, users = self._make_broadcast_with_recipients(1)
+        handler.send_broadcast(broadcast, admin)
 
         records = BroadcastEmailRecipient.objects.filter(broadcast_email=broadcast)
         assert records.count() == 1
@@ -107,7 +107,7 @@ class TestSendBroadcast:
         assert record.error_message == ""
 
     def test_continues_on_individual_failure(self):
-        broadcast, _admin, _ = self._make_broadcast_with_recipients(2)
+        broadcast, admin, _ = self._make_broadcast_with_recipients(2)
         call_count = 0
 
         with patch(
@@ -122,37 +122,37 @@ class TestSendBroadcast:
                     raise Exception(msg)  # noqa: TRY002
 
             mock_send.side_effect = fail_first
-            success_count, failure_count = handler.send_broadcast(broadcast)
+            success_count, failure_count = handler.send_broadcast(broadcast, admin)
 
         assert success_count == 1
         assert failure_count == 1
 
     def test_records_error_messages(self):
-        broadcast, _admin, _ = self._make_broadcast_with_recipients(1)
+        broadcast, admin, _ = self._make_broadcast_with_recipients(1)
 
         with patch(
             "services.email.django_impl.handler.EmailMultiAlternatives.send",
             side_effect=Exception("SMTP error"),
         ):
-            handler.send_broadcast(broadcast)
+            handler.send_broadcast(broadcast, admin)
 
         record = BroadcastEmailRecipient.objects.get(broadcast_email=broadcast)
         assert record.success is False
         assert record.error_message != ""
 
     def test_returns_correct_counts(self, mailoutbox):
-        broadcast, _admin, _ = self._make_broadcast_with_recipients(2)
-        success_count, failure_count = handler.send_broadcast(broadcast)
+        broadcast, admin, _ = self._make_broadcast_with_recipients(2)
+        success_count, failure_count = handler.send_broadcast(broadcast, admin)
 
         assert success_count == 2
         assert failure_count == 0
 
     def test_email_has_html_and_text_parts(self, mailoutbox):
-        broadcast, _admin, _ = self._make_broadcast_with_recipients(
+        broadcast, admin, _ = self._make_broadcast_with_recipients(
             1,
             body_markdown="Hello **world**!",
         )
-        handler.send_broadcast(broadcast)
+        handler.send_broadcast(broadcast, admin)
 
         email = mailoutbox[0]
         assert "Hello **world**!" in email.body
@@ -162,11 +162,11 @@ class TestSendBroadcast:
         assert "<strong>world</strong>" in html
 
     def test_email_subject_includes_naglasupan(self, mailoutbox):
-        broadcast, _admin, _ = self._make_broadcast_with_recipients(
+        broadcast, admin, _ = self._make_broadcast_with_recipients(
             1,
             subject="Big News",
         )
-        handler.send_broadcast(broadcast)
+        handler.send_broadcast(broadcast, admin)
 
         assert mailoutbox[0].subject == "Big News - Naglasúpan"
 

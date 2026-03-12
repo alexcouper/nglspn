@@ -26,13 +26,13 @@ function CompetitionCard({ competition }: { competition: CompetitionSummary }) {
       className="group card card-interactive flex flex-col w-full max-w-sm"
     >
       {/* Image */}
-      <div className={`aspect-[16/10] relative ${!competition.image_url ? "bg-gradient-to-br from-slate-100 to-slate-200" : ""}`}>
+      <div className={`aspect-square relative overflow-hidden rounded-t-xl ${!competition.image_url ? "bg-gradient-to-br from-slate-100 to-slate-200" : ""}`}>
         {competition.image_url ? (
           /* eslint-disable-next-line @next/next/no-img-element */
           <img
             src={competition.image_url}
             alt={competition.name}
-            className="w-full h-full object-contain"
+            className="w-full h-full object-cover"
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">

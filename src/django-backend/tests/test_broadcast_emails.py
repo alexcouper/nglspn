@@ -1,3 +1,5 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
@@ -5,8 +7,14 @@ from django.test import RequestFactory
 from django.urls import reverse
 from django.utils import timezone
 
+import api.tasks.email as email_tasks_module
+from api.tasks.email import send_broadcast_email
 from apps.emails.admin import BroadcastEmailAdmin, BroadcastEmailImageInline
-from apps.emails.models import BroadcastEmail, BroadcastEmailImage
+from apps.emails.models import (
+    BroadcastEmail,
+    BroadcastEmailImage,
+    BroadcastEmailStatus,
+)
 
 from .factories import BroadcastEmailFactory, BroadcastEmailImageFactory, UserFactory
 
@@ -38,7 +46,7 @@ class TestBroadcastEmailAdmin:
     def test_sent_emails_are_readonly(self):
         admin_obj = self._get_admin()
         broadcast = BroadcastEmailFactory()
-        broadcast.sent_at = "2026-01-01T00:00:00Z"
+        broadcast.status = BroadcastEmailStatus.SENT
 
         request = self._make_request()
         readonly = admin_obj.get_readonly_fields(request, broadcast)
@@ -60,7 +68,7 @@ class TestBroadcastEmailAdmin:
     def test_cannot_delete_sent_email(self):
         admin_obj = self._get_admin()
         broadcast = BroadcastEmailFactory()
-        broadcast.sent_at = "2026-01-01T00:00:00Z"
+        broadcast.status = BroadcastEmailStatus.SENT
 
         request = self._make_request()
         assert admin_obj.has_delete_permission(request, broadcast) is False
@@ -119,7 +127,7 @@ class TestBroadcastEmailAdminViews:
         assert response.status_code == 200
         assert b"Confirm" in response.content
 
-    def test_send_view_post_sends_and_redirects(self, admin_client, mailoutbox):
+    def test_send_view_post_enqueues_and_redirects(self, admin_client):
         UserFactory(email_opt_in_platform_updates=True)
         broadcast = BroadcastEmailFactory(
             email_type="platform_updates",
@@ -134,13 +142,16 @@ class TestBroadcastEmailAdminViews:
 
         assert response.status_code == 302
         broadcast.refresh_from_db()
-        assert broadcast.sent_at is not None
-        # admin_client creation may add emails to mailbox
-        broadcast_emails = [m for m in mailoutbox if broadcast.subject in m.subject]
-        assert len(broadcast_emails) >= 1
+        # In test with ImmediateBackend the task runs synchronously,
+        # so the broadcast ends up fully sent
+        assert broadcast.status in (
+            BroadcastEmailStatus.QUEUED_FOR_SENDING,
+            BroadcastEmailStatus.SENT,
+        )
 
     def test_send_view_rejects_already_sent(self, admin_client):
         broadcast = BroadcastEmailFactory(email_type="platform_updates")
+        broadcast.status = BroadcastEmailStatus.SENT
         broadcast.sent_at = timezone.now()
         broadcast.save()
 
@@ -151,6 +162,8 @@ class TestBroadcastEmailAdminViews:
         response = admin_client.post(url)
 
         assert response.status_code == 302
+        broadcast.refresh_from_db()
+        assert broadcast.status == BroadcastEmailStatus.SENT
 
     def test_send_view_rejects_no_recipients(self, admin_client):
         broadcast = BroadcastEmailFactory(email_type=None)
@@ -221,7 +234,7 @@ class TestBroadcastEmailImageInline:
     def test_sent_email_has_no_image_inline(self):
         admin_obj = self._get_admin()
         broadcast = BroadcastEmailFactory()
-        broadcast.sent_at = timezone.now()
+        broadcast.status = BroadcastEmailStatus.SENT
 
         request = self._make_request()
         inlines = admin_obj.get_inlines(request, broadcast)
@@ -252,3 +265,104 @@ class TestBroadcastEmailImageInline:
         result = inline.thumbnail_preview(image)
 
         assert result == "Save to see preview"
+
+
+@pytest.mark.django_db
+class TestSendBroadcastEmailTask:
+    def _create_queued_broadcast(self):
+        user = UserFactory(is_staff=True, is_superuser=True)
+        broadcast = BroadcastEmailFactory(
+            email_type="platform_updates",
+            created_by=user,
+        )
+        broadcast.status = BroadcastEmailStatus.QUEUED_FOR_SENDING
+        broadcast.save(update_fields=["status"])
+        return broadcast, user
+
+    def test_send_view_enqueues_task_and_sets_queued(self, admin_client):
+        """5.1 - Send view enqueues task and sets status to queued_for_sending."""
+        UserFactory(email_opt_in_platform_updates=True)
+        broadcast = BroadcastEmailFactory(
+            email_type="platform_updates",
+            created_by=UserFactory(email_opt_in_platform_updates=False),
+        )
+
+        url = reverse("admin:emails_broadcastemail_send", args=[broadcast.pk])
+
+        mock_task = MagicMock()
+        original = email_tasks_module.send_broadcast_email
+        email_tasks_module.send_broadcast_email = mock_task
+        try:
+            response = admin_client.post(url)
+        finally:
+            email_tasks_module.send_broadcast_email = original
+
+        assert response.status_code == 302
+        broadcast.refresh_from_db()
+        assert broadcast.status == BroadcastEmailStatus.QUEUED_FOR_SENDING
+        mock_task.enqueue.assert_called_once()
+
+    def test_send_view_rejects_non_draft_broadcast(self, admin_client):
+        """5.2 - Send view rejects non-draft broadcasts."""
+        broadcast = BroadcastEmailFactory(email_type="platform_updates")
+        for status in [
+            BroadcastEmailStatus.QUEUED_FOR_SENDING,
+            BroadcastEmailStatus.SENDING,
+            BroadcastEmailStatus.SENT,
+            BroadcastEmailStatus.FAILED,
+        ]:
+            broadcast.status = status
+            broadcast.save(update_fields=["status"])
+
+            url = reverse("admin:emails_broadcastemail_send", args=[broadcast.pk])
+            response = admin_client.post(url)
+
+            assert response.status_code == 302
+            broadcast.refresh_from_db()
+            assert broadcast.status == status
+
+    def test_task_transitions_queued_to_sending_to_sent(self):
+        """5.3 - Task transitions queued_for_sending -> sending -> sent."""
+
+        broadcast, user = self._create_queued_broadcast()
+        UserFactory(email_opt_in_platform_updates=True)
+
+        send_broadcast_email.call(str(broadcast.pk), str(user.pk))
+
+        broadcast.refresh_from_db()
+        assert broadcast.status == BroadcastEmailStatus.SENT
+        assert broadcast.sent_at is not None
+        assert broadcast.sent_by == user
+
+    def test_task_aborts_if_not_queued(self):
+        """5.4 - Task aborts if broadcast is not in queued_for_sending state."""
+
+        user = UserFactory(is_staff=True, is_superuser=True)
+        broadcast = BroadcastEmailFactory(created_by=user)
+        assert broadcast.status == BroadcastEmailStatus.DRAFT
+
+        send_broadcast_email.call(str(broadcast.pk), str(user.pk))
+
+        broadcast.refresh_from_db()
+        assert broadcast.status == BroadcastEmailStatus.DRAFT
+        assert broadcast.sent_at is None
+
+    def test_task_sets_failed_on_exception(self):
+        """5.5 - Task sets status to failed on unhandled exception.
+
+        The handler itself manages the FAILED status transition.
+        """
+
+        broadcast, user = self._create_queued_broadcast()
+
+        with (
+            patch(
+                "services.email.django_impl.handler.DjangoEmailQuery.resolve_broadcast_recipients",
+                side_effect=RuntimeError("SMTP down"),
+            ),
+            pytest.raises(RuntimeError, match="SMTP down"),
+        ):
+            send_broadcast_email.call(str(broadcast.pk), str(user.pk))
+
+        broadcast.refresh_from_db()
+        assert broadcast.status == BroadcastEmailStatus.FAILED

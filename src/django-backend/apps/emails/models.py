@@ -10,6 +10,14 @@ class BroadcastEmailType(models.TextChoices):
     COMPETITION_RESULTS = "competition_results", "Competition Results"
 
 
+class BroadcastEmailStatus(models.TextChoices):
+    DRAFT = "draft", "Draft"
+    QUEUED_FOR_SENDING = "queued_for_sending", "Queued for Sending"
+    SENDING = "sending", "Sending"
+    SENT = "sent", "Sent"
+    FAILED = "failed", "Failed"
+
+
 class BroadcastEmail(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     subject = models.CharField(max_length=200)
@@ -35,6 +43,11 @@ class BroadcastEmail(models.Model):
         related_name="broadcast_emails_received",
         help_text="Select individual users (only used when email type is blank).",
     )
+    status = models.CharField(
+        max_length=20,
+        choices=BroadcastEmailStatus.choices,
+        default=BroadcastEmailStatus.DRAFT,
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
@@ -57,12 +70,11 @@ class BroadcastEmail(models.Model):
         ordering = ["-created_at"]
 
     def __str__(self) -> str:
-        status = "Sent" if self.sent_at else "Draft"
-        return f"[{status}] {self.subject}"
+        return f"[{self.get_status_display()}] {self.subject}"
 
     @property
     def is_sent(self) -> bool:
-        return self.sent_at is not None
+        return self.status == BroadcastEmailStatus.SENT
 
 
 class BroadcastEmailRecipient(models.Model):

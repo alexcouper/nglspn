@@ -4,6 +4,7 @@ from uuid import UUID
 
 from django_tasks import task
 
+from apps.emails.models import BroadcastEmail, BroadcastEmailStatus
 from apps.projects.models import Project
 from apps.users.models import User
 
@@ -30,3 +31,16 @@ def send_project_approved_email(project_id: str) -> None:
 
     project = Project.objects.select_related("owner").get(id=UUID(project_id))
     HANDLERS.email.send_project_approved_email(project)
+
+
+@task()
+def send_broadcast_email(broadcast_id: str, sent_by_user_id: str) -> None:
+    from services import HANDLERS  # noqa: PLC0415
+
+    broadcast = BroadcastEmail.objects.get(id=UUID(broadcast_id))
+
+    if broadcast.status != BroadcastEmailStatus.QUEUED_FOR_SENDING:
+        return
+
+    sent_by = User.objects.get(id=UUID(sent_by_user_id))
+    HANDLERS.email.send_broadcast(broadcast, sent_by)

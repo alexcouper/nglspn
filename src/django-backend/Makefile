@@ -29,7 +29,7 @@ dev:
 	@PORT=$$(../../scripts/find-free-port.sh 8000) && \
 	echo $$PORT > ../../.backend-port && \
 	echo "Starting Django on port $$PORT (saved to .backend-port)" && \
-	ADMIN_ALLOWED_IPS=127.0.0.1 DEBUG=true uv run python manage.py runserver 0.0.0.0:$$PORT
+	ADMIN_ALLOWED_IPS=127.0.0.1 ALLOWED_HOSTS=* DEBUG=true uv run python manage.py runserver 0.0.0.0:$$PORT
 
 
 bootstrap:

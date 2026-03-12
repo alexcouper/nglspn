@@ -7,7 +7,12 @@ from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.utils import timezone
 
-from apps.emails.models import BroadcastEmailRecipient, SentEmail, SentEmailType
+from apps.emails.models import (
+    BroadcastEmailRecipient,
+    BroadcastEmailStatus,
+    SentEmail,
+    SentEmailType,
+)
 from services.email import EMAIL_LOGO_URL
 from services.email.handler_interface import EmailHandlerInterface
 
@@ -203,42 +208,52 @@ class DjangoEmailHandler(EmailHandlerInterface):
         broadcast: BroadcastEmail,
         sent_by_user: User,
     ) -> tuple[int, int]:
-        query = DjangoEmailQuery()
-        html, text = query.render_broadcast_email(broadcast)
-        recipients = query.resolve_broadcast_recipients(broadcast)
+        broadcast.status = BroadcastEmailStatus.SENDING
+        broadcast.save(update_fields=["status"])
+
         success_count = 0
         failure_count = 0
 
-        for user in recipients.iterator():
-            error_message = ""
-            success = True
-            try:
-                email = EmailMultiAlternatives(
-                    subject=f"{broadcast.subject} - Naglasúpan",
-                    body=text,
-                    from_email=settings.ADMIN_FROM_EMAIL,
-                    to=[user.email],
+        try:
+            query = DjangoEmailQuery()
+            html, text = query.render_broadcast_email(broadcast)
+            recipients = query.resolve_broadcast_recipients(broadcast)
+
+            for user in recipients.iterator():
+                error_message = ""
+                success = True
+                try:
+                    email = EmailMultiAlternatives(
+                        subject=f"{broadcast.subject} - Naglasúpan",
+                        body=text,
+                        from_email=settings.ADMIN_FROM_EMAIL,
+                        to=[user.email],
+                    )
+                    email.attach_alternative(html, "text/html")
+                    email.send(fail_silently=False)
+                except Exception:
+                    logger.exception("Failed to send broadcast email to %s", user.email)
+                    success = False
+                    failure_count += 1
+                    error_message = f"Failed to send to {user.email}"
+                else:
+                    success_count += 1
+
+                BroadcastEmailRecipient.objects.create(
+                    broadcast_email=broadcast,
+                    user=user,
+                    success=success,
+                    error_message=error_message,
                 )
-                email.attach_alternative(html, "text/html")
-                email.send(fail_silently=False)
-            except Exception:
-                logger.exception("Failed to send broadcast email to %s", user.email)
-                success = False
-                failure_count += 1
-                error_message = f"Failed to send to {user.email}"
-            else:
-                success_count += 1
+        except Exception:
+            broadcast.status = BroadcastEmailStatus.FAILED
+            broadcast.save(update_fields=["status"])
+            raise
 
-            BroadcastEmailRecipient.objects.create(
-                broadcast_email=broadcast,
-                user=user,
-                success=success,
-                error_message=error_message,
-            )
-
+        broadcast.status = BroadcastEmailStatus.SENT
         broadcast.sent_at = timezone.now()
         broadcast.sent_by = sent_by_user
-        broadcast.save(update_fields=["sent_at", "sent_by"])
+        broadcast.save(update_fields=["status", "sent_at", "sent_by"])
 
         return success_count, failure_count
 

@@ -36,7 +36,7 @@ export function ReplyForm({ onSubmit, onCancel }: ReplyFormProps) {
           resize();
         }}
         onKeyDown={(e) => {
-          if (e.key === "Enter" && e.shiftKey && !submitting && body.trim()) {
+          if (e.key === "Enter" && !e.shiftKey && !submitting && body.trim()) {
             e.preventDefault();
             handleSubmit(e);
           }
@@ -64,7 +64,7 @@ export function ReplyForm({ onSubmit, onCancel }: ReplyFormProps) {
       </div>
       </div>
       <p className={`text-[11px] text-muted-foreground ${body.trim() ? "" : "invisible"}`}>
-        <kbd className="font-medium">Shift + Enter</kbd> to send
+        <kbd className="font-medium">Enter</kbd> to send, <kbd className="font-medium">Shift + Enter</kbd> for new line
       </p>
     </form>
   );

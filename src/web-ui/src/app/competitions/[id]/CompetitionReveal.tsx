@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { TrophyIcon } from "@heroicons/react/24/solid";
@@ -8,8 +8,7 @@ import {
   type Competition,
   type CompetitionProject,
 } from "@/lib/api";
-import { getPlaceholderColor } from "@/lib/utils";
-import { TagFilterUnified } from "@/components/TagFilterUnified";
+import { getPlaceholderColor, pickVariant } from "@/lib/utils";
 import { TagBadge } from "@/components/TagBadge";
 
 function formatDateRange(startDate: string, endDate: string): string {
@@ -29,55 +28,6 @@ interface CompetitionRevealProps {
 
 export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps) {
   const [competition] = useState<Competition>(initialCompetition);
-  const [selectedTagIds, setSelectedTagIds] = useState<string[]>([]);
-
-  const { tags, categories } = useMemo(() => {
-    const tagMap = new Map<string, {
-      id: string;
-      name: string;
-      slug: string;
-      color: string | null;
-      category_id: string | null;
-      category_slug: string | null;
-    }>();
-    const categoryMap = new Map<string, { id: string; name: string; slug: string }>();
-
-    for (const project of competition.projects) {
-      for (const tag of project.tags) {
-        if (!tagMap.has(tag.id)) {
-          tagMap.set(tag.id, {
-            id: tag.id,
-            name: tag.name,
-            slug: tag.slug,
-            color: tag.color,
-            category_id: tag.category_id || null,
-            category_slug: tag.category_slug || null,
-          });
-        }
-        const catId = tag.category_id;
-        const catSlug = tag.category_slug;
-        if (catId && catSlug && !categoryMap.has(catId)) {
-          categoryMap.set(catId, {
-            id: catId,
-            name: catSlug.split("-").map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(" "),
-            slug: catSlug,
-          });
-        }
-      }
-    }
-
-    return {
-      tags: Array.from(tagMap.values()),
-      categories: Array.from(categoryMap.values()),
-    };
-  }, [competition]);
-
-  const filteredProjects = useMemo(() => {
-    if (selectedTagIds.length === 0) return competition.projects;
-    return competition.projects.filter((project) =>
-      project.tags.some((tag) => selectedTagIds.includes(tag.id))
-    );
-  }, [competition, selectedTagIds]);
 
   const isAcceptingApplications =
     competition.status === "accepting_applications";
@@ -127,79 +77,50 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
       </div>
 
       {!isAcceptingApplications && (
-        <div className="flex gap-8">
-          {/* Sidebar filters */}
-          {tags.length > 0 && (
-            <div className="hidden md:block w-56 flex-shrink-0">
-              <TagFilterUnified
-                mode="local"
-                tags={tags}
-                categories={categories}
-                selectedIds={selectedTagIds}
-                onFilterChange={setSelectedTagIds}
-              />
+        <div className="space-y-6">
+          {/* Quote */}
+          {competition.quote && (
+            <blockquote className="bg-white rounded-xl border border-border p-5 border-l-3 border-l-accent">
+              <p className="text-sm text-muted-foreground italic leading-relaxed">
+                &ldquo;{competition.quote}&rdquo;
+              </p>
+            </blockquote>
+          )}
+
+          {/* Winner */}
+          {competition.winner && (
+            <div className="bg-white rounded-xl border border-amber-200 p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <TrophyIcon className="w-5 h-5 text-amber-500" />
+                <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Winner</h2>
+              </div>
+              <WinnerCard project={competition.winner} />
             </div>
           )}
 
-          {/* Main */}
-          <div className="flex-1 min-w-0 space-y-6">
-            {/* Quote */}
-            {competition.quote && (
-              <blockquote className="bg-white rounded-xl border border-border p-5 border-l-3 border-l-accent">
-                <p className="text-sm text-muted-foreground italic leading-relaxed">
-                  &ldquo;{competition.quote}&rdquo;
-                </p>
-              </blockquote>
-            )}
-
-            {/* Winner */}
-            {competition.winner && (
-              <div className="bg-white rounded-xl border border-amber-200 p-5">
-                <div className="flex items-center gap-2 mb-4">
-                  <TrophyIcon className="w-5 h-5 text-amber-500" />
-                  <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Winner</h2>
-                </div>
-                <WinnerCard project={competition.winner} />
-              </div>
-            )}
-
-            {/* Mobile filter */}
-            {tags.length > 0 && (
-              <div className="md:hidden">
-                <TagFilterUnified
-                  mode="local"
-                  tags={tags}
-                  categories={categories}
-                  selectedIds={selectedTagIds}
-                  onFilterChange={setSelectedTagIds}
+          {/* Projects */}
+          <div>
+            <div className="flex items-baseline gap-2 mb-4">
+              <h2 className="text-base font-semibold text-foreground">
+                All Projects
+              </h2>
+              <span className="text-xs text-muted-foreground">
+                ({competition.projects.length})
+              </span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {competition.projects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  isWinner={project.id === competition.winner?.id}
                 />
-              </div>
-            )}
-
-            {/* Projects */}
-            <div>
-              <div className="flex items-baseline gap-2 mb-4">
-                <h2 className="text-base font-semibold text-foreground">
-                  {selectedTagIds.length > 0 ? "Filtered Projects" : "All Projects"}
-                </h2>
-                <span className="text-xs text-muted-foreground">
-                  ({filteredProjects.length})
-                </span>
-              </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {filteredProjects.map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    isWinner={project.id === competition.winner?.id}
-                  />
-                ))}
-                {filteredProjects.length === 0 && (
-                  <p className="col-span-full text-muted-foreground text-sm text-center py-8">
-                    No projects found
-                  </p>
-                )}
-              </div>
+              ))}
+              {competition.projects.length === 0 && (
+                <p className="col-span-full text-muted-foreground text-sm text-center py-8">
+                  No projects found
+                </p>
+              )}
             </div>
           </div>
         </div>
@@ -222,7 +143,7 @@ function WinnerCard({ project }: { project: CompetitionProject }) {
         >
           {project.main_image_url && (
             <Image
-              src={project.main_image_url}
+              src={pickVariant(project.main_image_variants, "medium") ?? project.main_image_url}
               alt={project.title}
               fill
               className="object-contain"
@@ -268,7 +189,7 @@ function ProjectCard({
       >
         {project.main_image_url && (
           <Image
-            src={project.main_image_url}
+            src={pickVariant(project.main_image_variants, "thumb") ?? project.main_image_url}
             alt={project.title}
             fill
             className="object-contain"

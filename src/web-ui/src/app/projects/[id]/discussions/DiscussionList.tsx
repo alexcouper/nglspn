@@ -4,9 +4,10 @@ import { useState } from "react";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAutoResize } from "@/hooks/useAutoResize";
 import type { Discussion, Reply } from "@/lib/api";
+import { NewDiscussionModal } from "@/components/NewDiscussionModal";
 import { ReplyForm } from "./ReplyForm";
 
-function formatDate(dateStr: string): string {
+function fullDate(dateStr: string): string {
   return new Date(dateStr).toLocaleString("en-US", {
     year: "numeric",
     month: "short",
@@ -14,6 +15,24 @@ function formatDate(dateStr: string): string {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function relativeDate(dateStr: string): string {
+  const now = Date.now();
+  const then = new Date(dateStr).getTime();
+  const seconds = Math.floor((now - then) / 1000);
+
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours}h`;
+  const days = Math.floor(hours / 24);
+  if (days < 30) return `${days}d`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo`;
+  const years = Math.floor(days / 365);
+  return `${years}y`;
 }
 
 function authorName(author: Discussion["author"]): string {
@@ -26,9 +45,10 @@ interface ReplyItemProps {
   currentUserId?: string;
   onEdit: (id: string, body: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
+  onReplyClick: () => void;
 }
 
-function ReplyItem({ reply, currentUserId, onEdit, onDelete }: ReplyItemProps) {
+function ReplyItem({ reply, currentUserId, onEdit, onDelete, onReplyClick }: ReplyItemProps) {
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(reply.body);
@@ -69,8 +89,8 @@ function ReplyItem({ reply, currentUserId, onEdit, onDelete }: ReplyItemProps) {
             <span className="font-medium text-foreground">
               {authorName(reply.author)}
             </span>
-            <span className="text-muted-foreground text-xs">
-              {formatDate(reply.created_at)}
+            <span className="text-muted-foreground text-xs" title={fullDate(reply.created_at)}>
+              {relativeDate(reply.created_at)}
             </span>
             {reply.is_edited && (
               <span className="text-muted-foreground text-xs">(edited)</span>
@@ -106,9 +126,17 @@ function ReplyItem({ reply, currentUserId, onEdit, onDelete }: ReplyItemProps) {
               </div>
             </div>
           ) : (
-            <p className="text-foreground text-sm whitespace-pre-wrap">
-              {reply.body}
-            </p>
+            <>
+              <p className="text-foreground text-base whitespace-pre-wrap">
+                {reply.body}
+              </p>
+              <button
+                onClick={onReplyClick}
+                className="text-xs text-muted-foreground hover:text-accent transition-colors mt-1"
+              >
+                Reply
+              </button>
+            </>
           )}
         </div>
         {isAuthor && !editing && (
@@ -153,9 +181,6 @@ function DiscussionItem({
   const [showReply, setShowReply] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [editBody, setEditBody] = useState(discussion.body);
-  const [saving, setSaving] = useState(false);
-  const { ref: editRef, resize: editResize } = useAutoResize();
   const isAuthor = currentUserId && discussion.author?.id === currentUserId;
 
   const handleDelete = async () => {
@@ -172,19 +197,8 @@ function DiscussionItem({
     setShowReply(false);
   };
 
-  const handleSaveEdit = async () => {
-    if (!editBody.trim()) return;
-    setSaving(true);
-    try {
-      await onEdit(discussion.id, editBody.trim());
-      setEditing(false);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditBody(discussion.body);
+  const handleSaveEdit = async (body: string) => {
+    await onEdit(discussion.id, body);
     setEditing(false);
   };
 
@@ -197,49 +211,18 @@ function DiscussionItem({
               <span className="font-medium text-foreground">
                 {authorName(discussion.author)}
               </span>
-              <span className="text-muted-foreground">
-                {formatDate(discussion.created_at)}
+              <span className="text-muted-foreground text-xs" title={fullDate(discussion.created_at)}>
+                {relativeDate(discussion.created_at)}
               </span>
               {discussion.is_edited && (
                 <span className="text-muted-foreground text-xs">(edited)</span>
               )}
             </div>
-            {editing ? (
-              <div className="space-y-2">
-                <textarea
-                  ref={editRef}
-                  value={editBody}
-                  onChange={(e) => {
-                    setEditBody(e.target.value);
-                    editResize();
-                  }}
-                  rows={3}
-                  className="input w-full resize-none overflow-hidden text-sm"
-                  autoFocus
-                />
-                <div className="flex gap-2">
-                  <button
-                    onClick={handleSaveEdit}
-                    disabled={saving || !editBody.trim()}
-                    className="btn-primary text-xs disabled:opacity-50"
-                  >
-                    {saving ? "Saving..." : "Save"}
-                  </button>
-                  <button
-                    onClick={handleCancelEdit}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : (
-              <p className="text-foreground text-sm whitespace-pre-wrap">
-                {discussion.body}
-              </p>
-            )}
+            <p className="text-foreground text-base whitespace-pre-wrap">
+              {discussion.body}
+            </p>
           </div>
-          {isAuthor && !editing && (
+          {isAuthor && (
             <div className="flex gap-1">
               <button
                 onClick={() => setEditing(true)}
@@ -260,16 +243,14 @@ function DiscussionItem({
           )}
         </div>
 
-        {!editing && (
-          <div className="mt-3">
-            <button
-              onClick={() => setShowReply(!showReply)}
-              className="text-xs text-muted-foreground hover:text-accent transition-colors"
-            >
-              Reply
-            </button>
-          </div>
-        )}
+        <div className="mt-3">
+          <button
+            onClick={() => setShowReply(!showReply)}
+            className="text-xs text-muted-foreground hover:text-accent transition-colors"
+          >
+            Reply
+          </button>
+        </div>
 
         {showReply && (
           <div className="mt-3">
@@ -287,10 +268,20 @@ function DiscussionItem({
               currentUserId={currentUserId}
               onEdit={onEdit}
               onDelete={onDelete}
+              onReplyClick={() => setShowReply(true)}
             />
           ))}
         </div>
       )}
+
+      <NewDiscussionModal
+        open={editing}
+        onClose={() => setEditing(false)}
+        onSubmit={handleSaveEdit}
+        initialBody={discussion.body}
+        title="Edit discussion"
+        submitLabel="Save"
+      />
     </div>
   );
 }

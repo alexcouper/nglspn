@@ -15,6 +15,11 @@ class DiscussionHandlerInterface(ABC):
     ) -> Discussion: ...
 
     @abstractmethod
+    def update_discussion(
+        self, discussion_id: UUID, requesting_user_id: UUID, body: str
+    ) -> Discussion: ...
+
+    @abstractmethod
     def delete_discussion(
         self, discussion_id: UUID, requesting_user_id: UUID
     ) -> None: ...

@@ -43,6 +43,21 @@ class DjangoDiscussionHandler(DiscussionHandlerInterface):
 
         return discussion
 
+    def update_discussion(
+        self, discussion_id: UUID, requesting_user_id: UUID, body: str
+    ) -> Discussion:
+        try:
+            discussion = Discussion.objects.get(id=discussion_id)
+        except Discussion.DoesNotExist:
+            raise DiscussionNotFoundError from None
+
+        if discussion.author_id != requesting_user_id:
+            raise NotDiscussionAuthorError
+
+        discussion.body = body
+        discussion.save()
+        return discussion
+
     def delete_discussion(self, discussion_id: UUID, requesting_user_id: UUID) -> None:
         try:
             discussion = Discussion.objects.get(id=discussion_id)

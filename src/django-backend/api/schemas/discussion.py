@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 from uuid import UUID
 
 from ninja import Schema
@@ -25,13 +25,23 @@ def _resolve_author(obj: object) -> dict | None:
     }
 
 
+def _resolve_is_edited(obj: object) -> bool:
+    created_at = getattr(obj, "created_at", None)
+    updated_at = getattr(obj, "updated_at", None)
+    if created_at is None or updated_at is None:
+        return False
+    return updated_at > created_at + timedelta(seconds=1)
+
+
 class ReplyResponse(Schema):
     id: UUID
     body: str
     created_at: datetime
     author: DiscussionAuthor | None
+    is_edited: bool
 
     resolve_author = staticmethod(_resolve_author)
+    resolve_is_edited = staticmethod(_resolve_is_edited)
 
 
 class DiscussionResponse(Schema):
@@ -39,9 +49,11 @@ class DiscussionResponse(Schema):
     body: str
     created_at: datetime
     author: DiscussionAuthor | None
+    is_edited: bool
     replies: list[ReplyResponse] = []
 
     resolve_author = staticmethod(_resolve_author)
+    resolve_is_edited = staticmethod(_resolve_is_edited)
 
     @staticmethod
     def resolve_replies(obj: object) -> list:

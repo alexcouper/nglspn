@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAutoResize } from "@/hooks/useAutoResize";
 
 interface ReplyFormProps {
   onSubmit: (body: string) => Promise<void>;
@@ -10,6 +11,7 @@ interface ReplyFormProps {
 export function ReplyForm({ onSubmit, onCancel }: ReplyFormProps) {
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const { ref: textareaRef, resize } = useAutoResize();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,8 +29,12 @@ export function ReplyForm({ onSubmit, onCancel }: ReplyFormProps) {
     <form onSubmit={handleSubmit} className="flex flex-col gap-1">
       <div className="flex gap-2">
       <textarea
+        ref={textareaRef}
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={(e) => {
+          setBody(e.target.value);
+          resize();
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter" && e.shiftKey && !submitting && body.trim()) {
             e.preventDefault();
@@ -37,7 +43,7 @@ export function ReplyForm({ onSubmit, onCancel }: ReplyFormProps) {
         }}
         placeholder="Write a reply..."
         rows={2}
-        className="input flex-1 resize-none text-sm"
+        className="input flex-1 resize-none overflow-hidden text-sm"
         autoFocus
       />
       <div className="flex flex-col gap-1">

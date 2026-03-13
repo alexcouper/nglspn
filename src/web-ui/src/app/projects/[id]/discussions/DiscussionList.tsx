@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { TrashIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useAutoResize } from "@/hooks/useAutoResize";
 import type { Discussion, Reply } from "@/lib/api";
 import { ReplyForm } from "./ReplyForm";
 
@@ -23,11 +24,16 @@ function authorName(author: Discussion["author"]): string {
 interface ReplyItemProps {
   reply: Reply;
   currentUserId?: string;
+  onEdit: (id: string, body: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
 }
 
-function ReplyItem({ reply, currentUserId, onDelete }: ReplyItemProps) {
+function ReplyItem({ reply, currentUserId, onEdit, onDelete }: ReplyItemProps) {
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editBody, setEditBody] = useState(reply.body);
+  const [saving, setSaving] = useState(false);
+  const { ref: editRef, resize: editResize } = useAutoResize();
   const isAuthor = currentUserId && reply.author?.id === currentUserId;
 
   const handleDelete = async () => {
@@ -37,6 +43,22 @@ function ReplyItem({ reply, currentUserId, onDelete }: ReplyItemProps) {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editBody.trim()) return;
+    setSaving(true);
+    try {
+      await onEdit(reply.id, editBody.trim());
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditBody(reply.body);
+    setEditing(false);
   };
 
   return (
@@ -50,20 +72,63 @@ function ReplyItem({ reply, currentUserId, onDelete }: ReplyItemProps) {
             <span className="text-muted-foreground text-xs">
               {formatDate(reply.created_at)}
             </span>
+            {reply.is_edited && (
+              <span className="text-muted-foreground text-xs">(edited)</span>
+            )}
           </div>
-          <p className="text-foreground text-sm whitespace-pre-wrap">
-            {reply.body}
-          </p>
+          {editing ? (
+            <div className="space-y-2">
+              <textarea
+                ref={editRef}
+                value={editBody}
+                onChange={(e) => {
+                  setEditBody(e.target.value);
+                  editResize();
+                }}
+                rows={2}
+                className="input w-full resize-none overflow-hidden text-sm"
+                autoFocus
+              />
+              <div className="flex gap-2">
+                <button
+                  onClick={handleSaveEdit}
+                  disabled={saving || !editBody.trim()}
+                  className="btn-primary text-xs disabled:opacity-50"
+                >
+                  {saving ? "Saving..." : "Save"}
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="text-foreground text-sm whitespace-pre-wrap">
+              {reply.body}
+            </p>
+          )}
         </div>
-        {isAuthor && (
-          <button
-            onClick={handleDelete}
-            disabled={deleting}
-            className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
-            title="Delete"
-          >
-            <TrashIcon className="w-4 h-4" />
-          </button>
+        {isAuthor && !editing && (
+          <div className="flex gap-1">
+            <button
+              onClick={() => setEditing(true)}
+              className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted"
+              title="Edit"
+            >
+              <PencilIcon className="w-4 h-4" />
+            </button>
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+              title="Delete"
+            >
+              <TrashIcon className="w-4 h-4" />
+            </button>
+          </div>
         )}
       </div>
     </div>
@@ -74,6 +139,7 @@ interface DiscussionItemProps {
   discussion: Discussion;
   currentUserId?: string;
   onReply: (discussionId: string, body: string) => Promise<void>;
+  onEdit: (discussionId: string, body: string) => Promise<void>;
   onDelete: (discussionId: string) => Promise<void>;
 }
 
@@ -81,10 +147,15 @@ function DiscussionItem({
   discussion,
   currentUserId,
   onReply,
+  onEdit,
   onDelete,
 }: DiscussionItemProps) {
   const [showReply, setShowReply] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [editBody, setEditBody] = useState(discussion.body);
+  const [saving, setSaving] = useState(false);
+  const { ref: editRef, resize: editResize } = useAutoResize();
   const isAuthor = currentUserId && discussion.author?.id === currentUserId;
 
   const handleDelete = async () => {
@@ -101,6 +172,22 @@ function DiscussionItem({
     setShowReply(false);
   };
 
+  const handleSaveEdit = async () => {
+    if (!editBody.trim()) return;
+    setSaving(true);
+    try {
+      await onEdit(discussion.id, editBody.trim());
+      setEditing(false);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditBody(discussion.body);
+    setEditing(false);
+  };
+
   return (
     <div className="bg-white rounded-xl border border-border overflow-hidden">
       <div className="p-5">
@@ -113,31 +200,76 @@ function DiscussionItem({
               <span className="text-muted-foreground">
                 {formatDate(discussion.created_at)}
               </span>
+              {discussion.is_edited && (
+                <span className="text-muted-foreground text-xs">(edited)</span>
+              )}
             </div>
-            <p className="text-foreground text-sm whitespace-pre-wrap">
-              {discussion.body}
-            </p>
+            {editing ? (
+              <div className="space-y-2">
+                <textarea
+                  ref={editRef}
+                  value={editBody}
+                  onChange={(e) => {
+                    setEditBody(e.target.value);
+                    editResize();
+                  }}
+                  rows={3}
+                  className="input w-full resize-none overflow-hidden text-sm"
+                  autoFocus
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleSaveEdit}
+                    disabled={saving || !editBody.trim()}
+                    className="btn-primary text-xs disabled:opacity-50"
+                  >
+                    {saving ? "Saving..." : "Save"}
+                  </button>
+                  <button
+                    onClick={handleCancelEdit}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <p className="text-foreground text-sm whitespace-pre-wrap">
+                {discussion.body}
+              </p>
+            )}
           </div>
-          {isAuthor && (
-            <button
-              onClick={handleDelete}
-              disabled={deleting}
-              className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
-              title="Delete"
-            >
-              <TrashIcon className="w-4 h-4" />
-            </button>
+          {isAuthor && !editing && (
+            <div className="flex gap-1">
+              <button
+                onClick={() => setEditing(true)}
+                className="p-1.5 text-muted-foreground hover:text-foreground transition-colors rounded-lg hover:bg-muted"
+                title="Edit"
+              >
+                <PencilIcon className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="p-1.5 text-muted-foreground hover:text-red-500 transition-colors rounded-lg hover:bg-red-50"
+                title="Delete"
+              >
+                <TrashIcon className="w-4 h-4" />
+              </button>
+            </div>
           )}
         </div>
 
-        <div className="mt-3">
-          <button
-            onClick={() => setShowReply(!showReply)}
-            className="text-xs text-muted-foreground hover:text-accent transition-colors"
-          >
-            Reply
-          </button>
-        </div>
+        {!editing && (
+          <div className="mt-3">
+            <button
+              onClick={() => setShowReply(!showReply)}
+              className="text-xs text-muted-foreground hover:text-accent transition-colors"
+            >
+              Reply
+            </button>
+          </div>
+        )}
 
         {showReply && (
           <div className="mt-3">
@@ -153,6 +285,7 @@ function DiscussionItem({
               key={reply.id}
               reply={reply}
               currentUserId={currentUserId}
+              onEdit={onEdit}
               onDelete={onDelete}
             />
           ))}
@@ -166,6 +299,7 @@ interface DiscussionListProps {
   discussions: Discussion[];
   currentUserId?: string;
   onReply: (discussionId: string, body: string) => Promise<void>;
+  onEdit: (discussionId: string, body: string) => Promise<void>;
   onDelete: (discussionId: string) => Promise<void>;
 }
 
@@ -173,6 +307,7 @@ export function DiscussionList({
   discussions,
   currentUserId,
   onReply,
+  onEdit,
   onDelete,
 }: DiscussionListProps) {
   if (discussions.length === 0) {
@@ -187,6 +322,7 @@ export function DiscussionList({
           discussion={discussion}
           currentUserId={currentUserId}
           onReply={onReply}
+          onEdit={onEdit}
           onDelete={onDelete}
         />
       ))}

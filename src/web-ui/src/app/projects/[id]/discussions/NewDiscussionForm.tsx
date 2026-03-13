@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAutoResize } from "@/hooks/useAutoResize";
 
 interface NewDiscussionFormProps {
   onSubmit: (body: string) => Promise<void>;
@@ -10,6 +11,7 @@ export function NewDiscussionForm({ onSubmit }: NewDiscussionFormProps) {
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const { ref: textareaRef, resize } = useAutoResize();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,8 +33,12 @@ export function NewDiscussionForm({ onSubmit }: NewDiscussionFormProps) {
     <form onSubmit={handleSubmit}>
       <div className="bg-white rounded-xl border border-border p-4">
         <textarea
+          ref={textareaRef}
           value={body}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => {
+            setBody(e.target.value);
+            resize();
+          }}
           onKeyDown={(e) => {
             if (e.key === "Enter" && e.shiftKey && !submitting && body.trim()) {
               e.preventDefault();
@@ -41,7 +47,7 @@ export function NewDiscussionForm({ onSubmit }: NewDiscussionFormProps) {
           }}
           placeholder="Start a discussion..."
           rows={3}
-          className="input w-full resize-none"
+          className="input w-full resize-none overflow-hidden"
         />
         {error && (
           <p className="text-red-500 text-xs mt-1">{error}</p>

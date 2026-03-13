@@ -76,55 +76,53 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         )}
       </div>
 
-      {!isAcceptingApplications && (
-        <div className="space-y-6">
-          {/* Quote */}
-          {competition.quote && (
-            <blockquote className="bg-white rounded-xl border border-border p-5 border-l-3 border-l-accent">
-              <p className="text-sm text-muted-foreground italic leading-relaxed">
-                &ldquo;{competition.quote}&rdquo;
+      <div className="space-y-6">
+        {/* Quote */}
+        {competition.quote && (
+          <blockquote className="bg-white rounded-xl border border-border p-5 border-l-3 border-l-accent">
+            <p className="text-sm text-muted-foreground italic leading-relaxed">
+              &ldquo;{competition.quote}&rdquo;
+            </p>
+          </blockquote>
+        )}
+
+        {/* Winner */}
+        {competition.winner && (
+          <div className="bg-white rounded-xl border border-amber-200 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <TrophyIcon className="w-5 h-5 text-amber-500" />
+              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Winner</h2>
+            </div>
+            <WinnerCard project={competition.winner} />
+          </div>
+        )}
+
+        {/* Projects */}
+        <div>
+          <div className="flex items-baseline gap-2 mb-4">
+            <h2 className="text-base font-semibold text-foreground">
+              All Projects
+            </h2>
+            <span className="text-xs text-muted-foreground">
+              ({competition.projects.length})
+            </span>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {competition.projects.map((project) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                isWinner={project.id === competition.winner?.id}
+              />
+            ))}
+            {competition.projects.length === 0 && (
+              <p className="col-span-full text-muted-foreground text-sm text-center py-8">
+                No projects found
               </p>
-            </blockquote>
-          )}
-
-          {/* Winner */}
-          {competition.winner && (
-            <div className="bg-white rounded-xl border border-amber-200 p-5">
-              <div className="flex items-center gap-2 mb-4">
-                <TrophyIcon className="w-5 h-5 text-amber-500" />
-                <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Winner</h2>
-              </div>
-              <WinnerCard project={competition.winner} />
-            </div>
-          )}
-
-          {/* Projects */}
-          <div>
-            <div className="flex items-baseline gap-2 mb-4">
-              <h2 className="text-base font-semibold text-foreground">
-                All Projects
-              </h2>
-              <span className="text-xs text-muted-foreground">
-                ({competition.projects.length})
-              </span>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-              {competition.projects.map((project) => (
-                <ProjectCard
-                  key={project.id}
-                  project={project}
-                  isWinner={project.id === competition.winner?.id}
-                />
-              ))}
-              {competition.projects.length === 0 && (
-                <p className="col-span-full text-muted-foreground text-sm text-center py-8">
-                  No projects found
-                </p>
-              )}
-            </div>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }

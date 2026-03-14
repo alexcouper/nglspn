@@ -16,20 +16,23 @@ RUN pip install uv
 # Set work directory
 WORKDIR /app
 
-# Copy dependency files (uv.lock from workspace root)
+# Copy workspace root files for uv workspace resolution
 COPY pyproject.toml uv.lock ./
+COPY src/django-backend/pyproject.toml ./src/django-backend/pyproject.toml
 
 # Install Python dependencies for this package only
 RUN uv sync --package django-backend --frozen --no-editable --no-dev
 
-# Copy project files
-COPY . .
+# Copy backend project files
+COPY src/django-backend/ ./src/django-backend/
+
+WORKDIR /app/src/django-backend
 
 # Collect static files
 RUN uv run python manage.py collectstatic --noinput
 
 # Copy and set entrypoint
-COPY entrypoint.sh /entrypoint.sh
+COPY src/django-backend/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 # Expose port

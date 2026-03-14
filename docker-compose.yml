@@ -15,8 +15,8 @@ services:
 
   backend:
     build:
-      context: src/django-backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: src/django-backend/Dockerfile
     depends_on:
       db:
         condition: service_healthy

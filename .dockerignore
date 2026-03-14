@@ -1,0 +1,13 @@
+.git
+.jj
+.env
+.env.*
+!.env.example
+node_modules
+src/web-ui/node_modules
+src/web-ui/.next
+src/django-backend/.venv
+src/django-backend/db.sqlite3
+infra
+roadmap
+*.md

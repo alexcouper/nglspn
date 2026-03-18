@@ -32,12 +32,12 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
 
         # 1. Project owner
         project_owner = discussion.project.owner
-        if project_owner:
+        if project_owner and project_owner.is_active:
             recipients.add(project_owner)
 
         # 2. Root discussion author (if this is a reply)
         root = discussion.parent if discussion.parent else discussion
-        if discussion.parent and root.author:
+        if discussion.parent and root.author and root.author.is_active:
             recipients.add(root.author)
 
         # 3. All previous participants in the root discussion thread
@@ -49,7 +49,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
         )
         from apps.users.models import User as UserModel  # noqa: PLC0415
 
-        participants = UserModel.objects.filter(id__in=participant_ids)
+        participants = UserModel.objects.filter(id__in=participant_ids, is_active=True)
         recipients.update(participants)
 
         # Exclude the comment author
@@ -90,7 +90,9 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
 
     def send_batch_notifications(self, cadence: str) -> None:
         unsent = (
-            Notification.objects.filter(cadence=cadence, sent=False)
+            Notification.objects.filter(
+                cadence=cadence, sent=False, recipient__is_active=True
+            )
             .select_related(
                 "recipient",
                 "discussion",

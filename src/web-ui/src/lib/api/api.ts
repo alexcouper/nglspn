@@ -1,3 +1,4 @@
+import { AdminClient } from "./admin";
 import { APIClient } from "./base";
 import { AuthClient } from "./auth";
 import { CompetitionsClient } from "./competitions";
@@ -12,6 +13,7 @@ import { TagsClient } from "./tags";
 export class API {
   private client: APIClient;
 
+  readonly admin: AdminClient;
   readonly auth: AuthClient;
   readonly competitions: CompetitionsClient;
   readonly discussions: DiscussionsClient;
@@ -24,6 +26,7 @@ export class API {
 
   constructor() {
     this.client = new APIClient();
+    this.admin = new AdminClient(this.client);
     this.auth = new AuthClient(this.client);
     this.competitions = new CompetitionsClient(this.client);
     this.discussions = new DiscussionsClient(this.client);

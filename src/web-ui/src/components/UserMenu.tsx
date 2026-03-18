@@ -54,6 +54,15 @@ export function UserMenu() {
               >
                 Profile
               </Link>
+              {user.groups?.includes("ADMIN") && (
+                <Link
+                  href="/admin/projects"
+                  className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                  onClick={() => setIsOpen(false)}
+                >
+                  Admin
+                </Link>
+              )}
               <div className="border-t border-border my-1" />
             </>
           )}

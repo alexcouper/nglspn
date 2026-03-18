@@ -40,13 +40,13 @@
 
 ## 5. Frontend: Admin Pages
 
-- [ ] 5.1 Create `/admin/projects` page with project table showing image completeness indicators (active/proposed/missing per slot)
-- [ ] 5.2 Add filtering controls: "missing images" and "has proposals" filters
-- [ ] 5.3 Create `/admin/projects/{id}` page showing image slots (icon, main image, screenshots, winner composite) with current images, proposals, and generation history
-- [ ] 5.4 Wire generate buttons to open GenerationDialog for each purpose
-- [ ] 5.5 Wire accept/reject actions for proposals
-- [ ] 5.6 Add admin auth guard — check ADMIN group membership, redirect non-admins
-- [ ] 5.7 Add "Admin" link to profile dropdown, visible only to ADMIN group members
+- [x] 5.1 Create `/admin/projects` page with project table showing image completeness indicators (active/proposed/missing per slot)
+- [x] 5.2 Add filtering controls: "missing images" and "has proposals" filters
+- [x] 5.3 Create `/admin/projects/{id}` page showing image slots (icon, main image, screenshots, winner composite) with current images, proposals, and generation history
+- [x] 5.4 Wire generate buttons to open GenerationDialog for each purpose
+- [x] 5.5 Wire accept/reject actions for proposals
+- [x] 5.6 Add admin auth guard — check ADMIN group membership, redirect non-admins
+- [x] 5.7 Add "Admin" link to profile dropdown, visible only to ADMIN group members
 
 ## 6. Frontend: Project Owner Image Management
 

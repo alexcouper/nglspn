@@ -8,25 +8,25 @@
 
 ## 2. Leonardo AI Service
 
-- [ ] 2.1 Create `services/leonardo/handler_interface.py` with `LeonardoHandlerInterface` defining `generate(generation_request_id: str)` method
-- [ ] 2.2 Create `services/leonardo/django_impl/client.py` — `LeonardoAPIClient` handling HTTP calls: create generation, poll generation status, upload init image (presigned URL flow), download image from CDN URL
-- [ ] 2.3 Create `services/leonardo/django_impl/handler.py` — `DjangoLeonardoHandler` orchestrating: create DB record → upload reference if needed → call Leonardo API → poll → download results → save to S3 as ProjectImage rows → trigger variant generation → update request status
-- [ ] 2.4 Add `LEONARDO_API_KEY` to Django settings and environment configuration
-- [ ] 2.5 Register `LeonardoHandlerInterface` in `services/__init__.py` HandlerServices
-- [ ] 2.6 Create `api/tasks/leonardo.py` with `generate_project_image` django-task that calls the handler
-- [ ] 2.7 Write tests for LeonardoAPIClient (mocked HTTP) and DjangoLeonardoHandler (mocked client)
+- [x] 2.1 Create `services/leonardo/handler_interface.py` with `LeonardoHandlerInterface` defining `generate(generation_request_id: str)` method
+- [x] 2.2 Create `services/leonardo/django_impl/client.py` — `LeonardoAPIClient` handling HTTP calls: create generation, poll generation status, upload init image (presigned URL flow), download image from CDN URL
+- [x] 2.3 Create `services/leonardo/django_impl/handler.py` — `DjangoLeonardoHandler` orchestrating: create DB record → upload reference if needed → call Leonardo API → poll → download results → save to S3 as ProjectImage rows → trigger variant generation → update request status
+- [x] 2.4 Add `LEONARDO_API_KEY` to Django settings and environment configuration
+- [x] 2.5 Register `LeonardoHandlerInterface` in `services/__init__.py` HandlerServices
+- [x] 2.6 Create `api/tasks/leonardo.py` with `generate_project_image` django-task that calls the handler
+- [x] 2.7 Write tests for LeonardoAPIClient (mocked HTTP) and DjangoLeonardoHandler (mocked client)
 
 ## 3. Backend API Endpoints
 
-- [ ] 3.1 Create `api/schemas/image_generation.py` — request/response schemas for generation requests and image purpose data
-- [ ] 3.2 Create `POST /api/images/generate` endpoint: validates input, creates ImageGenerationRequest, enqueues django-task, returns request ID
-- [ ] 3.3 Create `GET /api/images/generate/{id}` endpoint: returns generation status and result images when completed
-- [ ] 3.4 Create `POST /api/images/{id}/accept` endpoint: sets proposed image to active, displaces previous active image for same purpose
-- [ ] 3.5 Create `POST /api/images/{id}/reject` endpoint: deletes proposed image and its S3 files/variants
-- [ ] 3.6 Create `GET /api/projects/{id}/images` endpoint: returns images grouped by purpose with active and proposed status
-- [ ] 3.7 Create `GET /api/admin/projects` endpoint: returns all projects with image completeness summary (admin-only)
-- [ ] 3.8 Create `GET /api/admin/projects/{id}` endpoint: returns full project data with all images by purpose (admin-only)
-- [ ] 3.9 Update existing `GET /api/projects` listing query to filter by projects having an active icon
+- [x] 3.1 Create `api/schemas/image_generation.py` — request/response schemas for generation requests and image purpose data
+- [x] 3.2 Create `POST /api/images/generate` endpoint: validates input, creates ImageGenerationRequest, enqueues django-task, returns request ID
+- [x] 3.3 Create `GET /api/images/generate/{id}` endpoint: returns generation status and result images when completed
+- [x] 3.4 Create `POST /api/images/{id}/accept` endpoint: sets proposed image to active, displaces previous active image for same purpose
+- [x] 3.5 Create `POST /api/images/{id}/reject` endpoint: deletes proposed image and its S3 files/variants
+- [x] 3.6 Create `GET /api/projects/{id}/images` endpoint: returns images grouped by purpose with active and proposed status
+- [x] 3.7 Create `GET /api/admin/projects` endpoint: returns all projects with image completeness summary (admin-only)
+- [x] 3.8 Create `GET /api/admin/projects/{id}` endpoint: returns full project data with all images by purpose (admin-only)
+- [x] 3.9 Update existing `GET /api/projects` listing query to filter by projects having an active icon
 
 ## 4. Frontend: Generation Dialog Component
 

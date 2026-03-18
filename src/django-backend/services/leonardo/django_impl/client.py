@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import time
 from dataclasses import dataclass
@@ -96,12 +97,17 @@ class LeonardoAPIClient:
 
         gen = data["generations_by_pk"]
         status = gen.get("status", "PENDING")
-        images = []
-        if status == "COMPLETE":
-            for img in gen.get("generated_images", []):
-                images.append(
-                    GeneratedImage(url=img["url"], leonardo_id=img["id"])
+        images = (
+            [
+                GeneratedImage(
+                    url=img["url"],
+                    leonardo_id=img["id"],
                 )
+                for img in gen.get("generated_images", [])
+            ]
+            if status == "COMPLETE"
+            else []
+        )
 
         return GenerationResult(
             generation_id=generation_id,
@@ -144,10 +150,7 @@ class LeonardoAPIClient:
             fields = upload_data["fields"]
             image_id = upload_data["id"]
 
-            # Step 2: Upload via multipart POST
             # Fields from Leonardo are JSON-encoded
-            import json
-
             if isinstance(fields, str):
                 fields = json.loads(fields)
 

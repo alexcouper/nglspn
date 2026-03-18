@@ -4,9 +4,11 @@ from django.http import HttpRequest
 from ninja import NinjaAPI
 
 from api.routers import (
+    admin_projects,
     auth,
     competitions,
     discussions,
+    images,
     my_projects,
     my_review,
     projects,
@@ -29,6 +31,8 @@ api.add_router("/my/reviews", my_review.router)
 api.add_router("/tags", tags.router)
 api.add_router("/competitions", competitions.router)
 api.add_router("/users", users.router)
+api.add_router("/images", images.router)
+api.add_router("/admin/projects", admin_projects.router)
 
 
 @api.get("/")

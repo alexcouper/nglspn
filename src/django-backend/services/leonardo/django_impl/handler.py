@@ -34,9 +34,7 @@ class DjangoLeonardoHandler(LeonardoHandlerInterface):
                 "project", "reference_image"
             ).get(id=generation_request_id)
         except ImageGenerationRequest.DoesNotExist:
-            logger.warning(
-                "Generation request %s not found", generation_request_id
-            )
+            logger.warning("Generation request %s not found", generation_request_id)
             return
 
         request.status = GenerationStatus.GENERATING
@@ -45,9 +43,7 @@ class DjangoLeonardoHandler(LeonardoHandlerInterface):
         try:
             self._execute_generation(request)
         except Exception:
-            logger.exception(
-                "Generation failed for request %s", generation_request_id
-            )
+            logger.exception("Generation failed for request %s", generation_request_id)
             request.status = GenerationStatus.FAILED
             request.error_message = "Unexpected error during generation"
             request.save(update_fields=["status", "error_message"])
@@ -97,7 +93,11 @@ class DjangoLeonardoHandler(LeonardoHandlerInterface):
             request.error_message = f"Leonardo returned status: {result.status}"
             request.save(update_fields=["status", "error_message"])
 
-    def _save_generated_images(self, request, result) -> None:
+    def _save_generated_images(
+        self,
+        request: ImageGenerationRequest,
+        result: object,
+    ) -> None:
         # Delete previous proposed images for this project+purpose
         old_proposed = ProjectImage.objects.filter(
             project=request.project,
@@ -105,7 +105,7 @@ class DjangoLeonardoHandler(LeonardoHandlerInterface):
             approval_status=ApprovalStatus.PROPOSED,
         )
         for img in old_proposed:
-            _delete_image_files(img)
+            delete_image_files(img)
         old_proposed.delete()
 
         # Download and save each generated image
@@ -116,9 +116,7 @@ class DjangoLeonardoHandler(LeonardoHandlerInterface):
                     str(request.project.id),
                     f"generated-{uuid.uuid4().hex[:8]}.png",
                 )
-                storage_service.upload_object(
-                    storage_key, image_bytes, "image/png"
-                )
+                storage_service.upload_object(storage_key, image_bytes, "image/png")
 
                 project_image = ProjectImage.objects.create(
                     project=request.project,
@@ -159,14 +157,20 @@ def _get_preset_style(purpose: str) -> str | None:
     return styles.get(purpose)
 
 
-def _delete_image_files(image: ProjectImage) -> None:
+def delete_image_files(image: ProjectImage) -> None:
     """Delete an image and its variants from S3."""
     for variant in image.variants.all():
         try:
             storage_service.delete_object(variant.storage_key)
         except Exception:
-            logger.exception("Failed to delete variant %s from S3", variant.storage_key)
+            logger.exception(
+                "Failed to delete variant %s from S3",
+                variant.storage_key,
+            )
     try:
         storage_service.delete_object(image.storage_key)
     except Exception:
-        logger.exception("Failed to delete image %s from S3", image.storage_key)
+        logger.exception(
+            "Failed to delete image %s from S3",
+            image.storage_key,
+        )

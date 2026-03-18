@@ -2,10 +2,10 @@ from uuid import uuid4
 
 import pytest
 
-from apps.projects.models import ProjectStatus
+from apps.projects.models import ImagePurpose, ProjectStatus
 from services.project.django_impl import DjangoProjectQuery, get_title_from_url
 from services.project.exceptions import ProjectNotFoundError
-from tests.factories import ProjectFactory, UserFactory
+from tests.factories import ProjectFactory, ProjectImageFactory, UserFactory
 
 query = DjangoProjectQuery()
 
@@ -45,8 +45,12 @@ class TestGetForOwner:
 
 @pytest.mark.django_db
 class TestListApproved:
-    def test_returns_only_approved_projects(self):
-        ProjectFactory(status=ProjectStatus.APPROVED)
+    def test_returns_only_approved_projects_with_icon(self):
+        approved = ProjectFactory(status=ProjectStatus.APPROVED)
+        ProjectImageFactory(
+            project=approved,
+            purpose=ImagePurpose.ICON,
+        )
         ProjectFactory(status=ProjectStatus.PENDING)
 
         result = query.list_approved()
@@ -55,7 +59,8 @@ class TestListApproved:
 
     def test_paginates_results(self):
         for _ in range(3):
-            ProjectFactory(status=ProjectStatus.APPROVED)
+            p = ProjectFactory(status=ProjectStatus.APPROVED)
+            ProjectImageFactory(project=p, purpose=ImagePurpose.ICON)
 
         result = query.list_approved(per_page=2, page=1)
 

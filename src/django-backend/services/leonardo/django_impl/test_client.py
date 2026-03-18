@@ -27,9 +27,9 @@ def _mock_response(status_code=200, json_data=None):
 
 class TestCreateGeneration:
     def test_returns_generation_id(self, client):
-        mock_resp = _mock_response(json_data={
-            "sdGenerationJob": {"generationId": "gen-123"}
-        })
+        mock_resp = _mock_response(
+            json_data={"sdGenerationJob": {"generationId": "gen-123"}}
+        )
         with patch("httpx.Client") as mock_client_cls:
             mock_client_cls.return_value.__enter__ = lambda s: s
             mock_client_cls.return_value.__exit__ = lambda s, *a: None
@@ -45,9 +45,9 @@ class TestCreateGeneration:
         assert result == "gen-123"
 
     def test_sends_context_image_when_provided(self, client):
-        mock_resp = _mock_response(json_data={
-            "sdGenerationJob": {"generationId": "gen-456"}
-        })
+        mock_resp = _mock_response(
+            json_data={"sdGenerationJob": {"generationId": "gen-456"}}
+        )
         with patch("httpx.Client") as mock_client_cls:
             mock_client_cls.return_value.__enter__ = lambda s: s
             mock_client_cls.return_value.__exit__ = lambda s, *a: None
@@ -68,15 +68,17 @@ class TestCreateGeneration:
 
 class TestGetGeneration:
     def test_returns_complete_with_images(self, client):
-        mock_resp = _mock_response(json_data={
-            "generations_by_pk": {
-                "status": "COMPLETE",
-                "generated_images": [
-                    {"id": "img-1", "url": "https://cdn.leonardo.ai/img1.png"},
-                    {"id": "img-2", "url": "https://cdn.leonardo.ai/img2.png"},
-                ],
+        mock_resp = _mock_response(
+            json_data={
+                "generations_by_pk": {
+                    "status": "COMPLETE",
+                    "generated_images": [
+                        {"id": "img-1", "url": "https://cdn.leonardo.ai/img1.png"},
+                        {"id": "img-2", "url": "https://cdn.leonardo.ai/img2.png"},
+                    ],
+                }
             }
-        })
+        )
         with patch("httpx.Client") as mock_client_cls:
             mock_client_cls.return_value.__enter__ = lambda s: s
             mock_client_cls.return_value.__exit__ = lambda s, *a: None
@@ -88,18 +90,24 @@ class TestGetGeneration:
             generation_id="gen-123",
             status="COMPLETE",
             images=[
-                GeneratedImage(url="https://cdn.leonardo.ai/img1.png", leonardo_id="img-1"),
-                GeneratedImage(url="https://cdn.leonardo.ai/img2.png", leonardo_id="img-2"),
+                GeneratedImage(
+                    url="https://cdn.leonardo.ai/img1.png", leonardo_id="img-1"
+                ),
+                GeneratedImage(
+                    url="https://cdn.leonardo.ai/img2.png", leonardo_id="img-2"
+                ),
             ],
         )
 
     def test_returns_pending_with_no_images(self, client):
-        mock_resp = _mock_response(json_data={
-            "generations_by_pk": {
-                "status": "PENDING",
-                "generated_images": [],
+        mock_resp = _mock_response(
+            json_data={
+                "generations_by_pk": {
+                    "status": "PENDING",
+                    "generated_images": [],
+                }
             }
-        })
+        )
         with patch("httpx.Client") as mock_client_cls:
             mock_client_cls.return_value.__enter__ = lambda s: s
             mock_client_cls.return_value.__exit__ = lambda s, *a: None

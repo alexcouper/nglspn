@@ -36,15 +36,23 @@ class TestGenerate:
             generation_id="gen-123",
             status="COMPLETE",
             images=[
-                GeneratedImage(url="https://cdn.leonardo.ai/img1.png", leonardo_id="i1"),
-                GeneratedImage(url="https://cdn.leonardo.ai/img2.png", leonardo_id="i2"),
+                GeneratedImage(
+                    url="https://cdn.leonardo.ai/img1.png", leonardo_id="i1"
+                ),
+                GeneratedImage(
+                    url="https://cdn.leonardo.ai/img2.png", leonardo_id="i2"
+                ),
             ],
         )
         handler._client.download_image.return_value = b"fake-image-bytes"
 
-        with patch("services.leonardo.django_impl.handler.storage_service") as mock_storage:
+        with patch(
+            "services.leonardo.django_impl.handler.storage_service"
+        ) as mock_storage:
             mock_storage.generate_upload_key.return_value = "projects/test/gen.png"
-            with patch("services.leonardo.django_impl.handler.generate_image_variants") as mock_variants:
+            with patch(
+                "services.leonardo.django_impl.handler.generate_image_variants"
+            ) as mock_variants:
                 mock_variants.enqueue = MagicMock()
                 handler.generate(str(request.id))
 
@@ -114,9 +122,13 @@ class TestGenerate:
         )
         handler._client.download_image.return_value = b"new-image-bytes"
 
-        with patch("services.leonardo.django_impl.handler.storage_service") as mock_storage:
+        with patch(
+            "services.leonardo.django_impl.handler.storage_service"
+        ) as mock_storage:
             mock_storage.generate_upload_key.return_value = "projects/test/new.png"
-            with patch("services.leonardo.django_impl.handler.generate_image_variants") as mock_variants:
+            with patch(
+                "services.leonardo.django_impl.handler.generate_image_variants"
+            ) as mock_variants:
                 mock_variants.enqueue = MagicMock()
                 handler.generate(str(request.id))
 
@@ -147,10 +159,14 @@ class TestGenerate:
         )
         handler._client.download_image.return_value = b"ref-image-bytes"
 
-        with patch("services.leonardo.django_impl.handler.storage_service") as mock_storage:
+        with patch(
+            "services.leonardo.django_impl.handler.storage_service"
+        ) as mock_storage:
             mock_storage.download_object.return_value = b"original-ref-bytes"
             mock_storage.generate_upload_key.return_value = "projects/test/ref.png"
-            with patch("services.leonardo.django_impl.handler.generate_image_variants") as mock_variants:
+            with patch(
+                "services.leonardo.django_impl.handler.generate_image_variants"
+            ) as mock_variants:
                 mock_variants.enqueue = MagicMock()
                 handler.generate(str(request.id))
 

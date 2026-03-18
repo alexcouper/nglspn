@@ -5,7 +5,13 @@ from uuid import UUID
 
 from django.db.models import Prefetch, Q, QuerySet
 
-from apps.projects.models import Project, ProjectImage, ProjectStatus
+from apps.projects.models import (
+    ApprovalStatus,
+    ImagePurpose,
+    Project,
+    ProjectImage,
+    ProjectStatus,
+)
 from services.project.exceptions import ProjectNotFoundError
 from services.project.query_interface import (
     PaginatedProjects,
@@ -99,7 +105,15 @@ class DjangoProjectQuery(ProjectQueryInterface):
             msg = f"Invalid sort field: {sort_by}. Allowed: {allowed}"
             raise ValueError(msg)
 
-        queryset = _base_queryset().filter(status=ProjectStatus.APPROVED)
+        queryset = (
+            _base_queryset()
+            .filter(
+                status=ProjectStatus.APPROVED,
+                images__purpose=ImagePurpose.ICON,
+                images__approval_status=ApprovalStatus.ACTIVE,
+            )
+            .distinct()
+        )
 
         if tags:
             queryset = queryset.filter(tags__slug__in=tags).distinct()

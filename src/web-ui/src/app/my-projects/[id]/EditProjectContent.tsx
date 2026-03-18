@@ -2,6 +2,7 @@
 
 import type { Project, ProjectImage } from "@/lib/api";
 import { ImageDropZone, UploadProgress } from "@/components/ImageUpload";
+import { ImageManagementSection } from "@/components/ImageUpload/ImageManagementSection";
 import { TagSidebarSelector } from "@/components/TagSidebarSelector";
 import { ProjectPageLayout } from "@/components/ProjectPageLayout";
 import type { SelectedTag } from "@/components/TagSelector";
@@ -94,7 +95,7 @@ export function EditProjectContent({
           <div className="absolute top-2 right-2 flex gap-1">
             <span className="bg-accent text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
               <StarIconSolid className="w-3 h-3" />
-              Main
+              Primary
             </span>
             <button
               onClick={() => onDeleteImage(mainImage.id)}
@@ -125,7 +126,7 @@ export function EditProjectContent({
                 <button
                   onClick={() => onSetMainImage(img.id)}
                   className="p-2 bg-white rounded-full hover:bg-muted transition-colors"
-                  title="Set as main image"
+                  title="Set as primary screenshot"
                 >
                   <StarIcon className="w-4 h-4 text-foreground" />
                 </button>
@@ -150,6 +151,13 @@ export function EditProjectContent({
         currentCount={images.length}
       />
       <UploadProgress uploads={uploads} />
+
+      {/* Purpose-specific image management */}
+      <ImageManagementSection
+        projectId={project.id}
+        projectTitle={project.title}
+        projectTagline={project.tagline}
+      />
 
       {/* Tag selector */}
       <div className="pt-2">

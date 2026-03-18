@@ -50,12 +50,12 @@
 
 ## 6. Frontend: Project Owner Image Management
 
-- [ ] 6.1 Add image management section to project edit page with purpose-specific slots: icon, screenshots, main image
-- [ ] 6.2 Rename existing image upload UI labels from "images" to "Screenshots" and "Set as main image" to "Set as primary screenshot"
-- [ ] 6.3 Add icon slot with upload and generate buttons, wired to GenerationDialog
-- [ ] 6.4 Add main image slot with generate button, wired to GenerationDialog (with screenshot/device frame selection when screenshots exist)
-- [ ] 6.5 Display proposed images in each slot with accept/reject actions
-- [ ] 6.6 Add icon-missing banner: "Upload an icon to appear on the projects listing" with CTA buttons
+- [x] 6.1 Add image management section to project edit page with purpose-specific slots: icon, screenshots, main image
+- [x] 6.2 Rename existing image upload UI labels from "images" to "Screenshots" and "Set as main image" to "Set as primary screenshot"
+- [x] 6.3 Add icon slot with upload and generate buttons, wired to GenerationDialog
+- [x] 6.4 Add main image slot with generate button, wired to GenerationDialog (with screenshot/device frame selection when screenshots exist)
+- [x] 6.5 Display proposed images in each slot with accept/reject actions
+- [x] 6.6 Add icon-missing banner: "Upload an icon to appear on the projects listing" with CTA buttons
 
 ## 7. OpenAPI & Type Generation
 

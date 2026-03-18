@@ -68,6 +68,9 @@ export function Navigation() {
 
           {/* Desktop auth */}
           <div className="hidden md:flex items-center gap-6">
+            {isAuthenticated && !hasCompletedOnboarding && pathname !== "/onboarding" && (
+              <Link href="/onboarding" className={linkClass("/onboarding")}>Continue onboarding</Link>
+            )}
             {hasCompletedOnboarding && (
               <Link href="/my-projects" className={linkClass("/my-projects")}>My Projects</Link>
             )}
@@ -132,6 +135,9 @@ export function Navigation() {
           </div>
 
           <div className="space-y-0.5">
+            {isAuthenticated && !hasCompletedOnboarding && (
+              <Link href="/onboarding" className={mobileLinkClass("/onboarding")} onClick={closeMenu}>Continue onboarding</Link>
+            )}
             {hasCompletedOnboarding && (
               <Link href="/my-projects" className={mobileLinkClass("/my-projects")} onClick={closeMenu}>My Projects</Link>
             )}

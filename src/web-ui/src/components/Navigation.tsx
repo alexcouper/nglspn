@@ -10,7 +10,8 @@ import { UserMenu } from "./UserMenu";
 export function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
-  const { isAuthenticated, isLoading, logout } = useAuth();
+  const { isAuthenticated, isLoading, logout, user } = useAuth();
+  const hasCompletedOnboarding = isAuthenticated && (!user || user.pending_onboarding_steps.length === 0);
 
   const isActive = (path: string) => {
     if (path === "/") return pathname === "/";
@@ -67,10 +68,13 @@ export function Navigation() {
 
           {/* Desktop auth */}
           <div className="hidden md:flex items-center gap-6">
-            {isAuthenticated && (
+            {isAuthenticated && !hasCompletedOnboarding && pathname !== "/onboarding" && (
+              <Link href="/onboarding" className={linkClass("/onboarding")}>Continue onboarding</Link>
+            )}
+            {hasCompletedOnboarding && (
               <Link href="/my-projects" className={linkClass("/my-projects")}>My Projects</Link>
             )}
-            {isAuthenticated && (
+            {hasCompletedOnboarding && (
               <Link href="/my-reviews" className={linkClass("/my-reviews")}>My Reviews</Link>
             )}
             {isLoading ? (
@@ -131,17 +135,22 @@ export function Navigation() {
           </div>
 
           <div className="space-y-0.5">
-            {isAuthenticated && (
+            {isAuthenticated && !hasCompletedOnboarding && (
+              <Link href="/onboarding" className={mobileLinkClass("/onboarding")} onClick={closeMenu}>Continue onboarding</Link>
+            )}
+            {hasCompletedOnboarding && (
               <Link href="/my-projects" className={mobileLinkClass("/my-projects")} onClick={closeMenu}>My Projects</Link>
             )}
-            {isAuthenticated && (
+            {hasCompletedOnboarding && (
               <Link href="/my-reviews" className={mobileLinkClass("/my-reviews")} onClick={closeMenu}>My Reviews</Link>
             )}
             {isLoading ? (
               <span className="block py-3 text-base text-slate-400">...</span>
             ) : isAuthenticated ? (
               <>
-                <Link href="/profile" className={mobileLinkClass("/profile")} onClick={closeMenu}>Profile</Link>
+                {hasCompletedOnboarding && (
+                  <Link href="/profile" className={mobileLinkClass("/profile")} onClick={closeMenu}>Profile</Link>
+                )}
                 <div className="border-t border-slate-100 my-3" />
                 <button
                   onClick={() => { logout(); closeMenu(); }}

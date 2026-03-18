@@ -439,6 +439,60 @@ class TestUpdateCurrentUser:
         assert_that(user.last_name, equal_to("Name"))
         assert_that(user.info, equal_to("Updated info"))
 
+    def test_update_with_at_least_one_name_succeeds(
+        self,
+        client,
+        user,
+        auth_headers,
+    ) -> None:
+        response = client.put(
+            "/api/auth/me",
+            data=json.dumps({"first_name": "Jane", "last_name": ""}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(first_name="Jane"))
+
+    def test_update_clearing_both_names_returns_400(
+        self,
+        client,
+        user,
+        auth_headers,
+    ) -> None:
+        user.first_name = "Jane"
+        user.last_name = "Doe"
+        user.save()
+
+        response = client.put(
+            "/api/auth/me",
+            data=json.dumps({"first_name": "", "last_name": ""}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+
+    def test_partial_update_with_existing_names_preserved_succeeds(
+        self,
+        client,
+        user,
+        auth_headers,
+    ) -> None:
+        user.first_name = "Jane"
+        user.last_name = ""
+        user.save()
+
+        response = client.put(
+            "/api/auth/me",
+            data=json.dumps({"notification_frequency": "immediate"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+
 
 @pytest.mark.django_db
 class TestKennitalaNotExposed:

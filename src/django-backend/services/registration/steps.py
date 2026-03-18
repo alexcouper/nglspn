@@ -22,4 +22,10 @@ ONBOARDING_STEPS: list[OnboardingStep] = [
         priority=100,
         check=lambda user: user.is_verified,
     ),
+    OnboardingStep(
+        id="complete-profile",
+        priority=200,
+        check=lambda user: bool(user.first_name.strip())
+        or bool(user.last_name.strip()),
+    ),
 ]

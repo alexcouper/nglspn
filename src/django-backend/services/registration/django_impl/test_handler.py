@@ -73,6 +73,52 @@ class TestGetPendingSteps:
         assert_that(result, has_length(1))
         assert_that(result[0].id, equal_to("new-requirement"))
 
+    def test_user_with_no_names_has_complete_profile_step(self, handler) -> None:
+        user = UserFactory(is_verified=True, first_name="", last_name="")
+
+        result = handler.get_pending_steps(user)
+
+        assert_that(result, has_length(1))
+        assert_that(result[0].id, equal_to("complete-profile"))
+
+    def test_user_with_first_name_only_skips_complete_profile(self, handler) -> None:
+        user = UserFactory(is_verified=True, first_name="Jane", last_name="")
+
+        result = handler.get_pending_steps(user)
+
+        assert_that(result, empty())
+
+    def test_user_with_last_name_only_skips_complete_profile(self, handler) -> None:
+        user = UserFactory(is_verified=True, first_name="", last_name="Doe")
+
+        result = handler.get_pending_steps(user)
+
+        assert_that(result, empty())
+
+    def test_user_with_both_names_skips_complete_profile(self, handler) -> None:
+        user = UserFactory(is_verified=True, first_name="Jane", last_name="Doe")
+
+        result = handler.get_pending_steps(user)
+
+        assert_that(result, empty())
+
+    def test_whitespace_only_names_treated_as_empty(self, handler) -> None:
+        user = UserFactory(is_verified=True, first_name="  ", last_name="")
+
+        result = handler.get_pending_steps(user)
+
+        assert_that(result, has_length(1))
+        assert_that(result[0].id, equal_to("complete-profile"))
+
+    def test_complete_profile_ordered_after_verify_email(self, handler) -> None:
+        user = UserFactory(is_verified=False, first_name="", last_name="")
+
+        result = handler.get_pending_steps(user)
+
+        assert_that(result, has_length(2))
+        assert_that(result[0].id, equal_to("verify-email"))
+        assert_that(result[1].id, equal_to("complete-profile"))
+
     def test_completed_steps_are_excluded(self, handler) -> None:
         user = UserFactory(is_verified=True)
 

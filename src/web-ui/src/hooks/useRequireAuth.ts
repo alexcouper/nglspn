@@ -7,13 +7,22 @@ import { api } from "@/lib/api";
 export function useRequireAuth() {
   const router = useRouter();
   const pathname = usePathname();
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, user } = useAuth();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated && !api.isAuthenticated()) {
       router.push(buildLoginPath(pathname));
+      return;
     }
-  }, [isLoading, isAuthenticated, pathname, router]);
+    if (
+      !isLoading &&
+      user &&
+      user.pending_onboarding_steps.length > 0 &&
+      pathname !== "/onboarding"
+    ) {
+      router.push("/onboarding");
+    }
+  }, [isLoading, isAuthenticated, user, pathname, router]);
 
   return {
     isReady: isAuthenticated || api.isAuthenticated(),

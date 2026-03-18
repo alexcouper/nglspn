@@ -45,14 +45,18 @@ export function UserMenu() {
       </button>
       {isOpen && (
         <div className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-lg border border-border py-1 z-10">
-          <Link
-            href="/profile"
-            className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
-            onClick={() => setIsOpen(false)}
-          >
-            Profile
-          </Link>
-          <div className="border-t border-border my-1" />
+          {user && user.pending_onboarding_steps.length === 0 && (
+            <>
+              <Link
+                href="/profile"
+                className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Profile
+              </Link>
+              <div className="border-t border-border my-1" />
+            </>
+          )}
           <button
             onClick={() => {
               logout();

@@ -16,6 +16,8 @@ from services.notifications.handler_interface import NotificationHandlerInterfac
 from services.project.django_impl import DjangoProjectHandler, DjangoProjectQuery
 from services.project.handler_interface import ProjectHandlerInterface
 from services.project.query_interface import ProjectQueryInterface
+from services.registration.django_impl import DjangoRegistrationHandler
+from services.registration.handler_interface import RegistrationHandlerInterface
 from services.users.django_impl import DjangoUserHandler, DjangoUserQuery
 from services.users.handler_interface import UserHandlerInterface
 from services.users.query_interface import UserQueryInterface
@@ -34,6 +36,9 @@ class HandlerServices:
         default_factory=DjangoNotificationHandler
     )
     project: ProjectHandlerInterface = field(default_factory=DjangoProjectHandler)
+    registration: RegistrationHandlerInterface = field(
+        default_factory=DjangoRegistrationHandler
+    )
     users: UserHandlerInterface = field(default_factory=DjangoUserHandler)
     web_ui: WebUIHandlerInterface = field(default_factory=DjangoWebUIHandler)
 

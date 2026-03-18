@@ -28,10 +28,17 @@ class UserResponse(Schema):
     email_opt_in_platform_updates: bool
     opt_in_to_external_promotions: bool
     notification_frequency: str
+    pending_onboarding_steps: list[str]
 
     @staticmethod
     def resolve_groups(obj: Any) -> list[str]:
         return list(obj.groups.values_list("name", flat=True))
+
+    @staticmethod
+    def resolve_pending_onboarding_steps(obj: Any) -> list[str]:
+        from services import HANDLERS  # noqa: PLC0415
+
+        return [step.id for step in HANDLERS.registration.get_pending_steps(obj)]
 
 
 class UserUpdate(Schema):

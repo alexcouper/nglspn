@@ -213,6 +213,30 @@ class TestGetCurrentUser:
             ),
         )
 
+    def test_verified_user_has_no_pending_onboarding_steps(
+        self,
+        client,
+        user,
+        auth_headers,
+    ) -> None:
+        response = client.get("/api/auth/me", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(pending_onboarding_steps=[]))
+
+    def test_unverified_user_has_verify_email_pending_step(self, client, db) -> None:
+        unverified = UserFactory(is_verified=False)
+        token = create_access_token(unverified.id)
+        headers = {"HTTP_AUTHORIZATION": f"Bearer {token}"}
+
+        response = client.get("/api/auth/me", **headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            response.json(),
+            has_entries(pending_onboarding_steps=["verify-email"]),
+        )
+
     def test_get_current_user_without_auth_returns_401(self, client) -> None:
         response = client.get("/api/auth/me")
 

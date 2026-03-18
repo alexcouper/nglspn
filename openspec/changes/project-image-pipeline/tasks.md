@@ -30,13 +30,13 @@
 
 ## 4. Frontend: Generation Dialog Component
 
-- [ ] 4.1 Create `GenerationDialog` component with states: idle, editing_prompt, generating, selecting, confirmed
-- [ ] 4.2 Implement prompt pre-fill logic based on project metadata and purpose (icon template, main image template, abstract template, winner composite fixed template)
-- [ ] 4.3 Implement screenshot selector and device frame picker (mobile/laptop/watch) for main_image purpose
-- [ ] 4.4 Implement variant count selector (1-4)
-- [ ] 4.5 Implement generation progress polling — call status endpoint until completed/failed, show spinner
-- [ ] 4.6 Implement variant grid display with selectable images and confirm action
-- [ ] 4.7 Wire confirm action to accept endpoint
+- [x] 4.1 Create `GenerationDialog` component with states: idle, editing_prompt, generating, selecting, confirmed
+- [x] 4.2 Implement prompt pre-fill logic based on project metadata and purpose (icon template, main image template, abstract template, winner composite fixed template)
+- [x] 4.3 Implement screenshot selector and device frame picker (mobile/laptop/watch) for main_image purpose
+- [x] 4.4 Implement variant count selector (1-4)
+- [x] 4.5 Implement generation progress polling — call status endpoint until completed/failed, show spinner
+- [x] 4.6 Implement variant grid display with selectable images and confirm action
+- [x] 4.7 Wire confirm action to accept endpoint
 
 ## 5. Frontend: Admin Pages
 

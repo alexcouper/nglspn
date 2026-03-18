@@ -9,6 +9,16 @@ from tests.factories import ProjectFactory, TagFactory, UserFactory
 
 
 @pytest.fixture(autouse=True)
+def _force_s3_storage(settings):
+    """Force S3 storage backend in tests so moto mocking works."""
+    settings.STORAGE_BACKEND = "s3"
+    # Reset the lazy proxy so it re-creates with the overridden setting
+    import services.storage  # noqa: PLC0415
+
+    services.storage.storage_service._instance = None  # noqa: SLF001
+
+
+@pytest.fixture(autouse=True)
 def _clear_rate_limit_cache():
     """Clear rate limit cache between tests to prevent cross-test interference."""
     cache.clear()

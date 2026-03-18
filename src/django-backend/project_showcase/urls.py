@@ -16,8 +16,9 @@ Including another URLconf
 
 """
 
+from django.conf import settings
 from django.contrib import admin
-from django.urls import path
+from django.urls import include, path
 
 from api.main import api
 
@@ -29,3 +30,8 @@ urlpatterns = [
     path("admin/", admin.site.urls),
     path("api/", api.urls),
 ]
+
+if settings.STORAGE_BACKEND == "local":
+    urlpatterns += [
+        path("", include("services.local_storage_urls")),
+    ]

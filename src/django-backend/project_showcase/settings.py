@@ -170,6 +170,18 @@ SCW_SECRET_KEY = os.getenv("SCW_SECRET_KEY", "")
 # Leonardo AI
 LEONARDO_API_KEY = os.getenv("LEONARDO_API_KEY", "")
 
+# Storage backend: "s3" (default) or "local" (filesystem for dev)
+STORAGE_BACKEND = os.getenv("STORAGE_BACKEND", "s3")
+
+# When using local storage, override the public URL base to serve from Django
+if STORAGE_BACKEND == "local":
+    _port_file = BASE_DIR.parent.parent / ".backend-port"
+    _local_port = _port_file.read_text().strip() if _port_file.exists() else "8000"
+    S3_PUBLIC_URL_BASE = os.getenv(
+        "S3_PUBLIC_URL_BASE",
+        f"http://localhost:{_local_port}/media/storage",
+    )
+
 
 # Whitenoise for serving static files in production
 # S3 storage for media files (via django-storages)

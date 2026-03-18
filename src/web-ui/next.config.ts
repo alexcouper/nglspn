@@ -13,7 +13,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: ${cdnUrl} https://*.s3.fr-par.scw.cloud`,
+      `img-src 'self' data: ${cdnUrl} https://*.s3.fr-par.scw.cloud${isDev ? " http://localhost:*" : ""}`,
       `connect-src 'self' ${apiUrl} ${cdnUrl} https://s3.fr-par.scw.cloud https://plausible.io${isDev ? " http://localhost:* http://127.0.0.1:*" : ""}`,
       "frame-ancestors 'none'",
     ].join("; "),
@@ -53,6 +53,10 @@ const nextConfig: NextConfig = {
       {
         protocol: "https",
         hostname: cdnHostname,
+      },
+      {
+        protocol: "http",
+        hostname: "localhost",
       },
     ],
   },

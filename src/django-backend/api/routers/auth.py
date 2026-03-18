@@ -186,12 +186,16 @@ def get_current_user_info(request: HttpRequest) -> AbstractUser:
 def update_current_user(
     request: HttpRequest,
     payload: UserUpdate,
-) -> AbstractUser:
+) -> AbstractUser | tuple[int, Error]:
     user = request.auth
 
     # Update only provided fields
     for field, value in payload.dict(exclude_unset=True).items():
         setattr(user, field, value)
+
+    # Reject if both names would be empty after update
+    if not user.first_name.strip() and not user.last_name.strip():
+        return 400, Error(detail="At least one name (first or last) is required")
 
     user.save()
     return user

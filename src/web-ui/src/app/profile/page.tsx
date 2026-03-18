@@ -36,8 +36,16 @@ export default function ProfilePage() {
     setFormData(data);
   }, []);
 
+  const bothNamesEmpty = formData
+    ? !formData.first_name.trim() && !formData.last_name.trim()
+    : false;
+
   const handleSave = async () => {
     if (!formData) return;
+    if (bothNamesEmpty) {
+      setError("At least one name (first or last) is required");
+      return;
+    }
 
     setIsSaving(true);
     setError("");

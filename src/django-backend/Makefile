@@ -1,5 +1,5 @@
 APP:=django-backend
-.PHONY: help install dev migrate makemigrations shell test createsuperuser clean extract-openapi lint bootstrap seed
+.PHONY: help install dev migrate makemigrations shell test createsuperuser clean extract-openapi lint bootstrap seed seed-prod-copy
 
 include ../../scripts/app-common.mk
 
@@ -37,6 +37,9 @@ bootstrap:
 
 seed: bootstrap
 	uv run python scripts/seed_db.py
+
+seed-prod-copy: bootstrap
+	uv run python scripts/seed_prod_copy.py
 
 migrate:
 	uv run python manage.py migrate

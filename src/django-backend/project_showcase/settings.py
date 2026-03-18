@@ -167,6 +167,9 @@ S3_CDN_DOMAIN = os.getenv("S3_CDN_DOMAIN", "cdn.naglasupan.is")
 SCW_ACCESS_KEY = os.getenv("SCW_ACCESS_KEY", "")
 SCW_SECRET_KEY = os.getenv("SCW_SECRET_KEY", "")
 
+# Leonardo AI
+LEONARDO_API_KEY = os.getenv("LEONARDO_API_KEY", "")
+
 
 # Whitenoise for serving static files in production
 # S3 storage for media files (via django-storages)

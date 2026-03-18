@@ -124,6 +124,84 @@ class UploadStatus(models.TextChoices):
     FAILED = "failed", "Upload Failed"
 
 
+class ImagePurpose(models.TextChoices):
+    ICON = "icon", "Icon"
+    SCREENSHOT = "screenshot", "Screenshot"
+    MAIN_IMAGE = "main_image", "Main Image"
+    WINNER_COMPOSITE = "winner_composite", "Winner Composite"
+
+
+class ApprovalStatus(models.TextChoices):
+    ACTIVE = "active", "Active"
+    PROPOSED = "proposed", "Proposed"
+
+
+class GenerationStatus(models.TextChoices):
+    QUEUED = "queued", "Queued"
+    GENERATING = "generating", "Generating"
+    COMPLETED = "completed", "Completed"
+    FAILED = "failed", "Failed"
+
+
+class DeviceFrame(models.TextChoices):
+    MOBILE = "mobile", "Mobile"
+    LAPTOP = "laptop", "Laptop"
+    WATCH = "watch", "Watch"
+
+
+class ImageGenerationRequest(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="generation_requests",
+    )
+    purpose = models.CharField(
+        max_length=20,
+        choices=ImagePurpose.choices,
+    )
+    prompt_text = models.TextField()
+    device_frame = models.CharField(
+        max_length=10,
+        choices=DeviceFrame.choices,
+        null=True,
+        blank=True,
+    )
+    reference_image = models.ForeignKey(
+        "ProjectImage",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="referencing_requests",
+    )
+    leonardo_generation_id = models.CharField(max_length=255, null=True, blank=True)
+    leonardo_model_id = models.CharField(max_length=255)
+    width = models.PositiveIntegerField()
+    height = models.PositiveIntegerField()
+    num_variants = models.PositiveSmallIntegerField(default=1)
+    status = models.CharField(
+        max_length=20,
+        choices=GenerationStatus.choices,
+        default=GenerationStatus.QUEUED,
+    )
+    error_message = models.TextField(null=True, blank=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name="generation_requests",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        db_table = "image_generation_requests"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.project.title} - {self.purpose} ({self.status})"
+
+
 class ProjectImage(models.Model):
     """Tracks images uploaded to a project. Uses UUID for non-guessable URLs."""
 
@@ -143,6 +221,26 @@ class ProjectImage(models.Model):
     # Image metadata
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
+
+    # Purpose and approval
+    purpose = models.CharField(
+        max_length=20,
+        choices=ImagePurpose.choices,
+        default=ImagePurpose.SCREENSHOT,
+        db_index=True,
+    )
+    approval_status = models.CharField(
+        max_length=10,
+        choices=ApprovalStatus.choices,
+        default=ApprovalStatus.ACTIVE,
+    )
+    generation_request = models.ForeignKey(
+        ImageGenerationRequest,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="result_images",
+    )
 
     # Ordering and main image tracking
     is_main = models.BooleanField(default=False)

@@ -10,6 +10,9 @@ from apps.notifications.models import Notification, NotificationCadence
 from apps.projects.models import (
     Competition,
     CompetitionReviewer,
+    GenerationStatus,
+    ImageGenerationRequest,
+    ImagePurpose,
     Project,
     ProjectImage,
     ProjectRanking,
@@ -111,6 +114,21 @@ class ProjectImageFactory(factory.django.DjangoModelFactory):
     content_type = "image/jpeg"
     file_size = 1024
     upload_status = "uploaded"
+
+
+class ImageGenerationRequestFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ImageGenerationRequest
+
+    project = factory.SubFactory(ProjectFactory)
+    purpose = ImagePurpose.ICON
+    prompt_text = "A clean modern app icon"
+    leonardo_model_id = "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3"
+    width = 1024
+    height = 1024
+    num_variants = 1
+    status = GenerationStatus.QUEUED
+    created_by = factory.SubFactory(UserFactory)
 
 
 class CompetitionFactory(factory.django.DjangoModelFactory):

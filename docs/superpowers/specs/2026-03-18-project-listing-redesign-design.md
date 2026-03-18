@@ -41,7 +41,7 @@ Editor's picks. A 2-column layout:
 
 The large card uses a dark text box rather than an image overlay because overlays don't read well at that size on a light page. The small cards work with overlays because the gradient covers proportionally more of the image.
 
-Featured projects are selected by admin (editorial control).
+Featured projects are selected via an `is_featured` boolean on the Project model (admin-toggled). Note: this field previously existed and was removed in migration `0023` — it should be re-added.
 
 #### 2. New Arrivals
 
@@ -51,7 +51,7 @@ Horizontal scroll of image-led cards:
 - Below image: category label (indigo, uppercase), title, 2-line tagline on white card surface
 - Card width: 240px
 
-Populated automatically from recent approved projects.
+Populated automatically from approved projects created in the last 30 days (rolling window). Falls back to most recent approved projects if fewer than 5 are within the window.
 
 #### 3. Competition Winners
 
@@ -76,8 +76,8 @@ One horizontal scroll row per category (Consumer Products, Dev Tools, Community 
 
 Vertical list of top projects by discussion activity:
 - 40px icon, title, tagline, comment count (indigo)
-- Leverages the existing discussions feature as a signal
 - Shows top 4-5 projects
+- **New backend work required:** annotate projects with discussion count via `Project.objects.annotate(discussion_count=Count('discussions'))`, ordered descending. This annotation is also reused by the "Most discussed" sort option in the Category view.
 
 ### Category View
 
@@ -104,14 +104,16 @@ This view is designed to scale to 100+ projects within a category.
 
 ## Category System
 
-Categories are implemented as a **special type of tag** within the existing tag system:
+Categories are a **new ForeignKey field on Project**, not part of the existing M2M tag system. This cleanly enforces "exactly one primary category per project" at the database level.
 
-- **Admin-controlled set** — only admins can create/modify category tags
-- **User-assigned** — project owners select from the available categories
-- **Single primary category per project** — used for tab filtering and category labels on cards
+- **New model:** `ProjectCategory` with `name`, `slug`, `display_order`, `is_active` fields (similar to `TagCategory` but purpose-built)
+- **New field on Project:** `category = ForeignKey(ProjectCategory, null=True, on_delete=SET_NULL)` — nullable to handle legacy projects without a category
+- **Admin-controlled set** — only admins can create/modify categories
+- **User-assigned** — project owners select from the available categories when creating/editing a project
 - **Starting set:** Consumer Products, Dev Tools, Community Boosters (expandable by admin)
+- **Relationship to existing tags:** Categories and tags are independent. The existing `project-type` TagCategory may overlap with some categories — this should be reviewed during implementation (consider migrating existing `project-type` tag assignments to the new category field and then retiring that TagCategory)
 
-Categories live alongside the existing tag system. Tags remain for more granular classification; categories provide the top-level organizer.
+Categories provide the top-level organizer for tabs and section headers. Tags remain for more granular classification.
 
 ## Image Artifacts Required Per Project
 
@@ -122,33 +124,56 @@ Categories live alongside the existing tag system. Tags remain for more granular
 | In-use image | 1024px wide min | 4:3 | New Arrivals cards | AI-generated scene or product screenshot |
 | Winner composite | 1536px wide min | 16:9 | Competition Winners section | AI-generated: app icon + competition trophy combined |
 
+**Image type field:**
+
+The existing `ProjectImage` model needs a new `purpose` field to distinguish image types:
+
+```
+purpose = CharField(choices=['general', 'icon', 'hero_banner', 'in_use', 'winner_composite'], default='general')
+```
+
+Existing images are `general` (the current behaviour). New purpose-specific images are queried by purpose for the appropriate card types.
+
+**Image fallback chain:**
+
+When a purpose-specific image is missing, the system falls back in this order:
+1. Purpose-specific image (e.g. `hero_banner`) → use it
+2. Main project image (`is_main=True`) → use it (for banners/in-use), or crop to square (for icons)
+3. No images at all → gradient placeholder based on project title hash (matching existing `getPlaceholderColor` utility)
+
+This is critical because on launch day, no project will have purpose-specific images. The page must look good using only existing `general` images and gradient fallbacks.
+
 **Image generation strategy:**
 - Icons and banners are generated via Leonardo AI (separate work, not part of this change)
-- The system should gracefully degrade when images are missing (fall back to existing project images or gradient placeholders)
 - Image variants (thumb, medium, large as WebP) are already supported by the existing `ImageVariant` system
 
 ## What Changes vs What's Reused
 
 ### New
 
-- Category system (admin-controlled tag subtype)
-- Discover view with curated sections
-- Featured section with editorial selection (admin)
-- Most Discussed section (query by discussion count)
-- Hero banner and app icon image types
-- Winner composite images
-- Category view (filtered grid)
+- `ProjectCategory` model + `category` ForeignKey on Project
+- `is_featured` boolean on Project (re-added)
+- `purpose` field on `ProjectImage`
+- Discover view with curated sections (new frontend page/component)
+- API endpoints: featured projects, new arrivals, competition winners, most discussed
+- Discussion count annotation on project queries
+- Category view (filtered grid with category-based filtering)
 - Dark navy text box treatment for large hero card
 
 ### Reused
 
-- Existing tag infrastructure (categories extend it)
 - Competition/winner data model
-- Discussion system (comment counts)
+- Discussion system (comment counts as data source)
 - Image storage and variant generation (S3 + WebP)
 - Project data model (title, tagline, etc.)
+- Existing tag system (unchanged, runs alongside categories)
 - Navigation component (unchanged)
 - Existing hover/transition patterns and design tokens
+
+### Replaced
+
+- Current flat grid project listing → Discover view + Category view
+- Current competition view toggle → Competition Winners section in Discover view (existing toggle removed)
 
 ## Visual Design
 
@@ -164,11 +189,11 @@ The design uses the existing Naglasúpan light theme with one extension:
 - **Border radius:** 12px on cards (existing)
 - **Hover:** translateY(-2px) + shadow lift (existing pattern)
 
-Interactive mockup available at `.superpowers/brainstorm/45178-1773840531/layout-naglasupan-v2.html`.
+Interactive mockup available at `design-inspo/final-mockup.html` (open in browser).
 
 ## Open Questions
 
-- How are "Featured" projects selected? Manual admin toggle, or a separate admin UI?
-- Should categories support sub-categories within "Consumer Products"?
-- What's the fallback when a project has no icon or banner image?
-- How frequently should "New Arrivals" rotate? Calendar month, rolling 30 days, or manual?
+- Should categories support sub-categories within "Consumer Products"? (Not needed for v1, can be added later)
+- Winner composite images require a generation workflow — should this be automated (triggered on competition win) or manual?
+- Scrim/gradient opacity values on small hero cards (`0.35` scrim, `0.8` gradient) are starting points — may need visual QA with real diverse imagery
+- Mobile: horizontal scroll sections should show a peek of the next card to afford scrollability — exact card widths may need adjustment on viewports under 375px

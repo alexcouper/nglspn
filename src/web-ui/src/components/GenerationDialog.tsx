@@ -8,9 +8,10 @@ import type { ProposedImageResponse } from "@/lib/api/images";
 type Purpose = "icon" | "main_image" | "winner_composite";
 type DeviceFrame = "mobile" | "laptop" | "watch";
 
-interface Screenshot {
+interface ReferenceImage {
   id: string;
   url: string;
+  label?: string;
 }
 
 interface GenerationDialogProps {
@@ -21,7 +22,7 @@ interface GenerationDialogProps {
   projectTitle: string;
   projectTagline: string;
   purpose: Purpose;
-  screenshots?: Screenshot[];
+  referenceImages?: ReferenceImage[];
   iconImageId?: string;
 }
 
@@ -35,22 +36,25 @@ function getDefaultPrompt(
   purpose: Purpose,
   title: string,
   tagline: string,
-  deviceFrame?: DeviceFrame
+  options?: { deviceFrame?: DeviceFrame; hasReference?: boolean }
 ): string {
+  const ref = options?.hasReference
+    ? " Use the provided reference image as the basis for the composition."
+    : "";
   switch (purpose) {
     case "icon":
-      return `A clean, modern app icon for "${title}" - ${tagline}. Minimal style, vibrant colors, no text.`;
+      return `A clean, modern app icon for "${title}" - ${tagline}. Minimal style, vibrant colors, no text.${ref}`;
     case "main_image":
-      if (deviceFrame) {
+      if (options?.deviceFrame) {
         const device =
-          deviceFrame === "mobile"
+          options.deviceFrame === "mobile"
             ? "a smartphone"
-            : deviceFrame === "laptop"
+            : options.deviceFrame === "laptop"
               ? "a laptop"
               : "a smartwatch";
-        return `${device} displaying the "${title}" app, showing the main interface. Clean desk setting, professional photography.`;
+        return `${device} displaying the "${title}" app, showing the main interface. Clean desk setting, professional photography.${ref}`;
       }
-      return `An abstract conceptual illustration representing "${title}" - ${tagline}. Modern, clean aesthetic.`;
+      return `An abstract conceptual illustration representing "${title}" - ${tagline}. Modern, clean aesthetic.${ref}`;
     case "winner_composite":
       return `A golden trophy with the app icon displayed on it, celebration confetti, dramatic lighting, award ceremony.`;
   }
@@ -66,16 +70,16 @@ export function GenerationDialog({
   projectTitle,
   projectTagline,
   purpose,
-  screenshots = [],
+  referenceImages = [],
   iconImageId,
 }: GenerationDialogProps) {
   const defaultDeviceFrame: DeviceFrame = "laptop";
   const [state, setState] = useState<DialogState>("editing");
   const [prompt, setPrompt] = useState(
-    getDefaultPrompt(purpose, projectTitle, projectTagline, defaultDeviceFrame)
+    getDefaultPrompt(purpose, projectTitle, projectTagline)
   );
   const [numVariants, setNumVariants] = useState(2);
-  const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(
+  const [selectedReference, setSelectedReference] = useState<string | null>(
     null
   );
   const [deviceFrame, setDeviceFrame] = useState<DeviceFrame>(defaultDeviceFrame);
@@ -88,7 +92,7 @@ export function GenerationDialog({
   const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const isWinnerComposite = purpose === "winner_composite";
-  const showScreenshots = purpose === "main_image" && screenshots.length > 0;
+  const showReferences = purpose === "main_image" && referenceImages.length > 0;
 
   // Manage body scroll and cleanup
   useEffect(() => {
@@ -155,9 +159,11 @@ export function GenerationDialog({
         num_variants: numVariants,
       };
 
-      if (purpose === "main_image" && selectedScreenshot) {
-        body.device_frame = deviceFrame;
-        body.reference_image_id = selectedScreenshot;
+      if (selectedReference) {
+        body.reference_image_id = selectedReference;
+        if (purpose === "main_image") {
+          body.device_frame = deviceFrame;
+        }
       }
 
       if (purpose === "winner_composite" && iconImageId) {
@@ -231,66 +237,98 @@ export function GenerationDialog({
         </div>
 
         <div className="px-6 pb-6 space-y-4">
-          {/* Screenshot selector for main_image */}
-          {showScreenshots && state === "editing" && (
+          {/* Reference image selector */}
+          {showReferences && state === "editing" && (
             <div>
               <label className="block text-sm font-medium text-foreground mb-2">
-                Reference Screenshot
+                Reference Image (optional)
               </label>
               <div className="flex gap-2 overflow-x-auto pb-2">
-                {screenshots.map((ss) => (
+                <button
+                  onClick={() => {
+                    setSelectedReference(null);
+                    setPrompt(
+                      getDefaultPrompt(purpose, projectTitle, projectTagline)
+                    );
+                  }}
+                  className={`flex-shrink-0 w-20 h-20 rounded-lg border-2 transition-colors flex items-center justify-center text-xs text-muted-foreground ${
+                    selectedReference === null
+                      ? "border-accent bg-accent/5"
+                      : "border-border hover:border-muted-foreground"
+                  }`}
+                >
+                  None
+                </button>
+                {referenceImages.map((ref) => (
                   <button
-                    key={ss.id}
-                    onClick={() => setSelectedScreenshot(ss.id)}
-                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors ${
-                      selectedScreenshot === ss.id
+                    key={ref.id}
+                    onClick={() => {
+                      setSelectedReference(ref.id);
+                      setPrompt(
+                        getDefaultPrompt(purpose, projectTitle, projectTagline, {
+                          deviceFrame: purpose === "main_image" ? deviceFrame : undefined,
+                          hasReference: true,
+                        })
+                      );
+                    }}
+                    className={`flex-shrink-0 w-20 h-20 rounded-lg overflow-hidden border-2 transition-colors relative ${
+                      selectedReference === ref.id
                         ? "border-accent"
                         : "border-border hover:border-muted-foreground"
                     }`}
                   >
                     <Image
-                      src={ss.url}
-                      alt="Screenshot"
+                      src={ref.url}
+                      alt={ref.label || "Reference"}
                       width={80}
                       height={80}
                       className="w-full h-full object-cover"
                       unoptimized
                     />
+                    {ref.label && (
+                      <span className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[10px] text-center py-0.5">
+                        {ref.label}
+                      </span>
+                    )}
                   </button>
                 ))}
               </div>
 
-              {/* Device frame picker */}
-              <label className="block text-sm font-medium text-foreground mt-3 mb-2">
-                Device Frame
-              </label>
-              <div className="flex gap-2">
-                {(["mobile", "laptop", "watch"] as DeviceFrame[]).map(
-                  (frame) => (
-                    <button
-                      key={frame}
-                      onClick={() => {
-                        setDeviceFrame(frame);
-                        setPrompt(
-                          getDefaultPrompt(
-                            purpose,
-                            projectTitle,
-                            projectTagline,
-                            frame
-                          )
-                        );
-                      }}
-                      className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
-                        deviceFrame === frame
-                          ? "bg-accent text-white border-accent"
-                          : "bg-white text-foreground border-border hover:border-muted-foreground"
-                      }`}
-                    >
-                      {frame.charAt(0).toUpperCase() + frame.slice(1)}
-                    </button>
-                  )
-                )}
-              </div>
+              {/* Device frame picker — only for main_image with a reference selected */}
+              {purpose === "main_image" && selectedReference && (
+                <>
+                  <label className="block text-sm font-medium text-foreground mt-3 mb-2">
+                    Device Frame
+                  </label>
+                  <div className="flex gap-2">
+                    {(["mobile", "laptop", "watch"] as DeviceFrame[]).map(
+                      (frame) => (
+                        <button
+                          key={frame}
+                          onClick={() => {
+                            setDeviceFrame(frame);
+                            setPrompt(
+                              getDefaultPrompt(
+                                purpose,
+                                projectTitle,
+                                projectTagline,
+                                { deviceFrame: frame, hasReference: true }
+                              )
+                            );
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-sm border transition-colors ${
+                            deviceFrame === frame
+                              ? "bg-accent text-white border-accent"
+                              : "bg-white text-foreground border-border hover:border-muted-foreground"
+                          }`}
+                        >
+                          {frame.charAt(0).toUpperCase() + frame.slice(1)}
+                        </button>
+                      )
+                    )}
+                  </div>
+                </>
+              )}
             </div>
           )}
 

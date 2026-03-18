@@ -141,7 +141,7 @@ class TestGenerate:
         )
         assert new_images.count() == 1
 
-    def test_uploads_reference_image_for_context(self, handler):
+    def test_uploads_reference_image_for_generation(self, handler):
         ref_image = ProjectImageFactory(upload_status=UploadStatus.UPLOADED)
         request = ImageGenerationRequestFactory(
             purpose=ImagePurpose.MAIN_IMAGE,
@@ -172,7 +172,8 @@ class TestGenerate:
 
         handler._client.upload_init_image.assert_called_once()
         create_call = handler._client.create_generation.call_args
-        assert create_call.kwargs["context_image_id"] == "leo-ref-123"
+        assert create_call.kwargs["reference_image_id"] == "leo-ref-123"
+        assert create_call.kwargs["reference_strength"] == "MID"
 
     def test_nonexistent_request_does_nothing(self, handler):
         handler.generate("00000000-0000-0000-0000-000000000000")

@@ -203,13 +203,18 @@ export default function AdminProjectDetailPage() {
     );
   }
 
-  const screenshots =
-    images?.screenshots.active.map((s) => ({
+  const activeIcon = images?.icon.active[0];
+
+  const referenceImages = [
+    ...(activeIcon
+      ? [{ id: activeIcon.id, url: activeIcon.url, label: "Icon" }]
+      : []),
+    ...(images?.screenshots.active.map((s) => ({
       id: s.id,
       url: s.url,
-    })) ?? [];
-
-  const activeIcon = images?.icon.active[0];
+      label: "Screenshot",
+    })) ?? []),
+  ];
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8">
@@ -274,7 +279,7 @@ export default function AdminProjectDetailPage() {
           projectTitle=""
           projectTagline=""
           purpose={generatingPurpose}
-          screenshots={screenshots}
+          referenceImages={referenceImages}
           iconImageId={activeIcon?.id}
         />
       )}

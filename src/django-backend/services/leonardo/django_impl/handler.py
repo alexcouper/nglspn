@@ -10,12 +10,10 @@ from apps.projects.models import (
     ApprovalStatus,
     GenerationStatus,
     ImageGenerationRequest,
-    ImagePurpose,
     ProjectImage,
     UploadStatus,
 )
 from services.leonardo.django_impl.client import (
-    FLUX_KONTEXT_MODEL_ID,
     LeonardoAPIClient,
 )
 from services.leonardo.handler_interface import LeonardoHandlerInterface
@@ -49,28 +47,22 @@ class DjangoLeonardoHandler(LeonardoHandlerInterface):
             request.save(update_fields=["status", "error_message"])
 
     def _execute_generation(self, request: ImageGenerationRequest) -> None:
-        # Upload reference image if needed
-        context_image_id = None
+        # Upload reference image to Leonardo if needed
+        uploaded_image_id = None
         if request.reference_image:
             ref_bytes = storage_service.download_object(
                 request.reference_image.storage_key
             )
             extension = _get_extension(request.reference_image.content_type)
-            context_image_id = self._client.upload_init_image(ref_bytes, extension)
+            uploaded_image_id = self._client.upload_init_image(ref_bytes, extension)
 
-        # Determine preset style
-        preset_style = _get_preset_style(request.purpose)
-
-        # Create the generation
         generation_id = self._client.create_generation(
             prompt=request.prompt_text,
-            model_id=request.leonardo_model_id,
             width=request.width,
             height=request.height,
             num_images=request.num_variants,
-            preset_style=preset_style,
-            alchemy=request.leonardo_model_id != FLUX_KONTEXT_MODEL_ID,
-            context_image_id=context_image_id,
+            reference_image_id=uploaded_image_id,
+            reference_strength="MID",
         )
 
         request.leonardo_generation_id = generation_id
@@ -147,14 +139,6 @@ def _get_extension(content_type: str) -> str:
         "image/webp": "webp",
     }
     return mapping.get(content_type, "png")
-
-
-def _get_preset_style(purpose: str) -> str | None:
-    styles = {
-        ImagePurpose.ICON: "ILLUSTRATION",
-        ImagePurpose.MAIN_IMAGE: "PHOTOGRAPHY",
-    }
-    return styles.get(purpose)
 
 
 def delete_image_files(image: ProjectImage) -> None:

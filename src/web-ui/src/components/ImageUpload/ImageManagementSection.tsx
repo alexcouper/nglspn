@@ -133,11 +133,18 @@ export function ImageManagementSection({
   if (loading || !images) return null;
 
   const hasIcon = images.icon.active.length > 0;
-  const screenshots = images.screenshots.active.map((s) => ({
-    id: s.id,
-    url: s.url,
-  }));
   const activeIcon = images.icon.active[0];
+
+  const referenceImages = [
+    ...(activeIcon
+      ? [{ id: activeIcon.id, url: activeIcon.url, label: "Icon" }]
+      : []),
+    ...images.screenshots.active.map((s) => ({
+      id: s.id,
+      url: s.url,
+      label: "Screenshot",
+    })),
+  ];
 
   return (
     <>
@@ -192,7 +199,7 @@ export function ImageManagementSection({
           projectTitle={projectTitle}
           projectTagline={projectTagline}
           purpose={generatingPurpose}
-          screenshots={screenshots}
+          referenceImages={referenceImages}
           iconImageId={activeIcon?.id}
         />
       )}

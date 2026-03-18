@@ -10,11 +10,18 @@ from django.conf import settings
 
 logger = logging.getLogger(__name__)
 
-LEONARDO_BASE_URL = "https://cloud.leonardo.ai/api/rest/v1"
+LEONARDO_V1_URL = "https://cloud.leonardo.ai/api/rest/v1"
+LEONARDO_V2_URL = "https://cloud.leonardo.ai/api/rest/v2"
 
-# Model IDs
+# v1 model IDs (kept for polling/compatibility)
 PHOENIX_MODEL_ID = "de7d3faf-762f-48e0-b3b7-9d0ac3a3fcf3"
 FLUX_KONTEXT_MODEL_ID = "28aeddf8-bd19-4803-80fc-79602d1a9989"
+
+# v2 model names
+V2_MODEL_DEFAULT = "gemini-2.5-flash-image"
+
+# Style IDs for v2
+STYLE_CINEMATIC = "111dc692-d470-4eec-b791-3475abac4c46"
 
 POLL_INTERVAL_SECONDS = 2.0
 POLL_MAX_WAIT_SECONDS = 120.0
@@ -39,57 +46,75 @@ class LeonardoAPIClient:
 
     def _headers(self) -> dict[str, str]:
         return {
-            "Authorization": f"Bearer {self._api_key}",
-            "Content-Type": "application/json",
+            "accept": "application/json",
+            "authorization": f"Bearer {self._api_key}",
+            "content-type": "application/json",
         }
 
     def create_generation(
         self,
         *,
         prompt: str,
-        model_id: str,
         width: int,
         height: int,
         num_images: int = 1,
-        negative_prompt: str = "",
-        preset_style: str | None = None,
-        alchemy: bool = True,
-        context_image_id: str | None = None,
+        model: str = V2_MODEL_DEFAULT,
+        style_ids: list[str] | None = None,
+        reference_image_id: str | None = None,
+        reference_strength: str = "MID",
     ) -> str:
-        """Create a generation request. Returns the generation ID."""
-        body: dict = {
+        """Create a v2 generation request. Returns the generation ID.
+
+        reference_strength: LOW, MID, or HIGH
+        """
+        parameters: dict = {
             "prompt": prompt,
-            "modelId": model_id,
+            "prompt_enhance": "OFF",
+            "quantity": num_images,
             "width": width,
             "height": height,
-            "num_images": num_images,
-            "alchemy": alchemy,
         }
-        if negative_prompt:
-            body["negative_prompt"] = negative_prompt
-        if preset_style:
-            body["presetStyle"] = preset_style
-        if context_image_id:
-            body["contextImages"] = [{"type": "UPLOADED", "id": context_image_id}]
+
+        if style_ids:
+            parameters["style_ids"] = style_ids
+
+        if reference_image_id:
+            parameters["guidances"] = {
+                "image_reference": [
+                    {
+                        "image": {
+                            "id": reference_image_id,
+                            "type": "UPLOADED",
+                        },
+                        "strength": reference_strength,
+                    }
+                ],
+            }
+
+        body = {
+            "model": model,
+            "public": True,
+            "parameters": parameters,
+        }
 
         with httpx.Client(timeout=30.0) as client:
             response = client.post(
-                f"{LEONARDO_BASE_URL}/generations",
+                f"{LEONARDO_V2_URL}/generations",
                 headers=self._headers(),
                 json=body,
             )
             response.raise_for_status()
             data = response.json()
 
-        generation_id = data["sdGenerationJob"]["generationId"]
-        logger.info("Leonardo generation created: %s", generation_id)
+        generation_id = data["generate"]["generationId"]
+        logger.info("Leonardo v2 generation created: %s", generation_id)
         return generation_id
 
     def get_generation(self, generation_id: str) -> GenerationResult:
-        """Get the status and results of a generation."""
+        """Get the status and results of a generation (v1 endpoint)."""
         with httpx.Client(timeout=30.0) as client:
             response = client.get(
-                f"{LEONARDO_BASE_URL}/generations/{generation_id}",
+                f"{LEONARDO_V1_URL}/generations/{generation_id}",
                 headers=self._headers(),
             )
             response.raise_for_status()
@@ -134,11 +159,14 @@ class LeonardoAPIClient:
         )
 
     def upload_init_image(self, image_bytes: bytes, extension: str = "png") -> str:
-        """Upload an image to Leonardo for use as a reference. Returns the image ID."""
+        """Upload an image to Leonardo for use as a reference.
+
+        Returns the image ID.
+        """
         with httpx.Client(timeout=30.0) as client:
             # Step 1: Get presigned URL
             response = client.post(
-                f"{LEONARDO_BASE_URL}/init-image",
+                f"{LEONARDO_V1_URL}/init-image",
                 headers=self._headers(),
                 json={"extension": extension},
             )

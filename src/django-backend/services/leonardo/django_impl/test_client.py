@@ -28,7 +28,7 @@ def _mock_response(status_code=200, json_data=None):
 class TestCreateGeneration:
     def test_returns_generation_id(self, client):
         mock_resp = _mock_response(
-            json_data={"sdGenerationJob": {"generationId": "gen-123"}}
+            json_data={"generate": {"generationId": "gen-123"}}
         )
         with patch("httpx.Client") as mock_client_cls:
             mock_client_cls.return_value.__enter__ = lambda s: s
@@ -37,16 +37,15 @@ class TestCreateGeneration:
 
             result = client.create_generation(
                 prompt="test prompt",
-                model_id="model-123",
                 width=1024,
                 height=1024,
             )
 
         assert result == "gen-123"
 
-    def test_sends_context_image_when_provided(self, client):
+    def test_sends_reference_image_in_guidances(self, client):
         mock_resp = _mock_response(
-            json_data={"sdGenerationJob": {"generationId": "gen-456"}}
+            json_data={"generate": {"generationId": "gen-456"}}
         )
         with patch("httpx.Client") as mock_client_cls:
             mock_client_cls.return_value.__enter__ = lambda s: s
@@ -55,15 +54,17 @@ class TestCreateGeneration:
 
             client.create_generation(
                 prompt="test",
-                model_id="model-123",
                 width=1024,
                 height=768,
-                context_image_id="img-789",
+                reference_image_id="img-789",
+                reference_strength="HIGH",
             )
 
             call_args = mock_client_cls.return_value.post.call_args
             body = call_args.kwargs["json"]
-            assert body["contextImages"] == [{"type": "UPLOADED", "id": "img-789"}]
+            guidances = body["parameters"]["guidances"]
+            assert guidances["image_reference"][0]["image"]["id"] == "img-789"
+            assert guidances["image_reference"][0]["strength"] == "HIGH"
 
 
 class TestGetGeneration:

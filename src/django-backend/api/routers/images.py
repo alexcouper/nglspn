@@ -24,10 +24,7 @@ from apps.projects.models import (
     Project,
     ProjectImage,
 )
-from services.leonardo.django_impl.client import (
-    FLUX_KONTEXT_MODEL_ID,
-    PHOENIX_MODEL_ID,
-)
+from services.leonardo.django_impl.client import V2_MODEL_DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -35,14 +32,11 @@ router = Router()
 
 MAX_VARIANTS = 4
 
-DIMENSION_PRESETS: dict[str, tuple[int, int, str]] = {
-    ImagePurpose.ICON: (1024, 1024, PHOENIX_MODEL_ID),
-    ImagePurpose.MAIN_IMAGE: (1024, 768, PHOENIX_MODEL_ID),
-    ImagePurpose.WINNER_COMPOSITE: (
-        1248,
-        704,
-        FLUX_KONTEXT_MODEL_ID,
-    ),
+# (width, height) per purpose
+DIMENSION_PRESETS: dict[str, tuple[int, int]] = {
+    ImagePurpose.ICON: (1024, 1024),
+    ImagePurpose.MAIN_IMAGE: (1024, 768),
+    ImagePurpose.WINNER_COMPOSITE: (1248, 704),
 }
 
 
@@ -118,7 +112,7 @@ def create_generation(
             "detail": "num_variants must be between 1 and 4",
         }
 
-    width, height, model_id = DIMENSION_PRESETS[body.purpose]
+    width, height = DIMENSION_PRESETS[body.purpose]
 
     reference_image = None
     if body.reference_image_id:
@@ -134,7 +128,7 @@ def create_generation(
         prompt_text=body.prompt_text,
         device_frame=body.device_frame,
         reference_image=reference_image,
-        leonardo_model_id=model_id,
+        leonardo_model_id=V2_MODEL_DEFAULT,
         width=width,
         height=height,
         num_variants=body.num_variants,

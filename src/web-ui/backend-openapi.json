@@ -2454,6 +2454,13 @@
           "notification_frequency": {
             "title": "Notification Frequency",
             "type": "string"
+          },
+          "pending_onboarding_steps": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Pending Onboarding Steps",
+            "type": "array"
           }
         },
         "required": [
@@ -2468,7 +2475,8 @@
           "email_opt_in_competition_results",
           "email_opt_in_platform_updates",
           "opt_in_to_external_promotions",
-          "notification_frequency"
+          "notification_frequency",
+          "pending_onboarding_steps"
         ],
         "title": "UserResponse",
         "type": "object"

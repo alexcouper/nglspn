@@ -21,7 +21,7 @@ class TestApproveProjectsAdminAction:
         request = RequestFactory().post("/admin/projects/project/")
         request.user = admin_user
         request.session = "session"
-        request._messages = FallbackStorage(request)  # noqa: SLF001
+        request._messages = FallbackStorage(request)
         queryset = Project.objects.filter(pk__in=[p.pk for p in projects])
         model_admin.approve_projects(request, queryset)
 

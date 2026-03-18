@@ -79,6 +79,8 @@ ignore = [
     "ANN",     # Type annotations not required in tests
     "S106",    # Possible hardcoded password assigned to argument
     "S311",    # Standard pseudo-random generators
+    "SLF001",  # Private member access is normal in tests
+    "SIM117",  # Nested with statements are fine in tests for readability
 ]
 "conftest.py" = [
     "ANN",     # Type annotations not required in test fixtures

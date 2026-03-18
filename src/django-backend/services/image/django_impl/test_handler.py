@@ -149,7 +149,7 @@ class TestGenerateVariants:
 
         # Make upload_object fail after the first variant
         call_count = 0
-        original_upload = handler._generate_single_variant.__func__  # noqa: SLF001
+        original_upload = handler._generate_single_variant.__func__
 
         msg = "Simulated S3 failure"
 

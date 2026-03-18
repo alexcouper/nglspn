@@ -59,15 +59,15 @@
 
 ## 7. OpenAPI & Type Generation
 
-- [ ] 7.1 Run `make extract-openapi` from django-backend to regenerate OpenAPI spec
-- [ ] 7.2 Run `npm run generate-types` from web-ui to regenerate TypeScript types
+- [x] 7.1 Run `make extract-openapi` from django-backend to regenerate OpenAPI spec
+- [x] 7.2 Run `npm run generate-types` from web-ui to regenerate TypeScript types
 
 ## 8. Testing & Verification
 
-- [ ] 8.1 Run `make lint` in django-backend and fix any issues
-- [ ] 8.2 Run `make test` in django-backend and fix any failures
-- [ ] 8.3 Run `npm run lint` in web-ui and fix any issues
-- [ ] 8.4 Verify admin pages are accessible only to ADMIN group users
-- [ ] 8.5 Verify generation dialog works end-to-end for icon generation
-- [ ] 8.6 Verify projects without icons are excluded from listing API
-- [ ] 8.7 Verify existing images show as screenshots after migration
+- [x] 8.1 Run `make lint` in django-backend and fix any issues
+- [x] 8.2 Run `make test` in django-backend and fix any failures
+- [x] 8.3 Run `npm run lint` in web-ui and fix any issues
+- [x] 8.4 Verify admin pages are accessible only to ADMIN group users
+- [ ] 8.5 Verify generation dialog works end-to-end for icon generation (requires Leonardo API key)
+- [x] 8.6 Verify projects without icons are excluded from listing API
+- [x] 8.7 Verify existing images show as screenshots after migration

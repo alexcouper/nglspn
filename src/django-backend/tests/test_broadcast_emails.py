@@ -30,7 +30,7 @@ class TestBroadcastEmailAdmin:
         request = factory.get(path)
         request.user = user or UserFactory(is_staff=True, is_superuser=True)
         request.session = "session"
-        request._messages = FallbackStorage(request)  # noqa: SLF001
+        request._messages = FallbackStorage(request)
         return request
 
     def test_save_model_sets_created_by(self):

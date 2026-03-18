@@ -69,13 +69,16 @@ export function GenerationDialog({
   screenshots = [],
   iconImageId,
 }: GenerationDialogProps) {
+  const defaultDeviceFrame: DeviceFrame = "laptop";
   const [state, setState] = useState<DialogState>("editing");
-  const [prompt, setPrompt] = useState("");
+  const [prompt, setPrompt] = useState(
+    getDefaultPrompt(purpose, projectTitle, projectTagline, defaultDeviceFrame)
+  );
   const [numVariants, setNumVariants] = useState(2);
   const [selectedScreenshot, setSelectedScreenshot] = useState<string | null>(
     null
   );
-  const [deviceFrame, setDeviceFrame] = useState<DeviceFrame>("laptop");
+  const [deviceFrame, setDeviceFrame] = useState<DeviceFrame>(defaultDeviceFrame);
   const [generatedImages, setGeneratedImages] = useState<
     ProposedImageResponse[]
   >([]);
@@ -87,16 +90,9 @@ export function GenerationDialog({
   const isWinnerComposite = purpose === "winner_composite";
   const showScreenshots = purpose === "main_image" && screenshots.length > 0;
 
-  // Initialize prompt on open
+  // Manage body scroll and cleanup
   useEffect(() => {
     if (open) {
-      setPrompt(
-        getDefaultPrompt(purpose, projectTitle, projectTagline, deviceFrame)
-      );
-      setState("editing");
-      setGeneratedImages([]);
-      setSelectedImage(null);
-      setError("");
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -105,7 +101,7 @@ export function GenerationDialog({
       document.body.style.overflow = "";
       if (pollRef.current) clearTimeout(pollRef.current);
     };
-  }, [open, projectTitle, projectTagline, purpose, deviceFrame]);
+  }, [open]);
 
   // ESC key
   useEffect(() => {
@@ -116,8 +112,8 @@ export function GenerationDialog({
     return () => document.removeEventListener("keydown", handleEsc);
   }, [open, state, onClose]);
 
-  const pollGeneration = useCallback(
-    async (requestId: string) => {
+  const startPolling = useCallback((requestId: string) => {
+    const poll = async () => {
       try {
         const status = await api.images.getGenerationStatus(requestId);
         if (status.status === "completed") {
@@ -130,18 +126,15 @@ export function GenerationDialog({
           setError(status.error_message || "Generation failed");
           setState("editing");
         } else {
-          pollRef.current = setTimeout(
-            () => void pollGeneration(requestId),
-            POLL_INTERVAL
-          );
+          pollRef.current = setTimeout(poll, POLL_INTERVAL);
         }
       } catch {
         setError("Failed to check generation status");
         setState("editing");
       }
-    },
-    []
-  );
+    };
+    void poll();
+  }, []);
 
   const handleGenerate = async () => {
     setError("");
@@ -172,7 +165,7 @@ export function GenerationDialog({
       }
 
       const result = await api.images.generate(body);
-      pollGeneration(result.generation_request_id);
+      startPolling(result.generation_request_id);
     } catch {
       setError("Failed to start generation");
       setState("editing");

@@ -7,6 +7,7 @@ export { APIClient, API_BASE_URL, ApiRequestError } from "./base";
 // Sub-clients
 export { AuthClient } from "./auth";
 export { CompetitionsClient } from "./competitions";
+export { DiscoverClient } from "./discover";
 export { DiscussionsClient } from "./discussions";
 export { ProjectsClient } from "./projects";
 export { MyProjectsClient } from "./my-projects";
@@ -32,6 +33,9 @@ export type {
 
 // Types - Discussions
 export type { Discussion, Reply, DiscussionAuthor } from "./discussions";
+
+// Types - Discover
+export type { DiscoverProject, CategoryItem, WinnerProject } from "./discover";
 
 // Types - Projects
 export type { Project, ProjectListItem, ProjectListResponse, ListProjectsParams } from "./projects";

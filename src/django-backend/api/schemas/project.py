@@ -169,6 +169,59 @@ class ProjectListResponse(Schema):
     pending_projects_count: int
 
 
+class DiscoverProjectResponse(Schema):
+    """Project item for discover/listing endpoints with purpose-resolved images."""
+
+    id: UUID
+    title: str
+    tagline: str
+    icon_url: str | None = None
+    hero_banner_url: str | None = None
+    in_use_image_url: str | None = None
+    category_name: str | None = None
+    category_slug: str | None = None
+    discussion_count: int = 0
+    won_competitions: list[WonCompetitionInfo] = []
+
+    @classmethod
+    def from_discover_item(cls, item: Any) -> "DiscoverProjectResponse":
+        return cls(
+            id=item.project.id,
+            title=item.project.title,
+            tagline=item.project.tagline,
+            icon_url=item.icon_url,
+            hero_banner_url=item.hero_banner_url,
+            in_use_image_url=item.in_use_image_url,
+            category_name=item.category_name,
+            category_slug=item.category_slug,
+            discussion_count=item.discussion_count,
+            won_competitions=list(item.project.won_competitions.all()),
+        )
+
+
+class CategoryResponse(Schema):
+    """Response for a project category."""
+
+    id: UUID
+    name: str
+    slug: str
+    project_count: int
+
+
+class WinnerProjectResponse(Schema):
+    """Project that won a competition, with competition details."""
+
+    id: UUID
+    title: str
+    tagline: str
+    icon_url: str | None = None
+    hero_banner_url: str | None = None
+    in_use_image_url: str | None = None
+    competition_name: str
+    competition_slug: str
+    competition_end_date: str
+
+
 class AdminProjectResponse(ProjectResponse):
     rejection_reason: str | None
     approved_by: PublicUserProfile | None

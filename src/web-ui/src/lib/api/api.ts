@@ -1,6 +1,7 @@
 import { APIClient } from "./base";
 import { AuthClient } from "./auth";
 import { CompetitionsClient } from "./competitions";
+import { DiscoverClient } from "./discover";
 import { DiscussionsClient } from "./discussions";
 import { ProjectsClient } from "./projects";
 import { MyProjectsClient } from "./my-projects";
@@ -13,6 +14,7 @@ export class API {
 
   readonly auth: AuthClient;
   readonly competitions: CompetitionsClient;
+  readonly discover: DiscoverClient;
   readonly discussions: DiscussionsClient;
   readonly projects: ProjectsClient;
   readonly myProjects: MyProjectsClient;
@@ -24,6 +26,7 @@ export class API {
     this.client = new APIClient();
     this.auth = new AuthClient(this.client);
     this.competitions = new CompetitionsClient(this.client);
+    this.discover = new DiscoverClient(this.client);
     this.discussions = new DiscussionsClient(this.client);
     this.projects = new ProjectsClient(this.client);
     this.myProjects = new MyProjectsClient(this.client);

@@ -11,6 +11,7 @@ from apps.projects.models import (
     Competition,
     CompetitionReviewer,
     Project,
+    ProjectCategory,
     ProjectImage,
     ProjectRanking,
     ProjectStatus,
@@ -62,6 +63,15 @@ class TagFactory(factory.django.DjangoModelFactory):
     color = "#FF5733"
     category = factory.SubFactory(TagCategoryFactory)
     status = TagStatus.APPROVED
+
+
+class ProjectCategoryFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = ProjectCategory
+
+    name = factory.Sequence(lambda n: f"Category {n}")
+    slug = factory.Sequence(lambda n: f"cat-{n}")
+    display_order = factory.Sequence(lambda n: n)
 
 
 class ProjectFactory(factory.django.DjangoModelFactory):

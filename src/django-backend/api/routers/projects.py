@@ -6,9 +6,12 @@ from ninja import Query, Router
 from api.auth.jwt import get_user_from_token
 from api.schemas.errors import Error
 from api.schemas.project import (
+    CategoryResponse,
+    DiscoverProjectResponse,
     ProjectListItemResponse,
     ProjectListResponse,
     ProjectResponse,
+    WinnerProjectResponse,
 )
 from apps.projects.models import Project, ProjectStatus
 from services import REPO
@@ -18,6 +21,100 @@ if TYPE_CHECKING:
     from apps.users.models import User
 
 router = Router()
+
+
+@router.get(
+    "/categories",
+    response={200: list[CategoryResponse]},
+    tags=["Projects"],
+)
+def list_categories(request: HttpRequest) -> list[dict[str, Any]]:
+    return [
+        {
+            "id": c.id,
+            "name": c.name,
+            "slug": c.slug,
+            "project_count": c.project_count,
+        }
+        for c in REPO.project.list_categories()
+    ]
+
+
+@router.get(
+    "/featured",
+    response={200: list[DiscoverProjectResponse]},
+    tags=["Projects"],
+)
+def list_featured(request: HttpRequest) -> list[DiscoverProjectResponse]:
+    return [
+        DiscoverProjectResponse.from_discover_item(item)
+        for item in REPO.project.list_featured()
+    ]
+
+
+@router.get(
+    "/new-arrivals",
+    response={200: list[DiscoverProjectResponse]},
+    tags=["Projects"],
+)
+def list_new_arrivals(request: HttpRequest) -> list[DiscoverProjectResponse]:
+    return [
+        DiscoverProjectResponse.from_discover_item(item)
+        for item in REPO.project.list_new_arrivals()
+    ]
+
+
+@router.get(
+    "/winners",
+    response={200: list[WinnerProjectResponse]},
+    tags=["Projects"],
+)
+def list_winners(request: HttpRequest) -> list[WinnerProjectResponse]:
+    return [
+        WinnerProjectResponse(
+            id=w.project.id,
+            title=w.project.title,
+            tagline=w.project.tagline,
+            icon_url=w.icon_url,
+            hero_banner_url=w.hero_banner_url,
+            in_use_image_url=w.in_use_image_url,
+            competition_name=w.competition_name,
+            competition_slug=w.competition_slug,
+            competition_end_date=w.competition_end_date.isoformat()
+            if w.competition_end_date
+            else "",
+        )
+        for w in REPO.project.list_winners()
+    ]
+
+
+@router.get(
+    "/most-discussed",
+    response={200: list[DiscoverProjectResponse]},
+    tags=["Projects"],
+)
+def list_most_discussed(request: HttpRequest) -> list[DiscoverProjectResponse]:
+    return [
+        DiscoverProjectResponse.from_discover_item(item)
+        for item in REPO.project.list_most_discussed()
+    ]
+
+
+@router.get(
+    "/by-category/{slug}",
+    response={200: list[DiscoverProjectResponse], 404: Error},
+    tags=["Projects"],
+)
+def list_by_category(
+    request: HttpRequest,
+    slug: str,
+    sort: str = Query("newest"),
+) -> list[DiscoverProjectResponse] | tuple[int, dict[str, str]]:
+    try:
+        items = REPO.project.list_by_category(slug, sort)
+    except ProjectNotFoundError:
+        return 404, {"detail": "Category not found"}
+    return [DiscoverProjectResponse.from_discover_item(item) for item in items]
 
 
 @router.get("", response={200: ProjectListResponse, 400: Error}, tags=["Projects"])
@@ -56,7 +153,6 @@ def list_projects(
 
 
 def _get_user_from_request(request: HttpRequest) -> "User | None":
-    """Extract user from Authorization header if present."""
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         token = auth_header[7:]
@@ -78,11 +174,9 @@ def get_project(
     except ProjectNotFoundError:
         return 404, {"detail": "Project not found"}
 
-    # Approved projects are visible to everyone
     if project.status == ProjectStatus.APPROVED:
         return project
 
-    # Non-approved projects only visible to owner or admin
     user = _get_user_from_request(request)
     if user and (project.owner == user or user.is_superuser):
         return project

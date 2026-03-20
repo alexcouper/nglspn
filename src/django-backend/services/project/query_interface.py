@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import date
 from typing import Any
 from uuid import UUID
 
@@ -15,6 +16,36 @@ class ProjectListItem:
     main_image_thumb_url: str | None = None
     main_image_variants: list = field(default_factory=list)
     tags: list = field(default_factory=list)
+
+
+@dataclass(frozen=True)
+class DiscoverProjectItem:
+    project: Project
+    icon_url: str | None = None
+    hero_banner_url: str | None = None
+    in_use_image_url: str | None = None
+    category_name: str | None = None
+    category_slug: str | None = None
+    discussion_count: int = 0
+
+
+@dataclass(frozen=True)
+class WinnerItem:
+    project: Project
+    icon_url: str | None = None
+    hero_banner_url: str | None = None
+    in_use_image_url: str | None = None
+    competition_name: str = ""
+    competition_slug: str = ""
+    competition_end_date: date | None = None
+
+
+@dataclass(frozen=True)
+class CategoryItem:
+    id: UUID
+    name: str
+    slug: str
+    project_count: int
 
 
 @dataclass(frozen=True)
@@ -54,3 +85,25 @@ class ProjectQueryInterface(ABC):
 
     @abstractmethod
     def get_project_with_owner(self, project_id: UUID) -> dict[str, Any]: ...
+
+    @abstractmethod
+    def list_featured(self) -> list[DiscoverProjectItem]: ...
+
+    @abstractmethod
+    def list_new_arrivals(
+        self, *, min_count: int = 5, days: int = 30
+    ) -> list[DiscoverProjectItem]: ...
+
+    @abstractmethod
+    def list_winners(self) -> list[WinnerItem]: ...
+
+    @abstractmethod
+    def list_most_discussed(self) -> list[DiscoverProjectItem]: ...
+
+    @abstractmethod
+    def list_by_category(
+        self, slug: str, sort: str = "newest"
+    ) -> list[DiscoverProjectItem]: ...
+
+    @abstractmethod
+    def list_categories(self) -> list[CategoryItem]: ...

@@ -40,6 +40,22 @@ def transliterate_icelandic(text: str) -> str:
     return text
 
 
+class ProjectCategory(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    name = models.CharField(max_length=100)
+    slug = models.SlugField(max_length=110, unique=True)
+    display_order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "project_categories"
+        ordering = ["display_order", "name"]
+        verbose_name_plural = "project categories"
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class ProjectStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     APPROVED = "approved", "Approved"
@@ -57,6 +73,7 @@ class Project(models.Model):
     github_url = models.URLField(max_length=2083, blank=True, null=True)
     demo_url = models.URLField(max_length=2083, blank=True, null=True)
     tech_stack = models.JSONField(default=list, blank=True)
+    is_featured = models.BooleanField(default=False)
     status = models.CharField(
         max_length=20,
         choices=ProjectStatus.choices,
@@ -70,6 +87,13 @@ class Project(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     # Foreign Keys
+    category = models.ForeignKey(
+        ProjectCategory,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="projects",
+    )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -124,6 +148,14 @@ class UploadStatus(models.TextChoices):
     FAILED = "failed", "Upload Failed"
 
 
+class ImagePurpose(models.TextChoices):
+    GENERAL = "general", "General"
+    ICON = "icon", "Icon"
+    HERO_BANNER = "hero_banner", "Hero Banner"
+    IN_USE = "in_use", "In Use"
+    WINNER_COMPOSITE = "winner_composite", "Winner Composite"
+
+
 class ProjectImage(models.Model):
     """Tracks images uploaded to a project. Uses UUID for non-guessable URLs."""
 
@@ -144,7 +176,12 @@ class ProjectImage(models.Model):
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
 
-    # Ordering and main image tracking
+    # Image purpose and ordering
+    purpose = models.CharField(
+        max_length=20,
+        choices=ImagePurpose.choices,
+        default=ImagePurpose.GENERAL,
+    )
     is_main = models.BooleanField(default=False)
     display_order = models.PositiveIntegerField(default=0)
 

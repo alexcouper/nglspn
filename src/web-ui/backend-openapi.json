@@ -498,6 +498,192 @@
         }
       }
     },
+    "/api/projects/categories": {
+      "get": {
+        "operationId": "api_routers_projects_list_categories",
+        "summary": "List Categories",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/CategoryResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/projects/featured": {
+      "get": {
+        "operationId": "api_routers_projects_list_featured",
+        "summary": "List Featured",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoverProjectResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/projects/new-arrivals": {
+      "get": {
+        "operationId": "api_routers_projects_list_new_arrivals",
+        "summary": "List New Arrivals",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoverProjectResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/projects/winners": {
+      "get": {
+        "operationId": "api_routers_projects_list_winners",
+        "summary": "List Winners",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/WinnerProjectResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/projects/most-discussed": {
+      "get": {
+        "operationId": "api_routers_projects_list_most_discussed",
+        "summary": "List Most Discussed",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoverProjectResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
+    "/api/projects/by-category/{slug}": {
+      "get": {
+        "operationId": "api_routers_projects_list_by_category",
+        "summary": "List By Category",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "schema": {
+              "default": "newest",
+              "title": "Sort",
+              "type": "string"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoverProjectResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
     "/api/projects": {
       "get": {
         "operationId": "api_routers_projects_list_projects",
@@ -2846,6 +3032,220 @@
         "title": "ResetPasswordRequest",
         "type": "object"
       },
+      "CategoryResponse": {
+        "description": "Response for a project category.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "project_count": {
+            "title": "Project Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "project_count"
+        ],
+        "title": "CategoryResponse",
+        "type": "object"
+      },
+      "DiscoverProjectResponse": {
+        "description": "Project item for discover/listing endpoints with purpose-resolved images.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          },
+          "icon_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Url"
+          },
+          "hero_banner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hero Banner Url"
+          },
+          "in_use_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Use Image Url"
+          },
+          "category_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Name"
+          },
+          "category_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Slug"
+          },
+          "discussion_count": {
+            "default": 0,
+            "title": "Discussion Count",
+            "type": "integer"
+          },
+          "won_competitions": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/WonCompetitionInfo"
+            },
+            "title": "Won Competitions",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "tagline"
+        ],
+        "title": "DiscoverProjectResponse",
+        "type": "object"
+      },
+      "WonCompetitionInfo": {
+        "properties": {
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "slug"
+        ],
+        "title": "WonCompetitionInfo",
+        "type": "object"
+      },
+      "WinnerProjectResponse": {
+        "description": "Project that won a competition, with competition details.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          },
+          "icon_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Url"
+          },
+          "hero_banner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Hero Banner Url"
+          },
+          "in_use_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Use Image Url"
+          },
+          "competition_name": {
+            "title": "Competition Name",
+            "type": "string"
+          },
+          "competition_slug": {
+            "title": "Competition Slug",
+            "type": "string"
+          },
+          "competition_end_date": {
+            "title": "Competition End Date",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "tagline",
+          "competition_name",
+          "competition_slug",
+          "competition_end_date"
+        ],
+        "title": "WinnerProjectResponse",
+        "type": "object"
+      },
       "ProjectListItemResponse": {
         "properties": {
           "id": {
@@ -3036,24 +3436,6 @@
           "status"
         ],
         "title": "TagWithCategoryResponse",
-        "type": "object"
-      },
-      "WonCompetitionInfo": {
-        "properties": {
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          }
-        },
-        "required": [
-          "name",
-          "slug"
-        ],
-        "title": "WonCompetitionInfo",
         "type": "object"
       },
       "ImageVariantResponse": {

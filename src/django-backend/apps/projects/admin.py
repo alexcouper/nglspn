@@ -4,7 +4,7 @@ import logging
 from typing import TYPE_CHECKING
 
 from django.contrib import admin
-from django.db.models import Count, QuerySet
+from django.db.models import Count, Q, QuerySet
 from django.http import HttpRequest
 from django.urls import reverse
 from django.utils import timezone
@@ -19,6 +19,7 @@ from .models import (
     CompetitionReviewer,
     ImageVariant,
     Project,
+    ProjectCategory,
     ProjectImage,
     ProjectRanking,
     ProjectStatus,
@@ -29,6 +30,30 @@ if TYPE_CHECKING:
     from django.utils.safestring import SafeString
 
 logger = logging.getLogger(__name__)
+
+
+@admin.register(ProjectCategory)
+class ProjectCategoryAdmin(admin.ModelAdmin):
+    list_display = ("name", "slug", "display_order", "project_count")
+    search_fields = ("name", "slug")
+    prepopulated_fields = {"slug": ("name",)}
+    ordering = ("display_order", "name")
+
+    @admin.display(description="Projects")
+    def project_count(self, obj: ProjectCategory) -> int:
+        return obj.project_count
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[ProjectCategory]:
+        return (
+            super()
+            .get_queryset(request)
+            .annotate(
+                project_count=Count(
+                    "projects",
+                    filter=Q(projects__status="approved"),
+                )
+            )
+        )
 
 
 class ProjectImageInline(admin.TabularInline):
@@ -99,12 +124,16 @@ class ProjectAdmin(admin.ModelAdmin):
         "owner_link",
         "owner_promo_opt_in",
         "status",
+        "is_featured",
+        "category",
         "view_count",
         "submission_month",
         "created_at",
     )
     list_filter = (
         "status",
+        "is_featured",
+        "category",
         "owner__opt_in_to_external_promotions",
         "submission_month",
         "created_at",
@@ -126,6 +155,8 @@ class ProjectAdmin(admin.ModelAdmin):
                     "long_description",
                     "tech_stack",
                     "tags",
+                    "category",
+                    "is_featured",
                 ),
             },
         ),

@@ -1,19 +1,46 @@
+from datetime import timedelta
 from math import ceil
 from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from django.db.models import Prefetch, Q, QuerySet
+from django.db.models import Count, Prefetch, Q, QuerySet
+from django.utils import timezone
 
-from apps.projects.models import Project, ProjectImage, ProjectStatus
+from apps.projects.models import (
+    Competition,
+    Project,
+    ProjectCategory,
+    ProjectImage,
+    ProjectStatus,
+)
 from services.project.exceptions import ProjectNotFoundError
 from services.project.query_interface import (
+    CategoryItem,
+    DiscoverProjectItem,
     PaginatedProjects,
     ProjectListItem,
     ProjectQueryInterface,
+    WinnerItem,
 )
 
 ALLOWED_SORT_FIELDS = {"created_at", "title", "updated_at"}
+
+
+def _top_level_discussion_count() -> Count:
+    return Count("discussions", filter=Q(discussions__parent__isnull=True))
+
+
+def _discover_queryset() -> QuerySet[Project]:
+    return Project.objects.select_related("owner", "category").prefetch_related(
+        "won_competitions",
+        Prefetch(
+            "images",
+            queryset=ProjectImage.objects.filter(
+                upload_status="uploaded"
+            ).prefetch_related("variants"),
+        ),
+    )
 
 
 def _base_queryset() -> QuerySet[Project]:
@@ -44,6 +71,34 @@ def get_title_from_url(url: str) -> str:
             return path_parts[1]
 
     return domain or "Untitled Project"
+
+
+def resolve_image_by_purpose(project: Project, purpose: str) -> "ProjectImage | None":
+    """Fallback chain: purpose-specific image -> main image -> first image -> None."""
+    images = list(project.images.all())
+    purpose_image = next((img for img in images if img.purpose == purpose), None)
+    if purpose_image:
+        return purpose_image
+    main_image = next((img for img in images if img.is_main), None)
+    if main_image:
+        return main_image
+    return images[0] if images else None
+
+
+def to_discover_item(project: Project) -> DiscoverProjectItem:
+    icon = resolve_image_by_purpose(project, "icon")
+    hero = resolve_image_by_purpose(project, "hero_banner")
+    in_use = resolve_image_by_purpose(project, "in_use")
+
+    return DiscoverProjectItem(
+        project=project,
+        icon_url=icon.url if icon else None,
+        hero_banner_url=hero.url if hero else None,
+        in_use_image_url=in_use.url if in_use else None,
+        category_name=project.category.name if project.category else None,
+        category_slug=project.category.slug if project.category else None,
+        discussion_count=getattr(project, "discussion_count", 0) or 0,
+    )
 
 
 def to_list_item(project: Project) -> ProjectListItem:
@@ -146,3 +201,116 @@ class DjangoProjectQuery(ProjectQueryInterface):
             "owner_email": project.owner.email,
             "owner_first_name": project.owner.first_name,
         }
+
+    def list_featured(self) -> list[DiscoverProjectItem]:
+        projects = (
+            _discover_queryset()
+            .filter(status=ProjectStatus.APPROVED, is_featured=True)
+            .order_by("-updated_at")
+        )
+        return [to_discover_item(p) for p in projects]
+
+    def list_new_arrivals(
+        self, *, min_count: int = 5, days: int = 30
+    ) -> list[DiscoverProjectItem]:
+        cutoff = timezone.now() - timedelta(days=days)
+        recent = (
+            _discover_queryset()
+            .filter(status=ProjectStatus.APPROVED, approved_at__gte=cutoff)
+            .order_by("-approved_at")
+        )
+        if recent.count() < min_count:
+            recent = (
+                _discover_queryset()
+                .filter(status=ProjectStatus.APPROVED)
+                .order_by("-approved_at")[:min_count]
+            )
+        return [to_discover_item(p) for p in recent]
+
+    def list_winners(self) -> list[WinnerItem]:
+        competitions = (
+            Competition.objects.filter(winner__isnull=False)
+            .select_related("winner", "winner__category")
+            .prefetch_related(
+                "winner__won_competitions",
+                Prefetch(
+                    "winner__images",
+                    queryset=ProjectImage.objects.filter(
+                        upload_status="uploaded"
+                    ),
+                ),
+            )
+            .order_by("-end_date")
+        )
+        results = []
+        for comp in competitions:
+            project = comp.winner
+            icon = resolve_image_by_purpose(project, "icon")
+            hero = resolve_image_by_purpose(project, "hero_banner")
+            in_use = resolve_image_by_purpose(project, "in_use")
+            results.append(
+                WinnerItem(
+                    project=project,
+                    icon_url=icon.url if icon else None,
+                    hero_banner_url=hero.url if hero else None,
+                    in_use_image_url=in_use.url if in_use else None,
+                    competition_name=comp.name,
+                    competition_slug=comp.slug,
+                    competition_end_date=comp.end_date,
+                )
+            )
+        return results
+
+    def list_most_discussed(self) -> list[DiscoverProjectItem]:
+        projects = (
+            _discover_queryset()
+            .filter(status=ProjectStatus.APPROVED)
+            .annotate(discussion_count=_top_level_discussion_count())
+            .filter(discussion_count__gt=0)
+            .order_by("-discussion_count")
+        )
+        return [to_discover_item(p) for p in projects]
+
+    def list_by_category(
+        self, slug: str, sort: str = "newest"
+    ) -> list[DiscoverProjectItem]:
+        try:
+            category = ProjectCategory.objects.get(slug=slug)
+        except ProjectCategory.DoesNotExist:
+            raise ProjectNotFoundError from None
+
+        queryset = _discover_queryset().filter(
+            status=ProjectStatus.APPROVED, category=category
+        )
+
+        if sort == "name":
+            queryset = queryset.order_by("title")
+        elif sort == "most-discussed":
+            queryset = queryset.annotate(
+                discussion_count=_top_level_discussion_count()
+            ).order_by("-discussion_count")
+        else:
+            queryset = queryset.order_by("-approved_at")
+
+        return [to_discover_item(p) for p in queryset]
+
+    def list_categories(self) -> list[CategoryItem]:
+        categories = (
+            ProjectCategory.objects.annotate(
+                project_count=Count(
+                    "projects",
+                    filter=Q(projects__status=ProjectStatus.APPROVED),
+                )
+            )
+            .order_by("display_order", "name")
+            .all()
+        )
+        return [
+            CategoryItem(
+                id=c.id,
+                name=c.name,
+                slug=c.slug,
+                project_count=c.project_count,
+            )
+            for c in categories
+        ]

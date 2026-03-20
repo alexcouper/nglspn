@@ -2,10 +2,13 @@ import "server-only";
 
 import type {
   ActiveOrRecentResponse,
+  CategoryItem,
   Competition,
   CompetitionOverviewListResponse,
+  DiscoverProject,
   Project,
   ProjectListResponse,
+  WinnerProject,
 } from "./index";
 
 const API_URL =
@@ -71,6 +74,36 @@ export async function fetchActiveOrRecentCompetition(): Promise<ActiveOrRecentRe
     "/api/competitions/active-or-most-recent",
     { tags: ["competitions"] }
   );
+}
+
+export async function fetchCategories(): Promise<CategoryItem[]> {
+  return serverFetch<CategoryItem[]>("/api/projects/categories", {
+    tags: ["projects", "categories"],
+  });
+}
+
+export async function fetchFeaturedProjects(): Promise<DiscoverProject[]> {
+  return serverFetch<DiscoverProject[]>("/api/projects/featured", {
+    tags: ["projects", "featured"],
+  });
+}
+
+export async function fetchNewArrivals(): Promise<DiscoverProject[]> {
+  return serverFetch<DiscoverProject[]>("/api/projects/new-arrivals", {
+    tags: ["projects", "new-arrivals"],
+  });
+}
+
+export async function fetchWinners(): Promise<WinnerProject[]> {
+  return serverFetch<WinnerProject[]>("/api/projects/winners", {
+    tags: ["projects", "winners"],
+  });
+}
+
+export async function fetchMostDiscussed(): Promise<DiscoverProject[]> {
+  return serverFetch<DiscoverProject[]>("/api/projects/most-discussed", {
+    tags: ["projects", "most-discussed"],
+  });
 }
 
 export async function getAllProjectIds(): Promise<string[]> {

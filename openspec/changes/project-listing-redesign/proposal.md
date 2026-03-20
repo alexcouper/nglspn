@@ -32,7 +32,7 @@ The project listing page is a flat grid of cards with tag-based filtering. As pr
 
 - **Django models**: New `ProjectCategory` model; new fields on `Project` (`category`, `is_featured`) and `ProjectImage` (`purpose`); new migration(s)
 - **Django API**: New endpoints for discover sections (featured, new arrivals, winners, most discussed, category-filtered listing); existing project list endpoint may be modified or replaced
-- **Web UI**: New page components for Discover view sections, Category view grid, category tabs; existing project listing page replaced
+- **Web UI**: New page components for Discover view sections, Category view grid, category tabs; built at `/preview/projects/` initially, existing `/projects` page untouched until cutover
 - **Admin**: Category management UI; `is_featured` toggle on projects
 - **Data**: Existing projects will have `category=null` and `purpose='general'` images — fallback behaviour is critical for launch
 - **Existing tags**: Tag system unchanged but `project-type` TagCategory may overlap with new categories — review during implementation

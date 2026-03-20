@@ -75,19 +75,42 @@ All existing projects have `category=null` and no purpose-specific images at lau
 - `CategoryView` — filtered grid with sort dropdown
 - Section-specific card components (HeroCard, ArrivalCard, WinnerCard, IconCard, etc.)
 
-### 7. Category tab routing: URL params vs. path segments
+### 7. Graceful section visibility — data-gated rendering
+
+**Decision:** Every Discover section is gated by data existence. If the API returns an empty list for a section, that section is not rendered at all — no placeholder, no empty state, no "coming soon". Sections materialise as content is added over time.
+
+**Why:** Images and curation (featured flags, categories, winner composites) will be populated in stages after the page ships. The page must look intentional at every stage — showing only what has content, rather than exposing unfilled sections that signal incompleteness.
+
+**Section visibility rules:**
+- **Featured (hero):** Renders only if ≥1 project has `is_featured=True`
+- **New Arrivals:** Always renders (falls back to most recent N if <5 in 30-day window) — hidden only if zero approved projects exist
+- **Competition Winners:** Renders only if ≥1 competition has a winner assigned
+- **Category Rows:** Each row renders only if that category has ≥1 project. No categories assigned = no category rows
+- **Most Discussed:** Renders only if ≥1 project has >0 discussions
+
+### 8. Staging URL: `/preview/` prefix
+
+**Decision:** The new page is built at `/preview/projects/` rather than replacing `/projects`. The existing project listing remains untouched until the new page is ready for cutover.
+
+**Why:** This is a large change and content (images, categories, featured flags) will be populated incrementally. A separate preview URL allows building and testing against real data without disrupting the live page. The `/preview/` prefix is a reusable convention for staging any future page redesigns.
+
+**Cutover:** When ready, move the page component from `src/app/preview/projects/` to `src/app/projects/` and delete the preview route.
+
+**Routing note:** Category tabs use search params (`/preview/projects?category=dev-tools`), consistent with Decision 9 below.
+
+### 9. Category tab routing: URL params vs. path segments
 
 **Decision:** Use URL search params (`/projects?category=dev-tools`) rather than path segments (`/projects/dev-tools`).
 
 **Why:** The Discover view is the default at `/projects` with no params. Category filtering is a view state toggle, not a separate page. Search params keep the URL structure flat and consistent with existing tag filtering (`/projects?tags=...`). Path segments would require new Next.js route definitions.
 
-### 8. New Arrivals window: fixed 30 days vs. configurable
+### 10. New Arrivals window: fixed 30 days vs. configurable
 
 **Decision:** Fixed 30-day rolling window, with fallback to most recent N approved projects if fewer than 5 qualify.
 
 **Why:** Simplicity. The 30-day window is a product decision, not a per-deployment config. If it needs tuning, it's a one-line code change. Exposing it as config adds complexity for a knob nobody will turn.
 
-### 9. Re-adding is_featured: new migration vs. migration surgery
+### 11. Re-adding is_featured: new migration vs. migration surgery
 
 **Decision:** New migration adding `is_featured = BooleanField(default=False)` to Project. Don't try to reverse migration `0023` — just add a fresh field.
 
@@ -109,9 +132,10 @@ All existing projects have `category=null` and no purpose-specific images at lau
 
 1. **Database migrations** — Add `ProjectCategory` model, `category` FK on `Project`, `is_featured` on `Project`, `purpose` on `ProjectImage`. All fields nullable/defaulted — no data loss, backward compatible.
 2. **API endpoints** — Add new section endpoints alongside existing `/api/projects`. Existing endpoint unchanged initially.
-3. **Frontend** — Deploy new page behind existing route (`/projects`). Old component replaced in a single PR.
+3. **Frontend** — Build new page at `/preview/projects/`. Existing `/projects` page remains untouched.
 4. **Admin setup** — Create initial categories (Consumer Products, Dev Tools, Community Boosters). Flag 3 featured projects. Bulk-assign categories to existing projects.
-5. **Rollback** — Revert frontend PR to restore old listing page. New API endpoints and models are additive and harmless if unused.
+5. **Cutover** — Move page component from `src/app/preview/projects/` to `src/app/projects/`, delete preview route.
+6. **Rollback** — Revert cutover PR to restore old listing page. New API endpoints and models are additive and harmless if unused.
 
 ## Open Questions
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from django.contrib import admin
 from django.db.models import Count, Q, QuerySet
@@ -211,6 +211,18 @@ class ProjectAdmin(admin.ModelAdmin):
             .select_related("owner", "approved_by")
             .prefetch_related("tags", "views")
         )
+
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: Project,
+        form: Any,
+        change: bool,  # noqa: FBT001
+    ) -> None:
+        if change and obj.status == ProjectStatus.APPROVED and not obj.approved_at:
+            obj.approved_at = timezone.now()
+            obj.approved_by = request.user
+        super().save_model(request, obj, form, change)
 
     list_editable = ("is_featured",)
 

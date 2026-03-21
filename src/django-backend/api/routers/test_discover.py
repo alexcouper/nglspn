@@ -94,6 +94,27 @@ class TestListNewArrivals:
         data = response.json()
         assert len(data) >= 1
 
+    def test_includes_projects_with_null_approved_at_using_created_at(self, client):
+        old = ProjectFactory(
+            status=ProjectStatus.APPROVED,
+            approved_at=None,
+            created_at=timezone.now() - timezone.timedelta(days=10),
+        )
+        new = ProjectFactory(
+            status=ProjectStatus.APPROVED,
+            approved_at=None,
+            created_at=timezone.now() - timezone.timedelta(days=1),
+        )
+
+        response = client.get("/api/projects/new-arrivals")
+
+        assert response.status_code == 200
+        data = response.json()
+        titles = [p["title"] for p in data]
+        assert new.title in titles
+        assert old.title in titles
+        assert titles.index(new.title) < titles.index(old.title)
+
     def test_falls_back_to_most_recent_when_few_recent(self, client):
         for _ in range(3):
             ProjectFactory(

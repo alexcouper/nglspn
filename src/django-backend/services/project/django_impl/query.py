@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from django.db.models import Count, Prefetch, Q, QuerySet
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.projects.models import (
@@ -214,16 +215,20 @@ class DjangoProjectQuery(ProjectQueryInterface):
         self, *, min_count: int = 5, days: int = 30
     ) -> list[DiscoverProjectItem]:
         cutoff = timezone.now() - timedelta(days=days)
+        arrival_date = Coalesce("approved_at", "created_at")
         recent = (
             _discover_queryset()
-            .filter(status=ProjectStatus.APPROVED, approved_at__gte=cutoff)
-            .order_by("-approved_at")
+            .filter(status=ProjectStatus.APPROVED)
+            .annotate(arrival_date=arrival_date)
+            .filter(arrival_date__gte=cutoff)
+            .order_by("-arrival_date")
         )
         if recent.count() < min_count:
             recent = (
                 _discover_queryset()
                 .filter(status=ProjectStatus.APPROVED)
-                .order_by("-approved_at")[:min_count]
+                .annotate(arrival_date=arrival_date)
+                .order_by("-arrival_date")[:min_count]
             )
         return [to_discover_item(p) for p in recent]
 

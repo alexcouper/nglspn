@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+
 import type { CategoryItem, DiscoverProject } from "@/lib/api";
 import { api } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
@@ -88,11 +88,10 @@ function IconCard({
           style={{ width: iconSize, height: iconSize }}
         >
           {iconUrl ? (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={iconUrl}
               alt={project.title}
-              width={iconSize}
-              height={iconSize}
               className="object-cover w-full h-full"
             />
           ) : (

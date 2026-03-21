@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+
 import type { CategoryItem, DiscoverProject } from "@/lib/api";
 import { api } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
@@ -91,11 +91,10 @@ function CategoryCard({ project }: { project: DiscoverProject }) {
       <div className="card card-interactive p-3 flex items-start gap-3">
         <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden">
           {iconUrl ? (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={iconUrl}
               alt={project.title}
-              width={48}
-              height={48}
               className="object-cover w-full h-full"
             />
           ) : (

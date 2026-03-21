@@ -148,17 +148,7 @@ class UploadStatus(models.TextChoices):
     FAILED = "failed", "Upload Failed"
 
 
-class ImagePurpose(models.TextChoices):
-    GENERAL = "general", "General"
-    ICON = "icon", "Icon"
-    HERO_BANNER = "hero_banner", "Hero Banner"
-    IN_USE = "in_use", "In Use"
-    WINNER_COMPOSITE = "winner_composite", "Winner Composite"
-
-
 class ProjectImage(models.Model):
-    """Tracks images uploaded to a project. Uses UUID for non-guessable URLs."""
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
         Project,
@@ -176,13 +166,10 @@ class ProjectImage(models.Model):
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
 
-    # Image purpose and ordering
-    purpose = models.CharField(
-        max_length=20,
-        choices=ImagePurpose.choices,
-        default=ImagePurpose.GENERAL,
-    )
     is_main = models.BooleanField(default=False)
+    is_icon = models.BooleanField(default=False)
+    is_hero = models.BooleanField(default=False)
+    is_usage = models.BooleanField(default=False)
     display_order = models.PositiveIntegerField(default=0)
 
     # Upload status tracking
@@ -222,8 +209,6 @@ VARIANT_SIZE_WIDTHS: dict[str, int] = {
 
 
 class ImageVariant(models.Model):
-    """A pre-generated size variant of a ProjectImage, stored as WebP in S3."""
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     image = models.ForeignKey(
         ProjectImage,
@@ -270,6 +255,12 @@ class Competition(models.Model):
     quote = models.TextField(blank=True, null=True)
     prize_amount = models.IntegerField(default=50000, null=True, blank=True)
     image = models.ImageField(upload_to=competition_image_path, blank=True, null=True)
+    image_wide = models.ImageField(
+        upload_to=competition_image_path, blank=True, null=True
+    )
+    image_wide_winner = models.ImageField(
+        upload_to=competition_image_path, blank=True, null=True
+    )
     projects = models.ManyToManyField(Project, related_name="competitions", blank=True)
     winner = models.ForeignKey(
         Project,
@@ -308,6 +299,20 @@ class Competition(models.Model):
             return self.image.url
         return None
 
+    @property
+    def image_wide_url(self) -> str | None:
+        """Returns the public URL for the wide competition image."""
+        if self.image_wide:
+            return self.image_wide.url
+        return None
+
+    @property
+    def image_wide_winner_url(self) -> str | None:
+        """Returns the public URL for the wide competition-with-winner image."""
+        if self.image_wide_winner:
+            return self.image_wide_winner.url
+        return None
+
 
 class ReviewStatus(models.TextChoices):
     IN_PROGRESS = "in_progress", "In Progress"
@@ -315,8 +320,6 @@ class ReviewStatus(models.TextChoices):
 
 
 class CompetitionReviewer(models.Model):
-    """Links a user to a competition they can review."""
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -344,8 +347,6 @@ class CompetitionReviewer(models.Model):
 
 
 class ProjectRanking(models.Model):
-    """A reviewer's ranking of a project within a competition."""
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     reviewer = models.ForeignKey(
         settings.AUTH_USER_MODEL,

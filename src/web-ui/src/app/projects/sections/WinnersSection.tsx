@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+
 import type { WinnerProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 import { HorizontalScroll } from "../HorizontalScroll";
@@ -38,12 +38,11 @@ function WinnerCard({ winner }: { winner: WinnerProject }) {
       <div className="card card-interactive overflow-hidden border-amber-200 hover:shadow-[0_0_20px_rgba(251,191,36,0.15)] flex flex-col w-full">
         <div className="relative aspect-video">
           {imageUrl ? (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={imageUrl}
               alt={winner.title}
-              fill
-              className="object-cover"
-              sizes="280px"
+              className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
             <GradientPlaceholder id={winner.id} className="w-full h-full" />

@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from django.db.models import Count, Prefetch, Q, QuerySet
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.projects.models import (
@@ -74,15 +75,35 @@ def get_title_from_url(url: str) -> str:
 
 
 def resolve_image_by_purpose(project: Project, purpose: str) -> "ProjectImage | None":
-    """Fallback chain: purpose-specific image -> main image -> first image -> None."""
+    """Fallback chain: role-specific image -> main image -> first image -> None."""
     images = list(project.images.all())
-    purpose_image = next((img for img in images if img.purpose == purpose), None)
-    if purpose_image:
-        return purpose_image
+
+    role_map = {
+        "icon": "is_icon",
+        "hero_banner": "is_hero",
+        "in_use": "is_usage",
+    }
+    role_field = role_map.get(purpose)
+    role_image = (
+        next((img for img in images if getattr(img, role_field, False)), None)
+        if role_field
+        else None
+    )
+
+    if role_image:
+        return role_image
     main_image = next((img for img in images if img.is_main), None)
     if main_image:
         return main_image
     return images[0] if images else None
+
+
+def _variant_url(image: "ProjectImage | None", size: str) -> str | None:
+    if image is None:
+        return None
+    variants = list(image.variants.all())
+    variant = next((v for v in variants if v.size == size), None)
+    return variant.url if variant else image.url
 
 
 def to_discover_item(project: Project) -> DiscoverProjectItem:
@@ -92,9 +113,9 @@ def to_discover_item(project: Project) -> DiscoverProjectItem:
 
     return DiscoverProjectItem(
         project=project,
-        icon_url=icon.url if icon else None,
-        hero_banner_url=hero.url if hero else None,
-        in_use_image_url=in_use.url if in_use else None,
+        icon_url=_variant_url(icon, "thumb"),
+        hero_banner_url=_variant_url(hero, "large"),
+        in_use_image_url=_variant_url(in_use, "medium"),
         category_name=project.category.name if project.category else None,
         category_slug=project.category.slug if project.category else None,
         discussion_count=getattr(project, "discussion_count", 0) or 0,
@@ -214,16 +235,20 @@ class DjangoProjectQuery(ProjectQueryInterface):
         self, *, min_count: int = 5, days: int = 30
     ) -> list[DiscoverProjectItem]:
         cutoff = timezone.now() - timedelta(days=days)
+        arrival_date = Coalesce("approved_at", "created_at")
         recent = (
             _discover_queryset()
-            .filter(status=ProjectStatus.APPROVED, approved_at__gte=cutoff)
-            .order_by("-approved_at")
+            .filter(status=ProjectStatus.APPROVED)
+            .annotate(arrival_date=arrival_date)
+            .filter(arrival_date__gte=cutoff)
+            .order_by("-arrival_date")
         )
         if recent.count() < min_count:
             recent = (
                 _discover_queryset()
                 .filter(status=ProjectStatus.APPROVED)
-                .order_by("-approved_at")[:min_count]
+                .annotate(arrival_date=arrival_date)
+                .order_by("-arrival_date")[:min_count]
             )
         return [to_discover_item(p) for p in recent]
 
@@ -237,7 +262,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
                     "winner__images",
                     queryset=ProjectImage.objects.filter(
                         upload_status="uploaded"
-                    ),
+                    ).prefetch_related("variants"),
                 ),
             )
             .order_by("-end_date")
@@ -251,9 +276,9 @@ class DjangoProjectQuery(ProjectQueryInterface):
             results.append(
                 WinnerItem(
                     project=project,
-                    icon_url=icon.url if icon else None,
-                    hero_banner_url=hero.url if hero else None,
-                    in_use_image_url=in_use.url if in_use else None,
+                    icon_url=_variant_url(icon, "thumb"),
+                    hero_banner_url=_variant_url(hero, "large"),
+                    in_use_image_url=_variant_url(in_use, "medium"),
                     competition_name=comp.name,
                     competition_slug=comp.slug,
                     competition_end_date=comp.end_date,
@@ -290,7 +315,10 @@ class DjangoProjectQuery(ProjectQueryInterface):
                 discussion_count=_top_level_discussion_count()
             ).order_by("-discussion_count")
         else:
-            queryset = queryset.order_by("-approved_at")
+            arrival_date = Coalesce("approved_at", "created_at")
+            queryset = queryset.annotate(arrival_date=arrival_date).order_by(
+                "-arrival_date"
+            )
 
         return [to_discover_item(p) for p in queryset]
 

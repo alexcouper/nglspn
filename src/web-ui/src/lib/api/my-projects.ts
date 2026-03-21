@@ -46,7 +46,8 @@ export class MyProjectsClient {
     projectId: string,
     filename: string,
     contentType: string,
-    fileSize: number
+    fileSize: number,
+    isIcon: boolean = false
   ): Promise<PresignedUploadResponse> {
     return this.client.request<PresignedUploadResponse>(
       `/api/my/projects/${projectId}/images/upload-url`,
@@ -56,6 +57,7 @@ export class MyProjectsClient {
           filename,
           content_type: contentType,
           file_size: fileSize,
+          is_icon: isIcon,
         }),
       }
     );
@@ -81,12 +83,16 @@ export class MyProjectsClient {
     );
   }
 
-  async setMainImage(projectId: string, imageId: string): Promise<ProjectImage> {
+  async updateImageRoles(
+    projectId: string,
+    imageId: string,
+    roles: { is_main?: boolean; is_hero?: boolean; is_usage?: boolean }
+  ): Promise<ProjectImage> {
     return this.client.request<ProjectImage>(
-      `/api/my/projects/${projectId}/images/main`,
+      `/api/my/projects/${projectId}/images/${imageId}/roles`,
       {
         method: "POST",
-        body: JSON.stringify({ image_id: imageId }),
+        body: JSON.stringify(roles),
       }
     );
   }

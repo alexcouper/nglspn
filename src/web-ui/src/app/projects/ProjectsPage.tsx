@@ -11,7 +11,6 @@ interface ProjectsPageProps {
   initialFeatured: DiscoverProject[];
   initialNewArrivals: DiscoverProject[];
   initialWinners: WinnerProject[];
-  initialMostDiscussed: DiscoverProject[];
 }
 
 export function ProjectsPage({
@@ -19,7 +18,6 @@ export function ProjectsPage({
   initialFeatured,
   initialNewArrivals,
   initialWinners,
-  initialMostDiscussed,
 }: ProjectsPageProps) {
   const searchParams = useSearchParams();
   const activeCategory = searchParams.get("category");
@@ -58,7 +56,6 @@ export function ProjectsPage({
               featured={initialFeatured}
               newArrivals={initialNewArrivals}
               winners={initialWinners}
-              mostDiscussed={initialMostDiscussed}
               categories={categoriesWithProjects}
             />
           )}

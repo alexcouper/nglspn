@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+
 import type { CategoryItem, DiscoverProject } from "@/lib/api";
 import { api } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
@@ -45,7 +45,7 @@ function CategoryRow({ category }: { category: CategoryItem }) {
           {category.name}
         </h2>
         <Link
-          href={`/preview/projects?category=${category.slug}`}
+          href={`/projects?category=${category.slug}`}
           className="text-sm text-accent hover:text-accent-hover font-medium"
         >
           See all
@@ -80,19 +80,18 @@ function IconCard({
   return (
     <Link
       href={`/projects/${project.id}`}
-      className="block flex-shrink-0 w-[200px]"
+      className="block flex-shrink-0 w-[200px] self-stretch"
     >
-      <div className="card card-interactive p-3 flex items-start gap-3">
+      <div className="card card-interactive p-3 flex items-start gap-3 h-full">
         <div
           className="flex-shrink-0 rounded-lg overflow-hidden"
           style={{ width: iconSize, height: iconSize }}
         >
           {iconUrl ? (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={iconUrl}
               alt={project.title}
-              width={iconSize}
-              height={iconSize}
               className="object-cover w-full h-full"
             />
           ) : (

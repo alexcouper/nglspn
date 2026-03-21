@@ -1578,7 +1578,6 @@
             }
           }
         },
-        "description": "Generate a presigned URL for uploading an image.",
         "tags": [
           "Project Images"
         ],
@@ -1665,7 +1664,6 @@
             }
           }
         },
-        "description": "Mark an image upload as complete.",
         "tags": [
           "Project Images"
         ],
@@ -1686,16 +1684,25 @@
         ]
       }
     },
-    "/api/my/projects/{project_id}/images/main": {
+    "/api/my/projects/{project_id}/images/{image_id}/roles": {
       "post": {
-        "operationId": "api_routers_my_projects_set_main_image",
-        "summary": "Set Main Image",
+        "operationId": "api_routers_my_projects_update_image_roles",
+        "summary": "Update Image Roles",
         "parameters": [
           {
             "in": "path",
             "name": "project_id",
             "schema": {
               "title": "Project Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "image_id",
+            "schema": {
+              "title": "Image Id",
               "type": "string"
             },
             "required": true
@@ -1743,7 +1750,6 @@
             }
           }
         },
-        "description": "Set the main image for a project.",
         "tags": [
           "Project Images"
         ],
@@ -1751,7 +1757,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetMainImageRequest"
+                "$ref": "#/components/schemas/UpdateImageRolesRequest"
               }
             }
           },
@@ -1813,7 +1819,6 @@
             }
           }
         },
-        "description": "Delete a project image.",
         "tags": [
           "Project Images"
         ],
@@ -3033,7 +3038,6 @@
         "type": "object"
       },
       "CategoryResponse": {
-        "description": "Response for a project category.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -3063,7 +3067,6 @@
         "type": "object"
       },
       "DiscoverProjectResponse": {
-        "description": "Project item for discover/listing endpoints with purpose-resolved images.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -3174,7 +3177,6 @@
         "type": "object"
       },
       "WinnerProjectResponse": {
-        "description": "Project that won a competition, with competition details.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -3439,7 +3441,6 @@
         "type": "object"
       },
       "ImageVariantResponse": {
-        "description": "Response schema for a pre-generated image variant.",
         "properties": {
           "size": {
             "title": "Size",
@@ -3468,7 +3469,6 @@
         "type": "object"
       },
       "ProjectImageResponse": {
-        "description": "Response schema for project images.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -3517,6 +3517,18 @@
             "title": "Is Main",
             "type": "boolean"
           },
+          "is_icon": {
+            "title": "Is Icon",
+            "type": "boolean"
+          },
+          "is_hero": {
+            "title": "Is Hero",
+            "type": "boolean"
+          },
+          "is_usage": {
+            "title": "Is Usage",
+            "type": "boolean"
+          },
           "display_order": {
             "title": "Display Order",
             "type": "integer"
@@ -3548,6 +3560,9 @@
           "width",
           "height",
           "is_main",
+          "is_icon",
+          "is_hero",
+          "is_usage",
           "display_order",
           "upload_status",
           "created_at"
@@ -3962,7 +3977,6 @@
         "type": "object"
       },
       "PresignedUploadResponse": {
-        "description": "Response with presigned upload URL.",
         "properties": {
           "image_id": {
             "format": "uuid",
@@ -4000,7 +4014,6 @@
         "type": "object"
       },
       "PresignedUploadRequest": {
-        "description": "Request schema for generating presigned upload URL.",
         "properties": {
           "filename": {
             "title": "Filename",
@@ -4013,6 +4026,11 @@
           "file_size": {
             "title": "File Size",
             "type": "integer"
+          },
+          "is_icon": {
+            "default": false,
+            "title": "Is Icon",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4024,7 +4042,6 @@
         "type": "object"
       },
       "ImageUploadCompleteRequest": {
-        "description": "Request to confirm upload completion.",
         "properties": {
           "width": {
             "anyOf": [
@@ -4052,19 +4069,43 @@
         "title": "ImageUploadCompleteRequest",
         "type": "object"
       },
-      "SetMainImageRequest": {
-        "description": "Request to set main image.",
+      "UpdateImageRolesRequest": {
         "properties": {
-          "image_id": {
-            "format": "uuid",
-            "title": "Image Id",
-            "type": "string"
+          "is_main": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Main"
+          },
+          "is_hero": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Hero"
+          },
+          "is_usage": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Usage"
           }
         },
-        "required": [
-          "image_id"
-        ],
-        "title": "SetMainImageRequest",
+        "title": "UpdateImageRolesRequest",
         "type": "object"
       },
       "ReviewCompetitionListResponse": {
@@ -4628,6 +4669,28 @@
             ],
             "title": "Image Url"
           },
+          "image_wide_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Wide Url"
+          },
+          "image_wide_winner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Wide Winner Url"
+          },
           "project_count": {
             "title": "Project Count",
             "type": "integer"
@@ -4798,6 +4861,28 @@
               }
             ],
             "title": "Image Url"
+          },
+          "image_wide_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Wide Url"
+          },
+          "image_wide_winner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Wide Winner Url"
           },
           "project_count": {
             "title": "Project Count",

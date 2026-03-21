@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 
@@ -33,7 +33,7 @@ export function FeaturedSection({ projects }: FeaturedSectionProps) {
   );
 }
 
-function LargeHeroCard({ project }: { project: DiscoverProject }) {
+export function LargeHeroCard({ project }: { project: DiscoverProject }) {
   const imageUrl = project.hero_banner_url || project.in_use_image_url;
 
   return (
@@ -41,12 +41,11 @@ function LargeHeroCard({ project }: { project: DiscoverProject }) {
       <div className="card card-interactive overflow-hidden">
         <div className="relative aspect-video">
           {imageUrl ? (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={imageUrl}
               alt={project.title}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
+              className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
             <GradientPlaceholder id={project.id} className="w-full h-full" />
@@ -78,19 +77,18 @@ function SmallHeroCard({ project }: { project: DiscoverProject }) {
       <div className="card card-interactive overflow-hidden relative h-full">
         <div className="relative aspect-video h-full">
           {imageUrl ? (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={imageUrl}
               alt={project.title}
-              fill
-              className="object-cover"
-              sizes="(max-width: 768px) 100vw, 50vw"
+              className="absolute inset-0 w-full h-full object-cover"
             />
           ) : (
             <GradientPlaceholder id={project.id} className="w-full h-full" />
           )}
           {/* Scrim + gradient overlay */}
-          <div className="absolute inset-0 bg-[rgba(15,23,42,0.35)]" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.8)] to-transparent" />
+          <div className="absolute inset-0 bg-[rgba(15,23,42,0.15)]" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.75)] to-transparent" />
 
           {/* Text overlay */}
           <div className="absolute bottom-0 left-0 right-0 p-4">

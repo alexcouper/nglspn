@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
+
 import type { CategoryItem, DiscoverProject } from "@/lib/api";
 import { api } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 
-type SortOption = "newest" | "name" | "most-discussed";
+type SortOption = "newest" | "name";
 
 interface CategoryViewProps {
   categorySlug: string;
@@ -58,7 +58,6 @@ export function CategoryView({ categorySlug, categories }: CategoryViewProps) {
         >
           <option value="newest">Newest</option>
           <option value="name">Name A-Z</option>
-          <option value="most-discussed">Most Discussed</option>
         </select>
       </div>
 
@@ -87,15 +86,14 @@ function CategoryCard({ project }: { project: DiscoverProject }) {
   const iconUrl = project.icon_url;
 
   return (
-    <Link href={`/projects/${project.id}`} className="block">
-      <div className="card card-interactive p-3 flex items-start gap-3">
+    <Link href={`/projects/${project.id}`} className="block h-full">
+      <div className="card card-interactive p-3 flex items-start gap-3 h-full">
         <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden">
           {iconUrl ? (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={iconUrl}
               alt={project.title}
-              width={48}
-              height={48}
               className="object-cover w-full h-full"
             />
           ) : (

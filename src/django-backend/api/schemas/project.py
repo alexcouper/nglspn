@@ -23,8 +23,6 @@ class ProjectCreate(Schema):
 
 
 class ImageVariantResponse(Schema):
-    """Response schema for a pre-generated image variant."""
-
     size: str
     url: str
     width: int
@@ -32,8 +30,6 @@ class ImageVariantResponse(Schema):
 
 
 class ProjectImageResponse(Schema):
-    """Response schema for project images."""
-
     id: UUID
     url: str
     original_filename: str
@@ -42,6 +38,9 @@ class ProjectImageResponse(Schema):
     width: int | None
     height: int | None
     is_main: bool
+    is_icon: bool
+    is_hero: bool
+    is_usage: bool
     display_order: int
     upload_status: str
     created_at: datetime
@@ -77,7 +76,6 @@ class ProjectResponse(Schema):
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:
-        """Return uploaded images. Uses prefetch cache from _base_queryset."""
         return list(obj.images.all())
 
     @staticmethod
@@ -91,16 +89,13 @@ class ProjectResponse(Schema):
 
 
 class PresignedUploadRequest(Schema):
-    """Request schema for generating presigned upload URL."""
-
     filename: str
     content_type: str
     file_size: int
+    is_icon: bool = False
 
 
 class PresignedUploadResponse(Schema):
-    """Response with presigned upload URL."""
-
     image_id: UUID
     upload_url: str
     method: str
@@ -109,29 +104,23 @@ class PresignedUploadResponse(Schema):
 
 
 class ImageUploadCompleteRequest(Schema):
-    """Request to confirm upload completion."""
-
     width: int | None = None
     height: int | None = None
 
 
 class ImageOrderUpdate(Schema):
-    """Schema for updating a single image's order."""
-
     image_id: UUID
     display_order: int
 
 
 class ImageOrderUpdateRequest(Schema):
-    """Request to update image order."""
-
     images: list[ImageOrderUpdate]
 
 
-class SetMainImageRequest(Schema):
-    """Request to set main image."""
-
-    image_id: UUID
+class UpdateImageRolesRequest(Schema):
+    is_main: bool | None = None
+    is_hero: bool | None = None
+    is_usage: bool | None = None
 
 
 class ProjectListItemResponse(Schema):
@@ -170,8 +159,6 @@ class ProjectListResponse(Schema):
 
 
 class DiscoverProjectResponse(Schema):
-    """Project item for discover/listing endpoints with purpose-resolved images."""
-
     id: UUID
     title: str
     tagline: str
@@ -200,8 +187,6 @@ class DiscoverProjectResponse(Schema):
 
 
 class CategoryResponse(Schema):
-    """Response for a project category."""
-
     id: UUID
     name: str
     slug: str
@@ -209,8 +194,6 @@ class CategoryResponse(Schema):
 
 
 class WinnerProjectResponse(Schema):
-    """Project that won a competition, with competition details."""
-
     id: UUID
     title: str
     tagline: str

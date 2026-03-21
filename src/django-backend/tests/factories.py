@@ -79,6 +79,7 @@ class ProjectFactory(factory.django.DjangoModelFactory):
         model = Project
 
     title = factory.Faker("company")
+    tagline = factory.Faker("catch_phrase")
     description = factory.Faker("paragraph")
     website_url = factory.Faker("url")
     owner = factory.SubFactory(UserFactory)

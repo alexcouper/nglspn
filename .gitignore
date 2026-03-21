@@ -179,3 +179,9 @@ logs/
 .swarm/
 
 .backend-port
+
+# DB dump files
+prod-dump.sql
+
+# Superpowers brainstorm artifacts
+.superpowers/

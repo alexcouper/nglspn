@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import logging
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from django.contrib import admin
 from django.db.models import Count, Q, QuerySet
@@ -63,6 +63,9 @@ class ProjectImageInline(admin.TabularInline):
         "thumbnail",
         "original_filename",
         "is_main",
+        "is_icon",
+        "is_hero",
+        "is_usage",
         "upload_status",
         "file_size_display",
         "created_at",
@@ -71,6 +74,9 @@ class ProjectImageInline(admin.TabularInline):
         "thumbnail",
         "original_filename",
         "is_main",
+        "is_icon",
+        "is_hero",
+        "is_usage",
         "upload_status",
         "file_size_display",
         "created_at",
@@ -212,9 +218,25 @@ class ProjectAdmin(admin.ModelAdmin):
             .prefetch_related("tags", "views")
         )
 
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: Project,
+        form: Any,
+        change: bool,  # noqa: FBT001
+    ) -> None:
+        if change and obj.status == ProjectStatus.APPROVED and not obj.approved_at:
+            obj.approved_at = timezone.now()
+            obj.approved_by = request.user
+        super().save_model(request, obj, form, change)
+
+    list_editable = ("is_featured",)
+
     actions = [
         "approve_projects",
         "reject_projects",
+        "feature_projects",
+        "unfeature_projects",
     ]
 
     @admin.action(description="Approve selected projects")
@@ -265,6 +287,24 @@ class ProjectAdmin(admin.ModelAdmin):
                     "Failed to enqueue revalidation for project %s", project.id
                 )
         self.message_user(request, f"{updated} projects were rejected.")
+
+    @admin.action(description="Feature selected projects")
+    def feature_projects(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet[Project],
+    ) -> None:
+        updated = queryset.filter(is_featured=False).update(is_featured=True)
+        self.message_user(request, f"{updated} projects were featured.")
+
+    @admin.action(description="Unfeature selected projects")
+    def unfeature_projects(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet[Project],
+    ) -> None:
+        updated = queryset.filter(is_featured=True).update(is_featured=False)
+        self.message_user(request, f"{updated} projects were unfeatured.")
 
 
 @admin.register(ProjectView)
@@ -350,7 +390,16 @@ class ProjectImageAdmin(admin.ModelAdmin):
         ),
         (
             "Project",
-            {"fields": ("project", "is_main", "display_order")},
+            {
+                "fields": (
+                    "project",
+                    "is_main",
+                    "is_icon",
+                    "is_hero",
+                    "is_usage",
+                    "display_order",
+                ),
+            },
         ),
         (
             "File Info",
@@ -440,12 +489,27 @@ class CompetitionAdmin(admin.ModelAdmin):
     autocomplete_fields = ("winner",)
     inlines = [CompetitionReviewerInline]
     ordering = ("-start_date",)
-    readonly_fields = ("image_preview",)
+    readonly_fields = (
+        "image_preview",
+        "image_wide_preview",
+        "image_wide_winner_preview",
+    )
 
     fieldsets = (
         (
             None,
             {"fields": ("name", "slug", "image", "image_preview", "quote")},
+        ),
+        (
+            "Wide Images",
+            {
+                "fields": (
+                    "image_wide",
+                    "image_wide_preview",
+                    "image_wide_winner",
+                    "image_wide_winner_preview",
+                ),
+            },
         ),
         (
             "Dates & Prize",
@@ -478,6 +542,26 @@ class CompetitionAdmin(admin.ModelAdmin):
                 obj.image.url,
             )
         return mark_safe('<span style="color: #999;">No image uploaded</span>')
+
+    @admin.display(description="Wide Image Preview")
+    def image_wide_preview(self, obj: Competition) -> SafeString:
+        if obj.image_wide:
+            return format_html(
+                '<img src="{}" style="max-height: 200px; max-width: 600px;" />',
+                obj.image_wide.url,
+            )
+        return mark_safe('<span style="color: #999;">No wide image uploaded</span>')
+
+    @admin.display(description="Wide Winner Image Preview")
+    def image_wide_winner_preview(self, obj: Competition) -> SafeString:
+        if obj.image_wide_winner:
+            return format_html(
+                '<img src="{}" style="max-height: 200px; max-width: 600px;" />',
+                obj.image_wide_winner.url,
+            )
+        return mark_safe(
+            '<span style="color: #999;">No wide winner image uploaded</span>'
+        )
 
     @admin.display(description="Winner", ordering="winner__title")
     def winner_name(self, obj: Competition) -> str:

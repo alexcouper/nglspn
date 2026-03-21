@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 import { HorizontalScroll } from "../HorizontalScroll";
@@ -27,7 +27,7 @@ export function NewArrivalsSection({ projects }: NewArrivalsSectionProps) {
   );
 }
 
-function ArrivalCard({ project }: { project: DiscoverProject }) {
+export function ArrivalCard({ project }: { project: DiscoverProject }) {
   const imageUrl = project.in_use_image_url || project.hero_banner_url;
 
   return (
@@ -39,12 +39,11 @@ function ArrivalCard({ project }: { project: DiscoverProject }) {
         <div className="relative aspect-[4/3]">
           {imageUrl ? (
             <>
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src={imageUrl}
                 alt={project.title}
-                fill
-                className="object-cover"
-                sizes="240px"
+                className="absolute inset-0 w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.15)] to-transparent" />
             </>

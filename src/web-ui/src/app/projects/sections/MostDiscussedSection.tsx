@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import Image from "next/image";
+
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 
@@ -34,11 +34,10 @@ function DiscussedItem({ project }: { project: DiscoverProject }) {
       <div className="card card-interactive p-3 flex items-center gap-3">
         <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden">
           {iconUrl ? (
-            <Image
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={iconUrl}
               alt={project.title}
-              width={40}
-              height={40}
               className="object-cover w-full h-full"
             />
           ) : (

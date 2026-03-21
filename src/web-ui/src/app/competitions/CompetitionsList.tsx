@@ -1,11 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { CalendarIcon } from "@heroicons/react/24/outline";
 import { api, type CompetitionOverview } from "@/lib/api";
-import { getPlaceholderColor } from "@/lib/utils";
+import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 
 function formatDateRange(startDate: string, endDate: string): string {
   const start = new Date(startDate);
@@ -15,7 +13,13 @@ function formatDateRange(startDate: string, endDate: string): string {
     day: "numeric",
     year: "numeric",
   };
-  return `${start.toLocaleDateString("en-US", options)} - ${end.toLocaleDateString("en-US", options)}`;
+  return `${start.toLocaleDateString("en-US", options)} – ${end.toLocaleDateString("en-US", options)}`;
+}
+
+function formatPrize(amount: string): string {
+  const num = parseInt(amount, 10);
+  if (isNaN(num)) return amount;
+  return `${num.toLocaleString("de-DE")} kr.`;
 }
 
 interface CompetitionsListProps {
@@ -62,22 +66,7 @@ export function CompetitionsList({
   }, [hasInitialData]);
 
   if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="bg-white rounded-xl border border-border p-5">
-            <div className="flex items-start gap-4">
-              <div className="skeleton w-11 h-11 rounded-full" />
-              <div className="flex-1">
-                <div className="skeleton h-5 w-1/3 mb-2" />
-                <div className="skeleton h-4 w-1/2 mb-2" />
-                <div className="skeleton h-3 w-1/4" />
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
+    return <LoadingSkeleton />;
   }
 
   if (error) {
@@ -88,7 +77,9 @@ export function CompetitionsList({
     );
   }
 
-  if (competitions.length === 0) {
+  const visible = competitions.filter((c) => c.status !== "pending");
+
+  if (visible.length === 0) {
     return (
       <p className="text-muted-foreground text-sm text-center py-12">
         {pendingProjectsCount > 0
@@ -98,65 +89,163 @@ export function CompetitionsList({
     );
   }
 
+  const activeCompetitions = visible.filter(
+    (c) => c.status === "accepting_applications"
+  );
+  const featured =
+    activeCompetitions.length > 0
+      ? activeCompetitions.reduce((latest, c) =>
+          new Date(c.start_date) > new Date(latest.start_date) ? c : latest
+        )
+      : null;
+  const grid = visible.filter((c) => c.id !== featured?.id);
+
   return (
-    <div className="space-y-3">
-      {competitions.map((competition) => (
-        <CompetitionCard key={competition.id} competition={competition} />
-      ))}
+    <div>
+      {featured && <HeroBanner competition={featured} />}
+
+      {grid.length > 0 && (
+        <div>
+          {featured && (
+            <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mt-6 mb-3">
+              Past Competitions
+            </h2>
+          )}
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+            {grid.map((competition) => (
+              <GridCard key={competition.id} competition={competition} />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function CompetitionCard({ competition }: { competition: CompetitionOverview }) {
-  const isAcceptingApplications =
-    competition.status === "accepting_applications";
-  const placeholderColor = getPlaceholderColor(competition.id);
+function HeroBanner({ competition }: { competition: CompetitionOverview }) {
+  return (
+    <Link
+      href={`/competitions/${competition.slug}`}
+      className="group block"
+    >
+      <div className="card card-interactive overflow-hidden">
+        <div className="relative aspect-[16/7]">
+          {(competition.image_wide_url ?? competition.image_url) ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={(competition.image_wide_url ?? competition.image_url)!}
+              alt={competition.name}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <GradientPlaceholder
+              id={competition.id}
+              className="absolute inset-0 w-full h-full"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.9)] via-[rgba(15,23,42,0.3)] to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
+            <span className="badge badge-success text-xs mb-2 inline-flex">
+              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 pulse-dot" />
+              Open for Submissions
+            </span>
+            <h2 className="text-xl sm:text-2xl font-bold text-white group-hover:text-indigo-200 transition-colors">
+              {competition.name}
+            </h2>
+            <p className="text-slate-300 text-sm mt-1">
+              {formatDateRange(competition.start_date, competition.end_date)}
+              {" · "}
+              {competition.project_count} project
+              {competition.project_count !== 1 ? "s" : ""}
+              {competition.prize_amount &&
+                ` · ${formatPrize(competition.prize_amount)}`}
+            </p>
+          </div>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
+function GridCard({ competition }: { competition: CompetitionOverview }) {
+  const isOpen = competition.status === "accepting_applications";
 
   return (
     <Link
       href={`/competitions/${competition.slug}`}
-      className="group block bg-white rounded-xl border border-border p-5 hover:border-slate-300 hover:shadow-sm transition-all"
+      className="group block"
     >
-      <div className="flex items-start gap-4">
-        <div
-          className={`relative w-11 h-11 rounded-full overflow-hidden flex-shrink-0 ${!competition.image_url ? placeholderColor : ""}`}
-        >
-          {competition.image_url && (
-            <Image
+      <div className="card card-interactive overflow-hidden">
+        <div className="relative aspect-square">
+          {competition.image_url ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
               src={competition.image_url}
               alt={competition.name}
-              fill
-              className="object-cover"
-              sizes="44px"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <GradientPlaceholder
+              id={competition.id}
+              className="absolute inset-0 w-full h-full"
             />
           )}
         </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2.5">
-            <h2 className="text-base font-semibold text-foreground group-hover:text-accent transition-colors">
+        <div className="bg-[#0f172a] p-3 sm:p-4">
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm sm:text-base font-semibold text-white group-hover:text-indigo-200 transition-colors truncate">
               {competition.name}
-            </h2>
-            {isAcceptingApplications && (
-              <span className="badge badge-success text-xs">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1 pulse-dot inline-block" />
+            </h3>
+            {isOpen && (
+              <span className="badge badge-success text-xs flex-shrink-0">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1 pulse-dot" />
                 Open
               </span>
             )}
           </div>
-          <div className="flex items-center gap-1.5 mt-1.5 text-muted-foreground">
-            <CalendarIcon className="w-3.5 h-3.5" />
-            <span className="text-xs">
-              {formatDateRange(competition.start_date, competition.end_date)}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-slate-400 mt-1">
             {competition.project_count} project
             {competition.project_count !== 1 ? "s" : ""}
-            {competition.pending_projects_count > 0 &&
-              ` (${competition.pending_projects_count} pending)`}
           </p>
         </div>
       </div>
     </Link>
+  );
+}
+
+function LoadingSkeleton() {
+  return (
+    <div>
+      {/* Hero skeleton */}
+      <div className="rounded-xl overflow-hidden border border-border">
+        <div className="skeleton aspect-[16/7]" />
+        <div className="bg-[#0f172a] p-5">
+          <div className="skeleton h-4 w-24 mb-3" style={{ opacity: 0.3 }} />
+          <div className="skeleton h-6 w-48 mb-2" style={{ opacity: 0.3 }} />
+          <div className="skeleton h-4 w-64" style={{ opacity: 0.3 }} />
+        </div>
+      </div>
+      {/* Grid skeleton */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4 mt-6">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className="rounded-xl overflow-hidden border border-border"
+          >
+            <div className="skeleton aspect-square" />
+            <div className="bg-[#0f172a] p-3 sm:p-4">
+              <div
+                className="skeleton h-4 w-2/3 mb-2"
+                style={{ opacity: 0.3 }}
+              />
+              <div
+                className="skeleton h-3 w-1/3"
+                style={{ opacity: 0.3 }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }

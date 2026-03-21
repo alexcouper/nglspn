@@ -1,5 +1,3 @@
-"""Tests for project image upload functionality."""
-
 import json
 from unittest.mock import patch
 
@@ -435,8 +433,8 @@ class TestDeleteImage:
         assert_that(second_image.is_main, is_(True))
 
 
-class TestSetMainImage:
-    def test_sets_main_image(
+class TestUpdateImageRoles:
+    def test_sets_main_role(
         self,
         client,
         project,
@@ -462,8 +460,8 @@ class TestSetMainImage:
         )
 
         response = client.post(
-            f"/api/my/projects/{project.id}/images/main",
-            data=json.dumps({"image_id": str(image2.id)}),
+            f"/api/my/projects/{project.id}/images/{image2.id}/roles",
+            data=json.dumps({"is_main": True}),
             content_type="application/json",
             **auth_headers,
         )
@@ -473,6 +471,101 @@ class TestSetMainImage:
         image2.refresh_from_db()
         assert_that(image1.is_main, is_(False))
         assert_that(image2.is_main, is_(True))
+
+    def test_sets_multiple_roles_on_same_image(
+        self,
+        client,
+        project,
+        auth_headers,
+    ) -> None:
+        image = ProjectImage.objects.create(
+            project=project,
+            storage_key="test/img1.png",
+            original_filename="img1.png",
+            content_type="image/png",
+            file_size=1024,
+            upload_status=UploadStatus.UPLOADED,
+        )
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/images/{image.id}/roles",
+            data=json.dumps({"is_main": True, "is_hero": True, "is_usage": True}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        image.refresh_from_db()
+        assert_that(image.is_main, is_(True))
+        assert_that(image.is_hero, is_(True))
+        assert_that(image.is_usage, is_(True))
+
+    def test_role_exclusivity_across_images(
+        self,
+        client,
+        project,
+        auth_headers,
+    ) -> None:
+        image1 = ProjectImage.objects.create(
+            project=project,
+            storage_key="test/img1.png",
+            original_filename="img1.png",
+            content_type="image/png",
+            file_size=1024,
+            upload_status=UploadStatus.UPLOADED,
+            is_hero=True,
+        )
+        image2 = ProjectImage.objects.create(
+            project=project,
+            storage_key="test/img2.png",
+            original_filename="img2.png",
+            content_type="image/png",
+            file_size=1024,
+            upload_status=UploadStatus.UPLOADED,
+        )
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/images/{image2.id}/roles",
+            data=json.dumps({"is_hero": True}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        image1.refresh_from_db()
+        image2.refresh_from_db()
+        assert_that(image1.is_hero, is_(False))
+        assert_that(image2.is_hero, is_(True))
+
+    def test_none_values_leave_roles_unchanged(
+        self,
+        client,
+        project,
+        auth_headers,
+    ) -> None:
+        image = ProjectImage.objects.create(
+            project=project,
+            storage_key="test/img1.png",
+            original_filename="img1.png",
+            content_type="image/png",
+            file_size=1024,
+            upload_status=UploadStatus.UPLOADED,
+            is_main=True,
+            is_hero=True,
+        )
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/images/{image.id}/roles",
+            data=json.dumps({"is_usage": True}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        image.refresh_from_db()
+        assert_that(image.is_main, is_(True))
+        assert_that(image.is_hero, is_(True))
+        assert_that(image.is_usage, is_(True))
 
 
 class TestImageAuthorization:

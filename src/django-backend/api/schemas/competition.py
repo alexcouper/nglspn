@@ -50,6 +50,8 @@ class CompetitionResponse(Schema):
     prize_amount: Decimal | None = None
     status: CompetitionStatusEnum
     image_url: str | None = None
+    image_wide_url: str | None = None
+    image_wide_winner_url: str | None = None
     project_count: int
     projects: list[CompetitionProjectResponse]
     winner: CompetitionProjectResponse | None = None
@@ -83,6 +85,8 @@ class CompetitionResponse(Schema):
             prize_amount=competition.prize_amount,
             status=competition.status,
             image_url=competition.image_url,
+            image_wide_url=competition.image_wide_url,
+            image_wide_winner_url=competition.image_wide_winner_url,
             project_count=competition.projects.count(),
             projects=[
                 CompetitionProjectResponse.from_list_item(item)
@@ -108,6 +112,8 @@ class CompetitionOverviewResponse(Schema):
     prize_amount: Decimal | None = None
     status: CompetitionStatusEnum
     image_url: str | None = None
+    image_wide_url: str | None = None
+    image_wide_winner_url: str | None = None
     project_count: int
     pending_projects_count: int
 
@@ -122,6 +128,8 @@ class CompetitionOverviewResponse(Schema):
             prize_amount=competition.prize_amount,
             status=competition.status,
             image_url=competition.image_url,
+            image_wide_url=competition.image_wide_url,
+            image_wide_winner_url=competition.image_wide_winner_url,
             project_count=competition.projects.count(),
             pending_projects_count=competition.projects.filter(
                 status=ProjectStatus.PENDING

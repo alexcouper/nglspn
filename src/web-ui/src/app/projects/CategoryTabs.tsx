@@ -14,14 +14,14 @@ export function CategoryTabs({ categories, activeCategory }: CategoryTabsProps) 
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <nav className="flex gap-6 overflow-x-auto scrollbar-hide" aria-label="Category tabs">
           <TabLink
-            href="/preview/projects"
+            href="/projects"
             active={!activeCategory}
             label="Discover"
           />
           {categories.map((cat) => (
             <TabLink
               key={cat.id}
-              href={`/preview/projects?category=${cat.slug}`}
+              href={`/projects?category=${cat.slug}`}
               active={activeCategory === cat.slug}
               label={cat.name}
             />

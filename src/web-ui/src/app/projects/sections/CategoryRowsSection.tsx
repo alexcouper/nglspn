@@ -45,7 +45,7 @@ function CategoryRow({ category }: { category: CategoryItem }) {
           {category.name}
         </h2>
         <Link
-          href={`/preview/projects?category=${category.slug}`}
+          href={`/projects?category=${category.slug}`}
           className="text-sm text-accent hover:text-accent-hover font-medium"
         >
           See all

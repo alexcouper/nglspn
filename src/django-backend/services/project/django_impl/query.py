@@ -86,6 +86,15 @@ def resolve_image_by_purpose(project: Project, purpose: str) -> "ProjectImage | 
     return images[0] if images else None
 
 
+def _variant_url(image: "ProjectImage | None", size: str) -> str | None:
+    """Return the variant URL for the given size, falling back to the original."""
+    if image is None:
+        return None
+    variants = list(image.variants.all())
+    variant = next((v for v in variants if v.size == size), None)
+    return variant.url if variant else image.url
+
+
 def to_discover_item(project: Project) -> DiscoverProjectItem:
     icon = resolve_image_by_purpose(project, "icon")
     hero = resolve_image_by_purpose(project, "hero_banner")
@@ -93,9 +102,9 @@ def to_discover_item(project: Project) -> DiscoverProjectItem:
 
     return DiscoverProjectItem(
         project=project,
-        icon_url=icon.url if icon else None,
-        hero_banner_url=hero.url if hero else None,
-        in_use_image_url=in_use.url if in_use else None,
+        icon_url=_variant_url(icon, "thumb"),
+        hero_banner_url=_variant_url(hero, "large"),
+        in_use_image_url=_variant_url(in_use, "medium"),
         category_name=project.category.name if project.category else None,
         category_slug=project.category.slug if project.category else None,
         discussion_count=getattr(project, "discussion_count", 0) or 0,
@@ -242,7 +251,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
                     "winner__images",
                     queryset=ProjectImage.objects.filter(
                         upload_status="uploaded"
-                    ),
+                    ).prefetch_related("variants"),
                 ),
             )
             .order_by("-end_date")
@@ -256,9 +265,9 @@ class DjangoProjectQuery(ProjectQueryInterface):
             results.append(
                 WinnerItem(
                     project=project,
-                    icon_url=icon.url if icon else None,
-                    hero_banner_url=hero.url if hero else None,
-                    in_use_image_url=in_use.url if in_use else None,
+                    icon_url=_variant_url(icon, "thumb"),
+                    hero_banner_url=_variant_url(hero, "large"),
+                    in_use_image_url=_variant_url(in_use, "medium"),
                     competition_name=comp.name,
                     competition_slug=comp.slug,
                     competition_end_date=comp.end_date,

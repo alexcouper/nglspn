@@ -16,10 +16,11 @@ from api.schemas.project import (
     ProjectCreate,
     ProjectImageResponse,
     ProjectResponse,
-    SetMainImageRequest,
+    UpdateImageRolesRequest,
 )
 from api.tasks.images import generate_image_variants
 from apps.projects.models import (
+    ImagePurpose,
     Project,
     ProjectImage,
     UploadStatus,
@@ -196,9 +197,16 @@ def get_upload_url(
         max_mb = MAX_FILE_SIZE // (1024 * 1024)
         return 400, {"detail": f"File size must be less than {max_mb}MB"}
 
-    # Check image count limit
-    current_count = project.images.filter(upload_status=UploadStatus.UPLOADED).count()
-    if current_count >= MAX_IMAGES_PER_PROJECT:
+    # Determine purpose (icon uploads are exempt from count limit)
+    is_icon = payload.purpose == ImagePurpose.ICON
+
+    # Check image count limit (icons don't count)
+    current_count = (
+        project.images.filter(upload_status=UploadStatus.UPLOADED)
+        .exclude(purpose=ImagePurpose.ICON)
+        .count()
+    )
+    if not is_icon and current_count >= MAX_IMAGES_PER_PROJECT:
         return 400, {"detail": f"Maximum {MAX_IMAGES_PER_PROJECT} images per project"}
 
     # Generate storage key
@@ -216,6 +224,7 @@ def get_upload_url(
         file_size=payload.file_size,
         upload_status=UploadStatus.PENDING,
         display_order=current_count,
+        purpose=ImagePurpose.ICON if is_icon else ImagePurpose.GENERAL,
     )
 
     # Generate presigned URL
@@ -264,8 +273,10 @@ def complete_upload(
     image.width = payload.width
     image.height = payload.height
 
-    # If this is the first image, make it the main image
-    if not project.images.filter(is_main=True).exists():
+    # If this is the first non-icon image, make it the main image
+    is_icon = image.purpose == ImagePurpose.ICON
+    has_main = project.images.filter(is_main=True).exists()
+    if not is_icon and not has_main:
         image.is_main = True
 
     image.save()
@@ -277,32 +288,43 @@ def complete_upload(
 
 
 @router.post(
-    "/{project_id}/images/main",
+    "/{project_id}/images/{image_id}/roles",
     response={200: ProjectImageResponse, 400: Error, 401: Error, 404: Error},
     auth=auth,
     tags=["Project Images"],
 )
-def set_main_image(
+def update_image_roles(
     request: HttpRequest,
     project_id: str,
-    payload: SetMainImageRequest,
+    image_id: str,
+    payload: UpdateImageRolesRequest,
 ) -> ProjectImage | tuple[int, dict[str, str]]:
-    """Set the main image for a project."""
+    """Update display roles for an image. Each role is exclusive per project."""
     project = get_object_or_404(Project, id=project_id, owner=request.auth)
     image = get_object_or_404(
         ProjectImage,
-        id=payload.image_id,
+        id=image_id,
         project=project,
         upload_status=UploadStatus.UPLOADED,
     )
 
-    # Clear existing main image
-    project.images.filter(is_main=True).update(is_main=False)
+    role_fields = [
+        ("is_main", payload.is_main),
+        ("is_hero", payload.is_hero),
+        ("is_usage", payload.is_usage),
+    ]
 
-    # Set new main image
-    image.is_main = True
+    for field, value in role_fields:
+        if value is None:
+            continue
+        if value:
+            # Clear this role from all other images on the project
+            project.images.exclude(id=image.id).filter(**{field: True}).update(
+                **{field: False}
+            )
+        setattr(image, field, value)
+
     image.save()
-
     return image
 
 

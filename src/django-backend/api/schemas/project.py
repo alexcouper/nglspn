@@ -41,7 +41,10 @@ class ProjectImageResponse(Schema):
     file_size: int
     width: int | None
     height: int | None
+    purpose: str
     is_main: bool
+    is_hero: bool
+    is_usage: bool
     display_order: int
     upload_status: str
     created_at: datetime
@@ -96,6 +99,7 @@ class PresignedUploadRequest(Schema):
     filename: str
     content_type: str
     file_size: int
+    purpose: str | None = None
 
 
 class PresignedUploadResponse(Schema):
@@ -128,10 +132,12 @@ class ImageOrderUpdateRequest(Schema):
     images: list[ImageOrderUpdate]
 
 
-class SetMainImageRequest(Schema):
-    """Request to set main image."""
+class UpdateImageRolesRequest(Schema):
+    """Request to update image display roles."""
 
-    image_id: UUID
+    is_main: bool | None = None
+    is_hero: bool | None = None
+    is_usage: bool | None = None
 
 
 class ProjectListItemResponse(Schema):

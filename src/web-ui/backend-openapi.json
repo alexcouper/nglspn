@@ -1686,16 +1686,25 @@
         ]
       }
     },
-    "/api/my/projects/{project_id}/images/main": {
+    "/api/my/projects/{project_id}/images/{image_id}/roles": {
       "post": {
-        "operationId": "api_routers_my_projects_set_main_image",
-        "summary": "Set Main Image",
+        "operationId": "api_routers_my_projects_update_image_roles",
+        "summary": "Update Image Roles",
         "parameters": [
           {
             "in": "path",
             "name": "project_id",
             "schema": {
               "title": "Project Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "image_id",
+            "schema": {
+              "title": "Image Id",
               "type": "string"
             },
             "required": true
@@ -1743,7 +1752,7 @@
             }
           }
         },
-        "description": "Set the main image for a project.",
+        "description": "Update display roles for an image. Each role is exclusive per project.",
         "tags": [
           "Project Images"
         ],
@@ -1751,7 +1760,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/SetMainImageRequest"
+                "$ref": "#/components/schemas/UpdateImageRolesRequest"
               }
             }
           },
@@ -3513,8 +3522,20 @@
             ],
             "title": "Height"
           },
+          "purpose": {
+            "title": "Purpose",
+            "type": "string"
+          },
           "is_main": {
             "title": "Is Main",
+            "type": "boolean"
+          },
+          "is_hero": {
+            "title": "Is Hero",
+            "type": "boolean"
+          },
+          "is_usage": {
+            "title": "Is Usage",
             "type": "boolean"
           },
           "display_order": {
@@ -3547,7 +3568,10 @@
           "file_size",
           "width",
           "height",
+          "purpose",
           "is_main",
+          "is_hero",
+          "is_usage",
           "display_order",
           "upload_status",
           "created_at"
@@ -4013,6 +4037,17 @@
           "file_size": {
             "title": "File Size",
             "type": "integer"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Purpose"
           }
         },
         "required": [
@@ -4052,19 +4087,44 @@
         "title": "ImageUploadCompleteRequest",
         "type": "object"
       },
-      "SetMainImageRequest": {
-        "description": "Request to set main image.",
+      "UpdateImageRolesRequest": {
+        "description": "Request to update image display roles.",
         "properties": {
-          "image_id": {
-            "format": "uuid",
-            "title": "Image Id",
-            "type": "string"
+          "is_main": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Main"
+          },
+          "is_hero": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Hero"
+          },
+          "is_usage": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Is Usage"
           }
         },
-        "required": [
-          "image_id"
-        ],
-        "title": "SetMainImageRequest",
+        "title": "UpdateImageRolesRequest",
         "type": "object"
       },
       "ReviewCompetitionListResponse": {

@@ -38,6 +38,26 @@ class TestImagePurposeFallback:
         result = resolve_image_by_purpose(project, "icon")
         assert result is None
 
+    def test_returns_hero_image_by_boolean(self):
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        ProjectImageFactory(project=project)
+        hero = ProjectImageFactory(project=project, is_hero=True)
+        result = resolve_image_by_purpose(project, "hero_banner")
+        assert result.id == hero.id
+
+    def test_returns_usage_image_by_boolean(self):
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        ProjectImageFactory(project=project)
+        usage = ProjectImageFactory(project=project, is_usage=True)
+        result = resolve_image_by_purpose(project, "in_use")
+        assert result.id == usage.id
+
+    def test_hero_falls_back_to_main(self):
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        main = ProjectImageFactory(project=project, is_main=True)
+        result = resolve_image_by_purpose(project, "hero_banner")
+        assert result.id == main.id
+
 
 @pytest.mark.django_db
 class TestListCategories:

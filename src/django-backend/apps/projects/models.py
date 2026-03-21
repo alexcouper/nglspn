@@ -183,6 +183,8 @@ class ProjectImage(models.Model):
         default=ImagePurpose.GENERAL,
     )
     is_main = models.BooleanField(default=False)
+    is_hero = models.BooleanField(default=False)
+    is_usage = models.BooleanField(default=False)
     display_order = models.PositiveIntegerField(default=0)
 
     # Upload status tracking

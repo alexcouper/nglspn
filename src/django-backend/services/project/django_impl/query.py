@@ -75,11 +75,21 @@ def get_title_from_url(url: str) -> str:
 
 
 def resolve_image_by_purpose(project: Project, purpose: str) -> "ProjectImage | None":
-    """Fallback chain: purpose-specific image -> main image -> first image -> None."""
+    """Fallback chain: role-specific image -> main image -> first image -> None."""
     images = list(project.images.all())
-    purpose_image = next((img for img in images if img.purpose == purpose), None)
-    if purpose_image:
-        return purpose_image
+
+    # Icon uses the purpose field directly
+    if purpose == "icon":
+        role_image = next((img for img in images if img.purpose == "icon"), None)
+    elif purpose == "hero_banner":
+        role_image = next((img for img in images if img.is_hero), None)
+    elif purpose == "in_use":
+        role_image = next((img for img in images if img.is_usage), None)
+    else:
+        role_image = None
+
+    if role_image:
+        return role_image
     main_image = next((img for img in images if img.is_main), None)
     if main_image:
         return main_image

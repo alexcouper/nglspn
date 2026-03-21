@@ -13,6 +13,7 @@ interface UploadProgress {
 
 interface UseImageUploadOptions {
   projectId: string;
+  purpose?: string;
   onUploadComplete?: (image: ProjectImage) => void;
   onError?: (error: Error) => void;
 }
@@ -22,6 +23,7 @@ const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
 export function useImageUpload({
   projectId,
+  purpose,
   onUploadComplete,
   onError,
 }: UseImageUploadOptions) {
@@ -60,7 +62,8 @@ export function useImageUpload({
           projectId,
           file.name,
           file.type,
-          file.size
+          file.size,
+          purpose
         );
 
         // Add to uploads list
@@ -132,7 +135,7 @@ export function useImageUpload({
         );
       }
     },
-    [projectId, onUploadComplete, onError, updateUpload, removeUpload]
+    [projectId, purpose, onUploadComplete, onError, updateUpload, removeUpload]
   );
 
   const uploadFiles = useCallback(

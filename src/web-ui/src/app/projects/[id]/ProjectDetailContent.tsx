@@ -30,7 +30,12 @@ export function ProjectDetailContent({ project, projectId }: Props) {
     [project.tags]
   );
 
-  const images = project.images ?? [];
+  const allImages = project.images ?? [];
+  const iconImage = allImages.find((img) => img.purpose === "icon");
+  const iconUrl = iconImage
+    ? pickVariant(iconImage.variants, "thumb") ?? iconImage.url
+    : null;
+  const images = allImages.filter((img) => img.purpose !== "icon");
   const mainImage = images.find((img) => img.is_main) || images[0];
   const otherImages = images.filter((img) => img.id !== mainImage?.id);
   const imageCount = images.length;
@@ -227,7 +232,7 @@ export function ProjectDetailContent({ project, projectId }: Props) {
   return (
     <>
       <ProjectPageLayout
-        banner={<ProjectTitleBanner project={project} />}
+        banner={<ProjectTitleBanner project={project} iconUrl={iconUrl} />}
         sidebar={sidebar}
         tabs={tabs}
         winnerBanner={winnerBanner}

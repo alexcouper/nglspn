@@ -59,6 +59,23 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     },
   });
 
+  const {
+    uploadFiles: uploadIconFiles,
+  } = useImageUpload({
+    projectId,
+    purpose: "icon",
+    onUploadComplete: (image) => {
+      // Replace existing icon or add new one
+      setImages((prev) => {
+        const withoutOldIcon = prev.filter((img) => img.purpose !== "icon");
+        return [...withoutOldIcon, image];
+      });
+    },
+    onError: (err) => {
+      setError(err.message);
+    },
+  });
+
   useEffect(() => {
     if (!isReady || !projectId) return;
 
@@ -160,17 +177,40 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     }
   };
 
-  const handleSetMainImage = async (imageId: string) => {
+  const handleUpdateImageRoles = async (
+    imageId: string,
+    roles: { is_main?: boolean; is_hero?: boolean; is_usage?: boolean }
+  ) => {
     try {
-      const updatedImage = await api.myProjects.setMainImage(projectId, imageId);
+      await api.myProjects.updateImageRoles(projectId, imageId, roles);
       setImages((prev) =>
-        prev.map((img) => ({
-          ...img,
-          is_main: img.id === updatedImage.id,
-        }))
+        prev.map((img) => {
+          const updated = { ...img };
+          // For each role being set to true, clear it from other images
+          for (const [key, value] of Object.entries(roles)) {
+            if (value === true && img.id !== imageId) {
+              (updated as Record<string, unknown>)[key] = false;
+            }
+            if (img.id === imageId && value !== undefined) {
+              (updated as Record<string, unknown>)[key] = value;
+            }
+          }
+          return updated;
+        })
       );
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to set main image");
+      setError(
+        err instanceof Error ? err.message : "Failed to update image roles"
+      );
+    }
+  };
+
+  const handleDeleteIcon = async (imageId: string) => {
+    try {
+      await api.myProjects.deleteImage(projectId, imageId);
+      setImages((prev) => prev.filter((img) => img.id !== imageId));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to delete icon");
     }
   };
 
@@ -326,8 +366,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           uploads={uploads}
           isUploading={isUploading}
           onFilesSelected={handleFilesSelected}
-          onSetMainImage={handleSetMainImage}
+          onUpdateImageRoles={handleUpdateImageRoles}
           onDeleteImage={handleDeleteImage}
+          iconImage={images.find((img) => img.purpose === "icon") ?? null}
+          onIconFilesSelected={(files) => uploadIconFiles(files)}
+          onDeleteIcon={handleDeleteIcon}
         />
       ) : (
         previewProject && (

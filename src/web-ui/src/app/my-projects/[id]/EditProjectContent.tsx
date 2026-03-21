@@ -1,14 +1,14 @@
 "use client";
 
+import { useState } from "react";
 import type { Project, ProjectImage } from "@/lib/api";
 import { ImageDropZone, UploadProgress } from "@/components/ImageUpload";
+import { ImageRoleDialog } from "@/components/ImageRoleDialog";
 import { TagSidebarSelector } from "@/components/TagSidebarSelector";
 import { ProjectPageLayout } from "@/components/ProjectPageLayout";
 import type { SelectedTag } from "@/components/TagSelector";
 import type { ProjectFormData } from "./ProjectDetail";
 import { EditableProjectBanner } from "./EditableProjectBanner";
-import { StarIcon, TrashIcon } from "@heroicons/react/24/outline";
-import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { pickVariant, getAuthorName } from "@/lib/utils";
 
 interface UploadProgressItem {
@@ -28,8 +28,14 @@ interface EditProjectContentProps {
   uploads: UploadProgressItem[];
   isUploading: boolean;
   onFilesSelected: (files: FileList) => void;
-  onSetMainImage: (imageId: string) => void;
+  onUpdateImageRoles: (
+    imageId: string,
+    roles: { is_main?: boolean; is_hero?: boolean; is_usage?: boolean }
+  ) => void;
   onDeleteImage: (imageId: string) => void;
+  iconImage: ProjectImage | null;
+  onIconFilesSelected: (files: FileList) => void;
+  onDeleteIcon: (imageId: string) => void;
 }
 
 const MAX_IMAGES = 10;
@@ -54,6 +60,27 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+function RoleBadges({ image }: { image: ProjectImage }) {
+  const badges: { label: string; color: string }[] = [];
+  if (image.is_main) badges.push({ label: "M", color: "bg-accent" });
+  if (image.is_hero) badges.push({ label: "H", color: "bg-indigo-500" });
+  if (image.is_usage) badges.push({ label: "U", color: "bg-emerald-500" });
+  if (badges.length === 0) return null;
+
+  return (
+    <div className="absolute top-1 right-1 flex gap-0.5">
+      {badges.map((b) => (
+        <span
+          key={b.label}
+          className={`${b.color} text-white w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center`}
+        >
+          {b.label}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 export function EditProjectContent({
   project,
   formData,
@@ -63,12 +90,21 @@ export function EditProjectContent({
   uploads,
   isUploading,
   onFilesSelected,
-  onSetMainImage,
+  onUpdateImageRoles,
   onDeleteImage,
+  iconImage,
+  onIconFilesSelected,
+  onDeleteIcon,
 }: EditProjectContentProps) {
   const authorName = getAuthorName(project.owner);
+  const [roleDialogImage, setRoleDialogImage] = useState<ProjectImage | null>(
+    null
+  );
 
-  const handleChange = (field: keyof ProjectFormData, value: string | string[]) => {
+  const handleChange = (
+    field: keyof ProjectFormData,
+    value: string | string[]
+  ) => {
     onChange({ ...formData, [field]: value });
   };
 
@@ -77,43 +113,40 @@ export function EditProjectContent({
     onTagsChange(tags);
   };
 
-  const mainImage = images.find((img) => img.is_main) || images[0];
-  const otherImages = images.filter((img) => img.id !== mainImage?.id);
+  // Filter out icons from the gallery
+  const galleryImages = images.filter((img) => img.purpose !== "icon");
+  const mainImage =
+    galleryImages.find((img) => img.is_main) || galleryImages[0];
+  const otherImages = galleryImages.filter(
+    (img) => img.id !== mainImage?.id
+  );
 
   const sidebar = (
     <>
-      {/* Main image with edit controls */}
+      {/* Main image — click to open role dialog */}
       {mainImage && (
-        <div className="relative rounded-xl overflow-hidden bg-muted">
+        <div
+          className="relative rounded-xl overflow-hidden bg-muted cursor-pointer"
+          onClick={() => setRoleDialogImage(mainImage)}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={pickVariant(mainImage.variants, "medium") ?? mainImage.url}
             alt={mainImage.original_filename}
             className="w-full h-auto object-contain"
           />
-          <div className="absolute top-2 right-2 flex gap-1">
-            <span className="bg-accent text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
-              <StarIconSolid className="w-3 h-3" />
-              Main
-            </span>
-            <button
-              onClick={() => onDeleteImage(mainImage.id)}
-              className="p-1.5 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-              title="Delete image"
-            >
-              <TrashIcon className="w-4 h-4" />
-            </button>
-          </div>
+          <RoleBadges image={mainImage} />
         </div>
       )}
 
-      {/* Thumbnail grid — matches view mode 3-col layout */}
+      {/* Thumbnail grid — click to open role dialog */}
       {otherImages.length > 0 && (
         <div className="grid grid-cols-3 gap-2">
           {otherImages.map((img) => (
             <div
               key={img.id}
-              className="relative aspect-square rounded-lg overflow-hidden bg-muted group"
+              className="relative aspect-square rounded-lg overflow-hidden bg-muted cursor-pointer group"
+              onClick={() => setRoleDialogImage(img)}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -121,22 +154,8 @@ export function EditProjectContent({
                 alt={img.original_filename}
                 className="w-full h-full object-cover"
               />
-              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                <button
-                  onClick={() => onSetMainImage(img.id)}
-                  className="p-2 bg-white rounded-full hover:bg-muted transition-colors"
-                  title="Set as main image"
-                >
-                  <StarIcon className="w-4 h-4 text-foreground" />
-                </button>
-                <button
-                  onClick={() => onDeleteImage(img.id)}
-                  className="p-2 bg-white rounded-full hover:bg-muted transition-colors"
-                  title="Delete image"
-                >
-                  <TrashIcon className="w-4 h-4 text-red-500" />
-                </button>
-              </div>
+              <RoleBadges image={img} />
+              <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity" />
             </div>
           ))}
         </div>
@@ -145,9 +164,9 @@ export function EditProjectContent({
       {/* Upload drop zone */}
       <ImageDropZone
         onFilesSelected={onFilesSelected}
-        disabled={isUploading || images.length >= MAX_IMAGES}
+        disabled={isUploading || galleryImages.length >= MAX_IMAGES}
         maxFiles={MAX_IMAGES}
-        currentCount={images.length}
+        currentCount={galleryImages.length}
       />
       <UploadProgress uploads={uploads} />
 
@@ -204,16 +223,42 @@ export function EditProjectContent({
   ];
 
   return (
-    <ProjectPageLayout
-      banner={
-        <EditableProjectBanner
-          formData={formData}
-          authorName={authorName}
-          onChange={onChange}
+    <>
+      <ProjectPageLayout
+        banner={
+          <EditableProjectBanner
+            formData={formData}
+            authorName={authorName}
+            onChange={onChange}
+            iconImage={iconImage}
+            onIconFilesSelected={onIconFilesSelected}
+            onDeleteIcon={onDeleteIcon}
+          />
+        }
+        sidebar={sidebar}
+        tabs={tabs}
+      />
+
+      {/* Image Role Dialog */}
+      {roleDialogImage && (
+        <ImageRoleDialog
+          image={roleDialogImage}
+          projectTitle={formData.title}
+          projectTagline={formData.tagline}
+          projectId={project.id}
+          isOpen={!!roleDialogImage}
+          onClose={() => setRoleDialogImage(null)}
+          onUpdateRoles={(imageId, roles) => {
+            onUpdateImageRoles(imageId, roles);
+            // Update the dialog's local view of the image
+            const updated = images.find((img) => img.id === imageId);
+            if (updated) {
+              setRoleDialogImage({ ...updated, ...roles } as ProjectImage);
+            }
+          }}
+          onDelete={onDeleteImage}
         />
-      }
-      sidebar={sidebar}
-      tabs={tabs}
-    />
+      )}
+    </>
   );
 }

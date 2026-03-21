@@ -27,7 +27,7 @@ export function NewArrivalsSection({ projects }: NewArrivalsSectionProps) {
   );
 }
 
-function ArrivalCard({ project }: { project: DiscoverProject }) {
+export function ArrivalCard({ project }: { project: DiscoverProject }) {
   const imageUrl = project.in_use_image_url || project.hero_banner_url;
 
   return (

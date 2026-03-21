@@ -63,6 +63,8 @@ class ProjectImageInline(admin.TabularInline):
         "thumbnail",
         "original_filename",
         "is_main",
+        "is_hero",
+        "is_usage",
         "upload_status",
         "file_size_display",
         "created_at",
@@ -71,6 +73,8 @@ class ProjectImageInline(admin.TabularInline):
         "thumbnail",
         "original_filename",
         "is_main",
+        "is_hero",
+        "is_usage",
         "upload_status",
         "file_size_display",
         "created_at",
@@ -384,7 +388,7 @@ class ProjectImageAdmin(admin.ModelAdmin):
         ),
         (
             "Project",
-            {"fields": ("project", "is_main", "display_order")},
+            {"fields": ("project", "is_main", "is_hero", "is_usage", "display_order")},
         ),
         (
             "File Info",

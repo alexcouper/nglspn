@@ -33,7 +33,7 @@ export function FeaturedSection({ projects }: FeaturedSectionProps) {
   );
 }
 
-function LargeHeroCard({ project }: { project: DiscoverProject }) {
+export function LargeHeroCard({ project }: { project: DiscoverProject }) {
   const imageUrl = project.hero_banner_url || project.in_use_image_url;
 
   return (

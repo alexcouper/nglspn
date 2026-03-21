@@ -212,9 +212,13 @@ class ProjectAdmin(admin.ModelAdmin):
             .prefetch_related("tags", "views")
         )
 
+    list_editable = ("is_featured",)
+
     actions = [
         "approve_projects",
         "reject_projects",
+        "feature_projects",
+        "unfeature_projects",
     ]
 
     @admin.action(description="Approve selected projects")
@@ -265,6 +269,24 @@ class ProjectAdmin(admin.ModelAdmin):
                     "Failed to enqueue revalidation for project %s", project.id
                 )
         self.message_user(request, f"{updated} projects were rejected.")
+
+    @admin.action(description="Feature selected projects")
+    def feature_projects(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet[Project],
+    ) -> None:
+        updated = queryset.filter(is_featured=False).update(is_featured=True)
+        self.message_user(request, f"{updated} projects were featured.")
+
+    @admin.action(description="Unfeature selected projects")
+    def unfeature_projects(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet[Project],
+    ) -> None:
+        updated = queryset.filter(is_featured=True).update(is_featured=False)
+        self.message_user(request, f"{updated} projects were unfeatured.")
 
 
 @admin.register(ProjectView)

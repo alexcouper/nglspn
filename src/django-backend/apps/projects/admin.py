@@ -72,6 +72,7 @@ class ProjectImageInline(admin.TabularInline):
     fields = (
         "thumbnail",
         "original_filename",
+        "purpose",
         "is_main",
         "is_hero",
         "is_usage",

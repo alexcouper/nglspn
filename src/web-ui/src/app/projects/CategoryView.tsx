@@ -7,7 +7,7 @@ import type { CategoryItem, DiscoverProject } from "@/lib/api";
 import { api } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 
-type SortOption = "newest" | "name" | "most-discussed";
+type SortOption = "newest" | "name";
 
 interface CategoryViewProps {
   categorySlug: string;
@@ -58,7 +58,6 @@ export function CategoryView({ categorySlug, categories }: CategoryViewProps) {
         >
           <option value="newest">Newest</option>
           <option value="name">Name A-Z</option>
-          <option value="most-discussed">Most Discussed</option>
         </select>
       </div>
 

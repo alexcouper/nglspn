@@ -20,7 +20,6 @@ from api.schemas.project import (
 )
 from api.tasks.images import generate_image_variants
 from apps.projects.models import (
-    ImagePurpose,
     Project,
     ProjectImage,
     UploadStatus,
@@ -191,13 +190,12 @@ def get_upload_url(
         max_mb = MAX_FILE_SIZE // (1024 * 1024)
         return 400, {"detail": f"File size must be less than {max_mb}MB"}
 
-    # Determine purpose (icon uploads are exempt from count limit)
-    is_icon = payload.purpose == ImagePurpose.ICON
+    is_icon = payload.is_icon
 
     # Check image count limit (icons don't count)
     current_count = (
         project.images.filter(upload_status=UploadStatus.UPLOADED)
-        .exclude(purpose=ImagePurpose.ICON)
+        .exclude(is_icon=True)
         .count()
     )
     if not is_icon and current_count >= MAX_IMAGES_PER_PROJECT:
@@ -209,7 +207,6 @@ def get_upload_url(
         payload.filename,
     )
 
-    # Create pending image record
     image = ProjectImage.objects.create(
         project=project,
         storage_key=storage_key,
@@ -218,7 +215,6 @@ def get_upload_url(
         file_size=payload.file_size,
         upload_status=UploadStatus.PENDING,
         display_order=current_count,
-        purpose=ImagePurpose.ICON if is_icon else ImagePurpose.GENERAL,
         is_icon=is_icon,
     )
 

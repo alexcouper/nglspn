@@ -63,11 +63,10 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     uploadFiles: uploadIconFiles,
   } = useImageUpload({
     projectId,
-    purpose: "icon",
+    isIcon: true,
     onUploadComplete: (image) => {
-      // Replace existing icon or add new one
       setImages((prev) => {
-        const withoutOldIcon = prev.filter((img) => img.purpose !== "icon");
+        const withoutOldIcon = prev.filter((img) => !img.is_icon);
         return [...withoutOldIcon, image];
       });
     },
@@ -368,7 +367,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           onFilesSelected={handleFilesSelected}
           onUpdateImageRoles={handleUpdateImageRoles}
           onDeleteImage={handleDeleteImage}
-          iconImage={images.find((img) => img.purpose === "icon") ?? null}
+          iconImage={images.find((img) => img.is_icon) ?? null}
           onIconFilesSelected={(files) => uploadIconFiles(files)}
           onDeleteIcon={handleDeleteIcon}
         />

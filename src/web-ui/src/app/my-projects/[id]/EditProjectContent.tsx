@@ -113,8 +113,7 @@ export function EditProjectContent({
     onTagsChange(tags);
   };
 
-  // Filter out icons from the gallery
-  const galleryImages = images.filter((img) => img.purpose !== "icon");
+  const galleryImages = images.filter((img) => !img.is_icon);
   const mainImage =
     galleryImages.find((img) => img.is_main) || galleryImages[0];
   const otherImages = galleryImages.filter(

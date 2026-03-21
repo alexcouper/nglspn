@@ -31,11 +31,11 @@ export function ProjectDetailContent({ project, projectId }: Props) {
   );
 
   const allImages = project.images ?? [];
-  const iconImage = allImages.find((img) => img.purpose === "icon");
+  const iconImage = allImages.find((img) => img.is_icon);
   const iconUrl = iconImage
     ? pickVariant(iconImage.variants, "thumb") ?? iconImage.url
     : null;
-  const images = allImages.filter((img) => img.purpose !== "icon");
+  const images = allImages.filter((img) => !img.is_icon);
   const mainImage = images.find((img) => img.is_main) || images[0];
   const otherImages = images.filter((img) => img.id !== mainImage?.id);
   const imageCount = images.length;

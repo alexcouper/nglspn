@@ -148,11 +148,6 @@ class UploadStatus(models.TextChoices):
     FAILED = "failed", "Upload Failed"
 
 
-class ImagePurpose(models.TextChoices):
-    GENERAL = "general", "General"
-    ICON = "icon", "Icon"
-
-
 class ProjectImage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
@@ -171,11 +166,6 @@ class ProjectImage(models.Model):
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
 
-    purpose = models.CharField(
-        max_length=20,
-        choices=ImagePurpose.choices,
-        default=ImagePurpose.GENERAL,
-    )
     is_main = models.BooleanField(default=False)
     is_icon = models.BooleanField(default=False)
     is_hero = models.BooleanField(default=False)

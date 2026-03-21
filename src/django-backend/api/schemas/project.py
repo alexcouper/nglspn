@@ -37,7 +37,6 @@ class ProjectImageResponse(Schema):
     file_size: int
     width: int | None
     height: int | None
-    purpose: str
     is_main: bool
     is_icon: bool
     is_hero: bool
@@ -93,7 +92,7 @@ class PresignedUploadRequest(Schema):
     filename: str
     content_type: str
     file_size: int
-    purpose: str | None = None
+    is_icon: bool = False
 
 
 class PresignedUploadResponse(Schema):

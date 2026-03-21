@@ -3513,10 +3513,6 @@
             ],
             "title": "Height"
           },
-          "purpose": {
-            "title": "Purpose",
-            "type": "string"
-          },
           "is_main": {
             "title": "Is Main",
             "type": "boolean"
@@ -3563,7 +3559,6 @@
           "file_size",
           "width",
           "height",
-          "purpose",
           "is_main",
           "is_icon",
           "is_hero",
@@ -4032,16 +4027,10 @@
             "title": "File Size",
             "type": "integer"
           },
-          "purpose": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Purpose"
+          "is_icon": {
+            "default": false,
+            "title": "Is Icon",
+            "type": "boolean"
           }
         },
         "required": [

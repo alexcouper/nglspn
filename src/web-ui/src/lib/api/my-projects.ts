@@ -47,7 +47,7 @@ export class MyProjectsClient {
     filename: string,
     contentType: string,
     fileSize: number,
-    purpose?: string
+    isIcon: boolean = false
   ): Promise<PresignedUploadResponse> {
     return this.client.request<PresignedUploadResponse>(
       `/api/my/projects/${projectId}/images/upload-url`,
@@ -57,7 +57,7 @@ export class MyProjectsClient {
           filename,
           content_type: contentType,
           file_size: fileSize,
-          ...(purpose && { purpose }),
+          is_icon: isIcon,
         }),
       }
     );

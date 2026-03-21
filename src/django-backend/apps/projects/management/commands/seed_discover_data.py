@@ -6,6 +6,7 @@ Usage:
 
 """
 
+from argparse import ArgumentParser
 from datetime import date, timedelta
 
 from django.contrib.auth import get_user_model
@@ -181,14 +182,14 @@ COMPETITIONS = [
 class Command(BaseCommand):
     help = "Seed database with discover page mockup data"
 
-    def add_arguments(self, parser):
+    def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument(
             "--clear",
             action="store_true",
             help="Remove existing seed data before creating",
         )
 
-    def handle(self, *args, **options):
+    def handle(self, *args: object, **options: object) -> None:
         if options["clear"]:
             self._clear()
 
@@ -200,7 +201,7 @@ class Command(BaseCommand):
 
         self.stdout.write(self.style.SUCCESS("Seed data created"))
 
-    def _clear(self):
+    def _clear(self) -> None:
         user = User.objects.filter(email=SEED_EMAIL).first()
         if user:
             Project.objects.filter(owner=user).delete()
@@ -269,7 +270,7 @@ class Command(BaseCommand):
         self.stdout.write(f"  Projects: {len(projects)}")
         return projects
 
-    def _create_competitions(self, projects: dict[str, Project]):
+    def _create_competitions(self, projects: dict[str, Project]) -> None:
         winner_map = {}
         for p_data in PROJECTS:
             if "winner_comp" in p_data:
@@ -295,7 +296,7 @@ class Command(BaseCommand):
         self,
         owner: "User",
         projects: dict[str, Project],
-    ):
+    ) -> None:
         total = 0
         for p_data in PROJECTS:
             count = p_data.get("discussions", 0)

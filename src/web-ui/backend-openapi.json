@@ -4688,6 +4688,28 @@
             ],
             "title": "Image Url"
           },
+          "image_wide_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Wide Url"
+          },
+          "image_wide_winner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Wide Winner Url"
+          },
           "project_count": {
             "title": "Project Count",
             "type": "integer"
@@ -4858,6 +4880,28 @@
               }
             ],
             "title": "Image Url"
+          },
+          "image_wide_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Wide Url"
+          },
+          "image_wide_winner_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Wide Winner Url"
           },
           "project_count": {
             "title": "Project Count",

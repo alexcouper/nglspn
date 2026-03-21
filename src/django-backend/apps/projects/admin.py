@@ -478,12 +478,27 @@ class CompetitionAdmin(admin.ModelAdmin):
     autocomplete_fields = ("winner",)
     inlines = [CompetitionReviewerInline]
     ordering = ("-start_date",)
-    readonly_fields = ("image_preview",)
+    readonly_fields = (
+        "image_preview",
+        "image_wide_preview",
+        "image_wide_winner_preview",
+    )
 
     fieldsets = (
         (
             None,
             {"fields": ("name", "slug", "image", "image_preview", "quote")},
+        ),
+        (
+            "Wide Images",
+            {
+                "fields": (
+                    "image_wide",
+                    "image_wide_preview",
+                    "image_wide_winner",
+                    "image_wide_winner_preview",
+                ),
+            },
         ),
         (
             "Dates & Prize",
@@ -516,6 +531,26 @@ class CompetitionAdmin(admin.ModelAdmin):
                 obj.image.url,
             )
         return mark_safe('<span style="color: #999;">No image uploaded</span>')
+
+    @admin.display(description="Wide Image Preview")
+    def image_wide_preview(self, obj: Competition) -> SafeString:
+        if obj.image_wide:
+            return format_html(
+                '<img src="{}" style="max-height: 200px; max-width: 600px;" />',
+                obj.image_wide.url,
+            )
+        return mark_safe('<span style="color: #999;">No wide image uploaded</span>')
+
+    @admin.display(description="Wide Winner Image Preview")
+    def image_wide_winner_preview(self, obj: Competition) -> SafeString:
+        if obj.image_wide_winner:
+            return format_html(
+                '<img src="{}" style="max-height: 200px; max-width: 600px;" />',
+                obj.image_wide_winner.url,
+            )
+        return mark_safe(
+            '<span style="color: #999;">No wide winner image uploaded</span>'
+        )
 
     @admin.display(description="Winner", ordering="winner__title")
     def winner_name(self, obj: Competition) -> str:

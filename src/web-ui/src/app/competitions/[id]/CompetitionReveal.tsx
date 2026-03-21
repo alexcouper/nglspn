@@ -41,19 +41,24 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
       {/* Hero Banner */}
       <div className="rounded-xl overflow-hidden">
         <div className="relative aspect-[16/7]">
-          {competition.image_url ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={competition.image_url}
-              alt={competition.name}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          ) : (
-            <GradientPlaceholder
-              id={competition.id}
-              className="absolute inset-0 w-full h-full"
-            />
-          )}
+          {(() => {
+            const heroImage = competition.winner
+              ? (competition.image_wide_winner_url ?? competition.image_wide_url ?? competition.image_url)
+              : (competition.image_wide_url ?? competition.image_url);
+            return heroImage ? (
+              /* eslint-disable-next-line @next/next/no-img-element */
+              <img
+                src={heroImage}
+                alt={competition.name}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            ) : (
+              <GradientPlaceholder
+                id={competition.id}
+                className="absolute inset-0 w-full h-full"
+              />
+            );
+          })()}
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.9)] via-[rgba(15,23,42,0.4)] to-[rgba(15,23,42,0.15)]" />
           <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
             {isOpen && (

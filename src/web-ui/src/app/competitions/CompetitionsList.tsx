@@ -130,10 +130,10 @@ function HeroBanner({ competition }: { competition: CompetitionOverview }) {
     >
       <div className="card card-interactive overflow-hidden">
         <div className="relative aspect-[16/7]">
-          {competition.image_url ? (
+          {(competition.image_wide_url ?? competition.image_url) ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
-              src={competition.image_url}
+              src={(competition.image_wide_url ?? competition.image_url)!}
               alt={competition.name}
               className="absolute inset-0 w-full h-full object-cover"
             />

@@ -272,6 +272,12 @@ class Competition(models.Model):
     quote = models.TextField(blank=True, null=True)
     prize_amount = models.IntegerField(default=50000, null=True, blank=True)
     image = models.ImageField(upload_to=competition_image_path, blank=True, null=True)
+    image_wide = models.ImageField(
+        upload_to=competition_image_path, blank=True, null=True
+    )
+    image_wide_winner = models.ImageField(
+        upload_to=competition_image_path, blank=True, null=True
+    )
     projects = models.ManyToManyField(Project, related_name="competitions", blank=True)
     winner = models.ForeignKey(
         Project,
@@ -308,6 +314,20 @@ class Competition(models.Model):
         """Returns the public URL for the competition image."""
         if self.image:
             return self.image.url
+        return None
+
+    @property
+    def image_wide_url(self) -> str | None:
+        """Returns the public URL for the wide competition image."""
+        if self.image_wide:
+            return self.image_wide.url
+        return None
+
+    @property
+    def image_wide_winner_url(self) -> str | None:
+        """Returns the public URL for the wide competition-with-winner image."""
+        if self.image_wide_winner:
+            return self.image_wide_winner.url
         return None
 
 

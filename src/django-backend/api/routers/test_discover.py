@@ -1,7 +1,7 @@
 import pytest
 from django.utils import timezone
 
-from apps.projects.models import ProjectStatus
+from apps.projects.models import Project, ProjectStatus
 from services.project.django_impl.query import resolve_image_by_purpose
 from tests.factories import (
     CompetitionFactory,
@@ -14,22 +14,22 @@ from tests.factories import (
 
 @pytest.mark.django_db
 class TestImagePurposeFallback:
-    def test_returns_purpose_specific_image(self):
+    def test_returns_icon_image_by_boolean(self):
         project = ProjectFactory(status=ProjectStatus.APPROVED)
-        ProjectImageFactory(project=project, purpose="general")
-        icon = ProjectImageFactory(project=project, purpose="icon")
+        ProjectImageFactory(project=project)
+        icon = ProjectImageFactory(project=project, is_icon=True)
         result = resolve_image_by_purpose(project, "icon")
         assert result.id == icon.id
 
     def test_falls_back_to_main_image(self):
         project = ProjectFactory(status=ProjectStatus.APPROVED)
-        main = ProjectImageFactory(project=project, purpose="general", is_main=True)
+        main = ProjectImageFactory(project=project, is_main=True)
         result = resolve_image_by_purpose(project, "icon")
         assert result.id == main.id
 
     def test_falls_back_to_first_image(self):
         project = ProjectFactory(status=ProjectStatus.APPROVED)
-        first = ProjectImageFactory(project=project, purpose="general")
+        first = ProjectImageFactory(project=project)
         result = resolve_image_by_purpose(project, "icon")
         assert result.id == first.id
 
@@ -236,6 +236,55 @@ class TestListByCategory:
         data = response.json()
         assert data[0]["title"] == "Alpha"
         assert data[1]["title"] == "Zebra"
+
+    def test_newest_sort_with_null_approved_at(self, client):
+        cat = ProjectCategoryFactory(slug="tools")
+        ProjectFactory(
+            title="Old",
+            status=ProjectStatus.APPROVED,
+            category=cat,
+            approved_at=None,
+            created_at=timezone.now() - timezone.timedelta(days=10),
+        )
+        ProjectFactory(
+            title="New",
+            status=ProjectStatus.APPROVED,
+            category=cat,
+            approved_at=None,
+            created_at=timezone.now() - timezone.timedelta(days=1),
+        )
+
+        response = client.get("/api/projects/by-category/tools?sort=newest")
+
+        data = response.json()
+        titles = [p["title"] for p in data]
+        assert titles.index("New") < titles.index("Old")
+
+    def test_newest_sort_mixes_approved_and_created_at(self, client):
+        cat = ProjectCategoryFactory(slug="tools")
+        old_no_approval = ProjectFactory(
+            title="OldNoApproval",
+            status=ProjectStatus.APPROVED,
+            category=cat,
+            approved_at=None,
+        )
+        # Force created_at via update (auto_now_add ignores factory kwargs)
+        Project.objects.filter(id=old_no_approval.id).update(
+            created_at=timezone.now() - timezone.timedelta(days=30)
+        )
+        ProjectFactory(
+            title="RecentlyApproved",
+            status=ProjectStatus.APPROVED,
+            category=cat,
+            approved_at=timezone.now() - timezone.timedelta(days=1),
+        )
+
+        response = client.get("/api/projects/by-category/tools?sort=newest")
+
+        data = response.json()
+        titles = [p["title"] for p in data]
+        assert titles[0] == "RecentlyApproved"
+        assert titles[1] == "OldNoApproval"
 
     def test_sorts_by_most_discussed(self, client):
         cat = ProjectCategoryFactory(slug="tools")

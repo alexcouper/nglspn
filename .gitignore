@@ -182,3 +182,6 @@ logs/
 
 # DB dump files
 prod-dump.sql
+
+# Superpowers brainstorm artifacts
+.superpowers/

@@ -1578,7 +1578,6 @@
             }
           }
         },
-        "description": "Generate a presigned URL for uploading an image.",
         "tags": [
           "Project Images"
         ],
@@ -1665,7 +1664,6 @@
             }
           }
         },
-        "description": "Mark an image upload as complete.",
         "tags": [
           "Project Images"
         ],
@@ -1752,7 +1750,6 @@
             }
           }
         },
-        "description": "Update display roles for an image. Each role is exclusive per project.",
         "tags": [
           "Project Images"
         ],
@@ -1822,7 +1819,6 @@
             }
           }
         },
-        "description": "Delete a project image.",
         "tags": [
           "Project Images"
         ],
@@ -3042,7 +3038,6 @@
         "type": "object"
       },
       "CategoryResponse": {
-        "description": "Response for a project category.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -3072,7 +3067,6 @@
         "type": "object"
       },
       "DiscoverProjectResponse": {
-        "description": "Project item for discover/listing endpoints with purpose-resolved images.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -3183,7 +3177,6 @@
         "type": "object"
       },
       "WinnerProjectResponse": {
-        "description": "Project that won a competition, with competition details.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -3448,7 +3441,6 @@
         "type": "object"
       },
       "ImageVariantResponse": {
-        "description": "Response schema for a pre-generated image variant.",
         "properties": {
           "size": {
             "title": "Size",
@@ -3477,7 +3469,6 @@
         "type": "object"
       },
       "ProjectImageResponse": {
-        "description": "Response schema for project images.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -3530,6 +3521,10 @@
             "title": "Is Main",
             "type": "boolean"
           },
+          "is_icon": {
+            "title": "Is Icon",
+            "type": "boolean"
+          },
           "is_hero": {
             "title": "Is Hero",
             "type": "boolean"
@@ -3570,6 +3565,7 @@
           "height",
           "purpose",
           "is_main",
+          "is_icon",
           "is_hero",
           "is_usage",
           "display_order",
@@ -3986,7 +3982,6 @@
         "type": "object"
       },
       "PresignedUploadResponse": {
-        "description": "Response with presigned upload URL.",
         "properties": {
           "image_id": {
             "format": "uuid",
@@ -4024,7 +4019,6 @@
         "type": "object"
       },
       "PresignedUploadRequest": {
-        "description": "Request schema for generating presigned upload URL.",
         "properties": {
           "filename": {
             "title": "Filename",
@@ -4059,7 +4053,6 @@
         "type": "object"
       },
       "ImageUploadCompleteRequest": {
-        "description": "Request to confirm upload completion.",
         "properties": {
           "width": {
             "anyOf": [
@@ -4088,7 +4081,6 @@
         "type": "object"
       },
       "UpdateImageRolesRequest": {
-        "description": "Request to update image display roles.",
         "properties": {
           "is_main": {
             "anyOf": [

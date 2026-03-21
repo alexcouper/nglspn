@@ -1,5 +1,3 @@
-"""Tests for project image upload functionality."""
-
 import json
 from unittest.mock import patch
 

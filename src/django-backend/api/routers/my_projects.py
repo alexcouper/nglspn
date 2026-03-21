@@ -168,11 +168,6 @@ def resubmit_project(
         return 400, {"detail": str(exc)}
 
 
-# ============================================================================
-# Image Upload Endpoints
-# ============================================================================
-
-
 @router.post(
     "/{project_id}/images/upload-url",
     response={200: PresignedUploadResponse, 400: Error, 401: Error, 404: Error},
@@ -184,7 +179,6 @@ def get_upload_url(
     project_id: str,
     payload: PresignedUploadRequest,
 ) -> PresignedUploadResponse | tuple[int, dict[str, str]]:
-    """Generate a presigned URL for uploading an image."""
     project = get_object_or_404(Project, id=project_id, owner=request.auth)
 
     # Validate content type
@@ -225,6 +219,7 @@ def get_upload_url(
         upload_status=UploadStatus.PENDING,
         display_order=current_count,
         purpose=ImagePurpose.ICON if is_icon else ImagePurpose.GENERAL,
+        is_icon=is_icon,
     )
 
     # Generate presigned URL
@@ -254,7 +249,6 @@ def complete_upload(
     image_id: str,
     payload: ImageUploadCompleteRequest,
 ) -> ProjectImage | tuple[int, dict[str, str]]:
-    """Mark an image upload as complete."""
     project = get_object_or_404(Project, id=project_id, owner=request.auth)
     image = get_object_or_404(
         ProjectImage,
@@ -274,7 +268,7 @@ def complete_upload(
     image.height = payload.height
 
     # If this is the first non-icon image, make it the main image
-    is_icon = image.purpose == ImagePurpose.ICON
+    is_icon = image.is_icon
     has_main = project.images.filter(is_main=True).exists()
     if not is_icon and not has_main:
         image.is_main = True
@@ -299,7 +293,6 @@ def update_image_roles(
     image_id: str,
     payload: UpdateImageRolesRequest,
 ) -> ProjectImage | tuple[int, dict[str, str]]:
-    """Update display roles for an image. Each role is exclusive per project."""
     project = get_object_or_404(Project, id=project_id, owner=request.auth)
     image = get_object_or_404(
         ProjectImage,
@@ -339,7 +332,6 @@ def delete_image(
     project_id: str,
     image_id: str,
 ) -> tuple[int, None]:
-    """Delete a project image."""
     project = get_object_or_404(Project, id=project_id, owner=request.auth)
     image = get_object_or_404(ProjectImage, id=image_id, project=project)
 

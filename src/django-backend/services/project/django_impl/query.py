@@ -78,15 +78,17 @@ def resolve_image_by_purpose(project: Project, purpose: str) -> "ProjectImage | 
     """Fallback chain: role-specific image -> main image -> first image -> None."""
     images = list(project.images.all())
 
-    # Icon uses the purpose field directly
-    if purpose == "icon":
-        role_image = next((img for img in images if img.purpose == "icon"), None)
-    elif purpose == "hero_banner":
-        role_image = next((img for img in images if img.is_hero), None)
-    elif purpose == "in_use":
-        role_image = next((img for img in images if img.is_usage), None)
-    else:
-        role_image = None
+    role_map = {
+        "icon": "is_icon",
+        "hero_banner": "is_hero",
+        "in_use": "is_usage",
+    }
+    role_field = role_map.get(purpose)
+    role_image = (
+        next((img for img in images if getattr(img, role_field, False)), None)
+        if role_field
+        else None
+    )
 
     if role_image:
         return role_image
@@ -97,7 +99,6 @@ def resolve_image_by_purpose(project: Project, purpose: str) -> "ProjectImage | 
 
 
 def _variant_url(image: "ProjectImage | None", size: str) -> str | None:
-    """Return the variant URL for the given size, falling back to the original."""
     if image is None:
         return None
     variants = list(image.variants.all())
@@ -314,7 +315,10 @@ class DjangoProjectQuery(ProjectQueryInterface):
                 discussion_count=_top_level_discussion_count()
             ).order_by("-discussion_count")
         else:
-            queryset = queryset.order_by("-approved_at")
+            arrival_date = Coalesce("approved_at", "created_at")
+            queryset = queryset.annotate(arrival_date=arrival_date).order_by(
+                "-arrival_date"
+            )
 
         return [to_discover_item(p) for p in queryset]
 

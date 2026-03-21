@@ -151,14 +151,9 @@ class UploadStatus(models.TextChoices):
 class ImagePurpose(models.TextChoices):
     GENERAL = "general", "General"
     ICON = "icon", "Icon"
-    HERO_BANNER = "hero_banner", "Hero Banner"
-    IN_USE = "in_use", "In Use"
-    WINNER_COMPOSITE = "winner_composite", "Winner Composite"
 
 
 class ProjectImage(models.Model):
-    """Tracks images uploaded to a project. Uses UUID for non-guessable URLs."""
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
         Project,
@@ -176,13 +171,13 @@ class ProjectImage(models.Model):
     width = models.PositiveIntegerField(null=True, blank=True)
     height = models.PositiveIntegerField(null=True, blank=True)
 
-    # Image purpose and ordering
     purpose = models.CharField(
         max_length=20,
         choices=ImagePurpose.choices,
         default=ImagePurpose.GENERAL,
     )
     is_main = models.BooleanField(default=False)
+    is_icon = models.BooleanField(default=False)
     is_hero = models.BooleanField(default=False)
     is_usage = models.BooleanField(default=False)
     display_order = models.PositiveIntegerField(default=0)
@@ -224,8 +219,6 @@ VARIANT_SIZE_WIDTHS: dict[str, int] = {
 
 
 class ImageVariant(models.Model):
-    """A pre-generated size variant of a ProjectImage, stored as WebP in S3."""
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     image = models.ForeignKey(
         ProjectImage,
@@ -337,8 +330,6 @@ class ReviewStatus(models.TextChoices):
 
 
 class CompetitionReviewer(models.Model):
-    """Links a user to a competition they can review."""
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -366,8 +357,6 @@ class CompetitionReviewer(models.Model):
 
 
 class ProjectRanking(models.Model):
-    """A reviewer's ranking of a project within a competition."""
-
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     reviewer = models.ForeignKey(
         settings.AUTH_USER_MODEL,

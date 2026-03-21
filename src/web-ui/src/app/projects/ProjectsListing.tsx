@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
@@ -27,11 +27,13 @@ type ViewMode = "list" | "competition";
 interface ProjectsListingProps {
   initialProjects?: ProjectListItem[] | null;
   initialPendingCount?: number;
+  initialTotalPages?: number;
 }
 
 export function ProjectsListing({
   initialProjects,
   initialPendingCount = 0,
+  initialTotalPages = 1,
 }: ProjectsListingProps) {
   const searchParams = useSearchParams();
   const hasInitialData = initialProjects != null;
@@ -43,16 +45,43 @@ export function ProjectsListing({
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [sortBy, setSortBy] = useState<SortBy>("title");
   const [isLoading, setIsLoading] = useState(!hasInitialData);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [error, setError] = useState("");
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(initialTotalPages);
   const isInitialMount = useRef(true);
   const [sortDropdownOpen, setSortDropdownOpen] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const sortDropdownRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const selectedTags = searchParams.get("tags")?.split(",").filter(Boolean) || [];
+  const hasMore = page < totalPages;
 
+  const loadMore = useCallback(async () => {
+    setIsLoadingMore(true);
+    try {
+      const sortOrder = sortBy === "title" ? "asc" : "desc";
+      const tags = searchParams.get("tags")?.split(",").filter(Boolean) || [];
+      const nextPage = page + 1;
+      const data = await api.projects.list({
+        sort_by: sortBy,
+        sort_order: sortOrder,
+        tags: tags.length > 0 ? tags : undefined,
+        page: nextPage,
+      });
+      setProjects((prev) => [...prev, ...data.projects]);
+      setPage(data.page);
+      setTotalPages(data.pages);
+      setPendingProjectsCount(data.pending_projects_count);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch data");
+    }
+    setIsLoadingMore(false);
+  }, [sortBy, searchParams, page]);
+
+  // Initial load and filter/sort changes — fetch page 1
   useEffect(() => {
-    // Skip initial fetch if we have server-rendered data and params match defaults
     if (isInitialMount.current) {
       isInitialMount.current = false;
       const tags =
@@ -77,8 +106,11 @@ export function ProjectsListing({
             sort_by: sortBy,
             sort_order: sortOrder,
             tags: tags.length > 0 ? tags : undefined,
+            page: 1,
           });
           setProjects(data.projects);
+          setPage(data.page);
+          setTotalPages(data.pages);
           setPendingProjectsCount(data.pending_projects_count);
         }
       } catch (err) {
@@ -89,6 +121,26 @@ export function ProjectsListing({
 
     fetchData();
   }, [viewMode, sortBy, searchParams]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // IntersectionObserver for infinite scroll
+  useEffect(() => {
+    if (viewMode !== "list" || !hasMore || isLoadingMore) return;
+
+    const sentinel = sentinelRef.current;
+    if (!sentinel) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          loadMore();
+        }
+      },
+      { rootMargin: "200px" }
+    );
+
+    observer.observe(sentinel);
+    return () => observer.disconnect();
+  }, [viewMode, hasMore, isLoadingMore, isLoading, loadMore]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -208,20 +260,36 @@ export function ProjectsListing({
             {error}
           </div>
         ) : viewMode === "list" ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {projects.map((project, index) => (
-              <ProjectCard key={project.id} project={project} priority={index < 6} />
-            ))}
-            {projects.length === 0 && (
-              <p className="col-span-full text-muted-foreground text-sm text-center py-12">
-                {selectedTags.length > 0
-                  ? "No projects match the selected filters."
-                  : pendingProjectsCount > 0
-                    ? `${pendingProjectsCount} pending project${pendingProjectsCount !== 1 ? "s" : ""}`
-                    : "No projects found."}
-              </p>
+          <>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              {projects.map((project, index) => (
+                <ProjectCard key={project.id} project={project} priority={index < 6} />
+              ))}
+              {projects.length === 0 && !isLoadingMore && (
+                <p className="col-span-full text-muted-foreground text-sm text-center py-12">
+                  {selectedTags.length > 0
+                    ? "No projects match the selected filters."
+                    : pendingProjectsCount > 0
+                      ? `${pendingProjectsCount} pending project${pendingProjectsCount !== 1 ? "s" : ""}`
+                      : "No projects found."}
+                </p>
+              )}
+            </div>
+            {isLoadingMore && (
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mt-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i}>
+                    <div className="skeleton aspect-video rounded-t-xl" />
+                    <div className="bg-white border border-t-0 border-border rounded-b-xl p-3">
+                      <div className="skeleton h-4 w-2/3 mb-2" />
+                      <div className="skeleton h-3 w-1/3" />
+                    </div>
+                  </div>
+                ))}
+              </div>
             )}
-          </div>
+            {hasMore && <div ref={sentinelRef} className="h-1" />}
+          </>
         ) : (
           <div className="space-y-10">
             {competitions.map((competition) => (

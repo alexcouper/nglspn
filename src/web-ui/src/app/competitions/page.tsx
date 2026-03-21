@@ -26,7 +26,7 @@ export default async function CompetitionsPage() {
       </section>
 
       <section className="py-8 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-6xl mx-auto">
           <CompetitionsList
             initialCompetitions={sorted}
             initialPendingCount={data?.pending_projects_count ?? 0}

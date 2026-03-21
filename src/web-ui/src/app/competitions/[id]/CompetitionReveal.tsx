@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
 import Link from "next/link";
-import { TrophyIcon } from "@heroicons/react/24/solid";
+import { TrophyIcon, RocketLaunchIcon } from "@heroicons/react/24/solid";
 import {
   type Competition,
   type CompetitionProject,
 } from "@/lib/api";
-import { getPlaceholderColor, pickVariant } from "@/lib/utils";
-import { TagBadge } from "@/components/TagBadge";
+import { pickVariant } from "@/lib/utils";
+import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 
 function formatDateRange(startDate: string, endDate: string): string {
   const start = new Date(startDate);
@@ -19,7 +18,13 @@ function formatDateRange(startDate: string, endDate: string): string {
     day: "numeric",
     year: "numeric",
   };
-  return `${start.toLocaleDateString("en-US", options)} - ${end.toLocaleDateString("en-US", options)}`;
+  return `${start.toLocaleDateString("en-US", options)} – ${end.toLocaleDateString("en-US", options)}`;
+}
+
+function formatPrize(amount: string): string {
+  const num = parseInt(amount, 10);
+  if (isNaN(num)) return amount;
+  return `${num.toLocaleString("de-DE")} kr.`;
 }
 
 interface CompetitionRevealProps {
@@ -29,85 +34,102 @@ interface CompetitionRevealProps {
 export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps) {
   const [competition] = useState<Competition>(initialCompetition);
 
-  const isAcceptingApplications =
-    competition.status === "accepting_applications";
-  const iconPlaceholderColor = getPlaceholderColor(competition.id);
+  const isOpen = competition.status === "accepting_applications";
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="bg-white rounded-xl border border-border p-6">
-        <div className="flex items-center gap-4">
-          <div
-            className={`relative w-14 h-14 rounded-full overflow-hidden flex-shrink-0 ${!competition.image_url ? iconPlaceholderColor : ""}`}
-          >
-            {competition.image_url && (
-              <Image
-                src={competition.image_url}
-                alt={competition.name}
-                fill
-                className="object-cover"
-                sizes="56px"
-                priority
-              />
+    <div className="space-y-8">
+      {/* Hero Banner */}
+      <div className="rounded-xl overflow-hidden">
+        <div className="relative aspect-[16/7]">
+          {competition.image_url ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={competition.image_url}
+              alt={competition.name}
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+          ) : (
+            <GradientPlaceholder
+              id={competition.id}
+              className="absolute inset-0 w-full h-full"
+            />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.9)] via-[rgba(15,23,42,0.4)] to-[rgba(15,23,42,0.15)]" />
+          <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
+            {isOpen && (
+              <span className="badge badge-success text-xs mb-3 inline-flex">
+                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 pulse-dot" />
+                Open for Submissions
+              </span>
             )}
-          </div>
-          <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-foreground tracking-tight">
+            <h1 className="text-2xl sm:text-4xl font-bold text-white tracking-tight">
               {competition.name}
             </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
+            <p className="text-slate-300 text-sm sm:text-base mt-2">
               {formatDateRange(competition.start_date, competition.end_date)}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
+              {competition.prize_amount &&
+                ` · ${formatPrize(competition.prize_amount)} prize`}
+              {" · "}
               {competition.project_count} project
               {competition.project_count !== 1 ? "s" : ""}
-              {competition.pending_projects_count > 0 &&
-                ` (${competition.pending_projects_count} pending)`}
             </p>
           </div>
         </div>
-        {isAcceptingApplications && (
-          <div className="mt-5">
-            <Link href="/submit" className="btn-primary">
-              Submit a project
-            </Link>
-          </div>
-        )}
       </div>
 
-      <div className="space-y-6">
-        {/* Quote */}
-        {competition.quote && (
-          <blockquote className="bg-white rounded-xl border border-border p-5 border-l-3 border-l-accent">
-            <p className="text-sm text-muted-foreground italic leading-relaxed">
-              &ldquo;{competition.quote}&rdquo;
-            </p>
-          </blockquote>
-        )}
-
-        {/* Winner */}
-        {competition.winner && (
-          <div className="bg-white rounded-xl border border-amber-200 p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <TrophyIcon className="w-5 h-5 text-amber-500" />
-              <h2 className="text-sm font-semibold text-foreground uppercase tracking-wide">Winner</h2>
-            </div>
-            <WinnerCard project={competition.winner} />
-          </div>
-        )}
-
-        {/* Projects */}
-        <div>
-          <div className="flex items-baseline gap-2 mb-4">
-            <h2 className="text-base font-semibold text-foreground">
-              All Projects
+      {/* CTA Banner - only when accepting submissions */}
+      {isOpen && (
+        <div className="bg-white rounded-xl border border-border p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="text-foreground font-semibold text-lg">
+              Got a project you&apos;re working on?
             </h2>
-            <span className="text-xs text-muted-foreground">
-              ({competition.projects.length})
-            </span>
+            <p className="text-muted-foreground text-sm mt-1">
+              Share your project with the community and compete in {competition.name}
+            </p>
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <Link
+            href="/submit"
+            className="btn-primary flex-shrink-0 inline-flex items-center gap-2"
+          >
+            <RocketLaunchIcon className="w-4 h-4" />
+            Submit a Project
+          </Link>
+        </div>
+      )}
+
+      {/* Quote */}
+      {competition.quote && (
+        <blockquote className="bg-white rounded-xl border border-border p-5 border-l-3 border-l-accent">
+          <p className="text-sm text-muted-foreground italic leading-relaxed">
+            &ldquo;{competition.quote}&rdquo;
+          </p>
+        </blockquote>
+      )}
+
+      {/* Winner */}
+      {competition.winner && (
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <TrophyIcon className="w-5 h-5 text-amber-500" />
+            <h2 className="text-lg font-semibold text-foreground">Winner</h2>
+          </div>
+          <WinnerCard project={competition.winner} />
+        </div>
+      )}
+
+      {/* Projects */}
+      <div>
+        <div className="flex items-baseline gap-2 mb-4">
+          <h2 className="text-lg font-semibold text-foreground">
+            All Projects
+          </h2>
+          <span className="text-sm text-muted-foreground">
+            ({competition.projects.length})
+          </span>
+        </div>
+        {competition.projects.length > 0 ? (
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
             {competition.projects.map((project) => (
               <ProjectCard
                 key={project.id}
@@ -115,51 +137,55 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
                 isWinner={project.id === competition.winner?.id}
               />
             ))}
-            {competition.projects.length === 0 && (
-              <p className="col-span-full text-muted-foreground text-sm text-center py-8">
-                No projects found
-              </p>
-            )}
           </div>
-        </div>
+        ) : (
+          <p className="text-muted-foreground text-sm text-center py-8">
+            No projects yet — be the first to submit!
+          </p>
+        )}
       </div>
     </div>
   );
 }
 
 function WinnerCard({ project }: { project: CompetitionProject }) {
-  const placeholderColor = getPlaceholderColor(project.id);
+  const imageUrl =
+    pickVariant(project.main_image_variants, "medium") ??
+    project.main_image_url;
 
   return (
     <Link
       href={`/projects/${project.id}`}
-      className="group block card card-interactive"
+      className="group block"
     >
-      <div className="flex flex-col sm:flex-row">
-        <div
-          className={`relative aspect-video sm:w-56 sm:aspect-auto sm:h-36 ${!project.main_image_url ? placeholderColor : "bg-slate-100"}`}
-        >
-          {project.main_image_url && (
-            <Image
-              src={pickVariant(project.main_image_variants, "medium") ?? project.main_image_url}
-              alt={project.title}
-              fill
-              className="object-contain"
-              sizes="(max-width: 640px) 100vw, 224px"
-            />
-          )}
-        </div>
-        <div className="p-4 flex-1">
-          <h3 className="font-semibold text-foreground group-hover:text-accent transition-colors">
-            {project.title || "Untitled"}
-          </h3>
-          {project.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {project.tags.map((tag) => (
-                <TagBadge key={tag.id} name={tag.name} color={tag.color} size="sm" />
-              ))}
-            </div>
-          )}
+      <div className="card card-interactive overflow-hidden border-amber-200 hover:shadow-[0_0_20px_rgba(251,191,36,0.15)]">
+        <div className="flex flex-col sm:flex-row">
+          <div className="relative aspect-[4/3] sm:w-72 sm:aspect-auto sm:h-44">
+            {imageUrl ? (
+              <>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imageUrl}
+                  alt={project.title}
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.15)] to-transparent" />
+              </>
+            ) : (
+              <GradientPlaceholder
+                id={project.id}
+                className="absolute inset-0 w-full h-full"
+              />
+            )}
+            <span className="absolute top-2 right-2 bg-amber-400 text-amber-900 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
+              Winner
+            </span>
+          </div>
+          <div className="p-4 sm:p-5 flex-1 flex flex-col justify-center">
+            <h3 className="font-semibold text-lg text-foreground group-hover:text-accent transition-colors">
+              {project.title || "Untitled"}
+            </h3>
+          </div>
         </div>
       </div>
     </Link>
@@ -173,47 +199,48 @@ function ProjectCard({
   project: CompetitionProject;
   isWinner: boolean;
 }) {
-  const placeholderColor = getPlaceholderColor(project.id);
+  const imageUrl =
+    pickVariant(project.main_image_variants, "thumb") ??
+    project.main_image_url;
 
   return (
     <Link
       href={`/projects/${project.id}`}
-      className={`card card-interactive group ${
-        isWinner ? "border-amber-300 ring-1 ring-amber-200" : ""
-      }`}
+      className="group block"
     >
       <div
-        className={`relative aspect-video ${!project.main_image_url ? placeholderColor : "bg-slate-100"}`}
+        className={`card card-interactive overflow-hidden ${
+          isWinner ? "border-amber-300 ring-1 ring-amber-200" : ""
+        }`}
       >
-        {project.main_image_url && (
-          <Image
-            src={pickVariant(project.main_image_variants, "thumb") ?? project.main_image_url}
-            alt={project.title}
-            fill
-            className="object-contain"
-            sizes="(max-width: 768px) 50vw, 33vw"
-          />
-        )}
-        {isWinner && (
-          <div className="absolute top-2 right-2 bg-amber-500 text-white p-1 rounded-full shadow-sm">
-            <TrophyIcon className="w-3.5 h-3.5" />
-          </div>
-        )}
-      </div>
-      <div className="p-3.5">
-        <h3 className="font-medium text-sm text-foreground truncate group-hover:text-accent transition-colors">
-          {project.title || "Untitled"}
-        </h3>
-        {project.tags.length > 0 && (
-          <div className="mt-2 flex flex-wrap gap-1">
-            {project.tags.slice(0, 2).map((tag) => (
-              <TagBadge key={tag.id} name={tag.name} color={tag.color} size="sm" />
-            ))}
-            {project.tags.length > 2 && (
-              <span className="text-xs text-muted-foreground">+{project.tags.length - 2}</span>
-            )}
-          </div>
-        )}
+        <div className="relative aspect-[4/3]">
+          {imageUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={imageUrl}
+                alt={project.title}
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.15)] to-transparent" />
+            </>
+          ) : (
+            <GradientPlaceholder
+              id={project.id}
+              className="absolute inset-0 w-full h-full"
+            />
+          )}
+          {isWinner && (
+            <div className="absolute top-2 right-2 bg-amber-500 text-white p-1 rounded-full shadow-sm">
+              <TrophyIcon className="w-3.5 h-3.5" />
+            </div>
+          )}
+        </div>
+        <div className="p-3 sm:p-3.5">
+          <h3 className="font-medium text-sm text-foreground truncate group-hover:text-accent transition-colors">
+            {project.title || "Untitled"}
+          </h3>
+        </div>
       </div>
     </Link>
   );

@@ -11,10 +11,10 @@ export const revalidate = 3600;
 export default async function PreviewProjectsPage() {
   const [categories, featured, newArrivals, winners] =
     await Promise.all([
-      fetchCategories().catch(() => []),
-      fetchFeaturedProjects().catch(() => []),
-      fetchNewArrivals().catch(() => []),
-      fetchWinners().catch(() => []),
+      fetchCategories(),
+      fetchFeaturedProjects(),
+      fetchNewArrivals(),
+      fetchWinners(),
     ]);
 
   return (

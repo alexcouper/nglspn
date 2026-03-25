@@ -88,7 +88,7 @@ function CategoryCard({ project }: { project: DiscoverProject }) {
   return (
     <Link href={`/projects/${project.id}`} className="block h-full">
       <div className="card card-interactive p-3 flex items-start gap-3 h-full">
-        <div className="flex-shrink-0 w-12 h-12 rounded-lg overflow-hidden">
+        <div className="app-icon w-12 h-12">
           {iconUrl ? (
             /* eslint-disable-next-line @next/next/no-img-element */
             <img

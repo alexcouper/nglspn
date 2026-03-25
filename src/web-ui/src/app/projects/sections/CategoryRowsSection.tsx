@@ -84,7 +84,7 @@ function IconCard({
     >
       <div className="card card-interactive p-3 flex items-start gap-3 h-full">
         <div
-          className="flex-shrink-0 rounded-lg overflow-hidden"
+          className="app-icon"
           style={{ width: iconSize, height: iconSize }}
         >
           {iconUrl ? (

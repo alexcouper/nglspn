@@ -350,6 +350,16 @@ textarea.input {
   color: var(--muted-foreground);
 }
 
+/* App-style icon */
+.app-icon {
+  position: relative;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  background: var(--muted);
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08), 0 0 1px rgba(0, 0, 0, 0.04);
+}
+
 /* Skeleton loading */
 @keyframes shimmer {
   0% { background-position: -200% 0; }

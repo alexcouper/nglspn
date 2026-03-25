@@ -15,9 +15,11 @@ export function WinnersSection({ winners }: WinnersSectionProps) {
 
   return (
     <section>
-      <h2 className="text-lg font-semibold text-foreground mb-4">
-        Competition Winners
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-foreground">
+          Competition Winners
+        </h2>
+      </div>
       <HorizontalScroll>
         {winners.map((winner) => (
           <WinnerCard key={`${winner.id}-${winner.competition_slug}`} winner={winner} />

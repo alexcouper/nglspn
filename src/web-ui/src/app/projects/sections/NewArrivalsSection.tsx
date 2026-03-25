@@ -15,9 +15,11 @@ export function NewArrivalsSection({ projects }: NewArrivalsSectionProps) {
 
   return (
     <section>
-      <h2 className="text-lg font-semibold text-foreground mb-4">
-        New Arrivals
-      </h2>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-lg font-semibold text-foreground">
+          New Arrivals
+        </h2>
+      </div>
       <HorizontalScroll>
         {projects.map((project) => (
           <ArrivalCard key={project.id} project={project} />

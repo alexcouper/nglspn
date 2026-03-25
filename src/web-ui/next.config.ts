@@ -6,6 +6,11 @@ const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "https:
 const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || "https://cdn.naglasupan.is";
 const cdnHostname = new URL(cdnUrl).hostname;
 
+// CSP placeholders — replaced at container startup by entrypoint.sh so a single
+// image can run against any backend/CDN.  In dev we use the real values directly.
+const cspApiUrl = isDev ? apiUrl : "__CSP_API_URL_PLACEHOLDER__";
+const cspCdnUrl = isDev ? cdnUrl : "__CSP_CDN_URL_PLACEHOLDER__";
+
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
@@ -13,8 +18,8 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: ${cdnUrl} https://*.s3.fr-par.scw.cloud`,
-      `connect-src 'self' ${apiUrl} ${cdnUrl} https://s3.fr-par.scw.cloud https://plausible.io${isDev ? " http://localhost:* http://127.0.0.1:*" : ""}`,
+      `img-src 'self' data: ${cspCdnUrl} https://*.s3.fr-par.scw.cloud`,
+      `connect-src 'self' ${cspApiUrl} ${cspCdnUrl} https://s3.fr-par.scw.cloud https://plausible.io${isDev ? " http://localhost:* http://127.0.0.1:*" : ""}`,
       "frame-ancestors 'none'",
     ].join("; "),
   },

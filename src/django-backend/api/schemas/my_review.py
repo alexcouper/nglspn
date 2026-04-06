@@ -21,7 +21,7 @@ class ReviewCompetitionResponse(Schema):
     id: UUID
     name: str
     start_date: date
-    end_date: date
+    submission_deadline: date
     image_url: str | None = None
     project_count: int
     my_review_status: ReviewStatusEnum
@@ -55,7 +55,7 @@ class ReviewCompetitionDetailResponse(Schema):
     id: UUID
     name: str
     start_date: date
-    end_date: date
+    submission_deadline: date
     my_review_status: ReviewStatusEnum
     projects: list[ReviewProjectResponse]
 

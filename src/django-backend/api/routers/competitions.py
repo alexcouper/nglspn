@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404
 from ninja import Router
 
 from api.schemas.competition import (
-    ActiveOrRecentResponse,
+    CompetitionHighlightsResponse,
     CompetitionListResponse,
     CompetitionOverviewListResponse,
     CompetitionOverviewResponse,
@@ -65,22 +65,32 @@ def list_competitions_with_projects(request: HttpRequest) -> CompetitionListResp
 
 
 @router.get(
-    "/active-or-most-recent",
-    response={200: ActiveOrRecentResponse},
+    "/highlights",
+    response={200: CompetitionHighlightsResponse},
     tags=["Competitions"],
 )
-def get_active_or_most_recent(request: HttpRequest) -> ActiveOrRecentResponse:
+def get_highlights(request: HttpRequest) -> CompetitionHighlightsResponse:
     base_qs = Competition.objects.annotate(project_count=Count("projects"))
 
-    active = base_qs.filter(status=CompetitionStatus.ACCEPTING_APPLICATIONS).first()
+    active = list(
+        base_qs.filter(
+            status__in=[
+                CompetitionStatus.ACCEPTING_APPLICATIONS,
+                CompetitionStatus.VOTING,
+            ]
+        ).order_by("-start_date")
+    )
     recent = (
-        base_qs.filter(status=CompetitionStatus.CLOSED).order_by("-end_date").first()
+        base_qs.filter(status=CompetitionStatus.CLOSED)
+        .order_by("-voting_end_date", "-submission_deadline")
+        .first()
     )
 
-    return ActiveOrRecentResponse(
-        active=CompetitionSummaryResponse.from_competition(active) if active else None,
-        recent=CompetitionSummaryResponse.from_competition(recent) if recent else None,
-    )
+    competitions = [CompetitionSummaryResponse.from_competition(c) for c in active]
+    if recent:
+        competitions.append(CompetitionSummaryResponse.from_competition(recent))
+
+    return CompetitionHighlightsResponse(competitions=competitions)
 
 
 @router.get(

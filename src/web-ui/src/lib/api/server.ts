@@ -1,9 +1,9 @@
 import "server-only";
 
 import type {
-  ActiveOrRecentResponse,
   CategoryItem,
   Competition,
+  CompetitionHighlightsResponse,
   CompetitionOverviewListResponse,
   DiscoverProject,
   Project,
@@ -69,9 +69,9 @@ export async function fetchCompetition(
   });
 }
 
-export async function fetchActiveOrRecentCompetition(): Promise<ActiveOrRecentResponse> {
-  return serverFetch<ActiveOrRecentResponse>(
-    "/api/competitions/active-or-most-recent",
+export async function fetchCompetitionHighlights(): Promise<CompetitionHighlightsResponse> {
+  return serverFetch<CompetitionHighlightsResponse>(
+    "/api/competitions/highlights",
     { tags: ["competitions"] }
   );
 }

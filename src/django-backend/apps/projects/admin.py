@@ -3,9 +3,9 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING, Any
 
-from django.contrib import admin
+from django.contrib import admin, messages
 from django.db.models import Count, Q, QuerySet
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse
 from django.urls import reverse
 from django.utils import timezone
 from django.utils.html import format_html
@@ -13,6 +13,7 @@ from django.utils.safestring import mark_safe
 
 from api.tasks import email as email_tasks
 from api.tasks import web_ui as web_ui_tasks
+from apps.users.models import User
 
 from .models import (
     Competition,
@@ -474,16 +475,17 @@ class CompetitionReviewerInline(admin.TabularInline):
 
 @admin.register(Competition)
 class CompetitionAdmin(admin.ModelAdmin):
+    change_form_template = "admin/competition_change_form.html"
     list_display = (
         "thumbnail",
         "name",
         "start_date",
-        "end_date",
+        "submission_deadline",
         "winner_name",
         "project_count",
         "reviewer_count",
     )
-    list_filter = ("start_date", "end_date")
+    list_filter = ("start_date", "submission_deadline")
     search_fields = ("name",)
     filter_horizontal = ("projects",)
     autocomplete_fields = ("winner",)
@@ -513,7 +515,14 @@ class CompetitionAdmin(admin.ModelAdmin):
         ),
         (
             "Dates & Prize",
-            {"fields": ("start_date", "end_date", "prize_amount")},
+            {
+                "fields": (
+                    "start_date",
+                    "submission_deadline",
+                    "voting_end_date",
+                    "prize_amount",
+                ),
+            },
         ),
         (
             "Status",
@@ -577,6 +586,28 @@ class CompetitionAdmin(admin.ModelAdmin):
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Competition]:
         return super().get_queryset(request).select_related("winner")
+
+    def response_change(self, request: HttpRequest, obj: Competition) -> HttpResponse:
+        if "_add_all_reviewers" in request.POST:
+            existing_user_ids = CompetitionReviewer.objects.filter(
+                competition=obj,
+            ).values_list("user_id", flat=True)
+            new_users = User.objects.filter(is_active=True).exclude(
+                id__in=existing_user_ids,
+            )
+            reviewers = [
+                CompetitionReviewer(user=user, competition=obj) for user in new_users
+            ]
+            CompetitionReviewer.objects.bulk_create(reviewers)
+            already = len(existing_user_ids)
+            added = len(reviewers)
+            self.message_user(
+                request,
+                f"Added {added} users as reviewers ({already} already assigned).",
+                messages.SUCCESS,
+            )
+            return self.response_post_save_change(request, obj)
+        return super().response_change(request, obj)
 
 
 @admin.register(CompetitionReviewer)

@@ -13,8 +13,8 @@ export type CompetitionProject =
 export type Tag = components["schemas"]["TagResponse"];
 export type CompetitionSummary =
   components["schemas"]["CompetitionSummaryResponse"];
-export type ActiveOrRecentResponse =
-  components["schemas"]["ActiveOrRecentResponse"];
+export type CompetitionHighlightsResponse =
+  components["schemas"]["CompetitionHighlightsResponse"];
 
 export class CompetitionsClient {
   constructor(private client: APIClient) {}
@@ -37,9 +37,9 @@ export class CompetitionsClient {
     );
   }
 
-  async getActiveOrRecent(): Promise<ActiveOrRecentResponse> {
-    return this.client.request<ActiveOrRecentResponse>(
-      "/api/competitions/active-or-most-recent"
+  async getHighlights(): Promise<CompetitionHighlightsResponse> {
+    return this.client.request<CompetitionHighlightsResponse>(
+      "/api/competitions/highlights"
     );
   }
 }

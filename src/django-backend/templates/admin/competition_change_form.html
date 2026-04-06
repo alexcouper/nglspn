@@ -1,0 +1,13 @@
+{% extends "admin/change_form.html" %}
+{% load i18n %}
+
+{% block submit_buttons_bottom %}
+    {{ block.super }}
+    {% if original %}
+    <div class="submit-row" style="margin-top: 0; border-top: none; padding-top: 0;">
+        <input type="submit" name="_add_all_reviewers" value="Add all users as reviewers"
+               style="background: #0d6efd; color: white;"
+               title="Assigns every active user as a reviewer for this competition" />
+    </div>
+    {% endif %}
+{% endblock %}

@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import type { CompetitionSummary } from "@/lib/api";
+import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
+import { HorizontalScroll } from "@/components/HorizontalScroll";
+import { getCompetitionDeadline } from "@/lib/competition-dates";
 
 function formatPrizeAmount(amount: string | null): string {
   if (!amount) return "";
@@ -9,10 +12,17 @@ function formatPrizeAmount(amount: string | null): string {
   return new Intl.NumberFormat("is-IS").format(num) + " ISK";
 }
 
-function CompetitionCard({ competition }: { competition: CompetitionSummary }) {
-  const isOpen = competition.status === "accepting_applications";
+function CompetitionCard({ competition, className = "" }: { competition: CompetitionSummary; className?: string }) {
+  const isActive =
+    competition.status === "accepting_applications" ||
+    competition.status === "voting";
 
-  const end = new Date(competition.end_date);
+  const deadline = getCompetitionDeadline(
+    competition.status,
+    competition.submission_deadline,
+    competition.voting_end_date
+  );
+  const end = new Date(deadline);
   const now = new Date();
   const diffTime = end.getTime() - now.getTime();
   const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
@@ -23,7 +33,7 @@ function CompetitionCard({ competition }: { competition: CompetitionSummary }) {
   return (
     <Link
       href={`/competitions/${competition.slug}`}
-      className="group card card-interactive flex flex-col w-full max-w-sm"
+      className={`group card card-interactive flex flex-col ${className}`}
     >
       {/* Image */}
       <div className={`aspect-square relative overflow-hidden rounded-t-xl ${!competition.image_url ? "bg-gradient-to-br from-slate-100 to-slate-200" : ""}`}>
@@ -43,16 +53,7 @@ function CompetitionCard({ competition }: { competition: CompetitionSummary }) {
         )}
         {/* Status badge */}
         <div className="absolute top-3 left-3">
-          {isOpen ? (
-            <span className="badge bg-emerald-500 text-white text-xs font-medium px-2.5 py-1">
-              <span className="w-1.5 h-1.5 bg-white rounded-full mr-1.5 pulse-dot inline-block" />
-              Open
-            </span>
-          ) : (
-            <span className="badge bg-slate-800/80 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1">
-              Completed
-            </span>
-          )}
+          <CompetitionStatusBadge status={competition.status} className="text-xs font-medium px-2.5 py-1" />
         </div>
       </div>
 
@@ -62,7 +63,7 @@ function CompetitionCard({ competition }: { competition: CompetitionSummary }) {
           {competition.name}
         </h3>
         <div className="mt-auto pt-3 flex items-center justify-between text-xs text-muted-foreground">
-          {isOpen ? (
+          {isActive ? (
             <>
               <span>{daysRemaining} {daysRemaining === 1 ? "day" : "days"} remaining</span>
               {prizeText && <span className="font-medium text-emerald-600">{prizeText}</span>}
@@ -80,12 +81,11 @@ function CompetitionCard({ competition }: { competition: CompetitionSummary }) {
 }
 
 interface CompetitionHighlightProps {
-  active: CompetitionSummary | null;
-  recent: CompetitionSummary | null;
+  competitions: CompetitionSummary[];
 }
 
-export function CompetitionHighlight({ active, recent }: CompetitionHighlightProps) {
-  if (!active && !recent) {
+export function CompetitionHighlight({ competitions }: CompetitionHighlightProps) {
+  if (competitions.length === 0) {
     return (
       <div className="text-center py-8">
         <p className="text-muted-foreground text-sm">More competitions coming soon</p>
@@ -93,10 +93,21 @@ export function CompetitionHighlight({ active, recent }: CompetitionHighlightPro
     );
   }
 
+  if (competitions.length <= 2) {
+    return (
+      <div className="flex flex-col sm:flex-row items-stretch justify-center gap-6">
+        {competitions.map((competition) => (
+          <CompetitionCard key={competition.slug} competition={competition} className="w-full max-w-sm" />
+        ))}
+      </div>
+    );
+  }
+
   return (
-    <div className="flex flex-col sm:flex-row items-stretch justify-center gap-6">
-      {recent && <CompetitionCard competition={recent} />}
-      {active && <CompetitionCard competition={active} />}
-    </div>
+    <HorizontalScroll>
+      {competitions.map((competition) => (
+        <CompetitionCard key={competition.slug} competition={competition} className="w-[280px] sm:w-[320px] flex-shrink-0" />
+      ))}
+    </HorizontalScroll>
   );
 }

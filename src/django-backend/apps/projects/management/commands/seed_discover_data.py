@@ -283,7 +283,7 @@ class Command(BaseCommand):
                 name=comp_data["name"],
                 defaults={
                     "start_date": comp_data["start"],
-                    "end_date": comp_data["end"],
+                    "submission_deadline": comp_data["end"],
                 },
             )
             if winner and created:

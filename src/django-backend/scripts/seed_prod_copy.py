@@ -467,7 +467,7 @@ def create_competitions(projects: list[Project]) -> None:
         comp = Competition.objects.create(
             name=comp_name,
             start_date="2026-01-01",
-            end_date="2026-01-31",
+            submission_deadline="2026-01-31",
             quote="",
             prize_amount=50000,
             status=CompetitionStatus.CLOSED,

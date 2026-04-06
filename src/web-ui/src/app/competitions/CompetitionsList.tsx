@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { api, type CompetitionOverview } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
 
 function formatDateRange(startDate: string, endDate: string): string {
   const start = new Date(startDate);
@@ -145,15 +146,12 @@ function HeroBanner({ competition }: { competition: CompetitionOverview }) {
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.9)] via-[rgba(15,23,42,0.3)] to-transparent" />
           <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-6">
-            <span className="badge badge-success text-xs mb-2 inline-flex">
-              <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 pulse-dot" />
-              Open for Submissions
-            </span>
+            <CompetitionStatusBadge status={competition.status} className="text-xs mb-2" />
             <h2 className="text-xl sm:text-2xl font-bold text-white group-hover:text-indigo-200 transition-colors">
               {competition.name}
             </h2>
             <p className="text-slate-300 text-sm mt-1">
-              {formatDateRange(competition.start_date, competition.end_date)}
+              {formatDateRange(competition.start_date, competition.submission_deadline)}
               {" · "}
               {competition.project_count} project
               {competition.project_count !== 1 ? "s" : ""}
@@ -168,8 +166,6 @@ function HeroBanner({ competition }: { competition: CompetitionOverview }) {
 }
 
 function GridCard({ competition }: { competition: CompetitionOverview }) {
-  const isOpen = competition.status === "accepting_applications";
-
   return (
     <Link
       href={`/competitions/${competition.slug}`}
@@ -196,11 +192,8 @@ function GridCard({ competition }: { competition: CompetitionOverview }) {
             <h3 className="text-sm sm:text-base font-semibold text-white group-hover:text-indigo-200 transition-colors truncate">
               {competition.name}
             </h3>
-            {isOpen && (
-              <span className="badge badge-success text-xs flex-shrink-0">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1 pulse-dot" />
-                Open
-              </span>
+            {competition.status !== "closed" && competition.status !== "pending" && (
+              <CompetitionStatusBadge status={competition.status} className="text-xs flex-shrink-0" />
             )}
           </div>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">

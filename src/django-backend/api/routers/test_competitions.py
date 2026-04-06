@@ -385,6 +385,17 @@ class TestCompetitionStatus:
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json()["status"], equal_to("closed"))
 
+    def test_competition_with_voting_status(
+        self,
+        client,
+    ) -> None:
+        competition = CompetitionFactory(status=CompetitionStatus.VOTING)
+
+        response = client.get(f"/api/competitions/{competition.id}")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["status"], equal_to("voting"))
+
     def test_setting_winner_on_creation_sets_status_to_closed(
         self,
         client,
@@ -462,82 +473,105 @@ class TestCompetitionSlug:
 
 
 @pytest.mark.django_db
-class TestActiveOrMostRecent:
-    def test_returns_active_competition(self, client) -> None:
-        competition = CompetitionFactory(
+class TestHighlights:
+    def test_returns_active_competitions_sorted_newest_first(self, client) -> None:
+        CompetitionFactory(
             status=CompetitionStatus.ACCEPTING_APPLICATIONS,
-            name="Active Comp",
-            prize_amount=100000,
-        )
-
-        response = client.get("/api/competitions/active-or-most-recent")
-
-        assert_that(response.status_code, equal_to(200))
-        assert_that(
-            response.json()["active"],
-            has_entries(
-                name="Active Comp",
-                slug=competition.slug,
-                status="accepting_applications",
-                prize_amount="100000",
-                project_count=0,
-            ),
-        )
-        assert_that(response.json()["recent"], equal_to(None))
-
-    def test_returns_most_recent_closed_competition(self, client) -> None:
-        CompetitionFactory(
-            status=CompetitionStatus.CLOSED,
-            name="Older",
-            end_date="2024-06-01",
+            name="Older Open",
+            start_date="2026-01-01",
         )
         CompetitionFactory(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS,
+            name="Newer Open",
+            start_date="2026-03-01",
+        )
+
+        response = client.get("/api/competitions/highlights")
+
+        assert_that(response.status_code, equal_to(200))
+        competitions = response.json()["competitions"]
+        assert_that(competitions, has_length(2))
+        assert_that(competitions[0]["name"], equal_to("Newer Open"))
+        assert_that(competitions[1]["name"], equal_to("Older Open"))
+
+    def test_includes_voting_as_active(self, client) -> None:
+        CompetitionFactory(
+            status=CompetitionStatus.VOTING,
+            name="Voting Comp",
+            start_date="2026-01-15",
+        )
+
+        response = client.get("/api/competitions/highlights")
+
+        assert_that(response.status_code, equal_to(200))
+        competitions = response.json()["competitions"]
+        assert_that(competitions, has_length(1))
+        assert_that(competitions[0]["name"], equal_to("Voting Comp"))
+        assert_that(competitions[0]["status"], equal_to("voting"))
+
+    def test_appends_most_recent_closed(self, client) -> None:
+        CompetitionFactory(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS,
+            name="Open",
+            start_date="2026-03-01",
+        )
+        CompetitionFactory(
             status=CompetitionStatus.CLOSED,
-            name="Newest",
-            end_date="2025-01-31",
+            name="Older Closed",
+            voting_end_date="2025-06-01",
+        )
+        CompetitionFactory(
+            status=CompetitionStatus.CLOSED,
+            name="Newest Closed",
+            voting_end_date="2026-01-31",
         )
 
-        response = client.get("/api/competitions/active-or-most-recent")
+        response = client.get("/api/competitions/highlights")
 
         assert_that(response.status_code, equal_to(200))
-        assert_that(response.json()["recent"]["name"], equal_to("Newest"))
+        competitions = response.json()["competitions"]
+        assert_that(competitions, has_length(2))
+        assert_that(competitions[0]["name"], equal_to("Open"))
+        assert_that(competitions[1]["name"], equal_to("Newest Closed"))
 
-    def test_returns_both_active_and_recent(self, client) -> None:
-        CompetitionFactory(status=CompetitionStatus.ACCEPTING_APPLICATIONS)
-        CompetitionFactory(status=CompetitionStatus.CLOSED)
-
-        response = client.get("/api/competitions/active-or-most-recent")
-
-        assert_that(response.status_code, equal_to(200))
-        assert response.json()["active"] is not None
-        assert response.json()["recent"] is not None
-
-    def test_returns_nulls_when_no_competitions(self, client) -> None:
-        response = client.get("/api/competitions/active-or-most-recent")
+    def test_returns_empty_list_when_no_competitions(self, client) -> None:
+        response = client.get("/api/competitions/highlights")
 
         assert_that(response.status_code, equal_to(200))
-        assert_that(response.json(), equal_to({"active": None, "recent": None}))
+        assert_that(response.json()["competitions"], has_length(0))
 
-    def test_includes_project_count_not_full_projects(self, client) -> None:
-        competition = CompetitionFactory(
-            status=CompetitionStatus.ACCEPTING_APPLICATIONS
+    def test_returns_only_closed_when_no_active(self, client) -> None:
+        CompetitionFactory(
+            status=CompetitionStatus.CLOSED,
+            name="Past Comp",
+            voting_end_date="2025-12-31",
         )
-        project = ProjectFactory(status=ProjectStatus.APPROVED)
-        competition.projects.add(project)
 
-        response = client.get("/api/competitions/active-or-most-recent")
+        response = client.get("/api/competitions/highlights")
 
-        active = response.json()["active"]
-        assert_that(active["project_count"], equal_to(1))
-        assert "projects" not in active
+        assert_that(response.status_code, equal_to(200))
+        competitions = response.json()["competitions"]
+        assert_that(competitions, has_length(1))
+        assert_that(competitions[0]["name"], equal_to("Past Comp"))
 
-    def test_does_not_include_winner_or_pending_count(self, client) -> None:
-        winner = ProjectFactory(status=ProjectStatus.APPROVED)
-        competition = CompetitionFactory(status=CompetitionStatus.CLOSED, winner=winner)
-        competition.projects.add(winner)
+    def test_includes_both_date_fields(self, client) -> None:
+        CompetitionFactory(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS,
+            submission_deadline="2026-03-15",
+            voting_end_date="2026-03-31",
+        )
 
-        response = client.get("/api/competitions/active-or-most-recent")
+        response = client.get("/api/competitions/highlights")
 
-        recent = response.json()["recent"]
-        assert "winner" not in recent
-        assert "pending_projects_count" not in recent
+        assert_that(response.status_code, equal_to(200))
+        comp = response.json()["competitions"][0]
+        assert_that(comp["submission_deadline"], equal_to("2026-03-15"))
+        assert_that(comp["voting_end_date"], equal_to("2026-03-31"))
+
+    def test_excludes_pending_competitions(self, client) -> None:
+        CompetitionFactory(status=CompetitionStatus.PENDING)
+
+        response = client.get("/api/competitions/highlights")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["competitions"], has_length(0))

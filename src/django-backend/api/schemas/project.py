@@ -202,7 +202,7 @@ class WinnerProjectResponse(Schema):
     in_use_image_url: str | None = None
     competition_name: str
     competition_slug: str
-    competition_end_date: str
+    competition_submission_deadline: str
 
 
 class AdminProjectResponse(ProjectResponse):

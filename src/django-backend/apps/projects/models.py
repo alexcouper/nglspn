@@ -238,6 +238,7 @@ class ImageVariant(models.Model):
 class CompetitionStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     ACCEPTING_APPLICATIONS = "accepting_applications", "Accepting Applications"
+    VOTING = "voting", "Voting"
     CLOSED = "closed", "Closed"
 
 
@@ -251,7 +252,8 @@ class Competition(models.Model):
     name = models.CharField(max_length=100, db_index=True)
     slug = models.SlugField(max_length=110, unique=True, blank=True)
     start_date = models.DateField()
-    end_date = models.DateField()
+    submission_deadline = models.DateField()
+    voting_end_date = models.DateField(null=True, blank=True)
     quote = models.TextField(blank=True, null=True)
     prize_amount = models.IntegerField(default=50000, null=True, blank=True)
     image = models.ImageField(upload_to=competition_image_path, blank=True, null=True)
@@ -288,7 +290,14 @@ class Competition(models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
             self.slug = slugify(transliterate_icelandic(self.name))
-        if self.winner is not None:
+        if self.winner is not None and self.pk:
+            try:
+                old = Competition.objects.get(pk=self.pk)
+                if old.winner_id != self.winner_id:
+                    self.status = CompetitionStatus.CLOSED
+            except Competition.DoesNotExist:
+                self.status = CompetitionStatus.CLOSED
+        elif self.winner is not None:
             self.status = CompetitionStatus.CLOSED
         super().save(*args, **kwargs)
 

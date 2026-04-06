@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from django.db.models import Count, Prefetch, Q, QuerySet
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, Lower
 from django.utils import timezone
 
 from apps.projects.models import (
@@ -265,7 +265,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
                     ).prefetch_related("variants"),
                 ),
             )
-            .order_by("-end_date")
+            .order_by("-submission_deadline")
         )
         results = []
         for comp in competitions:
@@ -281,7 +281,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
                     in_use_image_url=_variant_url(in_use, "medium"),
                     competition_name=comp.name,
                     competition_slug=comp.slug,
-                    competition_end_date=comp.end_date,
+                    competition_submission_deadline=comp.submission_deadline,
                 )
             )
         return results
@@ -309,7 +309,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
         )
 
         if sort == "name":
-            queryset = queryset.order_by("title")
+            queryset = queryset.order_by(Lower("title"))
         elif sort == "most-discussed":
             queryset = queryset.annotate(
                 discussion_count=_top_level_discussion_count()

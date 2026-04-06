@@ -69,7 +69,7 @@ export function CompetitionsList({ competitions }: CompetitionsListProps) {
                     {competition.name}
                   </h2>
                   <p className="text-muted-foreground text-xs mt-1">
-                    {formatDateRange(competition.start_date, competition.end_date)}
+                    {formatDateRange(competition.start_date, competition.submission_deadline)}
                   </p>
                   <p className="text-muted-foreground text-xs mt-1">
                     {competition.project_count} project
@@ -116,7 +116,7 @@ export function CompetitionsList({ competitions }: CompetitionsListProps) {
                     <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
                   </div>
                   <p className="text-muted-foreground text-xs mt-1">
-                    {formatDateRange(competition.start_date, competition.end_date)}
+                    {formatDateRange(competition.start_date, competition.submission_deadline)}
                   </p>
                   <p className="text-muted-foreground text-xs mt-1">
                     {competition.project_count} project

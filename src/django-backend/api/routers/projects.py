@@ -80,8 +80,8 @@ def list_winners(request: HttpRequest) -> list[WinnerProjectResponse]:
             in_use_image_url=w.in_use_image_url,
             competition_name=w.competition_name,
             competition_slug=w.competition_slug,
-            competition_end_date=w.competition_end_date.isoformat()
-            if w.competition_end_date
+            competition_submission_deadline=w.competition_submission_deadline.isoformat()
+            if w.competition_submission_deadline
             else "",
         )
         for w in REPO.project.list_winners()

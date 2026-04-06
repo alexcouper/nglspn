@@ -6,7 +6,6 @@ import {
 } from "@/lib/api/server";
 import { ProjectsPage } from "./ProjectsPage";
 
-export const revalidate = 3600;
 
 export default async function PreviewProjectsPage() {
   const [categories, featured, newArrivals, winners] =

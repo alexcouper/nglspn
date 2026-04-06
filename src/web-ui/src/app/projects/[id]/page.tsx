@@ -1,16 +1,10 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ProjectDetailContent } from "./ProjectDetailContent";
-import { fetchProject, getAllProjectIds, ApiNotFoundError } from "@/lib/api/server";
-export const revalidate = 3600;
+import { fetchProject, ApiNotFoundError } from "@/lib/api/server";
 
 interface PageProps {
   params: Promise<{ id: string }>;
-}
-
-export async function generateStaticParams() {
-  const ids = await getAllProjectIds();
-  return ids.map((id) => ({ id }));
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

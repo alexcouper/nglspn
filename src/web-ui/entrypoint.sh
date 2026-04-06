@@ -6,9 +6,6 @@ if [ -n "$API_URL" ]; then
   find /app/.next -type f -name "*.js" -exec sed -i "s|__NEXT_PUBLIC_API_URL_PLACEHOLDER__|$API_URL|g" {} +
 fi
 
-if [ -n "$MAINTENANCE_BYPASS_SECRET" ]; then
-  find /app/.next -type f -name "*.js" -exec sed -i "s|__NEXT_PUBLIC_MAINTENANCE_BYPASS_SECRET_PLACEHOLDER__|$MAINTENANCE_BYPASS_SECRET|g" {} +
-fi
 
 # Replace CSP placeholders in the routes manifest so the Content-Security-Policy
 # header matches the actual backend/CDN for this deployment.

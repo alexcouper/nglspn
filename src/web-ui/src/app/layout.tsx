@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { AuthProvider } from "@/contexts/auth";
-import { MaintenanceProvider } from "@/contexts/maintenance";
 import { Navigation } from "@/components/Navigation";
 import { PlausibleTracker } from "@/components/PlausibleTracker";
 import "./globals.css";
@@ -56,14 +55,12 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
         <PlausibleTracker />
-        <MaintenanceProvider>
-          <AuthProvider>
-            <Suspense>
-              <Navigation />
-            </Suspense>
-            {children}
-          </AuthProvider>
-        </MaintenanceProvider>
+        <AuthProvider>
+          <Suspense>
+            <Navigation />
+          </Suspense>
+          <Suspense>{children}</Suspense>
+        </AuthProvider>
       </body>
     </html>
   );

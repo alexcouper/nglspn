@@ -61,7 +61,6 @@ services:
       API_URL: http://backend:8000
       NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL:-}
       NEXT_PUBLIC_CDN_URL: ${NEXT_PUBLIC_CDN_URL:-}
-      MAINTENANCE_BYPASS_SECRET: ${MAINTENANCE_BYPASS_SECRET:-}
 
 volumes:
   postgres_data:

@@ -15,7 +15,9 @@ class AdminIPMiddleware:
         self.get_response = get_response
 
     def __call__(self, request: HttpRequest) -> HttpResponse:
-        if request.path.startswith("/admin"):
+        if request.path.startswith("/admin") and getattr(
+            settings, "ADMIN_IP_RESTRICTION_ENABLED", False
+        ):
             allowed_ips: list[Any] = getattr(settings, "ADMIN_ALLOWED_IPS", [])
             num_proxies: int = getattr(settings, "NUM_TRUSTED_PROXIES", 1)
             # Get client IP from X-Forwarded-For (set by proxies) or fall back

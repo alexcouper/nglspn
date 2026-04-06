@@ -79,8 +79,16 @@ def get_my_review_competition(
         return 404, Error(detail="Competition not found")
 
     competition = Competition.objects.prefetch_related(
-        "projects",
-        "projects__images",
+        Prefetch(
+            "projects",
+            queryset=Project.objects.exclude(status__in=EXCLUDED_PROJECT_STATUSES),
+        ),
+        Prefetch(
+            "projects__images",
+            queryset=ProjectImage.objects.filter(
+                upload_status="uploaded"
+            ).prefetch_related("variants"),
+        ),
     ).get(id=competition_id)
 
     rankings = {
@@ -101,7 +109,7 @@ def get_my_review_competition(
             icon_url=ReviewProjectResponse.resolve_icon_url(p),
             my_ranking=rankings.get(p.id),
         )
-        for p in competition.projects.exclude(status__in=EXCLUDED_PROJECT_STATUSES)
+        for p in competition.projects.all()
     ]
 
     return ReviewCompetitionDetailResponse(

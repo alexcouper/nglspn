@@ -23,12 +23,9 @@ export class ApiNotFoundError extends Error {
   }
 }
 
-async function serverFetch<T>(
-  path: string,
-  options?: { tags?: string[] }
-): Promise<T> {
+async function serverFetch<T>(path: string): Promise<T> {
   const res = await fetch(`${API_URL}${path}`, {
-    next: { tags: options?.tags },
+    cache: "no-store",
   });
   if (!res.ok) {
     if (res.status === 404) throw new ApiNotFoundError(path);
@@ -46,80 +43,45 @@ export async function fetchProjects(params?: {
   if (params?.sort_order) searchParams.set("sort_order", params.sort_order);
   const query = searchParams.toString();
   const path = query ? `/api/projects?${query}` : "/api/projects";
-  return serverFetch<ProjectListResponse>(path, { tags: ["projects"] });
+  return serverFetch<ProjectListResponse>(path);
 }
 
 export async function fetchProject(id: string): Promise<Project> {
-  return serverFetch<Project>(`/api/projects/${id}`, {
-    tags: ["projects", `project-${id}`],
-  });
+  return serverFetch<Project>(`/api/projects/${id}`);
 }
 
 export async function fetchCompetitions(): Promise<CompetitionOverviewListResponse> {
-  return serverFetch<CompetitionOverviewListResponse>("/api/competitions", {
-    tags: ["competitions"],
-  });
+  return serverFetch<CompetitionOverviewListResponse>("/api/competitions");
 }
 
 export async function fetchCompetition(
   idOrSlug: string
 ): Promise<Competition> {
-  return serverFetch<Competition>(`/api/competitions/${idOrSlug}`, {
-    tags: ["competitions", `competition-${idOrSlug}`],
-  });
+  return serverFetch<Competition>(`/api/competitions/${idOrSlug}`);
 }
 
 export async function fetchCompetitionHighlights(): Promise<CompetitionHighlightsResponse> {
   return serverFetch<CompetitionHighlightsResponse>(
-    "/api/competitions/highlights",
-    { tags: ["competitions"] }
+    "/api/competitions/highlights"
   );
 }
 
 export async function fetchCategories(): Promise<CategoryItem[]> {
-  return serverFetch<CategoryItem[]>("/api/projects/categories", {
-    tags: ["projects", "categories"],
-  });
+  return serverFetch<CategoryItem[]>("/api/projects/categories");
 }
 
 export async function fetchFeaturedProjects(): Promise<DiscoverProject[]> {
-  return serverFetch<DiscoverProject[]>("/api/projects/featured", {
-    tags: ["projects", "featured"],
-  });
+  return serverFetch<DiscoverProject[]>("/api/projects/featured");
 }
 
 export async function fetchNewArrivals(): Promise<DiscoverProject[]> {
-  return serverFetch<DiscoverProject[]>("/api/projects/new-arrivals", {
-    tags: ["projects", "new-arrivals"],
-  });
+  return serverFetch<DiscoverProject[]>("/api/projects/new-arrivals");
 }
 
 export async function fetchWinners(): Promise<WinnerProject[]> {
-  return serverFetch<WinnerProject[]>("/api/projects/winners", {
-    tags: ["projects", "winners"],
-  });
+  return serverFetch<WinnerProject[]>("/api/projects/winners");
 }
 
 export async function fetchMostDiscussed(): Promise<DiscoverProject[]> {
-  return serverFetch<DiscoverProject[]>("/api/projects/most-discussed", {
-    tags: ["projects", "most-discussed"],
-  });
-}
-
-export async function getAllProjectIds(): Promise<string[]> {
-  try {
-    const data = await fetchProjects({ sort_by: "title", sort_order: "asc" });
-    return data.projects.map((p) => p.id);
-  } catch {
-    return [];
-  }
-}
-
-export async function getAllCompetitionSlugs(): Promise<string[]> {
-  try {
-    const data = await fetchCompetitions();
-    return data.competitions.map((c) => c.slug);
-  } catch {
-    return [];
-  }
+  return serverFetch<DiscoverProject[]>("/api/projects/most-discussed");
 }

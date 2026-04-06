@@ -1,16 +1,10 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CompetitionReveal } from "./CompetitionReveal";
-import { fetchCompetition, getAllCompetitionSlugs, ApiNotFoundError } from "@/lib/api/server";
-export const revalidate = 3600;
+import { fetchCompetition, ApiNotFoundError } from "@/lib/api/server";
 
 interface PageProps {
   params: Promise<{ id: string }>;
-}
-
-export async function generateStaticParams() {
-  const slugs = await getAllCompetitionSlugs();
-  return slugs.map((id) => ({ id }));
 }
 
 export async function generateMetadata({

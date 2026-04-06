@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from uuid import UUID
 
 from django.db.models import Count, Prefetch, Q, QuerySet
-from django.db.models.functions import Coalesce
+from django.db.models.functions import Coalesce, Lower
 from django.utils import timezone
 
 from apps.projects.models import (
@@ -309,7 +309,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
         )
 
         if sort == "name":
-            queryset = queryset.order_by("title")
+            queryset = queryset.order_by(Lower("title"))
         elif sort == "most-discussed":
             queryset = queryset.annotate(
                 discussion_count=_top_level_discussion_count()

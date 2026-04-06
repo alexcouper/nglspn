@@ -5,6 +5,7 @@ from typing import Any
 from uuid import UUID
 
 from django.db.models import Prefetch
+from django.db.models.functions import Lower
 from ninja import Schema
 
 from apps.projects.models import ProjectImage, ProjectStatus
@@ -63,7 +64,7 @@ class CompetitionResponse(Schema):
     def from_competition(cls, competition: Any) -> "CompetitionResponse":
         approved_projects = list(
             competition.projects.filter(status=ProjectStatus.APPROVED)
-            .order_by("title")
+            .order_by(Lower("title"))
             .prefetch_related(
                 Prefetch(
                     "images",

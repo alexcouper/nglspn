@@ -22,6 +22,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Bars3Icon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import { api, ReviewProject } from "@/lib/api";
+import { FinishReviewDialog } from "./FinishReviewDialog";
 
 interface CompetitionProjectsProps {
   competitionId: string;
@@ -41,6 +42,7 @@ export function CompetitionProjects({
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [showFinishDialog, setShowFinishDialog] = useState(false);
   const saveTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const sensors = useSensors(
@@ -89,6 +91,7 @@ export function CompetitionProjects({
     setIsFinishing(true);
     try {
       await api.myReview.updateStatus(competitionId, "completed");
+      setShowFinishDialog(false);
       onFinishReview();
     } catch {
       setSaveError("Failed to finish review");
@@ -157,14 +160,20 @@ export function CompetitionProjects({
       {!isCompleted && (
         <div className="mt-8 pt-6 border-t border-border">
           <button
-            onClick={handleFinishReview}
-            disabled={isFinishing}
+            onClick={() => setShowFinishDialog(true)}
             className="w-full btn-primary py-3"
           >
-            {isFinishing ? "Finishing..." : "Finish Review"}
+            Finish Review
           </button>
         </div>
       )}
+
+      <FinishReviewDialog
+        isOpen={showFinishDialog}
+        onConfirm={handleFinishReview}
+        onCancel={() => setShowFinishDialog(false)}
+        isFinishing={isFinishing}
+      />
     </div>
   );
 }

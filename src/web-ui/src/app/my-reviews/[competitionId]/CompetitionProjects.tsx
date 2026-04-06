@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
-import Image from "next/image";
 import Link from "next/link";
+import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 import {
   DndContext,
   closestCenter,
@@ -26,6 +26,7 @@ import { FinishReviewDialog } from "./FinishReviewDialog";
 
 interface CompetitionProjectsProps {
   competitionId: string;
+  competitionName: string;
   projects: ReviewProject[];
   isCompleted: boolean;
   onProjectsReorder: (projects: ReviewProject[]) => void;
@@ -34,6 +35,7 @@ interface CompetitionProjectsProps {
 
 export function CompetitionProjects({
   competitionId,
+  competitionName,
   projects,
   isCompleted,
   onProjectsReorder,
@@ -123,7 +125,7 @@ export function CompetitionProjects({
 
   return (
     <div>
-      <div className="h-5 mb-4 text-xs text-muted-foreground">
+      <div className="mb-4 text-xs text-muted-foreground">
         {isCompleted ? (
           <span className="text-emerald-600 flex items-center gap-1">
             <CheckCircleIcon className="w-3.5 h-3.5" />
@@ -134,7 +136,11 @@ export function CompetitionProjects({
             {isSaving && "Saving..."}
             {saveError && <span className="text-red-500">{saveError}</span>}
             {!isSaving && !saveError && (
-              <span>Drag to reorder</span>
+              <span>
+                Rank the projects in the order you think most worthy of the{" "}
+                {competitionName} prize. The highest community ranked project
+                will be declared the winner!
+              </span>
             )}
           </>
         )}
@@ -198,17 +204,21 @@ function ProjectCard({
           {rank}
         </div>
 
-        {project.main_image_url && (
-          <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
-            <Image
-              src={project.main_image_url}
+        <div className="app-icon" style={{ width: 44, height: 44 }}>
+          {project.icon_url ? (
+            /* eslint-disable-next-line @next/next/no-img-element */
+            <img
+              src={project.icon_url}
               alt={project.title}
-              fill
-              className="object-cover"
-              sizes="56px"
+              className="object-cover w-full h-full"
             />
-          </div>
-        )}
+          ) : (
+            <GradientPlaceholder
+              id={project.id}
+              className="w-full h-full rounded-lg"
+            />
+          )}
+        </div>
 
         <Link href={projectUrl} className="flex-1 text-left min-w-0">
           <h3 className="font-medium text-sm text-muted-foreground truncate">
@@ -273,17 +283,21 @@ function SortableProjectCard({
         {rank}
       </div>
 
-      {project.main_image_url && (
-        <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
-          <Image
-            src={project.main_image_url}
+      <div className="app-icon" style={{ width: 44, height: 44 }}>
+        {project.icon_url ? (
+          /* eslint-disable-next-line @next/next/no-img-element */
+          <img
+            src={project.icon_url}
             alt={project.title}
-            fill
-            className="object-cover"
-            sizes="56px"
+            className="object-cover w-full h-full"
           />
-        </div>
-      )}
+        ) : (
+          <GradientPlaceholder
+            id={project.id}
+            className="w-full h-full rounded-lg"
+          />
+        )}
+      </div>
 
       <Link href={projectUrl} className="flex-1 text-left min-w-0 group">
         <h3 className="font-medium text-sm text-foreground truncate group-hover:text-accent transition-colors">

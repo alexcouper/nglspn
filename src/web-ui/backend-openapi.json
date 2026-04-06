@@ -4259,6 +4259,17 @@
             ],
             "title": "Main Image Url"
           },
+          "icon_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Url"
+          },
           "my_ranking": {
             "anyOf": [
               {

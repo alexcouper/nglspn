@@ -98,6 +98,7 @@ def get_my_review_competition(
             description=p.description,
             website_url=p.website_url,
             main_image_url=ReviewProjectResponse.resolve_main_image_url(p),
+            icon_url=ReviewProjectResponse.resolve_icon_url(p),
             my_ranking=rankings.get(p.id),
         )
         for p in competition.projects.exclude(status__in=EXCLUDED_PROJECT_STATUSES)

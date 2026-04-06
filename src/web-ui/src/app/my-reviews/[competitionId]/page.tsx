@@ -96,6 +96,7 @@ export default function CompetitionProjectsPage() {
   return (
     <CompetitionProjects
       competitionId={competitionId}
+      competitionName={competition.name}
       projects={projects}
       isCompleted={competition.my_review_status === "completed"}
       onProjectsReorder={handleProjectsReorder}

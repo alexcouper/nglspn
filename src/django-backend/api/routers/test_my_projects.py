@@ -242,6 +242,30 @@ class TestCreateProjectWithCompetition:
             has_entries(detail="Competition is not accepting applications"),
         )
 
+    def test_create_project_with_voting_competition_returns_400(
+        self,
+        client,
+        auth_headers,
+    ) -> None:
+        competition = CompetitionFactory(status=CompetitionStatus.VOTING)
+        payload = {
+            "website_url": "https://example.com",
+            "competition_id": str(competition.id),
+        }
+
+        response = client.post(
+            "/api/my/projects",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(
+            response.json(),
+            has_entries(detail="Competition is not accepting applications"),
+        )
+
 
 class TestGetMyProject:
     def test_get_my_project(self, client, project, auth_headers) -> None:

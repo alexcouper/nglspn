@@ -9,6 +9,7 @@ import {
 } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
 
 function formatDateRange(startDate: string, endDate: string): string {
   const start = new Date(startDate);
@@ -35,6 +36,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
   const [competition] = useState<Competition>(initialCompetition);
 
   const isOpen = competition.status === "accepting_applications";
+  const isVoting = competition.status === "voting";
 
   return (
     <div className="space-y-8">
@@ -61,11 +63,10 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
           })()}
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.9)] via-[rgba(15,23,42,0.4)] to-[rgba(15,23,42,0.15)]" />
           <div className="absolute bottom-0 left-0 right-0 p-5 sm:p-8">
-            {isOpen && (
-              <span className="badge badge-success text-xs mb-3 inline-flex">
-                <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mr-1.5 pulse-dot" />
-                Open for Submissions
-              </span>
+            {(isOpen || isVoting) && (
+              <div className="mb-3">
+                <CompetitionStatusBadge status={competition.status} className="text-xs" />
+              </div>
             )}
             <h1 className="text-2xl sm:text-4xl font-bold text-white tracking-tight">
               {competition.name}
@@ -100,6 +101,16 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
             <RocketLaunchIcon className="w-4 h-4" />
             Submit a Project
           </Link>
+        </div>
+      )}
+
+      {/* Voting banner */}
+      {isVoting && (
+        <div className="bg-violet-50 rounded-xl border border-violet-200 p-5 sm:p-6 flex items-center gap-3">
+          <span className="w-2 h-2 bg-violet-500 rounded-full pulse-dot flex-shrink-0" />
+          <p className="text-violet-800 font-medium text-sm">
+            Voting is in progress. The winner will be announced soon.
+          </p>
         </div>
       )}
 

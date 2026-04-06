@@ -4717,6 +4717,7 @@
         "enum": [
           "pending",
           "accepting_applications",
+          "voting",
           "closed"
         ],
         "title": "CompetitionStatusEnum",

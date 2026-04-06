@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import type { CompetitionSummary } from "@/lib/api";
+import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
 
 function formatPrizeAmount(amount: string | null): string {
   if (!amount) return "";
@@ -11,6 +12,8 @@ function formatPrizeAmount(amount: string | null): string {
 
 function CompetitionCard({ competition }: { competition: CompetitionSummary }) {
   const isOpen = competition.status === "accepting_applications";
+  const isVoting = competition.status === "voting";
+  const isActive = isOpen || isVoting;
 
   const end = new Date(competition.end_date);
   const now = new Date();
@@ -43,16 +46,7 @@ function CompetitionCard({ competition }: { competition: CompetitionSummary }) {
         )}
         {/* Status badge */}
         <div className="absolute top-3 left-3">
-          {isOpen ? (
-            <span className="badge bg-emerald-500 text-white text-xs font-medium px-2.5 py-1">
-              <span className="w-1.5 h-1.5 bg-white rounded-full mr-1.5 pulse-dot inline-block" />
-              Open
-            </span>
-          ) : (
-            <span className="badge bg-slate-800/80 backdrop-blur-sm text-white text-xs font-medium px-2.5 py-1">
-              Completed
-            </span>
-          )}
+          <CompetitionStatusBadge status={competition.status} className="text-xs font-medium px-2.5 py-1" />
         </div>
       </div>
 
@@ -62,7 +56,7 @@ function CompetitionCard({ competition }: { competition: CompetitionSummary }) {
           {competition.name}
         </h3>
         <div className="mt-auto pt-3 flex items-center justify-between text-xs text-muted-foreground">
-          {isOpen ? (
+          {isActive ? (
             <>
               <span>{daysRemaining} {daysRemaining === 1 ? "day" : "days"} remaining</span>
               {prizeText && <span className="font-medium text-emerald-600">{prizeText}</span>}

@@ -74,7 +74,9 @@ def get_active_or_most_recent(request: HttpRequest) -> ActiveOrRecentResponse:
 
     active = base_qs.filter(status=CompetitionStatus.ACCEPTING_APPLICATIONS).first()
     recent = (
-        base_qs.filter(status=CompetitionStatus.CLOSED).order_by("-end_date").first()
+        base_qs.filter(status__in=[CompetitionStatus.CLOSED, CompetitionStatus.VOTING])
+        .order_by("-end_date")
+        .first()
     )
 
     return ActiveOrRecentResponse(

@@ -17,6 +17,7 @@ from .tag import TagWithCategoryResponse
 class CompetitionStatusEnum(str, Enum):
     PENDING = "pending"
     ACCEPTING_APPLICATIONS = "accepting_applications"
+    VOTING = "voting"
     CLOSED = "closed"
 
 

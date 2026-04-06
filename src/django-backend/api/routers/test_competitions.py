@@ -385,6 +385,17 @@ class TestCompetitionStatus:
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json()["status"], equal_to("closed"))
 
+    def test_competition_with_voting_status(
+        self,
+        client,
+    ) -> None:
+        competition = CompetitionFactory(status=CompetitionStatus.VOTING)
+
+        response = client.get(f"/api/competitions/{competition.id}")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["status"], equal_to("voting"))
+
     def test_setting_winner_on_creation_sets_status_to_closed(
         self,
         client,
@@ -530,6 +541,22 @@ class TestActiveOrMostRecent:
         active = response.json()["active"]
         assert_that(active["project_count"], equal_to(1))
         assert "projects" not in active
+
+    def test_returns_voting_competition_as_recent(self, client) -> None:
+        CompetitionFactory(
+            status=CompetitionStatus.VOTING,
+            name="Voting Comp",
+            end_date="2025-03-01",
+        )
+
+        response = client.get("/api/competitions/active-or-most-recent")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["active"], equal_to(None))
+        assert_that(
+            response.json()["recent"],
+            has_entries(name="Voting Comp", status="voting"),
+        )
 
     def test_does_not_include_winner_or_pending_count(self, client) -> None:
         winner = ProjectFactory(status=ProjectStatus.APPROVED)

@@ -8,6 +8,11 @@
         <input type="submit" name="_add_all_reviewers" value="Add all users as reviewers"
                style="background: #0d6efd; color: white;"
                title="Assigns every active user as a reviewer for this competition" />
+        <a href="{{ voting_results_url }}" class="button"
+           style="background: #7c3aed; color: white; padding: 6px 12px; text-decoration: none; margin-left: 8px;"
+           title="View the aggregated voting results for this competition">
+          View Voting Results
+        </a>
     </div>
     {% endif %}
 {% endblock %}

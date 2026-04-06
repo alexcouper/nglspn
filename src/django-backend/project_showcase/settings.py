@@ -33,7 +33,9 @@ SECRET_KEY = os.getenv(
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.getenv("DEBUG", "False").lower() == "true"
 
-ADMIN_IP_RESTRICTION_ENABLED = os.getenv("ADMIN_IP_RESTRICTION_ENABLED", "False").lower() == "true"
+ADMIN_IP_RESTRICTION_ENABLED = (
+    os.getenv("ADMIN_IP_RESTRICTION_ENABLED", "False").lower() == "true"
+)
 ADMIN_ALLOWED_IPS = [
     ip.strip() for ip in os.getenv("ADMIN_ALLOWED_IPS", "").split(",") if ip.strip()
 ]

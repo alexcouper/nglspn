@@ -1,12 +1,14 @@
 from __future__ import annotations
 
 import logging
+from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 from django.contrib import admin, messages
 from django.db.models import Count, Q, QuerySet
 from django.http import HttpRequest, HttpResponse
-from django.urls import reverse
+from django.shortcuts import get_object_or_404, render
+from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
@@ -24,6 +26,7 @@ from .models import (
     ProjectRanking,
     ProjectStatus,
     ProjectView,
+    ReviewStatus,
 )
 
 if TYPE_CHECKING:
@@ -593,6 +596,111 @@ class CompetitionAdmin(admin.ModelAdmin):
             )
             return self.response_post_save_change(request, obj)
         return super().response_change(request, obj)
+
+    def get_urls(self) -> list:
+        custom_urls = [
+            path(
+                "<uuid:pk>/voting-results/",
+                self.admin_site.admin_view(self.voting_results_view),
+                name="projects_competition_voting_results",
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    def change_view(
+        self,
+        request: HttpRequest,
+        object_id: str,
+        form_url: str = "",
+        extra_context: dict[str, Any] | None = None,
+    ) -> HttpResponse:
+        extra_context = extra_context or {}
+        extra_context["voting_results_url"] = reverse(
+            "admin:projects_competition_voting_results",
+            args=[object_id],
+        )
+        return super().change_view(request, object_id, form_url, extra_context)
+
+    def voting_results_view(self, request: HttpRequest, pk: str) -> HttpResponse:
+        competition = get_object_or_404(Competition, pk=pk)
+
+        completed_reviewer_ids = CompetitionReviewer.objects.filter(
+            competition=competition,
+            status=ReviewStatus.COMPLETED,
+        ).values_list("user_id", flat=True)
+
+        total_voters = len(completed_reviewer_ids)
+
+        projects = competition.projects.exclude(
+            status__in=[ProjectStatus.REJECTED, ProjectStatus.ICE_BOX],
+        )
+        total_projects = projects.count()
+
+        project_data: dict[Any, dict] = {}
+        for project in projects:
+            project_data[project.id] = {
+                "project": project,
+                "total_score": 0,
+                "position_counts": defaultdict(int),
+            }
+
+        rankings = ProjectRanking.objects.filter(
+            competition=competition,
+            reviewer_id__in=completed_reviewer_ids,
+        ).select_related("project")
+
+        for ranking in rankings:
+            pid = ranking.project_id
+            if pid not in project_data:
+                continue
+            score = total_projects - ranking.position + 1
+            project_data[pid]["total_score"] += score
+            project_data[pid]["position_counts"][ranking.position] += 1
+
+        results = sorted(
+            project_data.values(),
+            key=lambda x: (
+                -x["total_score"],
+                -x["position_counts"].get(1, 0),
+            ),
+        )
+
+        rank = 1
+        for i, row in enumerate(results):
+            if i > 0 and row["total_score"] < results[i - 1]["total_score"]:
+                rank = i + 1
+            row["rank"] = rank
+
+        positions = list(range(1, total_projects + 1))
+        position_headers = [_ordinal(p) for p in positions]
+        for row in results:
+            row["position_list"] = [row["position_counts"].get(p, 0) for p in positions]
+
+        context = {
+            **self.admin_site.each_context(request),
+            "competition": competition,
+            "results": results,
+            "positions": positions,
+            "position_headers": position_headers,
+            "total_voters": total_voters,
+            "total_projects": total_projects,
+            "opts": self.model._meta,  # noqa: SLF001
+            "title": f"Voting Results: {competition.name}",
+        }
+        return render(
+            request,
+            "admin/projects/competition/voting_results.html",
+            context,
+        )
+
+
+_TEEN_RANGE = range(11, 14)
+_ORDINAL_SUFFIXES = {1: "st", 2: "nd", 3: "rd"}
+
+
+def _ordinal(n: int) -> str:
+    suffix = "th" if n % 100 in _TEEN_RANGE else _ORDINAL_SUFFIXES.get(n % 10, "th")
+    return f"{n}{suffix}"
 
 
 @admin.register(CompetitionReviewer)

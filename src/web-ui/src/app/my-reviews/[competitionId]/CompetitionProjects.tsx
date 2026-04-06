@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 import {
   DndContext,
   closestCenter,
@@ -204,21 +204,17 @@ function ProjectCard({
           {rank}
         </div>
 
-        <div className="app-icon" style={{ width: 44, height: 44 }}>
-          {project.icon_url ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={project.icon_url}
+        {project.main_image_url && (
+          <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
+            <Image
+              src={project.main_image_url}
               alt={project.title}
-              className="object-cover w-full h-full"
+              fill
+              className="object-cover"
+              sizes="56px"
             />
-          ) : (
-            <GradientPlaceholder
-              id={project.id}
-              className="w-full h-full rounded-lg"
-            />
-          )}
-        </div>
+          </div>
+        )}
 
         <Link href={projectUrl} className="flex-1 text-left min-w-0">
           <h3 className="font-medium text-sm text-muted-foreground truncate">
@@ -283,21 +279,17 @@ function SortableProjectCard({
         {rank}
       </div>
 
-      <div className="app-icon" style={{ width: 44, height: 44 }}>
-        {project.icon_url ? (
-          /* eslint-disable-next-line @next/next/no-img-element */
-          <img
-            src={project.icon_url}
+      {project.main_image_url && (
+        <div className="relative w-14 h-14 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
+          <Image
+            src={project.main_image_url}
             alt={project.title}
-            className="object-cover w-full h-full"
+            fill
+            className="object-cover"
+            sizes="56px"
           />
-        ) : (
-          <GradientPlaceholder
-            id={project.id}
-            className="w-full h-full rounded-lg"
-          />
-        )}
-      </div>
+        </div>
+      )}
 
       <Link href={projectUrl} className="flex-1 text-left min-w-0 group">
         <h3 className="font-medium text-sm text-foreground truncate group-hover:text-accent transition-colors">

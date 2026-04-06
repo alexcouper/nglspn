@@ -8,7 +8,6 @@ from ninja import Schema
 from api.schemas.project import ProjectImageResponse, WonCompetitionInfo
 from api.schemas.tag import TagWithCategoryResponse
 from api.schemas.user import UserResponse
-from services.project.django_impl.query import _variant_url, resolve_image_by_purpose
 
 
 class ReviewStatusEnum(str, Enum):
@@ -40,7 +39,6 @@ class ReviewProjectResponse(Schema):
     description: str
     website_url: str
     main_image_url: str | None = None
-    icon_url: str | None = None
     my_ranking: int | None = None
 
     @staticmethod
@@ -49,11 +47,6 @@ class ReviewProjectResponse(Schema):
         if not main_image:
             main_image = obj.images.filter(upload_status="uploaded").first()
         return main_image.url if main_image else None
-
-    @staticmethod
-    def resolve_icon_url(obj: Any) -> str | None:
-        icon = resolve_image_by_purpose(obj, "icon")
-        return _variant_url(icon, "thumb")
 
 
 class ReviewCompetitionDetailResponse(Schema):

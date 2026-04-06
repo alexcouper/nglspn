@@ -238,6 +238,7 @@ class ImageVariant(models.Model):
 class CompetitionStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     ACCEPTING_APPLICATIONS = "accepting_applications", "Accepting Applications"
+    VOTING = "voting", "Voting"
     CLOSED = "closed", "Closed"
 
 
@@ -288,7 +289,14 @@ class Competition(models.Model):
     def save(self, *args: Any, **kwargs: Any) -> None:
         if not self.slug:
             self.slug = slugify(transliterate_icelandic(self.name))
-        if self.winner is not None:
+        if self.winner is not None and self.pk:
+            try:
+                old = Competition.objects.get(pk=self.pk)
+                if old.winner_id != self.winner_id:
+                    self.status = CompetitionStatus.CLOSED
+            except Competition.DoesNotExist:
+                self.status = CompetitionStatus.CLOSED
+        elif self.winner is not None:
             self.status = CompetitionStatus.CLOSED
         super().save(*args, **kwargs)
 

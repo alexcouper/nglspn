@@ -28,7 +28,7 @@ export type {
   CompetitionListResponse,
   CompetitionProject,
   Tag,
-  ActiveOrRecentResponse,
+  CompetitionHighlightsResponse,
 } from "./competitions";
 
 // Types - Discussions

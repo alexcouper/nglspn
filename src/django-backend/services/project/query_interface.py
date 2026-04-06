@@ -37,7 +37,7 @@ class WinnerItem:
     in_use_image_url: str | None = None
     competition_name: str = ""
     competition_slug: str = ""
-    competition_end_date: date | None = None
+    competition_submission_deadline: date | None = None
 
 
 @dataclass(frozen=True)

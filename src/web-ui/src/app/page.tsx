@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { CompetitionHighlight } from "./components/CompetitionHighlight";
-import { fetchActiveOrRecentCompetition } from "@/lib/api/server";
+import { fetchCompetitionHighlights } from "@/lib/api/server";
 export const revalidate = 3600;
 
 export default async function Home() {
-  const { active, recent } = await fetchActiveOrRecentCompetition().catch(
-    () => ({ active: undefined, recent: undefined })
+  const { competitions } = await fetchCompetitionHighlights().catch(
+    () => ({ competitions: [] })
   );
   return (
     <main className="min-h-screen">
@@ -39,7 +39,7 @@ export default async function Home() {
       {/* Competition highlight */}
       <section className="bg-white py-16 px-4 sm:px-6 border-b border-border">
         <div className="max-w-5xl mx-auto">
-          <CompetitionHighlight active={active ?? null} recent={recent ?? null} />
+          <CompetitionHighlight competitions={competitions ?? []} />
         </div>
       </section>
 

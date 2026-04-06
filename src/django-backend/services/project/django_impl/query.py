@@ -265,7 +265,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
                     ).prefetch_related("variants"),
                 ),
             )
-            .order_by("-end_date")
+            .order_by("-submission_deadline")
         )
         results = []
         for comp in competitions:
@@ -281,7 +281,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
                     in_use_image_url=_variant_url(in_use, "medium"),
                     competition_name=comp.name,
                     competition_slug=comp.slug,
-                    competition_end_date=comp.end_date,
+                    competition_submission_deadline=comp.submission_deadline,
                 )
             )
         return results

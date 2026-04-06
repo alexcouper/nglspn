@@ -24,7 +24,7 @@ export async function generateMetadata({
       day: "numeric",
       year: "numeric",
     });
-    const end = new Date(competition.end_date).toLocaleDateString("en-US", {
+    const end = new Date(competition.submission_deadline).toLocaleDateString("en-US", {
       month: "short",
       day: "numeric",
       year: "numeric",

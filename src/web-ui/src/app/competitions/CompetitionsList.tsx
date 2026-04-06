@@ -151,7 +151,7 @@ function HeroBanner({ competition }: { competition: CompetitionOverview }) {
               {competition.name}
             </h2>
             <p className="text-slate-300 text-sm mt-1">
-              {formatDateRange(competition.start_date, competition.end_date)}
+              {formatDateRange(competition.start_date, competition.submission_deadline)}
               {" · "}
               {competition.project_count} project
               {competition.project_count !== 1 ? "s" : ""}

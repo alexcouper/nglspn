@@ -435,7 +435,7 @@ COMPETITIONS = [
     {
         "name": "Janúar keppni 2025",
         "start_date": date(2025, 1, 1),
-        "end_date": date(2025, 1, 31),
+        "submission_deadline": date(2025, 1, 31),
         "quote": "Celebrating Iceland's most innovative projects.",
         "prize_amount": 50000,
         "status": CompetitionStatus.CLOSED,
@@ -445,7 +445,7 @@ COMPETITIONS = [
     {
         "name": "Febrúar keppni 2025",
         "start_date": date(2025, 2, 1),
-        "end_date": date(2025, 2, 28),
+        "submission_deadline": date(2025, 2, 28),
         "quote": "Building the future of Icelandic tech.",
         "prize_amount": 50000,
         "status": CompetitionStatus.CLOSED,
@@ -455,7 +455,7 @@ COMPETITIONS = [
     {
         "name": "Mars keppni 2025",
         "start_date": date(2025, 3, 1),
-        "end_date": date(2025, 3, 31),
+        "submission_deadline": date(2025, 3, 31),
         "quote": "Spring into innovation.",
         "prize_amount": 75000,
         "status": CompetitionStatus.ACCEPTING_APPLICATIONS,
@@ -578,7 +578,7 @@ def create_competitions(projects: list[Project], users: list[User]) -> None:
         comp = Competition(
             name=comp_data["name"],
             start_date=comp_data["start_date"],
-            end_date=comp_data["end_date"],
+            submission_deadline=comp_data["submission_deadline"],
             quote=comp_data["quote"],
             prize_amount=comp_data["prize_amount"],
             status=comp_data["status"],

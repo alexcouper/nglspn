@@ -46,7 +46,8 @@ class CompetitionResponse(Schema):
     name: str
     slug: str
     start_date: date
-    end_date: date
+    submission_deadline: date
+    voting_end_date: date | None = None
     quote: str | None = None
     prize_amount: Decimal | None = None
     status: CompetitionStatusEnum
@@ -81,7 +82,8 @@ class CompetitionResponse(Schema):
             name=competition.name,
             slug=competition.slug,
             start_date=competition.start_date,
-            end_date=competition.end_date,
+            submission_deadline=competition.submission_deadline,
+            voting_end_date=competition.voting_end_date,
             quote=competition.quote,
             prize_amount=competition.prize_amount,
             status=competition.status,
@@ -109,7 +111,8 @@ class CompetitionOverviewResponse(Schema):
     name: str
     slug: str
     start_date: date
-    end_date: date
+    submission_deadline: date
+    voting_end_date: date | None = None
     prize_amount: Decimal | None = None
     status: CompetitionStatusEnum
     image_url: str | None = None
@@ -125,7 +128,8 @@ class CompetitionOverviewResponse(Schema):
             name=competition.name,
             slug=competition.slug,
             start_date=competition.start_date,
-            end_date=competition.end_date,
+            submission_deadline=competition.submission_deadline,
+            voting_end_date=competition.voting_end_date,
             prize_amount=competition.prize_amount,
             status=competition.status,
             image_url=competition.image_url,
@@ -151,7 +155,8 @@ class CompetitionListResponse(Schema):
 class CompetitionSummaryResponse(Schema):
     name: str
     slug: str
-    end_date: date
+    submission_deadline: date
+    voting_end_date: date | None = None
     prize_amount: Decimal | None = None
     status: CompetitionStatusEnum
     image_url: str | None = None
@@ -162,7 +167,8 @@ class CompetitionSummaryResponse(Schema):
         return cls(
             name=competition.name,
             slug=competition.slug,
-            end_date=competition.end_date,
+            submission_deadline=competition.submission_deadline,
+            voting_end_date=competition.voting_end_date,
             prize_amount=competition.prize_amount,
             status=competition.status,
             image_url=competition.image_url,
@@ -170,6 +176,5 @@ class CompetitionSummaryResponse(Schema):
         )
 
 
-class ActiveOrRecentResponse(Schema):
-    active: CompetitionSummaryResponse | None = None
-    recent: CompetitionSummaryResponse | None = None
+class CompetitionHighlightsResponse(Schema):
+    competitions: list[CompetitionSummaryResponse]

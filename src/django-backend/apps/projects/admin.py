@@ -480,12 +480,12 @@ class CompetitionAdmin(admin.ModelAdmin):
         "thumbnail",
         "name",
         "start_date",
-        "end_date",
+        "submission_deadline",
         "winner_name",
         "project_count",
         "reviewer_count",
     )
-    list_filter = ("start_date", "end_date")
+    list_filter = ("start_date", "submission_deadline")
     search_fields = ("name",)
     filter_horizontal = ("projects",)
     autocomplete_fields = ("winner",)
@@ -515,7 +515,14 @@ class CompetitionAdmin(admin.ModelAdmin):
         ),
         (
             "Dates & Prize",
-            {"fields": ("start_date", "end_date", "prize_amount")},
+            {
+                "fields": (
+                    "start_date",
+                    "submission_deadline",
+                    "voting_end_date",
+                    "prize_amount",
+                ),
+            },
         ),
         (
             "Status",

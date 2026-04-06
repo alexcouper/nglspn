@@ -47,7 +47,7 @@ def list_my_review_competitions(request: HttpRequest) -> ReviewCompetitionListRe
             id=a.competition.id,
             name=a.competition.name,
             start_date=a.competition.start_date,
-            end_date=a.competition.end_date,
+            submission_deadline=a.competition.submission_deadline,
             image_url=a.competition.image_url,
             project_count=a.competition.projects.exclude(
                 status__in=EXCLUDED_PROJECT_STATUSES
@@ -107,7 +107,7 @@ def get_my_review_competition(
         id=competition.id,
         name=competition.name,
         start_date=competition.start_date,
-        end_date=competition.end_date,
+        submission_deadline=competition.submission_deadline,
         my_review_status=assignment.status,
         projects=projects,
     )

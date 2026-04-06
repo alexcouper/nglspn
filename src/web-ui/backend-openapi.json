@@ -2481,10 +2481,10 @@
         ]
       }
     },
-    "/api/competitions/active-or-most-recent": {
+    "/api/competitions/highlights": {
       "get": {
-        "operationId": "api_routers_competitions_get_active_or_most_recent",
-        "summary": "Get Active Or Most Recent",
+        "operationId": "api_routers_competitions_get_highlights",
+        "summary": "Get Highlights",
         "parameters": [],
         "responses": {
           "200": {
@@ -2492,7 +2492,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ActiveOrRecentResponse"
+                  "$ref": "#/components/schemas/CompetitionHighlightsResponse"
                 }
               }
             }
@@ -3232,8 +3232,8 @@
             "title": "Competition Slug",
             "type": "string"
           },
-          "competition_end_date": {
-            "title": "Competition End Date",
+          "competition_submission_deadline": {
+            "title": "Competition Submission Deadline",
             "type": "string"
           }
         },
@@ -3243,7 +3243,7 @@
           "tagline",
           "competition_name",
           "competition_slug",
-          "competition_end_date"
+          "competition_submission_deadline"
         ],
         "title": "WinnerProjectResponse",
         "type": "object"
@@ -4141,9 +4141,9 @@
             "title": "Start Date",
             "type": "string"
           },
-          "end_date": {
+          "submission_deadline": {
             "format": "date",
-            "title": "End Date",
+            "title": "Submission Deadline",
             "type": "string"
           },
           "image_url": {
@@ -4169,7 +4169,7 @@
           "id",
           "name",
           "start_date",
-          "end_date",
+          "submission_deadline",
           "project_count",
           "my_review_status"
         ],
@@ -4201,9 +4201,9 @@
             "title": "Start Date",
             "type": "string"
           },
-          "end_date": {
+          "submission_deadline": {
             "format": "date",
-            "title": "End Date",
+            "title": "Submission Deadline",
             "type": "string"
           },
           "my_review_status": {
@@ -4221,7 +4221,7 @@
           "id",
           "name",
           "start_date",
-          "end_date",
+          "submission_deadline",
           "my_review_status",
           "projects"
         ],
@@ -4638,10 +4638,22 @@
             "title": "Start Date",
             "type": "string"
           },
-          "end_date": {
+          "submission_deadline": {
             "format": "date",
-            "title": "End Date",
+            "title": "Submission Deadline",
             "type": "string"
+          },
+          "voting_end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voting End Date"
           },
           "prize_amount": {
             "anyOf": [
@@ -4705,7 +4717,7 @@
           "name",
           "slug",
           "start_date",
-          "end_date",
+          "submission_deadline",
           "status",
           "project_count",
           "pending_projects_count"
@@ -4821,10 +4833,22 @@
             "title": "Start Date",
             "type": "string"
           },
-          "end_date": {
+          "submission_deadline": {
             "format": "date",
-            "title": "End Date",
+            "title": "Submission Deadline",
             "type": "string"
+          },
+          "voting_end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voting End Date"
           },
           "quote": {
             "anyOf": [
@@ -4916,7 +4940,7 @@
           "name",
           "slug",
           "start_date",
-          "end_date",
+          "submission_deadline",
           "status",
           "project_count",
           "projects",
@@ -4925,30 +4949,20 @@
         "title": "CompetitionResponse",
         "type": "object"
       },
-      "ActiveOrRecentResponse": {
+      "CompetitionHighlightsResponse": {
         "properties": {
-          "active": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CompetitionSummaryResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "recent": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CompetitionSummaryResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "competitions": {
+            "items": {
+              "$ref": "#/components/schemas/CompetitionSummaryResponse"
+            },
+            "title": "Competitions",
+            "type": "array"
           }
         },
-        "title": "ActiveOrRecentResponse",
+        "required": [
+          "competitions"
+        ],
+        "title": "CompetitionHighlightsResponse",
         "type": "object"
       },
       "CompetitionSummaryResponse": {
@@ -4961,10 +4975,22 @@
             "title": "Slug",
             "type": "string"
           },
-          "end_date": {
+          "submission_deadline": {
             "format": "date",
-            "title": "End Date",
+            "title": "Submission Deadline",
             "type": "string"
+          },
+          "voting_end_date": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Voting End Date"
           },
           "prize_amount": {
             "anyOf": [
@@ -5000,7 +5026,7 @@
         "required": [
           "name",
           "slug",
-          "end_date",
+          "submission_deadline",
           "status",
           "project_count"
         ],

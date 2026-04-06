@@ -130,7 +130,8 @@ class CompetitionFactory(factory.django.DjangoModelFactory):
 
     name = factory.Sequence(lambda n: f"Competition {n}")
     start_date = factory.LazyFunction(lambda: date(2025, 1, 1))
-    end_date = factory.LazyFunction(lambda: date(2025, 1, 31))
+    submission_deadline = factory.LazyFunction(lambda: date(2025, 1, 31))
+    voting_end_date = factory.LazyFunction(lambda: date(2025, 2, 15))
     winner = None
 
     @factory.post_generation

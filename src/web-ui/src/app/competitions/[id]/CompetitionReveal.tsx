@@ -72,7 +72,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
               {competition.name}
             </h1>
             <p className="text-slate-300 text-sm sm:text-base mt-2">
-              {formatDateRange(competition.start_date, competition.end_date)}
+              {formatDateRange(competition.start_date, competition.submission_deadline)}
               {competition.prize_amount &&
                 ` · ${formatPrize(competition.prize_amount)} prize`}
               {" · "}

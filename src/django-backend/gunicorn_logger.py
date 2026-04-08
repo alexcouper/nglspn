@@ -41,7 +41,11 @@ class StructuredLogger(GunicornLogger):
 
         method = environ.get("REQUEST_METHOD", "")
         query = environ.get("QUERY_STRING", "")
-        ip = environ.get("REMOTE_ADDR", "")
+        forwarded_for = environ.get("HTTP_X_FORWARDED_FOR", "")
+        if forwarded_for:
+            ip = forwarded_for.split(",")[0].strip()
+        else:
+            ip = environ.get("REMOTE_ADDR", "")
 
         status = None
         try:
@@ -65,6 +69,7 @@ class StructuredLogger(GunicornLogger):
                 "url": path,
                 "query": query,
                 "ip": ip,
+                "forwarded_for": forwarded_for,
                 "status": status,
                 "user_agent": user_agent,
                 "response_length": getattr(resp, "sent", None),

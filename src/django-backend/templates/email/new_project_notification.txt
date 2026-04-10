@@ -10,8 +10,6 @@ Title: {{ project_title }}
 Description:
 {{ project_description }}
 {% endif %}
-Review in admin: {{ project_admin_url }}
-
 ---
 Byggjum, deilum, vöxum saman
 

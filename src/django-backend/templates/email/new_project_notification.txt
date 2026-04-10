@@ -1,0 +1,18 @@
+New project submitted - Naglasúpan
+===================================
+
+A new project has been submitted to Naglasúpan and is waiting for review.
+
+Title: {{ project_title }}
+{% if project_tagline %}Tagline: {{ project_tagline }}
+{% endif %}Submitted by: {{ owner_name }} <{{ owner_email }}>
+{% if project_description %}
+Description:
+{{ project_description }}
+{% endif %}
+Review in admin: {{ project_admin_url }}
+
+---
+Byggjum, deilum, vöxum saman
+
+(c) {{ current_year }} Naglasúpan.

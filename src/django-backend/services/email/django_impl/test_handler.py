@@ -2,7 +2,7 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.emails.models import BroadcastEmailRecipient
+from apps.emails.models import BroadcastEmailRecipient, SentEmail, SentEmailType
 from services.email.django_impl import DjangoEmailHandler
 from tests.factories import (
     BroadcastEmailFactory,
@@ -61,6 +61,52 @@ class TestSendProjectApprovedEmail:
         html_content, mime_type = email.alternatives[0]
         assert mime_type == "text/html"
         assert "Awesome App" in html_content
+
+
+@pytest.mark.django_db
+class TestSendNewProjectNotification:
+    def test_sends_to_configured_recipient(self, mailoutbox):
+        project = ProjectFactory(title="Brand New Idea")
+
+        handler.send_new_project_notification(project, "admin@example.com")
+
+        assert len(mailoutbox) == 1
+        email = mailoutbox[0]
+        assert email.to == ["admin@example.com"]
+        assert "Brand New Idea" in email.subject
+        assert "Brand New Idea" in email.body
+
+    def test_includes_owner_and_admin_link_in_body(self, mailoutbox):
+        owner = UserFactory(first_name="Anna", last_name="Jónsdóttir")
+        project = ProjectFactory(title="Hugmynd", owner=owner)
+
+        handler.send_new_project_notification(project, "admin@example.com")
+
+        email = mailoutbox[0]
+        assert "Anna Jónsdóttir" in email.body
+        assert owner.email in email.body
+        assert f"/admin/projects/project/{project.id}/change/" in email.body
+
+    def test_has_html_and_text_parts(self, mailoutbox):
+        project = ProjectFactory(title="HTML Check")
+
+        handler.send_new_project_notification(project, "admin@example.com")
+
+        email = mailoutbox[0]
+        assert len(email.alternatives) == 1
+        html, mime = email.alternatives[0]
+        assert mime == "text/html"
+        assert "HTML Check" in html
+
+    def test_logs_sent_email(self):
+        project = ProjectFactory(title="Logged")
+
+        handler.send_new_project_notification(project, "admin@example.com")
+
+        logged = SentEmail.objects.get(to_email="admin@example.com")
+        assert logged.email_type == SentEmailType.NEW_PROJECT_NOTIFICATION
+        assert logged.success is True
+        assert logged.recipient is None
 
 
 @pytest.mark.django_db

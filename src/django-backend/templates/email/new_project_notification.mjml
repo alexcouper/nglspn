@@ -1,0 +1,27 @@
+{% extends "email/base.mjml" %}
+
+{% block title %}New project submitted - Naglasúpan{% endblock %}
+
+{% block content %}
+<mj-section background-color="#ffffff" border-radius="16px" padding="40px 30px">
+  <mj-column>
+    <mj-text font-size="24px" font-weight="600" align="center" padding-bottom="10px">
+      New project submitted
+    </mj-text>
+    <mj-text align="center" padding-bottom="20px">
+      A new project has been submitted to Naglasúpan and is waiting for review.
+    </mj-text>
+    <mj-text padding-bottom="6px"><strong>Title:</strong> {{ project_title }}</mj-text>
+    {% if project_tagline %}
+    <mj-text padding-bottom="6px"><strong>Tagline:</strong> {{ project_tagline }}</mj-text>
+    {% endif %}
+    <mj-text padding-bottom="6px"><strong>Submitted by:</strong> {{ owner_name }} &lt;{{ owner_email }}&gt;</mj-text>
+    {% if project_description %}
+    <mj-text padding-bottom="20px"><strong>Description:</strong><br>{{ project_description }}</mj-text>
+    {% endif %}
+    <mj-button href="{{ project_admin_url }}" align="center">
+      Review in admin
+    </mj-button>
+  </mj-column>
+</mj-section>
+{% endblock %}

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
@@ -20,6 +21,8 @@ from services.project.handler_interface import ProjectHandlerInterface
 
 from .query import get_title_from_url
 
+logger = logging.getLogger(__name__)
+
 if TYPE_CHECKING:
     from uuid import UUID
 
@@ -37,6 +40,17 @@ def _validate_tags(tag_ids: list[UUID]) -> QuerySet[Tag]:
         msg = "One or more tag IDs are invalid or rejected"
         raise InvalidTagsError(msg)
     return valid_tags
+
+
+def _enqueue_new_project_notification(project: Project) -> None:
+    from api.tasks import email as email_tasks  # noqa: PLC0415
+
+    try:
+        email_tasks.send_new_project_notification.enqueue(str(project.id))
+    except Exception:
+        logger.exception(
+            "Failed to enqueue new-project notification for %s", project.id
+        )
 
 
 class DjangoProjectHandler(ProjectHandlerInterface):
@@ -91,6 +105,8 @@ class DjangoProjectHandler(ProjectHandlerInterface):
 
         if competition:
             competition.projects.add(project)
+
+        _enqueue_new_project_notification(project)
 
         return project
 

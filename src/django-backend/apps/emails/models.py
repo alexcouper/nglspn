@@ -114,6 +114,7 @@ class SentEmailType(models.TextChoices):
     VERIFICATION = "verification", "Verification"
     PASSWORD_RESET = "password_reset", "Password Reset"
     PROJECT_APPROVED = "project_approved", "Project Approved"
+    NEW_PROJECT_NOTIFICATION = "new_project_notification", "New Project Notification"
     DISCUSSION_NOTIFICATION = "discussion_notification", "Discussion Notification"
     DISCUSSION_DIGEST = "discussion_digest", "Discussion Digest"
 

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from uuid import UUID
 
+from django.conf import settings
 from django_tasks import task
 
 from apps.emails.models import BroadcastEmail, BroadcastEmailStatus
@@ -31,6 +32,18 @@ def send_project_approved_email(project_id: str) -> None:
 
     project = Project.objects.select_related("owner").get(id=UUID(project_id))
     HANDLERS.email.send_project_approved_email(project)
+
+
+@task()
+def send_new_project_notification(project_id: str) -> None:
+    recipient = settings.NEW_PROJECT_NOTIFICATION_EMAIL
+    if not recipient:
+        return
+
+    from services import HANDLERS  # noqa: PLC0415
+
+    project = Project.objects.select_related("owner").get(id=UUID(project_id))
+    HANDLERS.email.send_new_project_notification(project, recipient)
 
 
 @task()

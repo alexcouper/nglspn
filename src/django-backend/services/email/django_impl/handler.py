@@ -203,6 +203,54 @@ class DjangoEmailHandler(EmailHandlerInterface):
             html_body=html,
         )
 
+    def send_new_project_notification(
+        self, project: Project, recipient_email: str
+    ) -> None:
+        owner = project.owner
+        owner_name = owner.full_name or owner.email
+        context = {
+            "project_title": project.title,
+            "project_tagline": project.tagline,
+            "project_description": project.description,
+            "owner_name": owner_name,
+            "owner_email": owner.email,
+            "project_admin_url": (
+                f"{settings.FRONTEND_URL}/admin/projects/project/{project.id}/change/"
+            ),
+            "logo_url": EMAIL_LOGO_URL,
+            "current_year": timezone.now().year,
+        }
+        html, text = render_email("new_project_notification", context)
+
+        subject = f"New project submitted: {project.title} - Naglasúpan"
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[recipient_email],
+        )
+        email.attach_alternative(html, "text/html")
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=None,
+                email_type=SentEmailType.NEW_PROJECT_NOTIFICATION,
+                subject=subject,
+                to_email=recipient_email,
+                success=False,
+                error_message=f"Failed to send to {recipient_email}",
+                html_body=html,
+            )
+            raise
+        _log_sent_email(
+            recipient=None,
+            email_type=SentEmailType.NEW_PROJECT_NOTIFICATION,
+            subject=subject,
+            to_email=recipient_email,
+            html_body=html,
+        )
+
     def send_broadcast(
         self,
         broadcast: BroadcastEmail,

@@ -23,6 +23,11 @@ class EmailHandlerInterface(ABC):
     def send_project_approved_email(self, project: Project) -> None: ...
 
     @abstractmethod
+    def send_new_project_notification(
+        self, project: Project, recipient_email: str
+    ) -> None: ...
+
+    @abstractmethod
     def send_password_reset_email(
         self, user: User, code: str, expires_minutes: int
     ) -> None: ...

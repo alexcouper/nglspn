@@ -3,8 +3,9 @@ from unittest.mock import patch
 import pytest
 from django.contrib.admin.sites import AdminSite
 from django.contrib.messages.storage.fallback import FallbackStorage
-from django.test import RequestFactory
+from django.test import RequestFactory, override_settings
 
+from api.tasks import email as email_tasks
 from apps.projects.admin import ProjectAdmin
 from apps.projects.models import Project, ProjectStatus
 from services import HANDLERS
@@ -54,3 +55,27 @@ class TestApproveProjectsAdminAction:
         for project in projects:
             project.refresh_from_db()
             assert project.status == ProjectStatus.APPROVED
+
+
+@pytest.mark.django_db
+class TestSendNewProjectNotificationTask:
+    @override_settings(NEW_PROJECT_NOTIFICATION_EMAIL="")
+    def test_noop_when_recipient_not_configured(self):
+        project = ProjectFactory()
+
+        with patch.object(HANDLERS.email, "send_new_project_notification") as mock_send:
+            email_tasks.send_new_project_notification.call(str(project.id))
+
+        mock_send.assert_not_called()
+
+    @override_settings(NEW_PROJECT_NOTIFICATION_EMAIL="admin@example.com")
+    def test_calls_handler_with_project_and_recipient(self):
+        project = ProjectFactory()
+
+        with patch.object(HANDLERS.email, "send_new_project_notification") as mock_send:
+            email_tasks.send_new_project_notification.call(str(project.id))
+
+        mock_send.assert_called_once()
+        call_args = mock_send.call_args
+        assert call_args.args[0].id == project.id
+        assert call_args.args[1] == "admin@example.com"

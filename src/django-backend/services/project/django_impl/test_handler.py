@@ -1,3 +1,5 @@
+from unittest.mock import patch
+
 import pytest
 
 from apps.projects.models import Project, ProjectStatus
@@ -51,6 +53,34 @@ class TestCreate:
         project = handler.create(data)
 
         assert tag in project.tags.all()
+
+    def test_enqueues_new_project_notification(self):
+        user = UserFactory()
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="Notify Me",
+        )
+
+        with patch("api.tasks.email.send_new_project_notification") as mock_task:
+            project = handler.create(data)
+
+        mock_task.enqueue.assert_called_once_with(str(project.id))
+
+    def test_create_succeeds_when_enqueue_fails(self):
+        user = UserFactory()
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="Robust",
+        )
+
+        with patch("api.tasks.email.send_new_project_notification") as mock_task:
+            mock_task.enqueue.side_effect = Exception("queue down")
+            project = handler.create(data)
+
+        assert project.id is not None
+        assert Project.objects.filter(id=project.id).exists()
 
 
 @pytest.mark.django_db

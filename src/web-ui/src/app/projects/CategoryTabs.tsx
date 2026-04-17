@@ -11,8 +11,8 @@ interface CategoryTabsProps {
 export function CategoryTabs({ categories, activeCategory }: CategoryTabsProps) {
   return (
     <div className="sticky top-14 z-10 bg-white border-b border-border">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
-        <nav className="flex gap-6 overflow-x-auto scrollbar-hide" aria-label="Category tabs">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center gap-6">
+        <nav className="flex gap-6 overflow-x-auto scrollbar-hide flex-1" aria-label="Category tabs">
           <TabLink
             href="/projects"
             active={!activeCategory}
@@ -27,6 +27,12 @@ export function CategoryTabs({ categories, activeCategory }: CategoryTabsProps) 
             />
           ))}
         </nav>
+        <Link
+          href="/submit"
+          className="hidden sm:inline-block shrink-0 text-sm font-medium bg-accent hover:bg-accent-hover text-white px-3.5 py-1.5 rounded-md transition-colors duration-150"
+        >
+          Submit a project
+        </Link>
       </div>
     </div>
   );

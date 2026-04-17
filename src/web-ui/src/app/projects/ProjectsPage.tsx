@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { CategoryItem, DiscoverProject, WinnerProject } from "@/lib/api";
 import { CategoryTabs } from "./CategoryTabs";
@@ -50,6 +51,13 @@ export function ProjectsPage({
           )}
         </div>
       </section>
+
+      <Link
+        href="/submit"
+        className="sm:hidden fixed bottom-4 left-4 right-4 z-20 text-center text-sm font-medium bg-accent hover:bg-accent-hover text-white px-4 py-3 rounded-lg shadow-lg transition-colors duration-150"
+      >
+        Submit a project
+      </Link>
     </>
   );
 }

@@ -1,4 +1,3 @@
-from django.db.models import Prefetch
 from django.http import HttpRequest
 from ninja import Router
 
@@ -14,18 +13,15 @@ from api.schemas.my_review import (
     StatusUpdateRequest,
     SuccessResponse,
 )
-from apps.projects.models import (
-    Competition,
-    CompetitionReviewer,
-    Project,
-    ProjectImage,
-    ProjectRanking,
-    ProjectStatus,
-    ReviewStatus,
+from apps.projects.models import Project, ProjectStatus
+from services import HANDLERS, REPO
+from services.review.exceptions import (
+    InvalidProjectIdsError,
+    ReviewAlreadyCompletedError,
+    ReviewNotFoundError,
 )
 
 router = Router()
-
 
 EXCLUDED_PROJECT_STATUSES = [ProjectStatus.REJECTED, ProjectStatus.ICE_BOX]
 
@@ -37,10 +33,7 @@ EXCLUDED_PROJECT_STATUSES = [ProjectStatus.REJECTED, ProjectStatus.ICE_BOX]
     tags=["My Review"],
 )
 def list_my_review_competitions(request: HttpRequest) -> ReviewCompetitionListResponse:
-    """List all competitions the current user is assigned to review."""
-    assignments = CompetitionReviewer.objects.filter(user=request.auth).select_related(
-        "competition"
-    )
+    assignments = REPO.review.list_reviewer_assignments(request.auth.id)
 
     competitions = [
         ReviewCompetitionResponse(
@@ -69,27 +62,13 @@ def get_my_review_competition(
     request: HttpRequest,
     competition_id: str,
 ) -> ReviewCompetitionDetailResponse | tuple[int, Error]:
-    """Get competition details with projects and reviewer's rankings."""
-    assignment = CompetitionReviewer.objects.filter(
-        user=request.auth,
-        competition_id=competition_id,
-    ).first()
+    assignment = REPO.review.get_reviewer_assignment(request.auth.id, competition_id)
 
     if not assignment:
         return 404, Error(detail="Competition not found")
 
-    competition = Competition.objects.prefetch_related(
-        "projects",
-        "projects__images",
-    ).get(id=competition_id)
-
-    rankings = {
-        r.project_id: r.position
-        for r in ProjectRanking.objects.filter(
-            reviewer=request.auth,
-            competition=competition,
-        )
-    }
+    competition = REPO.review.get_competition_with_projects(competition_id)
+    rankings = REPO.review.get_reviewer_rankings(request.auth.id, competition_id)
 
     projects = [
         ReviewProjectResponse(
@@ -124,48 +103,20 @@ def update_rankings(
     competition_id: str,
     payload: RankingUpdateRequest,
 ) -> SuccessResponse | tuple[int, Error]:
-    """Update rankings for projects in a competition."""
-    assignment = CompetitionReviewer.objects.filter(
-        user=request.auth,
-        competition_id=competition_id,
-    ).first()
-
-    if not assignment:
+    try:
+        HANDLERS.review.update_rankings(
+            user_id=request.auth.id,
+            competition_id=competition_id,
+            project_ids=payload.project_ids,
+        )
+    except ReviewNotFoundError:
         return 404, Error(detail="Competition not found")
-
-    if assignment.status == ReviewStatus.COMPLETED:
+    except ReviewAlreadyCompletedError:
         return 400, Error(detail="Cannot update rankings for a completed review")
-
-    competition_project_ids = set(
-        Competition.objects.filter(id=competition_id)
-        .exclude(projects__status__in=EXCLUDED_PROJECT_STATUSES)
-        .values_list("projects__id", flat=True)
-    )
-    submitted_project_ids = set(payload.project_ids)
-
-    invalid_ids = submitted_project_ids - competition_project_ids
-    if invalid_ids:
+    except InvalidProjectIdsError:
         return 400, Error(
             detail="One or more projects do not belong to this competition"
         )
-
-    # Delete existing rankings and create new ones
-    ProjectRanking.objects.filter(
-        reviewer=request.auth,
-        competition_id=competition_id,
-    ).delete()
-
-    ProjectRanking.objects.bulk_create(
-        [
-            ProjectRanking(
-                reviewer=request.auth,
-                competition_id=competition_id,
-                project_id=project_id,
-                position=position,
-            )
-            for position, project_id in enumerate(payload.project_ids, start=1)
-        ]
-    )
 
     return SuccessResponse()
 
@@ -181,13 +132,13 @@ def update_review_status(
     competition_id: str,
     payload: StatusUpdateRequest,
 ) -> SuccessResponse | tuple[int, Error]:
-    """Update the reviewer's status for a competition."""
-    updated = CompetitionReviewer.objects.filter(
-        user=request.auth,
-        competition_id=competition_id,
-    ).update(status=payload.status.value)
-
-    if not updated:
+    try:
+        HANDLERS.review.update_review_status(
+            user_id=request.auth.id,
+            competition_id=competition_id,
+            status=payload.status.value,
+        )
+    except ReviewNotFoundError:
         return 404, Error(detail="Competition not found")
 
     return SuccessResponse()
@@ -203,39 +154,7 @@ def get_review_project(
     request: HttpRequest,
     project_id: str,
 ) -> Project | tuple[int, Error]:
-    """Get project details for a reviewer.
-
-    Returns the project if the user is assigned as a reviewer to any
-    competition that contains this project. Returns 404 otherwise.
-    """
-    # Check if user is a reviewer for any competition containing this project
-    # and that the project is not rejected or in ice box
-    has_access = CompetitionReviewer.objects.filter(
-        user=request.auth,
-        competition__projects__id=project_id,
-    ).exists()
-
-    if not has_access:
-        return 404, Error(detail="Project not found")
-
     try:
-        project = (
-            Project.objects.select_related("owner")
-            .prefetch_related(
-                "tags",
-                "tags__category",
-                Prefetch(
-                    "images",
-                    queryset=ProjectImage.objects.filter(
-                        upload_status="uploaded"
-                    ).prefetch_related("variants"),
-                ),
-                "won_competitions",
-            )
-            .exclude(status__in=EXCLUDED_PROJECT_STATUSES)
-            .get(id=project_id)
-        )
-    except Project.DoesNotExist:
+        return REPO.review.get_review_project(request.auth.id, project_id)
+    except ReviewNotFoundError:
         return 404, Error(detail="Project not found")
-
-    return project

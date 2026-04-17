@@ -30,13 +30,13 @@
 
 ## 4. Review Service
 
-- [ ] 4.1 Create `services/review/` directory with `__init__.py`, `exceptions.py` (add `ReviewNotFoundError`, `ReviewAlreadyCompletedError`, `InvalidProjectIdsError`)
-- [ ] 4.2 Create `services/review/query_interface.py` with `ReviewQueryInterface` ABC defining: `list_reviewer_assignments()`, `get_reviewer_assignment()`, `get_competition_with_projects()`, `get_reviewer_rankings()`, `get_competition_project_ids()`, `get_review_project()`
-- [ ] 4.3 Create `services/review/handler_interface.py` with `ReviewHandlerInterface` ABC defining: `update_rankings()`, `update_review_status()`
-- [ ] 4.4 Create `services/review/django_impl/__init__.py`, `query.py` with `DjangoReviewQuery`, and `handler.py` with `DjangoReviewHandler`
-- [ ] 4.5 Register `review` in `services/__init__.py` as `REPO.review` and `HANDLERS.review`
-- [ ] 4.6 Refactor `api/routers/my_review.py` to use `REPO.review` and `HANDLERS.review`, removing all `apps.projects.models` imports
-- [ ] 4.7 Write tests for `DjangoReviewQuery` and `DjangoReviewHandler`
+- [x] 4.1 Create `services/review/` directory with `__init__.py`, `exceptions.py` (add `ReviewNotFoundError`, `ReviewAlreadyCompletedError`, `InvalidProjectIdsError`)
+- [x] 4.2 Create `services/review/query_interface.py` with `ReviewQueryInterface` ABC defining: `list_reviewer_assignments()`, `get_reviewer_assignment()`, `get_competition_with_projects()`, `get_reviewer_rankings()`, `get_competition_project_ids()`, `get_review_project()`
+- [x] 4.3 Create `services/review/handler_interface.py` with `ReviewHandlerInterface` ABC defining: `update_rankings()`, `update_review_status()`
+- [x] 4.4 Create `services/review/django_impl/__init__.py`, `query.py` with `DjangoReviewQuery`, and `handler.py` with `DjangoReviewHandler`
+- [x] 4.5 Register `review` in `services/__init__.py` as `REPO.review` and `HANDLERS.review`
+- [x] 4.6 Refactor `api/routers/my_review.py` to use `REPO.review` and `HANDLERS.review`, removing all `apps.projects.models` imports
+- [x] 4.7 Write tests for `DjangoReviewQuery` and `DjangoReviewHandler`
 
 ## 5. Fix Existing Violations
 

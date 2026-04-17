@@ -26,6 +26,9 @@ from services.project_images.handler_interface import ProjectImageHandlerInterfa
 from services.project_images.query_interface import ProjectImageQueryInterface
 from services.registration.django_impl import DjangoRegistrationHandler
 from services.registration.handler_interface import RegistrationHandlerInterface
+from services.review.django_impl import DjangoReviewHandler, DjangoReviewQuery
+from services.review.handler_interface import ReviewHandlerInterface
+from services.review.query_interface import ReviewQueryInterface
 from services.tags.django_impl import DjangoTagHandler, DjangoTagQuery
 from services.tags.handler_interface import TagHandlerInterface
 from services.tags.query_interface import TagQueryInterface
@@ -51,6 +54,7 @@ class HandlerServices:
     registration: RegistrationHandlerInterface = field(
         default_factory=DjangoRegistrationHandler
     )
+    review: ReviewHandlerInterface = field(default_factory=DjangoReviewHandler)
     tags: TagHandlerInterface = field(default_factory=DjangoTagHandler)
     users: UserHandlerInterface = field(default_factory=DjangoUserHandler)
 
@@ -66,6 +70,7 @@ class QueryServices:
     project_images: ProjectImageQueryInterface = field(
         default_factory=DjangoProjectImageQuery
     )
+    review: ReviewQueryInterface = field(default_factory=DjangoReviewQuery)
     tags: TagQueryInterface = field(default_factory=DjangoTagQuery)
     users: UserQueryInterface = field(default_factory=DjangoUserQuery)
 

@@ -4,12 +4,7 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from django.db.models import Prefetch
-from django.db.models.functions import Lower
 from ninja import Schema
-
-from apps.projects.models import ProjectImage, ProjectStatus
-from services.project.django_impl import to_list_item
 
 from .project import ImageVariantResponse
 from .tag import TagWithCategoryResponse
@@ -61,23 +56,15 @@ class CompetitionResponse(Schema):
     pending_projects_count: int
 
     @classmethod
-    def from_competition(cls, competition: Any) -> "CompetitionResponse":
-        approved_projects = list(
-            competition.projects.filter(status=ProjectStatus.APPROVED)
-            .order_by(Lower("title"))
-            .prefetch_related(
-                Prefetch(
-                    "images",
-                    queryset=ProjectImage.objects.filter(
-                        upload_status="uploaded"
-                    ).prefetch_related("variants"),
-                ),
-                "tags__category",
-                "won_competitions",
-            )
-        )
-        project_items = [to_list_item(p) for p in approved_projects]
-        winner_item = to_list_item(competition.winner) if competition.winner else None
+    def from_competition(
+        cls,
+        competition: Any,
+        *,
+        approved_project_items: list[Any],
+        winner_item: Any | None,
+        project_count: int,
+        pending_projects_count: int,
+    ) -> "CompetitionResponse":
         return cls(
             id=competition.id,
             name=competition.name,
@@ -91,19 +78,17 @@ class CompetitionResponse(Schema):
             image_url=competition.image_url,
             image_wide_url=competition.image_wide_url,
             image_wide_winner_url=competition.image_wide_winner_url,
-            project_count=competition.projects.count(),
+            project_count=project_count,
             projects=[
                 CompetitionProjectResponse.from_list_item(item)
-                for item in project_items
+                for item in approved_project_items
             ],
             winner=(
                 CompetitionProjectResponse.from_list_item(winner_item)
                 if winner_item
                 else None
             ),
-            pending_projects_count=competition.projects.filter(
-                status=ProjectStatus.PENDING
-            ).count(),
+            pending_projects_count=pending_projects_count,
         )
 
 
@@ -123,7 +108,13 @@ class CompetitionOverviewResponse(Schema):
     pending_projects_count: int
 
     @classmethod
-    def from_competition(cls, competition: Any) -> "CompetitionOverviewResponse":
+    def from_competition(
+        cls,
+        competition: Any,
+        *,
+        project_count: int,
+        pending_projects_count: int,
+    ) -> "CompetitionOverviewResponse":
         return cls(
             id=competition.id,
             name=competition.name,
@@ -136,10 +127,8 @@ class CompetitionOverviewResponse(Schema):
             image_url=competition.image_url,
             image_wide_url=competition.image_wide_url,
             image_wide_winner_url=competition.image_wide_winner_url,
-            project_count=competition.projects.count(),
-            pending_projects_count=competition.projects.filter(
-                status=ProjectStatus.PENDING
-            ).count(),
+            project_count=project_count,
+            pending_projects_count=pending_projects_count,
         )
 
 
@@ -164,7 +153,8 @@ class CompetitionSummaryResponse(Schema):
     project_count: int
 
     @classmethod
-    def from_competition(cls, competition: Any) -> "CompetitionSummaryResponse":
+    def from_highlight(cls, highlight: Any) -> "CompetitionSummaryResponse":
+        competition = highlight.competition
         return cls(
             name=competition.name,
             slug=competition.slug,
@@ -173,7 +163,7 @@ class CompetitionSummaryResponse(Schema):
             prize_amount=competition.prize_amount,
             status=competition.status,
             image_url=competition.image_url,
-            project_count=competition.project_count,
+            project_count=highlight.project_count,
         )
 
 

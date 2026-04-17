@@ -1,8 +1,6 @@
-import uuid
+from typing import Any
 
-from django.db.models import Count
 from django.http import HttpRequest
-from django.shortcuts import get_object_or_404
 from ninja import Router
 
 from api.schemas.competition import (
@@ -14,17 +12,23 @@ from api.schemas.competition import (
     CompetitionSummaryResponse,
 )
 from api.schemas.errors import Error
-from apps.projects.models import Competition, CompetitionStatus, Project, ProjectStatus
+from services import REPO
+from services.competitions.exceptions import CompetitionNotFoundError
+from services.project.django_impl import to_list_item
 
 
-def is_valid_uuid(value: str) -> bool:
-    """Check if string is a valid UUID."""
-    try:
-        uuid.UUID(value)
-    except ValueError:
-        return False
-    else:
-        return True
+def _projects(competition: Any) -> list:
+    return list(competition.projects.all())
+
+
+def _count_pending(projects: list) -> int:
+    return sum(1 for p in projects if p.status == "pending")
+
+
+def _approved_project_items(projects: list) -> list:
+    approved = [p for p in projects if p.status == "approved"]
+    approved.sort(key=lambda p: p.title.lower())
+    return [to_list_item(p) for p in approved]
 
 
 router = Router()
@@ -32,12 +36,20 @@ router = Router()
 
 @router.get("", response={200: CompetitionOverviewListResponse}, tags=["Competitions"])
 def list_competitions(request: HttpRequest) -> CompetitionOverviewListResponse:
-    competitions = Competition.objects.prefetch_related("projects").all()
-    pending_count = Project.objects.filter(status=ProjectStatus.PENDING).count()
+    competitions = REPO.competitions.list_all()
+    pending_count = REPO.competitions.count_pending_projects()
+    overviews = []
+    for c in competitions:
+        projects = _projects(c)
+        overviews.append(
+            CompetitionOverviewResponse.from_competition(
+                c,
+                project_count=len(projects),
+                pending_projects_count=_count_pending(projects),
+            )
+        )
     return CompetitionOverviewListResponse(
-        competitions=[
-            CompetitionOverviewResponse.from_competition(c) for c in competitions
-        ],
+        competitions=overviews,
         pending_projects_count=pending_count,
     )
 
@@ -46,20 +58,22 @@ def list_competitions(request: HttpRequest) -> CompetitionOverviewListResponse:
     "/with-projects", response={200: CompetitionListResponse}, tags=["Competitions"]
 )
 def list_competitions_with_projects(request: HttpRequest) -> CompetitionListResponse:
-    competitions = (
-        Competition.objects.select_related("winner")
-        .prefetch_related(
-            "projects",
-            "projects__images",
-            "projects__tags",
-            "winner__images",
-            "winner__tags",
+    competitions = REPO.competitions.list_with_projects()
+    pending_count = REPO.competitions.count_pending_projects()
+    items = []
+    for c in competitions:
+        projects = _projects(c)
+        items.append(
+            CompetitionResponse.from_competition(
+                c,
+                approved_project_items=_approved_project_items(projects),
+                winner_item=to_list_item(c.winner) if c.winner else None,
+                project_count=len(projects),
+                pending_projects_count=_count_pending(projects),
+            )
         )
-        .all()
-    )
-    pending_count = Project.objects.filter(status=ProjectStatus.PENDING).count()
     return CompetitionListResponse(
-        competitions=[CompetitionResponse.from_competition(c) for c in competitions],
+        competitions=items,
         pending_projects_count=pending_count,
     )
 
@@ -70,27 +84,10 @@ def list_competitions_with_projects(request: HttpRequest) -> CompetitionListResp
     tags=["Competitions"],
 )
 def get_highlights(request: HttpRequest) -> CompetitionHighlightsResponse:
-    base_qs = Competition.objects.annotate(project_count=Count("projects"))
-
-    active = list(
-        base_qs.filter(
-            status__in=[
-                CompetitionStatus.ACCEPTING_APPLICATIONS,
-                CompetitionStatus.VOTING,
-            ]
-        ).order_by("-start_date")
+    highlights = REPO.competitions.list_highlights()
+    return CompetitionHighlightsResponse(
+        competitions=[CompetitionSummaryResponse.from_highlight(h) for h in highlights]
     )
-    recent = (
-        base_qs.filter(status=CompetitionStatus.CLOSED)
-        .order_by("-voting_end_date", "-submission_deadline")
-        .first()
-    )
-
-    competitions = [CompetitionSummaryResponse.from_competition(c) for c in active]
-    if recent:
-        competitions.append(CompetitionSummaryResponse.from_competition(recent))
-
-    return CompetitionHighlightsResponse(competitions=competitions)
 
 
 @router.get(
@@ -98,16 +95,18 @@ def get_highlights(request: HttpRequest) -> CompetitionHighlightsResponse:
     response={200: CompetitionResponse, 404: Error},
     tags=["Competitions"],
 )
-def get_competition(request: HttpRequest, competition_id: str) -> CompetitionResponse:
-    queryset = Competition.objects.select_related("winner").prefetch_related(
-        "projects",
-        "projects__images",
-        "projects__tags",
-        "winner__images",
-        "winner__tags",
+def get_competition(
+    request: HttpRequest, competition_id: str
+) -> CompetitionResponse | tuple[int, dict[str, str]]:
+    try:
+        competition = REPO.competitions.get_by_id_or_slug(competition_id)
+    except CompetitionNotFoundError:
+        return 404, {"detail": "Not Found"}
+    projects = _projects(competition)
+    return CompetitionResponse.from_competition(
+        competition,
+        approved_project_items=_approved_project_items(projects),
+        winner_item=to_list_item(competition.winner) if competition.winner else None,
+        project_count=len(projects),
+        pending_projects_count=_count_pending(projects),
     )
-    if is_valid_uuid(competition_id):
-        competition = get_object_or_404(queryset, id=competition_id)
-    else:
-        competition = get_object_or_404(queryset, slug=competition_id)
-    return CompetitionResponse.from_competition(competition)

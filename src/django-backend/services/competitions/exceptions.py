@@ -1,0 +1,2 @@
+class CompetitionNotFoundError(Exception):
+    pass

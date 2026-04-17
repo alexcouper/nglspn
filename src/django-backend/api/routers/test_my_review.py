@@ -33,6 +33,21 @@ class TestListMyReviewCompetitions:
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json(), has_entries(competitions=[]))
 
+    def test_returns_ended_status_for_swept_reviews(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = CompetitionFactory()
+        CompetitionReviewerFactory(
+            user=user, competition=competition, status=ReviewStatus.ENDED
+        )
+
+        response = client.get("/api/my/reviews/competitions", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        competitions = response.json()["competitions"]
+        assert_that(competitions, has_length(1))
+        assert_that(competitions[0]["my_review_status"], equal_to("ended"))
+
     def test_returns_competitions_user_is_assigned_to(
         self, client, user, auth_headers
     ) -> None:
@@ -475,6 +490,23 @@ class TestUpdateReviewStatus:
         )
 
         assert_that(response.status_code, equal_to(401))
+
+    def test_rejects_ended_payload(self, client, user, auth_headers) -> None:
+        competition = CompetitionFactory()
+        reviewer = CompetitionReviewerFactory(
+            user=user, competition=competition, status=ReviewStatus.IN_PROGRESS
+        )
+
+        response = client.put(
+            f"/api/my/reviews/competitions/{competition.id}/status",
+            data=json.dumps({"status": "ended"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        reviewer.refresh_from_db()
+        assert_that(reviewer.status, equal_to(ReviewStatus.IN_PROGRESS))
 
 
 @pytest.mark.django_db

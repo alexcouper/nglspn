@@ -11,6 +11,7 @@ from api.schemas.my_review import (
     ReviewCompetitionResponse,
     ReviewProjectDetailResponse,
     ReviewProjectResponse,
+    ReviewStatusEnum,
     StatusUpdateRequest,
     SuccessResponse,
 )
@@ -172,7 +173,7 @@ def update_rankings(
 
 @router.put(
     "/competitions/{competition_id}/status",
-    response={200: SuccessResponse, 404: Error},
+    response={200: SuccessResponse, 400: Error, 404: Error},
     auth=auth,
     tags=["My Review"],
 )
@@ -182,6 +183,11 @@ def update_review_status(
     payload: StatusUpdateRequest,
 ) -> SuccessResponse | tuple[int, Error]:
     """Update the reviewer's status for a competition."""
+    if payload.status == ReviewStatusEnum.ENDED:
+        return 400, Error(
+            detail="Reviewers cannot set status to 'ended'; that is set by an admin."
+        )
+
     updated = CompetitionReviewer.objects.filter(
         user=request.auth,
         competition_id=competition_id,

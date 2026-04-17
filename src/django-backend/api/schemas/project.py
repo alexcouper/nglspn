@@ -46,10 +46,6 @@ class ProjectImageResponse(Schema):
     created_at: datetime
     variants: list[ImageVariantResponse] = []
 
-    @staticmethod
-    def resolve_variants(obj: Any) -> list[Any]:
-        return list(obj.variants.all())
-
 
 class WonCompetitionInfo(Schema):
     name: str
@@ -75,17 +71,8 @@ class ProjectResponse(Schema):
     won_competitions: list[WonCompetitionInfo] = []
 
     @staticmethod
-    def resolve_images(obj: Any) -> list[Any]:
-        return list(obj.images.all())
-
-    @staticmethod
     def resolve_tags(obj: Any) -> list[Any]:
-        """Only return non-rejected tags."""
-        return list(obj.tags.exclude(status="rejected"))
-
-    @staticmethod
-    def resolve_won_competitions(obj: Any) -> list[Any]:
-        return list(obj.won_competitions.all())
+        return [t for t in obj.tags.all() if t.status != "rejected"]
 
 
 class PresignedUploadRequest(Schema):
@@ -143,7 +130,6 @@ class ProjectListItemResponse(Schema):
             status=item.project.status,
             created_at=item.project.created_at,
             tags=item.tags,
-            won_competitions=list(item.project.won_competitions.all()),
             main_image_url=item.main_image_url,
             main_image_thumb_url=item.main_image_thumb_url,
         )
@@ -182,7 +168,6 @@ class DiscoverProjectResponse(Schema):
             category_name=item.category_name,
             category_slug=item.category_slug,
             discussion_count=item.discussion_count,
-            won_competitions=list(item.project.won_competitions.all()),
         )
 
 

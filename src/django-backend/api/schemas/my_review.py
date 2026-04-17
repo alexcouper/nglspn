@@ -43,9 +43,15 @@ class ReviewProjectResponse(Schema):
 
     @staticmethod
     def resolve_main_image_url(obj: Any) -> str | None:
-        main_image = obj.images.filter(upload_status="uploaded", is_main=True).first()
+        images = list(obj.images.all())
+        main_image = next(
+            (img for img in images if img.upload_status == "uploaded" and img.is_main),
+            None,
+        )
         if not main_image:
-            main_image = obj.images.filter(upload_status="uploaded").first()
+            main_image = next(
+                (img for img in images if img.upload_status == "uploaded"), None
+            )
         return main_image.url if main_image else None
 
 
@@ -97,12 +103,3 @@ class ReviewProjectDetailResponse(Schema):
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
-
-    @staticmethod
-    def resolve_images(obj: Any) -> list[Any]:
-        """Return uploaded images. Uses prefetch cache when available."""
-        return list(obj.images.all())
-
-    @staticmethod
-    def resolve_won_competitions(obj: Any) -> list[Any]:
-        return list(obj.won_competitions.all())

@@ -13,7 +13,7 @@ from api.schemas.project import (
     ProjectResponse,
     WinnerProjectResponse,
 )
-from apps.projects.models import Project, ProjectStatus
+from apps.projects.models import Project
 from services import REPO
 from services.project.exceptions import ProjectNotFoundError
 
@@ -174,7 +174,7 @@ def get_project(
     except ProjectNotFoundError:
         return 404, {"detail": "Project not found"}
 
-    if project.status == ProjectStatus.APPROVED:
+    if project.status == "approved":
         return project
 
     user = _get_user_from_request(request)

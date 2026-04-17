@@ -187,18 +187,31 @@ def update_current_user(
     request: HttpRequest,
     payload: UserUpdate,
 ) -> AbstractUser | tuple[int, Error]:
-    user = request.auth
+    update_data = payload.dict(exclude_unset=True)
 
-    # Update only provided fields
-    for field, value in payload.dict(exclude_unset=True).items():
-        setattr(user, field, value)
+    first_name = update_data.get("first_name")
+    last_name = update_data.get("last_name")
 
-    # Reject if both names would be empty after update
-    if not user.first_name.strip() and not user.last_name.strip():
+    if (
+        first_name is not None
+        and not first_name.strip()
+        and last_name is not None
+        and not last_name.strip()
+    ):
         return 400, Error(detail="At least one name (first or last) is required")
 
-    user.save()
-    return user
+    return HANDLERS.users.update_profile(
+        request.auth.id,
+        first_name=first_name,
+        last_name=last_name,
+        info=update_data.get("info"),
+        email_opt_in_competition_results=update_data.get(
+            "email_opt_in_competition_results"
+        ),
+        email_opt_in_platform_updates=update_data.get("email_opt_in_platform_updates"),
+        opt_in_to_external_promotions=update_data.get("opt_in_to_external_promotions"),
+        notification_frequency=update_data.get("notification_frequency"),
+    )
 
 
 @router.post(

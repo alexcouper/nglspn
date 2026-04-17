@@ -17,6 +17,8 @@ from services.users.exceptions import (
 from services.users.handler_interface import UserHandlerInterface, VerifyResetCodeResult
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from apps.users.models import User
     from services.users.handler_interface import RegisterUserInput
 
@@ -174,3 +176,39 @@ class DjangoUserHandler(UserHandlerInterface):
     def reset_password(self, user: User, new_password: str) -> None:
         user.set_password(new_password)
         user.save(update_fields=["password"])
+
+    def update_profile(
+        self,
+        user_id: UUID,
+        *,
+        first_name: str | None = None,
+        last_name: str | None = None,
+        info: str | None = None,
+        email_opt_in_competition_results: bool | None = None,
+        email_opt_in_platform_updates: bool | None = None,
+        opt_in_to_external_promotions: bool | None = None,
+        notification_frequency: str | None = None,
+    ) -> User:
+        user_model = get_user_model()
+        user = user_model.objects.get(id=user_id)
+
+        update_fields = []
+        field_map = {
+            "first_name": first_name,
+            "last_name": last_name,
+            "info": info,
+            "email_opt_in_competition_results": email_opt_in_competition_results,
+            "email_opt_in_platform_updates": email_opt_in_platform_updates,
+            "opt_in_to_external_promotions": opt_in_to_external_promotions,
+            "notification_frequency": notification_frequency,
+        }
+
+        for field_name, value in field_map.items():
+            if value is not None:
+                setattr(user, field_name, value)
+                update_fields.append(field_name)
+
+        if update_fields:
+            user.save(update_fields=update_fields)
+
+        return user

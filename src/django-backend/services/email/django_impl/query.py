@@ -13,6 +13,8 @@ from services.users.django_impl import DjangoUserQuery
 from . import render_email
 
 if TYPE_CHECKING:
+    from uuid import UUID
+
     from django.db.models import QuerySet
 
     from apps.emails.models import BroadcastEmail
@@ -40,3 +42,8 @@ class DjangoEmailQuery(EmailQueryInterface):
                 broadcast.email_type
             )
         return broadcast.individual_recipients.filter(is_active=True)
+
+    def get_broadcast_by_id(self, broadcast_id: UUID) -> BroadcastEmail:
+        from apps.emails.models import BroadcastEmail  # noqa: PLC0415
+
+        return BroadcastEmail.objects.get(id=broadcast_id)

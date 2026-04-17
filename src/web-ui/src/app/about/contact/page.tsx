@@ -9,12 +9,12 @@ export default function ContactPage() {
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground w-16">Discord</span>
             <a
-              href="https://discord.gg/DqUV64g7JE"
+              href="https://discord.gg/D47bQjaQ"
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-accent hover:text-accent-hover transition-colors"
             >
-              discord.gg/DqUV64g7JE
+              discord.gg/D47bQjaQ
             </a>
           </div>
           <div className="flex items-center gap-3">

@@ -17,11 +17,8 @@
     {% endif %}
     <mj-text padding-bottom="6px"><strong>Submitted by:</strong> {{ owner_name }} &lt;{{ owner_email }}&gt;</mj-text>
     {% if project_description %}
-    <mj-text padding-bottom="20px"><strong>Description:</strong><br>{{ project_description }}</mj-text>
+    <mj-text padding-bottom="6px"><strong>Description:</strong><br>{{ project_description }}</mj-text>
     {% endif %}
-    <mj-button href="{{ project_admin_url }}" align="center">
-      Review in admin
-    </mj-button>
   </mj-column>
 </mj-section>
 {% endblock %}

@@ -214,9 +214,6 @@ class DjangoEmailHandler(EmailHandlerInterface):
             "project_description": project.description,
             "owner_name": owner_name,
             "owner_email": owner.email,
-            "project_admin_url": (
-                f"{settings.FRONTEND_URL}/admin/projects/project/{project.id}/change/"
-            ),
             "logo_url": EMAIL_LOGO_URL,
             "current_year": timezone.now().year,
         }

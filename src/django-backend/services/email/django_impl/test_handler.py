@@ -76,7 +76,7 @@ class TestSendNewProjectNotification:
         assert "Brand New Idea" in email.subject
         assert "Brand New Idea" in email.body
 
-    def test_includes_owner_and_admin_link_in_body(self, mailoutbox):
+    def test_includes_owner_in_body(self, mailoutbox):
         owner = UserFactory(first_name="Anna", last_name="Jónsdóttir")
         project = ProjectFactory(title="Hugmynd", owner=owner)
 
@@ -85,7 +85,6 @@ class TestSendNewProjectNotification:
         email = mailoutbox[0]
         assert "Anna Jónsdóttir" in email.body
         assert owner.email in email.body
-        assert f"/admin/projects/project/{project.id}/change/" in email.body
 
     def test_has_html_and_text_parts(self, mailoutbox):
         project = ProjectFactory(title="HTML Check")

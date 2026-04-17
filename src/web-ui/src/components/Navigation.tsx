@@ -56,7 +56,6 @@ export function Navigation() {
             <Link href="/" className="text-white font-semibold text-sm tracking-tight mr-2">
               naglasúpan
             </Link>
-            <Link href="/about" className={linkClass("/about")}>About</Link>
             <Link href="/projects" className={linkClass("/projects")}>Projects</Link>
             <Link href="/competitions" className={linkClass("/competitions")}>Competitions</Link>
           </div>
@@ -128,8 +127,6 @@ export function Navigation() {
           </div>
 
           <div className="space-y-0.5 border-b border-slate-100 pb-4 mb-4">
-            <Link href="/" className={mobileLinkClass("/")} onClick={closeMenu}>Home</Link>
-            <Link href="/about" className={mobileLinkClass("/about")} onClick={closeMenu}>About</Link>
             <Link href="/projects" className={mobileLinkClass("/projects")} onClick={closeMenu}>Projects</Link>
             <Link href="/competitions" className={mobileLinkClass("/competitions")} onClick={closeMenu}>Competitions</Link>
           </div>

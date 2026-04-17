@@ -32,8 +32,8 @@ export function CompetitionsList({ competitions }: CompetitionsListProps) {
     );
   }
 
-  const inProgress = competitions.filter(
-    (c) => c.my_review_status === "in_progress"
+  const outstanding = competitions.filter(
+    (c) => c.my_review_status === "in_progress" || c.my_review_status === "ended"
   );
   const completed = competitions.filter(
     (c) => c.my_review_status === "completed"
@@ -41,16 +41,17 @@ export function CompetitionsList({ competitions }: CompetitionsListProps) {
 
   return (
     <div className="space-y-6">
-      {inProgress.length > 0 && (
+      {outstanding.length > 0 && (
         <div className="space-y-3">
-          {inProgress.map((competition) => {
+          {outstanding.map((competition) => {
             const placeholderColor = getPlaceholderColor(competition.id);
-            return (
-              <Link
-                key={competition.id}
-                href={`/my-reviews/${competition.id}`}
-                className="group flex items-start gap-4 w-full text-left bg-white rounded-xl border border-border p-5 hover:border-slate-300 hover:shadow-sm transition-all"
-              >
+            const isEnded = competition.my_review_status === "ended";
+            const activeClasses =
+              "group flex items-start gap-4 w-full text-left bg-white rounded-xl border border-border p-5 hover:border-slate-300 hover:shadow-sm transition-all";
+            const endedClasses =
+              "flex items-start gap-4 w-full text-left bg-muted rounded-xl border border-border p-5";
+            const inner = (
+              <>
                 <div
                   className={`relative w-11 h-11 rounded-full overflow-hidden flex-shrink-0 ${!competition.image_url ? placeholderColor : ""}`}
                 >
@@ -65,17 +66,47 @@ export function CompetitionsList({ competitions }: CompetitionsListProps) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2 className="font-medium text-foreground group-hover:text-accent transition-colors">
+                  <h2
+                    className={`font-medium transition-colors ${
+                      isEnded
+                        ? "text-muted-foreground"
+                        : "text-foreground group-hover:text-accent"
+                    }`}
+                  >
                     {competition.name}
                   </h2>
                   <p className="text-muted-foreground text-xs mt-1">
-                    {formatDateRange(competition.start_date, competition.submission_deadline)}
+                    {formatDateRange(
+                      competition.start_date,
+                      competition.submission_deadline
+                    )}
                   </p>
                   <p className="text-muted-foreground text-xs mt-1">
-                    {competition.project_count} project
-                    {competition.project_count !== 1 ? "s" : ""} to review
+                    {isEnded
+                      ? "Review period ended"
+                      : `${competition.project_count} project${
+                          competition.project_count !== 1 ? "s" : ""
+                        } to review`}
                   </p>
                 </div>
+              </>
+            );
+
+            if (isEnded) {
+              return (
+                <div key={competition.id} className={endedClasses}>
+                  {inner}
+                </div>
+              );
+            }
+
+            return (
+              <Link
+                key={competition.id}
+                href={`/my-reviews/${competition.id}`}
+                className={activeClasses}
+              >
+                {inner}
               </Link>
             );
           })}

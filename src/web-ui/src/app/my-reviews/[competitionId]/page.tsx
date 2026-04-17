@@ -98,7 +98,8 @@ export default function CompetitionProjectsPage() {
       competitionId={competitionId}
       competitionName={competition.name}
       projects={projects}
-      isCompleted={competition.my_review_status === "completed"}
+      isCompleted={competition.my_review_status !== "in_progress"}
+      isEnded={competition.my_review_status === "ended"}
       onProjectsReorder={handleProjectsReorder}
       onFinishReview={handleFinishReview}
     />

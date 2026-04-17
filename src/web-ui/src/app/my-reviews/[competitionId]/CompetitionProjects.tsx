@@ -29,6 +29,7 @@ interface CompetitionProjectsProps {
   competitionName: string;
   projects: ReviewProject[];
   isCompleted: boolean;
+  isEnded?: boolean;
   onProjectsReorder: (projects: ReviewProject[]) => void;
   onFinishReview: () => void;
 }
@@ -38,6 +39,7 @@ export function CompetitionProjects({
   competitionName,
   projects,
   isCompleted,
+  isEnded = false,
   onProjectsReorder,
   onFinishReview,
 }: CompetitionProjectsProps) {
@@ -126,7 +128,11 @@ export function CompetitionProjects({
   return (
     <div>
       <div className="mb-4 text-xs text-muted-foreground">
-        {isCompleted ? (
+        {isEnded ? (
+          <span className="text-muted-foreground flex items-center gap-1">
+            Review period ended
+          </span>
+        ) : isCompleted ? (
           <span className="text-emerald-600 flex items-center gap-1">
             <CheckCircleIcon className="w-3.5 h-3.5" />
             Review completed

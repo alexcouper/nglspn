@@ -40,13 +40,13 @@
 
 ## 5. Fix Existing Violations
 
-- [ ] 5.1 Refactor `api/tasks/email.py` to use `REPO.users.get_active_by_id()`, `REPO.project.get_by_id()`, and `REPO.email.get_broadcast_by_id()` instead of direct `Model.objects.get()` calls; add `get_broadcast_by_id()` to `EmailQueryInterface` and `DjangoEmailQuery` if needed
-- [ ] 5.2 Add `update_profile()` method to `UserHandlerInterface` and `DjangoUserHandler` that accepts field updates; refactor `api/routers/auth.py:update_current_user()` to delegate to `HANDLERS.users.update_profile()`
-- [ ] 5.3 Refactor `api/schemas/project.py` resolve methods to receive pre-fetched data from the router instead of traversing ORM relations; remove `.all()`, `.exclude()`, `.filter()` calls from resolve methods
-- [ ] 5.4 Refactor `api/schemas/my_review.py` resolve methods to receive pre-fetched data instead of querying ORM relations directly
-- [ ] 5.5 Remove `ProjectStatus` direct import from `api/routers/projects.py` and use the value from service layer response or schema enum instead
+- [x] 5.1 Refactor `api/tasks/email.py` to use `REPO.users.get_active_by_id()`, `REPO.project.get_by_id()`, and `REPO.email.get_broadcast_by_id()` instead of direct `Model.objects.get()` calls; add `get_broadcast_by_id()` to `EmailQueryInterface` and `DjangoEmailQuery` if needed
+- [x] 5.2 Add `update_profile()` method to `UserHandlerInterface` and `DjangoUserHandler` that accepts field updates; refactor `api/routers/auth.py:update_current_user()` to delegate to `HANDLERS.users.update_profile()`
+- [x] 5.3 Refactor `api/schemas/project.py` resolve methods to receive pre-fetched data from the router instead of traversing ORM relations; remove `.all()`, `.exclude()`, `.filter()` calls from resolve methods
+- [x] 5.4 Refactor `api/schemas/my_review.py` resolve methods to receive pre-fetched data instead of querying ORM relations directly
+- [x] 5.5 Remove `ProjectStatus` direct import from `api/routers/projects.py` and use the value from service layer response or schema enum instead
 
 ## 6. Documentation
 
-- [ ] 6.1 Create `src/django-backend/ARCHITECTURE.md` documenting the service-layer rule, the interface pattern (ABC → django_impl → HANDLERS/REPO), list of all service domains, and examples of correct vs incorrect usage
-- [ ] 6.2 Update `CLAUDE.md` to reference `ARCHITECTURE.md` for the service-layer convention
+- [x] 6.1 Create `src/django-backend/ARCHITECTURE.md` documenting the service-layer rule, the interface pattern (ABC → django_impl → HANDLERS/REPO), list of all service domains, and examples of correct vs incorrect usage
+- [x] 6.2 Update `CLAUDE.md` to reference `ARCHITECTURE.md` for the service-layer convention

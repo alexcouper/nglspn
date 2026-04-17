@@ -52,12 +52,14 @@ export function ProjectsPage({
         </div>
       </section>
 
-      <Link
-        href="/submit"
-        className="sm:hidden fixed bottom-4 left-4 right-4 z-20 text-center text-sm font-medium bg-accent hover:bg-accent-hover text-white px-4 py-3 rounded-lg shadow-lg transition-colors duration-150"
-      >
-        Submit a project
-      </Link>
+      <div className="sm:hidden sticky bottom-0 z-20 flex justify-center px-4 pb-5 pt-3 pointer-events-none">
+        <Link
+          href="/submit"
+          className="pointer-events-auto inline-flex items-center gap-2 text-sm font-medium bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-full shadow-[0_10px_30px_-5px_rgba(79,70,229,0.5)] ring-1 ring-black/5 transition-all duration-150 hover:-translate-y-0.5"
+        >
+          Submit a project
+        </Link>
+      </div>
     </>
   );
 }

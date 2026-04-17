@@ -1,6 +1,8 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
+import { CompetitionHighlight } from "@/app/components/CompetitionHighlight";
+import { fetchCompetitionHighlights } from "@/lib/api/server";
 
 const eligibility = `
 Projects must be built by Iceland-based developers. Projects can be at any stage of development, from idea to launched product.
@@ -13,16 +15,25 @@ Initially the focus is on side projects, but if you have a full time project tha
 const selection = `
 Winners are currently being selected by Alex Couper who is largely making it up as he goes along.
 
-We're looking for a panel of judges to make these decisions going forward. If you're interested in get in touch via [discord](https://discord.gg/DqUV64g7JE) or [email](mailto:alex@naglasupan.is).
+We're looking for a panel of judges to make these decisions going forward. If you're interested in get in touch via [discord](https://discord.gg/D47bQjaQ) or [email](mailto:alex@naglasupan.is).
 
 Prize frequency will be variable dependent on uptake, but somewhere in the weekly-monthly range.
 
 Prize sizes and quantity will depend on sponsorships, but we're good for a few months at least.
 `;
 
-export default function PrizesPage() {
+export default async function PrizesPage() {
+  const { competitions } = await fetchCompetitionHighlights().catch(
+    () => ({ competitions: [] })
+  );
   return (
     <>
+      <section className="py-12 px-4 sm:px-6 bg-white border-b border-border">
+        <div className="max-w-5xl mx-auto">
+          <CompetitionHighlight competitions={competitions ?? []} />
+        </div>
+      </section>
+
       <section className="py-12 px-4 sm:px-6 bg-white">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">

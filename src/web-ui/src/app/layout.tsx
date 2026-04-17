@@ -3,6 +3,7 @@ import { Inter, JetBrains_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { AuthProvider } from "@/contexts/auth";
 import { Navigation } from "@/components/Navigation";
+import { Footer } from "@/components/Footer";
 import { PlausibleTracker } from "@/components/PlausibleTracker";
 import "./globals.css";
 
@@ -53,13 +54,16 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased`}>
+      <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen flex flex-col`}>
         <PlausibleTracker />
         <AuthProvider>
           <Suspense>
             <Navigation />
           </Suspense>
-          <Suspense>{children}</Suspense>
+          <Suspense>
+            <div className="flex-1 flex flex-col">{children}</div>
+          </Suspense>
+          <Footer />
         </AuthProvider>
       </body>
     </html>

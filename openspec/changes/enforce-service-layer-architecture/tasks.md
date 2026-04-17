@@ -20,13 +20,13 @@
 
 ## 3. Project Images Service
 
-- [ ] 3.1 Create `services/project_images/` directory with `__init__.py`, `exceptions.py` (add `ProjectImageNotFoundError`, `ImageLimitExceededError`, `UploadNotFoundError`)
-- [ ] 3.2 Create `services/project_images/query_interface.py` with `ProjectImageQueryInterface` ABC defining: `get_project_for_owner()`, `get_image_for_project()`, `count_uploaded_non_icon_images()`, `has_main_image()`
-- [ ] 3.3 Create `services/project_images/handler_interface.py` with `ProjectImageHandlerInterface` ABC defining: `create_image()`, `complete_upload()`, `update_roles()`, `delete_image()`
-- [ ] 3.4 Create `services/project_images/django_impl/__init__.py`, `query.py` with `DjangoProjectImageQuery`, and `handler.py` with `DjangoProjectImageHandler`
-- [ ] 3.5 Register `project_images` in `services/__init__.py` as `REPO.project_images` and `HANDLERS.project_images`
-- [ ] 3.6 Refactor image endpoints in `api/routers/my_projects.py` to use `REPO.project_images` and `HANDLERS.project_images`, removing direct `ProjectImage.objects.create()`, `.save()`, `.delete()`, and `get_object_or_404` calls
-- [ ] 3.7 Write tests for `DjangoProjectImageQuery` and `DjangoProjectImageHandler`
+- [x] 3.1 Create `services/project_images/` directory with `__init__.py`, `exceptions.py` (add `ProjectImageNotFoundError`, `ImageLimitExceededError`, `UploadNotFoundError`)
+- [x] 3.2 Create `services/project_images/query_interface.py` with `ProjectImageQueryInterface` ABC defining: `get_project_for_owner()`, `get_image_for_project()`, `count_uploaded_non_icon_images()`, `has_main_image()`
+- [x] 3.3 Create `services/project_images/handler_interface.py` with `ProjectImageHandlerInterface` ABC defining: `create_image()`, `complete_upload()`, `update_roles()`, `delete_image()`
+- [x] 3.4 Create `services/project_images/django_impl/__init__.py`, `query.py` with `DjangoProjectImageQuery`, and `handler.py` with `DjangoProjectImageHandler`
+- [x] 3.5 Register `project_images` in `services/__init__.py` as `REPO.project_images` and `HANDLERS.project_images`
+- [x] 3.6 Refactor image endpoints in `api/routers/my_projects.py` to use `REPO.project_images` and `HANDLERS.project_images`, removing direct `ProjectImage.objects.create()`, `.save()`, `.delete()`, and `get_object_or_404` calls
+- [x] 3.7 Write tests for `DjangoProjectImageQuery` and `DjangoProjectImageHandler`
 
 ## 4. Review Service
 

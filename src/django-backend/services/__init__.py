@@ -18,6 +18,12 @@ from services.notifications.handler_interface import NotificationHandlerInterfac
 from services.project.django_impl import DjangoProjectHandler, DjangoProjectQuery
 from services.project.handler_interface import ProjectHandlerInterface
 from services.project.query_interface import ProjectQueryInterface
+from services.project_images.django_impl import (
+    DjangoProjectImageHandler,
+    DjangoProjectImageQuery,
+)
+from services.project_images.handler_interface import ProjectImageHandlerInterface
+from services.project_images.query_interface import ProjectImageQueryInterface
 from services.registration.django_impl import DjangoRegistrationHandler
 from services.registration.handler_interface import RegistrationHandlerInterface
 from services.tags.django_impl import DjangoTagHandler, DjangoTagQuery
@@ -39,6 +45,9 @@ class HandlerServices:
         default_factory=DjangoNotificationHandler
     )
     project: ProjectHandlerInterface = field(default_factory=DjangoProjectHandler)
+    project_images: ProjectImageHandlerInterface = field(
+        default_factory=DjangoProjectImageHandler
+    )
     registration: RegistrationHandlerInterface = field(
         default_factory=DjangoRegistrationHandler
     )
@@ -54,6 +63,9 @@ class QueryServices:
     discussions: DiscussionQueryInterface = field(default_factory=DjangoDiscussionQuery)
     email: EmailQueryInterface = field(default_factory=DjangoEmailQuery)
     project: ProjectQueryInterface = field(default_factory=DjangoProjectQuery)
+    project_images: ProjectImageQueryInterface = field(
+        default_factory=DjangoProjectImageQuery
+    )
     tags: TagQueryInterface = field(default_factory=DjangoTagQuery)
     users: UserQueryInterface = field(default_factory=DjangoUserQuery)
 

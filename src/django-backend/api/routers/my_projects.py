@@ -1,10 +1,7 @@
-import logging
 from typing import Any
 
 from django.db.models import QuerySet
 from django.http import HttpRequest
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from ninja import Router
 
 from api.auth.security import auth
@@ -19,11 +16,7 @@ from api.schemas.project import (
     UpdateImageRolesRequest,
 )
 from api.tasks.images import generate_image_variants
-from apps.projects.models import (
-    Project,
-    ProjectImage,
-    UploadStatus,
-)
+from apps.projects.models import Project
 from services import HANDLERS, REPO
 from services.project.exceptions import (
     InvalidCompetitionError,
@@ -32,9 +25,12 @@ from services.project.exceptions import (
     ProjectNotFoundError,
 )
 from services.project.handler_interface import CreateProjectInput, UpdateProjectInput
+from services.project_images.exceptions import (
+    ImageLimitExceededError,
+    ProjectImageNotFoundError,
+)
 from services.storage import storage_service
 
-# Image upload configuration
 MAX_IMAGES_PER_PROJECT = 10
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 ALLOWED_CONTENT_TYPES = {
@@ -178,47 +174,42 @@ def get_upload_url(
     project_id: str,
     payload: PresignedUploadRequest,
 ) -> PresignedUploadResponse | tuple[int, dict[str, str]]:
-    project = get_object_or_404(Project, id=project_id, owner=request.auth)
-
-    # Validate content type
     if payload.content_type not in ALLOWED_CONTENT_TYPES:
         allowed = ", ".join(sorted(ALLOWED_CONTENT_TYPES))
         return 400, {"detail": f"Content type must be one of: {allowed}"}
 
-    # Validate file size
     if payload.file_size > MAX_FILE_SIZE:
         max_mb = MAX_FILE_SIZE // (1024 * 1024)
         return 400, {"detail": f"File size must be less than {max_mb}MB"}
 
-    is_icon = payload.is_icon
+    try:
+        project = REPO.project_images.get_project_for_owner(project_id, request.auth.id)
+    except ProjectImageNotFoundError:
+        return 404, {"detail": "Not Found"}
 
-    # Check image count limit (icons don't count)
-    current_count = (
-        project.images.filter(upload_status=UploadStatus.UPLOADED)
-        .exclude(is_icon=True)
-        .count()
-    )
-    if not is_icon and current_count >= MAX_IMAGES_PER_PROJECT:
+    current_count = REPO.project_images.count_uploaded_non_icon_images(project)
+    if not payload.is_icon and current_count >= MAX_IMAGES_PER_PROJECT:
         return 400, {"detail": f"Maximum {MAX_IMAGES_PER_PROJECT} images per project"}
 
-    # Generate storage key
     storage_key = storage_service.generate_upload_key(
         str(project.id),
         payload.filename,
     )
 
-    image = ProjectImage.objects.create(
-        project=project,
-        storage_key=storage_key,
-        original_filename=payload.filename,
-        content_type=payload.content_type,
-        file_size=payload.file_size,
-        upload_status=UploadStatus.PENDING,
-        display_order=current_count,
-        is_icon=is_icon,
-    )
+    try:
+        image = HANDLERS.project_images.create_image(
+            project_id=project.id,
+            owner_id=request.auth.id,
+            storage_key=storage_key,
+            original_filename=payload.filename,
+            content_type=payload.content_type,
+            file_size=payload.file_size,
+            is_icon=payload.is_icon,
+            display_order=current_count,
+        )
+    except ImageLimitExceededError:
+        return 400, {"detail": f"Maximum {MAX_IMAGES_PER_PROJECT} images per project"}
 
-    # Generate presigned URL
     presigned = storage_service.generate_presigned_upload_url(
         storage_key,
         payload.content_type,
@@ -244,37 +235,31 @@ def complete_upload(
     project_id: str,
     image_id: str,
     payload: ImageUploadCompleteRequest,
-) -> ProjectImage | tuple[int, dict[str, str]]:
-    project = get_object_or_404(Project, id=project_id, owner=request.auth)
-    image = get_object_or_404(
-        ProjectImage,
-        id=image_id,
-        project=project,
-        upload_status=UploadStatus.PENDING,
-    )
+) -> tuple[int, Any]:
+    try:
+        image = REPO.project_images.get_image_for_project(
+            image_id, project_id, upload_status="pending"
+        )
+    except ProjectImageNotFoundError:
+        return 404, {"detail": "Not Found"}
 
-    # Verify the object exists in storage
     if not storage_service.object_exists(image.storage_key):
         return 400, {"detail": "Image not found in storage. Upload may have failed."}
 
-    # Update image record
-    image.upload_status = UploadStatus.UPLOADED
-    image.uploaded_at = timezone.now()
-    image.width = payload.width
-    image.height = payload.height
+    try:
+        image = HANDLERS.project_images.complete_upload(
+            project_id=project_id,
+            owner_id=request.auth.id,
+            image_id=image_id,
+            width=payload.width,
+            height=payload.height,
+        )
+    except ProjectImageNotFoundError:
+        return 404, {"detail": "Not Found"}
 
-    # If this is the first non-icon image, make it the main image
-    is_icon = image.is_icon
-    has_main = project.images.filter(is_main=True).exists()
-    if not is_icon and not has_main:
-        image.is_main = True
-
-    image.save()
-
-    # Enqueue async variant generation
     generate_image_variants.enqueue(str(image.id))
 
-    return image
+    return 200, image
 
 
 @router.post(
@@ -288,33 +273,20 @@ def update_image_roles(
     project_id: str,
     image_id: str,
     payload: UpdateImageRolesRequest,
-) -> ProjectImage | tuple[int, dict[str, str]]:
-    project = get_object_or_404(Project, id=project_id, owner=request.auth)
-    image = get_object_or_404(
-        ProjectImage,
-        id=image_id,
-        project=project,
-        upload_status=UploadStatus.UPLOADED,
-    )
+) -> tuple[int, Any]:
+    try:
+        image = HANDLERS.project_images.update_roles(
+            project_id=project_id,
+            owner_id=request.auth.id,
+            image_id=image_id,
+            is_main=payload.is_main,
+            is_hero=payload.is_hero,
+            is_usage=payload.is_usage,
+        )
+    except ProjectImageNotFoundError:
+        return 404, {"detail": "Not Found"}
 
-    role_fields = [
-        ("is_main", payload.is_main),
-        ("is_hero", payload.is_hero),
-        ("is_usage", payload.is_usage),
-    ]
-
-    for field, value in role_fields:
-        if value is None:
-            continue
-        if value:
-            # Clear this role from all other images on the project
-            project.images.exclude(id=image.id).filter(**{field: True}).update(
-                **{field: False}
-            )
-        setattr(image, field, value)
-
-    image.save()
-    return image
+    return 200, image
 
 
 @router.delete(
@@ -328,29 +300,13 @@ def delete_image(
     project_id: str,
     image_id: str,
 ) -> tuple[int, None]:
-    project = get_object_or_404(Project, id=project_id, owner=request.auth)
-    image = get_object_or_404(ProjectImage, id=image_id, project=project)
-
-    # Delete variant files from S3 (DB rows cascade-delete with the image)
-    for variant in image.variants.all():
-        try:
-            storage_service.delete_object(variant.storage_key)
-        except Exception:
-            logging.getLogger(__name__).exception(
-                "Failed to delete variant %s from S3", variant.storage_key
-            )
-
-    # Delete original from storage
-    storage_service.delete_object(image.storage_key)
-
-    was_main = image.is_main
-    image.delete()
-
-    # If deleted image was main, promote the first remaining image
-    if was_main:
-        first_image = project.images.filter(upload_status=UploadStatus.UPLOADED).first()
-        if first_image:
-            first_image.is_main = True
-            first_image.save()
+    try:
+        HANDLERS.project_images.delete_image(
+            project_id=project_id,
+            owner_id=request.auth.id,
+            image_id=image_id,
+        )
+    except ProjectImageNotFoundError:
+        return 404, {"detail": "Not Found"}
 
     return 204, None

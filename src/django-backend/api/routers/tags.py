@@ -1,10 +1,7 @@
 from typing import Any
 
-from django.db.models import Prefetch, QuerySet
+from django.db.models import QuerySet
 from django.http import HttpRequest
-from django.shortcuts import get_object_or_404
-from django.utils import timezone
-from django.utils.text import slugify
 from ninja import Query, Router
 
 from api.auth.security import auth
@@ -16,22 +13,43 @@ from api.schemas.tag import (
     TagSuggestRequest,
     TagWithCategoryResponse,
 )
-from apps.projects.models import ProjectStatus
-from apps.tags.models import Tag, TagCategory, TagStatus
+from services import HANDLERS, REPO
+from services.tags.exceptions import (
+    DuplicateTagNameError,
+    DuplicateTagSlugError,
+    TagAlreadyApprovedError,
+    TagAlreadyRejectedError,
+    TagCategoryNotFoundError,
+    TagNotFoundError,
+    TagRejectedError,
+)
 
 router = Router()
 
 
+def _tag_with_category(tag: Any) -> dict[str, Any]:
+    return {
+        "id": tag.id,
+        "name": tag.name,
+        "slug": tag.slug,
+        "description": tag.description,
+        "color": tag.color,
+        "category_id": tag.category.id if tag.category else None,
+        "category_slug": tag.category.slug if tag.category else None,
+        "status": tag.status,
+    }
+
+
 @router.get("", response={200: list[TagResponse]}, tags=["Tags"])
-def list_tags(request: HttpRequest) -> QuerySet[Tag]:
+def list_tags(request: HttpRequest) -> QuerySet:
     """List all approved and pending tags (excludes rejected)."""
-    return Tag.objects.exclude(status=TagStatus.REJECTED)
+    return REPO.tags.list_non_rejected()
 
 
 @router.get("/categories", response={200: list[TagCategoryResponse]}, tags=["Tags"])
-def list_categories(request: HttpRequest) -> QuerySet[TagCategory]:
+def list_categories(request: HttpRequest) -> QuerySet:
     """List all active tag categories."""
-    return TagCategory.objects.filter(is_active=True)
+    return REPO.tags.list_categories()
 
 
 @router.get("/grouped", response={200: list[TagGroupedResponse]}, tags=["Tags"])
@@ -43,18 +61,11 @@ def list_tags_grouped(
 
     If with_projects=true, only returns tags with at least one approved project.
     """
-    # Build tag queryset with filters applied at database level
-    tag_queryset = Tag.objects.exclude(status=TagStatus.REJECTED)
-    if with_projects:
-        tag_queryset = tag_queryset.filter(projects__status=ProjectStatus.APPROVED)
-    tag_queryset = tag_queryset.distinct()
-
-    categories = TagCategory.objects.filter(is_active=True).prefetch_related(
-        Prefetch("tags", queryset=tag_queryset)
-    )
+    grouped = REPO.tags.list_grouped(with_projects=with_projects)
 
     result = []
-    for category in categories:
+    for group in grouped:
+        category = group.category
         tags = [
             {
                 "id": tag.id,
@@ -66,7 +77,7 @@ def list_tags_grouped(
                 "category_slug": category.slug,
                 "status": tag.status,
             }
-            for tag in category.tags.all()
+            for tag in group.tags
         ]
 
         # Skip empty categories
@@ -91,7 +102,7 @@ def list_tags_grouped(
 
 @router.post(
     "/suggest",
-    response={201: TagWithCategoryResponse, 400: Error, 401: Error},
+    response={201: TagWithCategoryResponse, 400: Error, 401: Error, 404: Error},
     auth=auth,
     tags=["Tags"],
 )
@@ -99,39 +110,22 @@ def suggest_tag(
     request: HttpRequest, payload: TagSuggestRequest
 ) -> tuple[int, dict[str, Any]]:
     """Suggest a new tag (creates with status=pending, immediately usable)."""
-    # Validate category exists and is active
-    category = get_object_or_404(TagCategory, id=payload.category_id, is_active=True)
-
-    # Generate slug from name
-    slug = slugify(payload.name)
-
-    # Check if tag with same name or slug exists
-    if Tag.objects.filter(name__iexact=payload.name).exists():
+    try:
+        tag = HANDLERS.tags.suggest(
+            name=payload.name,
+            description=payload.description,
+            color=payload.color,
+            category_id=payload.category_id,
+            created_by=request.auth,
+        )
+    except TagCategoryNotFoundError:
+        return 404, {"detail": "Not Found"}
+    except DuplicateTagNameError:
         return 400, {"detail": "A tag with this name already exists"}
-    if Tag.objects.filter(slug=slug).exists():
+    except DuplicateTagSlugError:
         return 400, {"detail": "A tag with this slug already exists"}
 
-    # Create the tag as pending (user-created)
-    tag = Tag.objects.create(
-        name=payload.name,
-        slug=slug,
-        description=payload.description,
-        color=payload.color,
-        category=category,
-        status=TagStatus.PENDING,
-        created_by=request.auth,
-    )
-
-    return 201, {
-        "id": tag.id,
-        "name": tag.name,
-        "slug": tag.slug,
-        "description": tag.description,
-        "color": tag.color,
-        "category_id": category.id,
-        "category_slug": category.slug,
-        "status": tag.status,
-    }
+    return 201, _tag_with_category(tag)
 
 
 # Admin endpoints for tag approval workflow
@@ -150,20 +144,7 @@ def list_pending_tags(
     if not request.auth.is_staff:
         return 403, {"detail": "Admin access required"}
 
-    tags = Tag.objects.filter(status=TagStatus.PENDING).select_related("category")
-    return [
-        {
-            "id": tag.id,
-            "name": tag.name,
-            "slug": tag.slug,
-            "description": tag.description,
-            "color": tag.color,
-            "category_id": tag.category.id if tag.category else None,
-            "category_slug": tag.category.slug if tag.category else None,
-            "status": tag.status,
-        }
-        for tag in tags
-    ]
+    return [_tag_with_category(tag) for tag in REPO.tags.list_pending()]
 
 
 @router.put(
@@ -185,28 +166,16 @@ def approve_tag(
     if not request.auth.is_staff:
         return 403, {"detail": "Admin access required"}
 
-    tag = get_object_or_404(Tag.objects.select_related("category"), id=tag_id)
-
-    if tag.status == TagStatus.APPROVED:
+    try:
+        tag = HANDLERS.tags.approve(tag_id, request.auth)
+    except TagNotFoundError:
+        return 404, {"detail": "Not Found"}
+    except TagAlreadyApprovedError:
         return 400, {"detail": "Tag is already approved"}
-    if tag.status == TagStatus.REJECTED:
+    except TagRejectedError:
         return 400, {"detail": "Cannot approve a rejected tag"}
 
-    tag.status = TagStatus.APPROVED
-    tag.reviewed_by = request.auth
-    tag.reviewed_at = timezone.now()
-    tag.save()
-
-    return {
-        "id": tag.id,
-        "name": tag.name,
-        "slug": tag.slug,
-        "description": tag.description,
-        "color": tag.color,
-        "category_id": tag.category.id if tag.category else None,
-        "category_slug": tag.category.slug if tag.category else None,
-        "status": tag.status,
-    }
+    return _tag_with_category(tag)
 
 
 @router.put(
@@ -228,26 +197,11 @@ def reject_tag(
     if not request.auth.is_staff:
         return 403, {"detail": "Admin access required"}
 
-    tag = get_object_or_404(Tag.objects.select_related("category"), id=tag_id)
-
-    if tag.status == TagStatus.REJECTED:
+    try:
+        tag = HANDLERS.tags.reject(tag_id, request.auth)
+    except TagNotFoundError:
+        return 404, {"detail": "Not Found"}
+    except TagAlreadyRejectedError:
         return 400, {"detail": "Tag is already rejected"}
 
-    # Remove from all projects
-    tag.projects.clear()
-
-    tag.status = TagStatus.REJECTED
-    tag.reviewed_by = request.auth
-    tag.reviewed_at = timezone.now()
-    tag.save()
-
-    return {
-        "id": tag.id,
-        "name": tag.name,
-        "slug": tag.slug,
-        "description": tag.description,
-        "color": tag.color,
-        "category_id": tag.category.id if tag.category else None,
-        "category_slug": tag.category.slug if tag.category else None,
-        "status": tag.status,
-    }
+    return _tag_with_category(tag)

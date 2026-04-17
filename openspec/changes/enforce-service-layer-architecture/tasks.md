@@ -10,13 +10,13 @@
 
 ## 2. Tags Service
 
-- [ ] 2.1 Create `services/tags/` directory with `__init__.py`, `exceptions.py` (add `TagNotFoundError`, `DuplicateTagNameError`, `DuplicateTagSlugError`, `TagCategoryNotFoundError`, `TagAlreadyApprovedError`, `TagRejectedError`, `TagAlreadyRejectedError`)
-- [ ] 2.2 Create `services/tags/query_interface.py` with `TagQueryInterface` ABC defining: `list_non_rejected()`, `list_categories()`, `list_grouped()`, `list_pending()`, `get_by_id()`
-- [ ] 2.3 Create `services/tags/handler_interface.py` with `TagHandlerInterface` ABC defining: `suggest()`, `approve()`, `reject()`
-- [ ] 2.4 Create `services/tags/django_impl/__init__.py`, `query.py` with `DjangoTagQuery`, and `handler.py` with `DjangoTagHandler`
-- [ ] 2.5 Register `tags` in `services/__init__.py` as `REPO.tags` and `HANDLERS.tags`
-- [ ] 2.6 Refactor `api/routers/tags.py` to use `REPO.tags` and `HANDLERS.tags` instead of direct ORM queries, removing all `apps.tags.models` and `apps.projects.models` imports
-- [ ] 2.7 Write tests for `DjangoTagQuery` and `DjangoTagHandler`
+- [x] 2.1 Create `services/tags/` directory with `__init__.py`, `exceptions.py` (add `TagNotFoundError`, `DuplicateTagNameError`, `DuplicateTagSlugError`, `TagCategoryNotFoundError`, `TagAlreadyApprovedError`, `TagRejectedError`, `TagAlreadyRejectedError`)
+- [x] 2.2 Create `services/tags/query_interface.py` with `TagQueryInterface` ABC defining: `list_non_rejected()`, `list_categories()`, `list_grouped()`, `list_pending()`, `get_by_id()`
+- [x] 2.3 Create `services/tags/handler_interface.py` with `TagHandlerInterface` ABC defining: `suggest()`, `approve()`, `reject()`
+- [x] 2.4 Create `services/tags/django_impl/__init__.py`, `query.py` with `DjangoTagQuery`, and `handler.py` with `DjangoTagHandler`
+- [x] 2.5 Register `tags` in `services/__init__.py` as `REPO.tags` and `HANDLERS.tags`
+- [x] 2.6 Refactor `api/routers/tags.py` to use `REPO.tags` and `HANDLERS.tags` instead of direct ORM queries, removing all `apps.tags.models` and `apps.projects.models` imports
+- [x] 2.7 Write tests for `DjangoTagQuery` and `DjangoTagHandler`
 
 ## 3. Project Images Service
 

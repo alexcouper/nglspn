@@ -13,13 +13,13 @@ Initially the focus is on side projects, but if you have a full time project tha
 `;
 
 const selection = `
-Winners are currently being selected by Alex Couper who is largely making it up as he goes along.
-
-We're looking for a panel of judges to make these decisions going forward. If you're interested in get in touch via [discord](https://discord.gg/D47bQjaQ) or [email](mailto:alex@naglasupan.is).
+Winners are selected by the community. During each competition's voting phase, registered members rank the entered projects, and the rankings are aggregated to decide the winner.
 
 Prize frequency will be variable dependent on uptake, but somewhere in the weekly-monthly range.
 
 Prize sizes and quantity will depend on sponsorships, but we're good for a few months at least.
+
+If you'd like to help shape how competitions are run, get in touch via [discord](https://discord.gg/D47bQjaQ) or [email](mailto:alex@naglasupan.is).
 `;
 
 export default async function PrizesPage() {

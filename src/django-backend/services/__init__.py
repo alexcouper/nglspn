@@ -20,6 +20,9 @@ from services.project.handler_interface import ProjectHandlerInterface
 from services.project.query_interface import ProjectQueryInterface
 from services.registration.django_impl import DjangoRegistrationHandler
 from services.registration.handler_interface import RegistrationHandlerInterface
+from services.tags.django_impl import DjangoTagHandler, DjangoTagQuery
+from services.tags.handler_interface import TagHandlerInterface
+from services.tags.query_interface import TagQueryInterface
 from services.users.django_impl import DjangoUserHandler, DjangoUserQuery
 from services.users.handler_interface import UserHandlerInterface
 from services.users.query_interface import UserQueryInterface
@@ -39,6 +42,7 @@ class HandlerServices:
     registration: RegistrationHandlerInterface = field(
         default_factory=DjangoRegistrationHandler
     )
+    tags: TagHandlerInterface = field(default_factory=DjangoTagHandler)
     users: UserHandlerInterface = field(default_factory=DjangoUserHandler)
 
 
@@ -50,6 +54,7 @@ class QueryServices:
     discussions: DiscussionQueryInterface = field(default_factory=DjangoDiscussionQuery)
     email: EmailQueryInterface = field(default_factory=DjangoEmailQuery)
     project: ProjectQueryInterface = field(default_factory=DjangoProjectQuery)
+    tags: TagQueryInterface = field(default_factory=DjangoTagQuery)
     users: UserQueryInterface = field(default_factory=DjangoUserQuery)
 
 

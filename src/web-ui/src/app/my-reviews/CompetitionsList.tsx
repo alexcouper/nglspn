@@ -33,10 +33,10 @@ export function CompetitionsList({ competitions }: CompetitionsListProps) {
   }
 
   const outstanding = competitions.filter(
-    (c) => c.my_review_status === "in_progress" || c.my_review_status === "ended"
+    (c) => c.my_review_status === "in_progress"
   );
   const completed = competitions.filter(
-    (c) => c.my_review_status === "completed"
+    (c) => c.my_review_status === "completed" || c.my_review_status === "ended"
   );
 
   return (
@@ -45,13 +45,12 @@ export function CompetitionsList({ competitions }: CompetitionsListProps) {
         <div className="space-y-3">
           {outstanding.map((competition) => {
             const placeholderColor = getPlaceholderColor(competition.id);
-            const isEnded = competition.my_review_status === "ended";
-            const activeClasses =
-              "group flex items-start gap-4 w-full text-left bg-white rounded-xl border border-border p-5 hover:border-slate-300 hover:shadow-sm transition-all";
-            const endedClasses =
-              "flex items-start gap-4 w-full text-left bg-muted rounded-xl border border-border p-5";
-            const inner = (
-              <>
+            return (
+              <Link
+                key={competition.id}
+                href={`/my-reviews/${competition.id}`}
+                className="group flex items-start gap-4 w-full text-left bg-white rounded-xl border border-border p-5 hover:border-slate-300 hover:shadow-sm transition-all"
+              >
                 <div
                   className={`relative w-11 h-11 rounded-full overflow-hidden flex-shrink-0 ${!competition.image_url ? placeholderColor : ""}`}
                 >
@@ -66,13 +65,7 @@ export function CompetitionsList({ competitions }: CompetitionsListProps) {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h2
-                    className={`font-medium transition-colors ${
-                      isEnded
-                        ? "text-muted-foreground"
-                        : "text-foreground group-hover:text-accent"
-                    }`}
-                  >
+                  <h2 className="font-medium text-foreground group-hover:text-accent transition-colors">
                     {competition.name}
                   </h2>
                   <p className="text-muted-foreground text-xs mt-1">
@@ -82,31 +75,10 @@ export function CompetitionsList({ competitions }: CompetitionsListProps) {
                     )}
                   </p>
                   <p className="text-muted-foreground text-xs mt-1">
-                    {isEnded
-                      ? "Review period ended"
-                      : `${competition.project_count} project${
-                          competition.project_count !== 1 ? "s" : ""
-                        } to review`}
+                    {competition.project_count} project
+                    {competition.project_count !== 1 ? "s" : ""} to review
                   </p>
                 </div>
-              </>
-            );
-
-            if (isEnded) {
-              return (
-                <div key={competition.id} className={endedClasses}>
-                  {inner}
-                </div>
-              );
-            }
-
-            return (
-              <Link
-                key={competition.id}
-                href={`/my-reviews/${competition.id}`}
-                className={activeClasses}
-              >
-                {inner}
               </Link>
             );
           })}
@@ -120,6 +92,7 @@ export function CompetitionsList({ competitions }: CompetitionsListProps) {
           </h3>
           {completed.map((competition) => {
             const placeholderColor = getPlaceholderColor(competition.id);
+            const isEnded = competition.my_review_status === "ended";
             return (
               <Link
                 key={competition.id}
@@ -144,14 +117,19 @@ export function CompetitionsList({ competitions }: CompetitionsListProps) {
                     <h2 className="font-medium text-muted-foreground group-hover:text-foreground transition-colors">
                       {competition.name}
                     </h2>
-                    <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+                    {!isEnded && (
+                      <CheckCircleIcon className="w-4 h-4 text-emerald-500" />
+                    )}
                   </div>
                   <p className="text-muted-foreground text-xs mt-1">
                     {formatDateRange(competition.start_date, competition.submission_deadline)}
                   </p>
                   <p className="text-muted-foreground text-xs mt-1">
-                    {competition.project_count} project
-                    {competition.project_count !== 1 ? "s" : ""} reviewed
+                    {isEnded
+                      ? "Review period ended"
+                      : `${competition.project_count} project${
+                          competition.project_count !== 1 ? "s" : ""
+                        } reviewed`}
                   </p>
                 </div>
               </Link>

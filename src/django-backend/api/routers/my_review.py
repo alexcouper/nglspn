@@ -39,8 +39,10 @@ EXCLUDED_PROJECT_STATUSES = [ProjectStatus.REJECTED, ProjectStatus.ICE_BOX]
 )
 def list_my_review_competitions(request: HttpRequest) -> ReviewCompetitionListResponse:
     """List all competitions the current user is assigned to review."""
-    assignments = CompetitionReviewer.objects.filter(user=request.auth).select_related(
-        "competition"
+    assignments = (
+        CompetitionReviewer.objects.filter(user=request.auth)
+        .select_related("competition")
+        .order_by("-competition__start_date")
     )
 
     competitions = [

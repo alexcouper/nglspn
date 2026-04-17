@@ -1999,6 +1999,16 @@
               }
             }
           },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -4179,7 +4189,8 @@
       "ReviewStatusEnum": {
         "enum": [
           "in_progress",
-          "completed"
+          "completed",
+          "ended"
         ],
         "title": "ReviewStatusEnum",
         "type": "string"

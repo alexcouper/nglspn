@@ -326,6 +326,7 @@ class Competition(models.Model):
 class ReviewStatus(models.TextChoices):
     IN_PROGRESS = "in_progress", "In Progress"
     COMPLETED = "completed", "Completed"
+    ENDED = "ended", "Ended"
 
 
 class CompetitionReviewer(models.Model):

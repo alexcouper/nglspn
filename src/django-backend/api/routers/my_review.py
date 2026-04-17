@@ -11,6 +11,7 @@ from api.schemas.my_review import (
     ReviewCompetitionResponse,
     ReviewProjectDetailResponse,
     ReviewProjectResponse,
+    ReviewStatusEnum,
     StatusUpdateRequest,
     SuccessResponse,
 )
@@ -38,8 +39,10 @@ EXCLUDED_PROJECT_STATUSES = [ProjectStatus.REJECTED, ProjectStatus.ICE_BOX]
 )
 def list_my_review_competitions(request: HttpRequest) -> ReviewCompetitionListResponse:
     """List all competitions the current user is assigned to review."""
-    assignments = CompetitionReviewer.objects.filter(user=request.auth).select_related(
-        "competition"
+    assignments = (
+        CompetitionReviewer.objects.filter(user=request.auth)
+        .select_related("competition")
+        .order_by("-competition__start_date")
     )
 
     competitions = [
@@ -172,7 +175,7 @@ def update_rankings(
 
 @router.put(
     "/competitions/{competition_id}/status",
-    response={200: SuccessResponse, 404: Error},
+    response={200: SuccessResponse, 400: Error, 404: Error},
     auth=auth,
     tags=["My Review"],
 )
@@ -182,6 +185,11 @@ def update_review_status(
     payload: StatusUpdateRequest,
 ) -> SuccessResponse | tuple[int, Error]:
     """Update the reviewer's status for a competition."""
+    if payload.status == ReviewStatusEnum.ENDED:
+        return 400, Error(
+            detail="Reviewers cannot set status to 'ended'; that is set by an admin."
+        )
+
     updated = CompetitionReviewer.objects.filter(
         user=request.auth,
         competition_id=competition_id,

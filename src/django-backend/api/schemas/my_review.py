@@ -13,6 +13,7 @@ from api.schemas.user import UserResponse
 class ReviewStatusEnum(str, Enum):
     IN_PROGRESS = "in_progress"
     COMPLETED = "completed"
+    ENDED = "ended"
 
 
 class ReviewCompetitionResponse(Schema):

@@ -15,6 +15,7 @@ from django.utils.safestring import mark_safe
 
 from api.tasks import email as email_tasks
 from apps.users.models import User
+from services import HANDLERS
 
 from .models import (
     Competition,
@@ -479,6 +480,7 @@ class CompetitionAdmin(admin.ModelAdmin):
     autocomplete_fields = ("winner",)
     inlines = [CompetitionReviewerInline]
     ordering = ("-start_date",)
+    actions = ("end_review_period",)
     readonly_fields = (
         "image_preview",
         "image_wide_preview",
@@ -571,6 +573,22 @@ class CompetitionAdmin(admin.ModelAdmin):
     @admin.display(description="Reviewers")
     def reviewer_count(self, obj: Competition) -> int:
         return obj.reviewers.count()
+
+    @admin.action(description="End review period for selected competitions")
+    def end_review_period(
+        self,
+        request: HttpRequest,
+        queryset: QuerySet[Competition],
+    ) -> None:
+        total_ended = 0
+        competition_count = queryset.count()
+        for competition in queryset:
+            total_ended += HANDLERS.reviews.end_review_period(competition.id)
+        self.message_user(
+            request,
+            f"Ended review period for {competition_count} competition(s); "
+            f"{total_ended} review(s) marked as ended.",
+        )
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Competition]:
         return super().get_queryset(request).select_related("winner")

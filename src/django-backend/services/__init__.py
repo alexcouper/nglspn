@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 
+from services.competitions.django_impl import DjangoCompetitionQuery
+from services.competitions.query_interface import CompetitionQueryInterface
 from services.discussions.django_impl import (
     DjangoDiscussionHandler,
     DjangoDiscussionQuery,
@@ -42,6 +44,9 @@ class HandlerServices:
 
 @dataclass(frozen=True)
 class QueryServices:
+    competitions: CompetitionQueryInterface = field(
+        default_factory=DjangoCompetitionQuery
+    )
     discussions: DiscussionQueryInterface = field(default_factory=DjangoDiscussionQuery)
     email: EmailQueryInterface = field(default_factory=DjangoEmailQuery)
     project: ProjectQueryInterface = field(default_factory=DjangoProjectQuery)

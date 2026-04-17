@@ -1,12 +1,12 @@
 ## 1. Competitions Service
 
-- [ ] 1.1 Create `services/competitions/` directory with `__init__.py`, `exceptions.py` (add `CompetitionNotFoundError`)
-- [ ] 1.2 Create `services/competitions/query_interface.py` with `CompetitionQueryInterface` ABC defining: `list_all()`, `list_with_projects()`, `get_by_id_or_slug()`, `list_highlights()`, `count_pending_projects()`
-- [ ] 1.3 Create `services/competitions/django_impl/__init__.py` and `query.py` with `DjangoCompetitionQuery` implementing all `CompetitionQueryInterface` methods using Django ORM
-- [ ] 1.4 Register `competitions` in `services/__init__.py` `QueryServices` as `REPO.competitions`
-- [ ] 1.5 Refactor `api/routers/competitions.py` to use `REPO.competitions` instead of direct ORM queries, removing all `apps.projects.models` imports
-- [ ] 1.6 Refactor `api/schemas/competition.py` to remove direct ORM queries from `from_competition()` methods — accept pre-computed data; remove import of `to_list_item` from `services.project.django_impl`
-- [ ] 1.7 Write tests for `DjangoCompetitionQuery`
+- [x] 1.1 Create `services/competitions/` directory with `__init__.py`, `exceptions.py` (add `CompetitionNotFoundError`)
+- [x] 1.2 Create `services/competitions/query_interface.py` with `CompetitionQueryInterface` ABC defining: `list_all()`, `list_with_projects()`, `get_by_id_or_slug()`, `list_highlights()`, `count_pending_projects()`
+- [x] 1.3 Create `services/competitions/django_impl/__init__.py` and `query.py` with `DjangoCompetitionQuery` implementing all `CompetitionQueryInterface` methods using Django ORM
+- [x] 1.4 Register `competitions` in `services/__init__.py` `QueryServices` as `REPO.competitions`
+- [x] 1.5 Refactor `api/routers/competitions.py` to use `REPO.competitions` instead of direct ORM queries, removing all `apps.projects.models` imports
+- [x] 1.6 Refactor `api/schemas/competition.py` to remove direct ORM queries from `from_competition()` methods — accept pre-computed data; remove import of `to_list_item` from `services.project.django_impl`
+- [x] 1.7 Write tests for `DjangoCompetitionQuery`
 
 ## 2. Tags Service
 

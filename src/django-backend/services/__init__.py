@@ -18,6 +18,8 @@ from services.project.handler_interface import ProjectHandlerInterface
 from services.project.query_interface import ProjectQueryInterface
 from services.registration.django_impl import DjangoRegistrationHandler
 from services.registration.handler_interface import RegistrationHandlerInterface
+from services.review.django_impl import DjangoReviewHandler
+from services.review.handler_interface import ReviewHandlerInterface
 from services.users.django_impl import DjangoUserHandler, DjangoUserQuery
 from services.users.handler_interface import UserHandlerInterface
 from services.users.query_interface import UserQueryInterface
@@ -37,6 +39,7 @@ class HandlerServices:
     registration: RegistrationHandlerInterface = field(
         default_factory=DjangoRegistrationHandler
     )
+    reviews: ReviewHandlerInterface = field(default_factory=DjangoReviewHandler)
     users: UserHandlerInterface = field(default_factory=DjangoUserHandler)
 
 

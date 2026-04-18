@@ -1,11 +1,12 @@
 APP:=web-ui
-.PHONY: help install dev build-app lint clean build publish e2e
+.PHONY: help install dev run-non-dev build-app lint clean build publish e2e
 
 include ../../scripts/app-common.mk
 help:
 	@echo "Available commands:"
 	@echo "  install       Install dependencies"
 	@echo "  dev           Run development server"
+	@echo "  run-non-dev   Build and run prod-mode server on LAN (reproduce prod bugs)"
 	@echo "  build-app     Build the Next.js application"
 	@echo "  lint          Run linter"
 	@echo "  e2e           Run Playwright e2e tests"
@@ -23,6 +24,9 @@ dev:
 	PORT=$$(../../scripts/find-free-port.sh 3000) && \
 	echo "Starting Next.js on port $$PORT (backend at $${NEXT_PUBLIC_API_URL:-http://localhost:8000})" && \
 	PORT=$$PORT npm run dev
+
+run-non-dev:
+	./scripts/run-non-dev.sh
 
 build:
 	./scripts/build.sh

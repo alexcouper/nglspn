@@ -133,10 +133,16 @@ body {
   border: 1px solid var(--border);
   border-radius: 0.5rem;
   background: var(--background);
-  font-size: 0.875rem;
+  font-size: 1rem;
   line-height: 1.5;
   color: var(--foreground);
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+@media (min-width: 640px) {
+  .input {
+    font-size: 0.875rem;
+  }
 }
 
 .input:focus {

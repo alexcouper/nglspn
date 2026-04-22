@@ -1,0 +1,52 @@
+{
+  "keys": {
+    "footer.about": {
+      "text": "About",
+      "source_hash": "4efca0d10c5feb8e"
+    },
+    "footer.discord": {
+      "text": "Discord",
+      "source_hash": "053bc65874ad6098"
+    },
+    "footer.privacy": {
+      "text": "Privacy",
+      "source_hash": "54a57c3147c49f33"
+    },
+    "nav.competitions": {
+      "text": "Competitions",
+      "source_hash": "b829970ef4349d58"
+    },
+    "nav.continueOnboarding": {
+      "text": "Continue onboarding",
+      "source_hash": "f78a94837a152b24"
+    },
+    "nav.login": {
+      "text": "Log in",
+      "source_hash": "c189840cf7e2d6f6"
+    },
+    "nav.logout": {
+      "text": "Log out",
+      "source_hash": "49616145514e9abf"
+    },
+    "nav.myProjects": {
+      "text": "My Projects",
+      "source_hash": "452ab89d46b7f2d9"
+    },
+    "nav.myReviews": {
+      "text": "My Reviews",
+      "source_hash": "cbb118f32cfa1113"
+    },
+    "nav.profile": {
+      "text": "Profile",
+      "source_hash": "d696a35bdd1883da"
+    },
+    "nav.projects": {
+      "text": "Projects",
+      "source_hash": "04e2a9728af75840"
+    },
+    "nav.register": {
+      "text": "Register",
+      "source_hash": "bb7234ec12451361"
+    }
+  }
+}

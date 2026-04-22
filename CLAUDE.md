@@ -50,6 +50,22 @@ When modifying Django API endpoints, you MUST regenerate types:
    cd src/web-ui && npm run generate-types
    ```
 
+### Translations Workflow
+
+When you add a `t('new.key')` call in the web-ui:
+
+1. Add the key to `src/web-ui/src/messages/en.json`.
+2. Export `DEEPL_AUTH_KEY` (get one free at https://www.deepl.com/pro-api — free-tier keys end in `:fx`).
+3. From `src/django-backend`, run `make translate-new-keys`. This:
+   - Diffs `en.json` against `apps/translations/generators/state/en-snapshot.json`.
+   - Calls DeepL for new keys (and for changed keys whose IS row is still machine-translated).
+   - Bumps `source_hash` only (no retranslation) for changed keys whose IS row has been human-edited.
+   - Marks removed keys as `retired=True`.
+   - Writes a new Django data migration and updates the snapshot.
+4. Commit the generated migration + the updated snapshot in the same PR as your code change.
+
+`make ci` runs `make lint-translations` which fails if `en.json` and the snapshot have drifted — i.e. someone added a key without running `make translate-new-keys`. It also runs the web-ui's `npm run lint`, which includes `scripts/lint-i18n.mjs`: every `t("key")` call in a `.ts`/`.tsx` file must resolve to a key in `en.json`.
+
 ### Terraform Workflow
 
 From `infra/prod/app/`:

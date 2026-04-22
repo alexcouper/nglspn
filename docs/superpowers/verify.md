@@ -1,175 +1,130 @@
 # Dynamic Translations — Session State & Verification
 
-Last updated: 2026-04-22
+Last updated: 2026-04-22 (end of Phase 3)
 
 ## Where we are
 
-We are building **dynamic translations** for Naglasúpan. The design allows any logged-in user to edit translations inline, with changes propagating within seconds and no redeployment. The work is broken into 5 phases.
+Building **dynamic translations** for Naglasúpan. 5-phase rollout:
 
-- **Phase 1 — Backend catalog + API + webhook:** ✅ Implemented (not yet smoke-tested end-to-end).
-- **Phase 2 — Web-UI bilingual rendering (`next-intl` + locale routing):** ⏳ Not started. Next up.
-- **Phase 3 — Authoring flow (MT generation + Django migrations + lint):** Pending.
-- **Phase 4 — Inline edit UX (`<Translatable>`, pencil, popover, chips):** Pending.
+- **Phase 1 — Backend catalog + API + webhook:** ✅ Implemented and smoke-tested (see §"Phase 1 smoke test" below if you need to reprove it).
+- **Phase 2 — Web-UI bilingual rendering (`next-intl` + locale routing):** ✅ Implemented and smoke-tested end-to-end (`/` → Icelandic, `/en` → English, live revalidation via `/api/revalidate-i18n`, locale switcher, `hreflang`). Playwright `e2e/i18n.spec.ts` — 3/3 pass.
+- **Phase 3 — Authoring flow (MT generator + Django migrations + lint):** ✅ Implemented. 549 Django tests pass. `make ci` green. One manual follow-up pending: the DeepL end-to-end smoke (needs a real `DEEPL_AUTH_KEY`) was not yet run with a real key.
+- **Phase 4 — Inline edit UX (`<Translatable>`, pencil, popover, chips, history):** ⏳ **NEXT UP.** No plan written yet.
 - **Phase 5 — Editor worklist:** Pending.
 
 ## Artifacts
 
 - **Design spec:** `docs/superpowers/specs/2026-04-22-dynamic-translations-design.md`
 - **Phase 1 plan:** `docs/superpowers/plans/2026-04-22-translations-backend.md`
+- **Phase 2 plan:** `docs/superpowers/plans/2026-04-22-translations-web-ui.md`
+- **Phase 3 plan:** `docs/superpowers/plans/2026-04-22-translations-authoring.md`
+- **Phase 4 plan:** not yet written — produce it at the start of the next session.
 
-Phases 2–5 will each get their own plan written at the start of the next session, using real Phase-1 code as context.
+## What Phase 2 built (for Phase 4 context)
 
-## What Phase 1 built
+- All routes moved under `src/web-ui/src/app/[locale]/`.
+- `next-intl` v4.9.1 with `localePrefix: "as-needed"`. Default locale `is`, second locale `en`.
+- `src/web-ui/src/i18n/{config,routing,navigation,request}.ts` — routing + `NextIntlClientProvider` wiring.
+- `src/web-ui/src/lib/i18n/catalog.ts` — server-only `fetchCatalog(locale)` via `unstable_cache` tagged `i18n:<locale>`.
+- `src/web-ui/src/middleware.ts` — `next-intl` middleware (Next 16 emits a deprecation warning: `middleware` is slated to become `proxy`; still functional).
+- `src/web-ui/src/components/LocaleSwitcher.tsx` + mount in `Navigation.tsx`.
+- `src/web-ui/src/app/api/revalidate-i18n/route.ts` — `X-Revalidate-Secret` header + `revalidateTag(tag, "max")` (Next 16 signature).
+- `src/web-ui/src/messages/en.json` — English source of truth (Nav + Footer keys only in Phase 2).
+- Icelandic rows for Nav + Footer seeded by `apps/translations/migrations/0003_seed_phase2_ui_chrome.py`.
+- `Navigation.tsx`, `UserMenu.tsx`, `Footer.tsx` use `useTranslations(...)` + `Link`/`usePathname` from `@/i18n/navigation`. All other pages still have hardcoded strings — **Phase 4 sweeps those**.
 
-New Django app `apps.translations` with two models (`Translation`, `TranslationAudit`), a services layer following the existing `handler_interface` / `query_interface` / `django_impl` pattern (strict architectural rule: routers do not touch the ORM), a thin Django-Ninja router at `/api/i18n`, and a best-effort webhook that notifies the web-ui on edit.
+## What Phase 3 built (for Phase 4 context)
 
-### Endpoints
+- `apps/translations/generators/` — `flatten.py`, `hashing.py`, `snapshot.py`, `diff.py`, `translator.py` (with `DeepLTranslator` + `StubTranslator`), `migration_writer.py`. Full unit test coverage.
+- `apps/translations/management/commands/generate_translations.py` — Django management command that diffs, translates, writes a migration. 5 end-to-end tests covering added / retranslated / hash-bumped / retired / no-op.
+- `apps/translations/generators/state/en-snapshot.json` — committed snapshot, seeded from current `en.json`.
+- **`make translate-new-keys`** (from `src/django-backend/`) — the developer-run generator. Requires `DEEPL_AUTH_KEY` in env.
+- **`make lint-translations`** — CI-safe snapshot-drift check (uses `StubTranslator`, no DeepL needed).
+- `src/web-ui/scripts/lint-i18n.mjs` — verifies every `t("key")` resolves in `en.json`. Wired into `npm run lint`.
+- Root `Makefile` — `make ci` gates backend lint + translations drift + web-ui lint + backend tests.
+- `CLAUDE.md` has a `### Translations Workflow` section for developers.
 
-| Method | Path | Auth | Purpose |
-|---|---|---|---|
-| GET | `/api/i18n/{locale}` | — | Full non-retired catalog as `{key: text}`. |
-| GET | `/api/i18n/{locale}/version` | — | Max `updated_at` as epoch int; 0 if empty. |
-| PATCH | `/api/i18n/{locale}/{key}` | Bearer | Upsert; flips `is_machine_translated=False`; writes audit via save hook; fires revalidation webhook. |
+## How to start the next session
 
-### Relevant settings (added)
+Open a new Claude Code session in this project and say something like:
 
-- `WEB_UI_REVALIDATE_URL` (env)
-- `WEB_UI_REVALIDATE_SECRET` (env)
+> Read `docs/superpowers/verify.md` and let's start Phase 4 — the inline edit UX.
 
-Unset by default = webhook is a no-op.
+The assistant should:
+1. **Confirm state:** run `make ci` (expect green) and optionally re-run the Phase 1 or Phase 2 smoke test below if anything feels off.
+2. **(Optional) Do the outstanding DeepL smoke** if it hasn't been done: export `DEEPL_AUTH_KEY`, add one throwaway key to `en.json`, run `cd src/django-backend && make translate-new-keys`, inspect the generated migration for a plausible Icelandic translation, then revert.
+3. **Invoke `superpowers:writing-plans`** to produce the Phase 4 plan, consuming the Phase 2 `NextIntlClientProvider` + PATCH endpoint + revalidate webhook.
+4. **Offer execution choice** (subagent-driven vs inline) and run.
 
-### Test state
+### Phase 4 scope reminder (from design spec §Edit UX)
 
-- 484 tests pass across the full backend.
-- `make lint` clean.
-- OpenAPI regenerated (`src/web-ui/backend-openapi.json` updated in commit `mvxq`).
+- A "Edit translations" toggle in the user menu, cookie-persisted.
+- Global `<Translatable i18n-key="...">` wrapper → pencil-on-hover (absolutely positioned, no reflow).
+- Click → inline popover with: Icelandic textarea, English reference, ICU placeholder chips (non-editable), last-N history, save/cancel/revert.
+- Save path: PATCH to `/api/i18n/{locale}/{key}` → optimistic update to `NextIntlClientProvider` (editor sees change instantly) → Django webhook fires → other users see the change on next render.
+- Concurrency: last-write-wins, with "edited N seconds ago by X" warning if `updated_at` changed since popover open.
+- Missing-translation fallback already handled by Phase 2's `deepMerge` in `request.ts`; edit mode marks fallback strings visually.
+- Also: Phase 4 is the right time to sweep hardcoded strings on the other pages to `t()` and flip on the "no hardcoded JSX strings" lint rule (deferred from Phase 3).
 
-### Commits in Phase 1 (on top of the design+plan commit)
+## Phase 1 smoke test (only if you need to re-prove it)
 
-```
-uwqv  feat(translations): scaffold app
-wtuw  feat(translations): Translation model + migration
-kxmv  feat(translations): TranslationAudit + automatic write on save
-mrns  feat(translations): ninja schemas
-zqkm  docs(translations): revise plan to use services/ handler+query layer
-uszl  feat(translations): service interfaces (handler, query)
-uytl  feat(translations): DjangoTranslationQuery
-yoqy  feat(translations): revalidation webhook helper
-plox  feat(translations): DjangoTranslationHandler.update_text
-tymq  feat(translations): wire HANDLERS.translations / REPO.translations
-truu  feat(translations): HTTP router wired to HANDLERS/REPO
-xqku  feat(translations): admin registration (audit read-only)
-mvxq  chore(translations): regen OpenAPI + lint clean
-```
+Two terminals. The Django server must be started with the webhook env vars for the PATCH → web-ui revalidation round-trip to fire automatically; without them the webhook is a no-op.
 
-Pre-existing design + plan commits: `pttz` (design), `zqkm` (revised plan).
-
-## Smoke test (run before starting Phase 2)
-
-Two terminals.
-
-### Terminal 1 — server (leave it running)
+### Terminal 1 — server
 
 ```bash
 cd /Users/alex/Work/codalens/nglspn/nglspn-w1/src/django-backend
 uv run python manage.py migrate
-WEB_UI_REVALIDATE_URL=https://httpbin.org/post \
+WEB_UI_REVALIDATE_URL=http://localhost:3000/api/revalidate-i18n \
 WEB_UI_REVALIDATE_SECRET=dev-secret \
-uv run python manage.py runserver
+uv run python manage.py runserver 0.0.0.0:8001
 ```
 
-### Terminal 2 — the checks
+### Terminal 2 — web-ui
 
 ```bash
+cd /Users/alex/Work/codalens/nglspn/nglspn-w1/src/web-ui
+API_URL=http://localhost:8001 \
+NEXT_PUBLIC_API_URL=http://localhost:8001 \
+WEB_UI_REVALIDATE_SECRET=dev-secret \
+npm run dev
+```
+
+### Terminal 3 — verification
+
+```bash
+# Acquire a token
 cd /Users/alex/Work/codalens/nglspn/nglspn-w1/src/django-backend
-```
-
-**1. Seed a row and capture a token** (one shell call — faster than the login flow):
-
-```bash
 TOKEN=$(uv run python manage.py shell -c "
-from apps.translations.models import Translation
 from apps.users.models import User
 from api.auth.jwt import create_access_token
-
-t, _ = Translation.objects.get_or_create(
-    locale='is', key='nav.home',
-    defaults={'text': 'Heim', 'source_hash': 'abc', 'is_machine_translated': True},
-)
 user, _ = User.objects.get_or_create(
     email='smoke@example.com',
     defaults={'kennitala': '0000000001', 'first_name': 'Smoke', 'last_name': 'Test', 'is_verified': True, 'is_active': True},
 )
 print(create_access_token(user.id))
 " 2>/dev/null | tail -1)
-echo "Token acquired: ${TOKEN:0:20}..."
+
+# Bilingual render check
+curl -s http://localhost:3000/    | grep -oE '>(Verkefni|Keppnir)<' | sort -u
+curl -s http://localhost:3000/en  | grep -oE '>(Projects|Competitions)<' | sort -u
+
+# Live edit → webhook → revalidation
+curl -s -X PATCH http://localhost:8001/api/i18n/is/nav.projects \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"text":"VERKVERK"}'
+sleep 1
+curl -s http://localhost:3000/    | grep -oE '>VERKVERK<'
+curl -s -X PATCH http://localhost:8001/api/i18n/is/nav.projects \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"text":"Verkefni"}'   # reset
 ```
 
-**2. GET catalog — expect `{"nav.home":"Heim"}`:**
+Expected: Icelandic labels at `/`, English labels at `/en`, `VERKVERK` rendered after PATCH, returns to `Verkefni` after the reset.
 
-```bash
-curl -s http://localhost:8000/api/i18n/is | jq .
-```
+## Known open items heading into Phase 4
 
-**3. GET version — expect `{"version": <epoch>}`:**
-
-```bash
-curl -s http://localhost:8000/api/i18n/is/version | jq .
-```
-
-**4. PATCH without auth — expect `401`:**
-
-```bash
-curl -s -o /dev/null -w "%{http_code}\n" \
-  -X PATCH http://localhost:8000/api/i18n/is/nav.home \
-  -H 'Content-Type: application/json' \
-  -d '{"text":"Forsíða"}'
-```
-
-**5. PATCH with auth — expect 200 + updated row:**
-
-```bash
-curl -s -X PATCH http://localhost:8000/api/i18n/is/nav.home \
-  -H "Authorization: Bearer $TOKEN" \
-  -H 'Content-Type: application/json' \
-  -d '{"text":"Forsíða"}' | jq .
-```
-
-**6. Confirm catalog reflects edit + MT flag flipped + audit written:**
-
-```bash
-curl -s http://localhost:8000/api/i18n/is | jq .
-uv run python manage.py shell -c "
-from apps.translations.models import Translation, TranslationAudit
-t = Translation.objects.get(locale='is', key='nav.home')
-print(f'text: {t.text}')
-print(f'is_machine_translated: {t.is_machine_translated}')
-print(f'updated_by: {t.updated_by.email if t.updated_by else None}')
-print(f'audits: {TranslationAudit.objects.filter(translation=t).count()}')
-"
-```
-
-Expect:
-- `text: Forsíða`
-- `is_machine_translated: False`
-- `updated_by: smoke@example.com`
-- `audits: 2` (one at seed, one at edit)
-
-**7. Confirm webhook fired** — check Terminal 1's log; no `revalidate webhook failed` warning means the fire-and-forget succeeded. The target (httpbin.org) is real, so the call actually completes.
-
-## Known open items heading into Phase 2
-
-- The smoke test above has not yet been run by a human. If anything fails, come back with the failing command + output and we fix before planning Phase 2.
-- `Translation.source_hash` is stored as an empty string for rows created via PATCH. That's intentional — it's backfilled by the migration generator in Phase 3.
-- No `SystemUser` for MT seed attribution yet. Phase 3 adds it.
-
-## How to kick off the next session
-
-Open a new Claude Code session in this project, attach this file, and say something like:
-
-> Read `docs/superpowers/verify.md` and let's start Phase 2 — web-ui bilingual rendering with `next-intl` and locale routing.
-
-I'll:
-1. Confirm Phase 1 smoke-tested cleanly (or fix if not).
-2. Invoke `superpowers:writing-plans` to produce the Phase 2 plan (consuming the Phase 1 endpoints we built).
-3. Resume the subagent-driven execution flow.
+- **DeepL smoke not yet run with a real key.** Either do it first (task 10 of Phase 3 plan) or let it happen naturally the first time someone adds a new key.
+- **`revalidateTag(tag, "max")`** — the `"max"` second arg is a Next 16 adaptation made by the Phase 2 implementer. Works end-to-end in dev; re-verify on a prod deploy.
+- **`middleware.ts` vs `proxy.ts`** — Next 16 deprecation warning. Cosmetic for now; rename when the replacement path stabilizes.
+- **Hardcoded strings on non-chrome pages** — Phase 4 sweep.

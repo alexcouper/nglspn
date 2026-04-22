@@ -7,7 +7,8 @@
     "dev": "npm run generate-types && next dev",
     "build": "npm run generate-types && next build",
     "start": "next start",
-    "lint": "eslint && tsc --noEmit",
+    "lint": "eslint && tsc --noEmit && node scripts/lint-i18n.mjs",
+    "lint:i18n": "node scripts/lint-i18n.mjs",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui"
   },

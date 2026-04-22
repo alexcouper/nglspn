@@ -9,9 +9,9 @@
 
 ## 2. Slug generator utility
 
-- [ ] 2.1 Add `generate_unique_project_slug(title: str) -> str` helper in `apps/projects/models.py` (or a dedicated `slugs.py`) using `slugify(transliterate_icelandic(title))` + `-N` suffix loop
-- [ ] 2.2 Handle `IntegrityError` retry path for concurrent publishes (loop, increment N, re-save)
-- [ ] 2.3 Write unit tests covering: simple title, Icelandic title, single collision, multiple collisions, concurrent collision (simulated via mocked IntegrityError)
+- [x] 2.1 Add `generate_unique_project_slug(title: str) -> str` helper in `apps/projects/models.py` (or a dedicated `slugs.py`) using `slugify(transliterate_icelandic(title))` + `-N` suffix loop
+- [x] 2.2 Handle `IntegrityError` retry path for concurrent publishes (loop, increment N, re-save)
+- [x] 2.3 Write unit tests covering: simple title, Icelandic title, single collision, multiple collisions, concurrent collision (simulated via mocked IntegrityError)
 
 ## 3. Publish handler & service layer
 

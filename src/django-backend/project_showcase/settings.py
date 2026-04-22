@@ -70,6 +70,7 @@ INSTALLED_APPS = [
     "apps.emails",
     "apps.discussions",
     "apps.notifications",
+    "apps.translations",
     "django_tasks",
     "django_tasks_db",
 ]
@@ -330,3 +331,7 @@ if DB_DEBUG:
         "level": "DEBUG",
         "propagate": False,
     }
+
+# Translations — web-ui revalidation webhook
+WEB_UI_REVALIDATE_URL = os.environ.get("WEB_UI_REVALIDATE_URL", "")
+WEB_UI_REVALIDATE_SECRET = os.environ.get("WEB_UI_REVALIDATE_SECRET", "")

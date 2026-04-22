@@ -11,6 +11,7 @@ from api.routers import (
     my_review,
     projects,
     tags,
+    translations,
     users,
 )
 
@@ -28,6 +29,7 @@ api.add_router("/my/projects", my_projects.router)
 api.add_router("/my/reviews", my_review.router)
 api.add_router("/tags", tags.router)
 api.add_router("/competitions", competitions.router)
+api.add_router("/i18n", translations.router)
 api.add_router("/users", users.router)
 
 

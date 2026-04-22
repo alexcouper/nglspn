@@ -17,6 +17,7 @@ from apps.projects.models import (
     ProjectStatus,
 )
 from apps.tags.models import Tag, TagCategory, TagStatus
+from apps.translations.models import Translation
 from apps.users.models import EmailVerificationCode, PasswordResetCode
 
 User = get_user_model()
@@ -201,3 +202,15 @@ class PasswordResetCodeFactory(factory.django.DjangoModelFactory):
     code = factory.Sequence(lambda n: f"{n:06d}")
     attempts = 0
     expires_at = factory.LazyFunction(lambda: timezone.now() + timedelta(minutes=15))
+
+
+class TranslationFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = Translation
+
+    locale = "is"
+    key = factory.Sequence(lambda n: f"test.key.{n}")
+    text = factory.Faker("sentence")
+    source_hash = factory.Faker("sha256")
+    is_machine_translated = False
+    retired = False

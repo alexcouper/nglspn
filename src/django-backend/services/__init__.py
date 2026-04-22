@@ -20,6 +20,12 @@ from services.registration.django_impl import DjangoRegistrationHandler
 from services.registration.handler_interface import RegistrationHandlerInterface
 from services.review.django_impl import DjangoReviewHandler
 from services.review.handler_interface import ReviewHandlerInterface
+from services.translations.django_impl import (
+    DjangoTranslationHandler,
+    DjangoTranslationQuery,
+)
+from services.translations.handler_interface import TranslationHandlerInterface
+from services.translations.query_interface import TranslationQueryInterface
 from services.users.django_impl import DjangoUserHandler, DjangoUserQuery
 from services.users.handler_interface import UserHandlerInterface
 from services.users.query_interface import UserQueryInterface
@@ -40,6 +46,9 @@ class HandlerServices:
         default_factory=DjangoRegistrationHandler
     )
     reviews: ReviewHandlerInterface = field(default_factory=DjangoReviewHandler)
+    translations: TranslationHandlerInterface = field(
+        default_factory=DjangoTranslationHandler
+    )
     users: UserHandlerInterface = field(default_factory=DjangoUserHandler)
 
 
@@ -48,6 +57,9 @@ class QueryServices:
     discussions: DiscussionQueryInterface = field(default_factory=DjangoDiscussionQuery)
     email: EmailQueryInterface = field(default_factory=DjangoEmailQuery)
     project: ProjectQueryInterface = field(default_factory=DjangoProjectQuery)
+    translations: TranslationQueryInterface = field(
+        default_factory=DjangoTranslationQuery
+    )
     users: UserQueryInterface = field(default_factory=DjangoUserQuery)
 
 

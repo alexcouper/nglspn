@@ -2622,6 +2622,143 @@
         ]
       }
     },
+    "/api/i18n/{locale}": {
+      "get": {
+        "operationId": "api_routers_translations_get_catalog",
+        "summary": "Get Catalog",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "locale",
+            "schema": {
+              "title": "Locale",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "type": "string"
+                  },
+                  "title": "Response",
+                  "type": "object"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return the full non-retired translation catalog for a locale.",
+        "tags": [
+          "Translations"
+        ]
+      }
+    },
+    "/api/i18n/{locale}/version": {
+      "get": {
+        "operationId": "api_routers_translations_get_version",
+        "summary": "Get Version",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "locale",
+            "schema": {
+              "title": "Locale",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationVersionResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return a monotonic version for a locale's catalog (max updated_at as epoch).",
+        "tags": [
+          "Translations"
+        ]
+      }
+    },
+    "/api/i18n/{locale}/{key}": {
+      "patch": {
+        "operationId": "api_routers_translations_patch_translation",
+        "summary": "Patch Translation",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "locale",
+            "schema": {
+              "title": "Locale",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Edit a translation. Creates the row if missing. Requires authentication.",
+        "tags": [
+          "Translations"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TranslationPatchRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
     "/api/users/{user_id}": {
       "get": {
         "operationId": "api_routers_users_get_public_profile",
@@ -5216,6 +5353,71 @@
           "project_count"
         ],
         "title": "CompetitionSummaryResponse",
+        "type": "object"
+      },
+      "TranslationVersionResponse": {
+        "properties": {
+          "version": {
+            "title": "Version",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "title": "TranslationVersionResponse",
+        "type": "object"
+      },
+      "TranslationResponse": {
+        "properties": {
+          "locale": {
+            "title": "Locale",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "source_hash": {
+            "title": "Source Hash",
+            "type": "string"
+          },
+          "is_machine_translated": {
+            "title": "Is Machine Translated",
+            "type": "boolean"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "locale",
+          "key",
+          "text",
+          "source_hash",
+          "is_machine_translated",
+          "updated_at"
+        ],
+        "title": "TranslationResponse",
+        "type": "object"
+      },
+      "TranslationPatchRequest": {
+        "properties": {
+          "text": {
+            "title": "Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "text"
+        ],
+        "title": "TranslationPatchRequest",
         "type": "object"
       }
     },

@@ -57,6 +57,12 @@ The Django backend SHALL expose `POST /api/my-projects/{id}/publish` for the pro
 - **AND** the admin "new project" notification email is enqueued
 - **AND** if a competition currently has `status = ACCEPTING_APPLICATIONS`, the project is added to it
 
+#### Scenario: Web UI redirects to owner project list after publish
+
+- **WHEN** the owner clicks "Publish" on `/my-projects/[id]` and the backend returns `200`
+- **THEN** the web UI navigates to `/my-projects`
+- **AND** not to `/projects/{slug}`, because the project is still `PENDING` (not yet approved) and the public page would return 404 for a server-side fetch with no auth context
+
 #### Scenario: Publish rejects a project missing required fields
 
 - **WHEN** the owner POSTs to `/api/my-projects/{id}/publish` for a `DRAFT` project whose `description` is empty

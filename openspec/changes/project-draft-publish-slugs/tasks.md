@@ -53,7 +53,7 @@
 
 - [x] 8.1 Add a "Publish" button to `/my-projects/[id]` edit page, visible only when `project.status === "draft"`
 - [x] 8.2 On click: save any pending form edits, then call `POST /api/my-projects/{id}/publish`
-- [x] 8.3 On `200`: redirect to `/projects/{response.slug}`
+- [x] 8.3 On `200`: redirect to `/my-projects` (the owner's project list). *Originally specced as `/projects/{slug}` but that page 404s post-publish: the project is `PENDING` until admin approval and the server-side public fetch has no auth context, so owner-visibility can't kick in. `/my-projects` gives the owner an immediate view of their now-published project with its new status.*
 - [x] 8.4 On `400 { missing }`: show a dialog listing the missing items with friendly labels ("A description", "A main image", "A title")
 - [ ] 8.5 Optionally: derive a client-side "ready" hint for the button (non-authoritative), based on local form state — *skipped: the backend-round-trip-with-dialog UX is crisp enough on its own; adding a hint would duplicate the validator and invite drift. Can be added later if users complain.*
 - [x] 8.6 Remove the "Resubmit"-adjacent UI entry point that was previously accessible from a freshly created project, since the review state is now only reachable via publish — *no such UI entry point exists in the current codebase; the resubmit endpoint is only reachable programmatically via the API client (not used by any component). Nothing to remove.*

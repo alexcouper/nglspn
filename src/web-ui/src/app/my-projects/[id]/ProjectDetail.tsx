@@ -181,13 +181,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         tag_ids: formData.tag_ids,
       });
 
-      const published = await api.myProjects.publish(project.id);
-      if (published.slug) {
-        router.push(`/projects/${published.slug}`);
-      } else {
-        // Unexpected: a successful publish should always carry a slug.
-        setProject(published);
-      }
+      await api.myProjects.publish(project.id);
+      // Send the owner to their project list. The public /projects/{slug} page
+      // would 404 here because the project is now PENDING rather than APPROVED,
+      // and the server-side fetch has no auth context to apply owner visibility.
+      router.push("/my-projects");
     } catch (err) {
       if (err instanceof ApiRequestError) {
         const missing = Array.isArray(err.body.missing)

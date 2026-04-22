@@ -34,9 +34,9 @@
 
 ## 5. Data migration (backfill)
 
-- [ ] 5.1 Write a RunPython data migration that, for every project with `status != DRAFT` and `slug IS NULL`, generates a unique slug via the same generator used at publish
-- [ ] 5.2 In the same migration, set `published_at = approved_at or created_at` where `published_at IS NULL` and `status != DRAFT`
-- [ ] 5.3 Write a test that applies the migration against a fixture of approved/pending/rejected/ice_box projects with colliding titles, asserting slugs are unique and `published_at` falls back correctly
+- [x] 5.1 Write a RunPython data migration that, for every project with `status != DRAFT` and `slug IS NULL`, generates a unique slug via the same generator used at publish
+- [x] 5.2 In the same migration, set `published_at = approved_at or created_at` where `published_at IS NULL` and `status != DRAFT`
+- [x] 5.3 Write a test that applies the migration against a fixture of approved/pending/rejected/ice_box projects with colliding titles, asserting slugs are unique and `published_at` falls back correctly
 
 ## 6. OpenAPI & types
 

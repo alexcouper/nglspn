@@ -28,6 +28,18 @@ class TestGenerateUniqueProjectSlug:
     def test_empty_title_falls_back_to_project(self):
         assert generate_unique_project_slug("") == "project"
 
+    def test_dots_become_dashes(self):
+        assert generate_unique_project_slug("boots.is") == "boots-is"
+
+    def test_multiple_dots_become_dashes(self):
+        assert generate_unique_project_slug("www.example.com") == "www-example-com"
+
+    def test_underscores_become_dashes(self):
+        assert generate_unique_project_slug("my_cool_app") == "my-cool-app"
+
+    def test_slashes_become_dashes(self):
+        assert generate_unique_project_slug("team/boots") == "team-boots"
+
 
 @pytest.mark.django_db
 class TestAssignUniqueSlug:

@@ -33,6 +33,11 @@ The system SHALL generate a project's slug at the moment of publish by applying 
 - **WHEN** a draft titled "Súperþing" is published
 - **THEN** its slug is generated with Icelandic characters replaced using the existing `transliterate_icelandic` mapping (e.g. `"superthing"`)
 
+#### Scenario: Dots, underscores and slashes are preserved as dashes
+
+- **WHEN** a draft whose title contains `.`, `_`, or `/` (e.g. "boots.is", "my_cool_app", "team/boots") is published
+- **THEN** each such character is converted to `-` before slugification, so that the resulting slug preserves the separator boundary (`"boots-is"`, `"my-cool-app"`, `"team-boots"`) rather than collapsing it away
+
 ### Requirement: Slugs are immutable after publish
 
 The system SHALL NOT regenerate or modify a project's slug after publish, even when the owner edits the project's title or other fields.

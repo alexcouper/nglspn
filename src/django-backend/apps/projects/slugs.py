@@ -10,8 +10,17 @@ def _candidate(base: str, n: int) -> str:
     return base if n == 1 else f"{base}-{n}"
 
 
+def _slugify_preserving_separators(text: str) -> str:
+    # Dots, underscores and slashes carry structural meaning in project names
+    # (domains like "boots.is", paths like "team/boots") — preserve them as
+    # separators instead of letting slugify silently strip them.
+    for ch in (".", "_", "/"):
+        text = text.replace(ch, "-")
+    return slugify(transliterate_icelandic(text))
+
+
 def generate_unique_project_slug(title: str) -> str:
-    base = slugify(transliterate_icelandic(title)) or "project"
+    base = _slugify_preserving_separators(title) or "project"
     n = 1
     while Project.objects.filter(slug=_candidate(base, n)).exists():
         n += 1
@@ -24,7 +33,7 @@ def assign_unique_slug(project: Project) -> None:
     Race-safe: retries on DB-level unique-constraint violations raised by
     concurrent publishes choosing the same suffix.
     """
-    base = slugify(transliterate_icelandic(project.title)) or "project"
+    base = _slugify_preserving_separators(project.title) or "project"
     n = 1
     for _ in range(MAX_COLLISION_ATTEMPTS):
         while Project.objects.filter(slug=_candidate(base, n)).exists():

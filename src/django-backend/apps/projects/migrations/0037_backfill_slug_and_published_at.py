@@ -33,6 +33,14 @@ def _transliterate(text: str) -> str:
     return text
 
 
+def _slug_base(title: str) -> str:
+    # Kept in sync with apps.projects.slugs._slugify_preserving_separators —
+    # duplicated here so this migration stays self-contained.
+    for ch in (".", "_", "/"):
+        title = title.replace(ch, "-")
+    return slugify(_transliterate(title))
+
+
 def backfill(apps, schema_editor):
     Project = apps.get_model("projects", "Project")
 
@@ -44,7 +52,7 @@ def backfill(apps, schema_editor):
 
     for project in projects:
         if project.slug is None:
-            base = slugify(_transliterate(project.title)) or "project"
+            base = _slug_base(project.title) or "project"
             candidate = base
             n = 1
             while candidate in used_slugs:

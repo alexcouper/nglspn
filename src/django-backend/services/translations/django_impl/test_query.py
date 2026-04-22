@@ -11,22 +11,24 @@ class TestGetCatalog:
         self.query = DjangoTranslationQuery()
 
     def test_returns_key_text_map_for_locale(self) -> None:
-        TranslationFactory(locale="is", key="nav.home", text="Heim")
-        TranslationFactory(locale="is", key="nav.about", text="Um okkur")
+        TranslationFactory(locale="is", key="custom.key", text="Custom")
         TranslationFactory(locale="en", key="nav.home", text="Home")
 
         result = self.query.get_catalog("is")
 
-        assert_that(result, equal_to({"nav.home": "Heim", "nav.about": "Um okkur"}))
+        # Should include seeded chrome keys + custom key
+        assert_that(
+            result,
+            has_entries(**{"custom.key": "Custom", "nav.projects": "Verkefni"}),
+        )
 
     def test_excludes_retired_rows(self) -> None:
-        TranslationFactory(locale="is", key="nav.home", text="Heim")
-        TranslationFactory(locale="is", key="old.key", text="Gamalt", retired=True)
+        TranslationFactory(locale="is", key="custom.old", text="Gamalt", retired=True)
 
         result = self.query.get_catalog("is")
 
-        assert_that(result, has_entries(**{"nav.home": "Heim"}))
-        assert_that(result, is_not(has_key("old.key")))
+        assert_that(result, has_entries(**{"nav.projects": "Verkefni"}))
+        assert_that(result, is_not(has_key("custom.old")))
 
     def test_unknown_locale_returns_empty(self) -> None:
         assert_that(self.query.get_catalog("xx"), equal_to({}))
@@ -38,7 +40,7 @@ class TestGetCatalogVersion:
         self.query = DjangoTranslationQuery()
 
     def test_empty_returns_zero(self) -> None:
-        assert_that(self.query.get_catalog_version("is"), equal_to(0))
+        assert_that(self.query.get_catalog_version("xx"), equal_to(0))
 
     def test_returns_max_updated_at_as_epoch(self) -> None:
         t = TranslationFactory(locale="is", key="nav.home", text="Heim")

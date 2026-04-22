@@ -1,0 +1,18 @@
+{
+  "nav": {
+    "projects": "Projects",
+    "competitions": "Competitions",
+    "continueOnboarding": "Continue onboarding",
+    "myProjects": "My Projects",
+    "myReviews": "My Reviews",
+    "login": "Log in",
+    "register": "Register",
+    "profile": "Profile",
+    "logout": "Log out"
+  },
+  "footer": {
+    "about": "About",
+    "privacy": "Privacy",
+    "discord": "Discord"
+  }
+}

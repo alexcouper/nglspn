@@ -14,28 +14,28 @@ def _auth_header(user) -> dict[str, str]:
 @pytest.mark.django_db
 class TestGetCatalog:
     def test_returns_key_text_map_for_locale(self, client) -> None:
-        TranslationFactory(locale="is", key="nav.home", text="Heim")
-        TranslationFactory(locale="is", key="nav.about", text="Um okkur")
+        TranslationFactory(locale="is", key="custom.key", text="Custom")
         TranslationFactory(locale="en", key="nav.home", text="Home")
 
         response = client.get("/api/i18n/is")
 
         assert_that(response.status_code, equal_to(200))
+        result = response.json()
+        # Should include seeded chrome keys + custom key
         assert_that(
-            response.json(),
-            equal_to({"nav.home": "Heim", "nav.about": "Um okkur"}),
+            result,
+            has_entries(**{"custom.key": "Custom", "nav.projects": "Verkefni"}),
         )
 
     def test_excludes_retired_rows(self, client) -> None:
-        TranslationFactory(locale="is", key="nav.home", text="Heim")
-        TranslationFactory(locale="is", key="old.key", text="Gamalt", retired=True)
+        TranslationFactory(locale="is", key="custom.old", text="Gamalt", retired=True)
 
         response = client.get("/api/i18n/is")
 
         assert_that(response.status_code, equal_to(200))
         body = response.json()
-        assert_that(body, has_entries(**{"nav.home": "Heim"}))
-        assert_that(body, is_not(has_key("old.key")))
+        assert_that(body, has_entries(**{"nav.projects": "Verkefni"}))
+        assert_that(body, is_not(has_key("custom.old")))
 
     def test_unknown_locale_returns_empty(self, client) -> None:
         response = client.get("/api/i18n/xx")
@@ -46,7 +46,7 @@ class TestGetCatalog:
 @pytest.mark.django_db
 class TestGetVersion:
     def test_empty_returns_zero(self, client) -> None:
-        response = client.get("/api/i18n/is/version")
+        response = client.get("/api/i18n/xx/version")
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json(), equal_to({"version": 0}))
 

@@ -1,27 +1,14 @@
-import type { Metadata, Viewport } from "next";
+import type { Metadata } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import { Suspense } from "react";
-import { AuthProvider } from "@/contexts/auth";
-import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
 import { PlausibleTracker } from "@/components/PlausibleTracker";
 import "./globals.css";
 
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
+const inter = Inter({ variable: "--font-inter", subsets: ["latin"] });
 const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   weight: ["400", "500"],
 });
-
-export const viewport: Viewport = {
-  width: "device-width",
-  initialScale: 1,
-};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://naglasupan.is"),
@@ -37,12 +24,7 @@ export const metadata: Metadata = {
   openGraph: {
     title: "naglasúpan",
     description: "Byggjum, deilum, vöxum saman",
-    images: [
-      {
-        url: "/icons/app/logo.png",
-        alt: "naglasúpan",
-      },
-    ],
+    images: [{ url: "/icons/app/logo.png", alt: "naglasúpan" }],
   },
   twitter: {
     card: "summary",
@@ -54,22 +36,14 @@ export const metadata: Metadata = {
 
 export default function RootLayout({
   children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen flex flex-col`}>
+    <html>
+      <body
+        className={`${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen flex flex-col`}
+      >
         <PlausibleTracker />
-        <AuthProvider>
-          <Suspense>
-            <Navigation />
-          </Suspense>
-          <Suspense>
-            <div className="flex-1 flex flex-col">{children}</div>
-          </Suspense>
-          <Footer />
-        </AuthProvider>
+        {children}
       </body>
     </html>
   );

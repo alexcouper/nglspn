@@ -4,8 +4,8 @@ import { useState, useCallback } from "react";
 import { XMarkIcon, TrashIcon } from "@heroicons/react/24/outline";
 import type { ProjectImage, DiscoverProject } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
-import { LargeHeroCard } from "@/app/projects/sections/FeaturedSection";
-import { ArrivalCard } from "@/app/projects/sections/NewArrivalsSection";
+import { LargeHeroCard } from "@/app/[locale]/projects/sections/FeaturedSection";
+import { ArrivalCard } from "@/app/[locale]/projects/sections/NewArrivalsSection";
 import { Dialog } from "@/components/Dialog";
 
 interface ImageRoleDialogProps {

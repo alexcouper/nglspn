@@ -32,12 +32,12 @@ class TestTranslationModel:
 
     def test_same_key_different_locales_allowed(self) -> None:
         Translation.objects.create(
-            locale="en", key="nav.home", text="Home", source_hash="abc"
+            locale="en", key="custom.key", text="Custom", source_hash="abc"
         )
         Translation.objects.create(
-            locale="is", key="nav.home", text="Heim", source_hash="abc"
+            locale="is", key="custom.key", text="Sérsniðið", source_hash="abc"
         )
-        assert_that(Translation.objects.count(), equal_to(2))
+        assert_that(Translation.objects.filter(key="custom.key").count(), equal_to(2))
 
 
 @pytest.mark.django_db

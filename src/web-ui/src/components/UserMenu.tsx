@@ -1,13 +1,15 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { logout, user } = useAuth();
+  const t = useTranslations("nav");
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -52,7 +54,7 @@ export function UserMenu() {
                 className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Profile
+                {t("profile")}
               </Link>
               <div className="border-t border-border my-1" />
             </>
@@ -64,7 +66,7 @@ export function UserMenu() {
             }}
             className="block w-full text-left px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
-            Log out
+            {t("logout")}
           </button>
         </div>
       )}

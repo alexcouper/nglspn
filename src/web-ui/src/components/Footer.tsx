@@ -1,6 +1,8 @@
-import Link from "next/link";
+import { Link } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 
 export function Footer() {
+  const t = useTranslations("footer");
   return (
     <footer className="border-t border-border bg-white mt-auto">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
@@ -10,13 +12,13 @@ export function Footer() {
               href="/about"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              About
+              {t("about")}
             </Link>
             <Link
               href="/privacy"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              Privacy
+              {t("privacy")}
             </Link>
             <a
               href="https://discord.gg/D47bQjaQ"
@@ -24,7 +26,7 @@ export function Footer() {
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              Discord
+              {t("discord")}
             </a>
           </nav>
         </div>

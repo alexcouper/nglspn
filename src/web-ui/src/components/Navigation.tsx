@@ -1,16 +1,18 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, usePathname } from "@/i18n/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import { buildLoginPath } from "@/lib/auth-routing";
 import { UserMenu } from "./UserMenu";
+import { LocaleSwitcher } from "./LocaleSwitcher";
 
 export function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = usePathname();
   const { isAuthenticated, isLoading, logout, user } = useAuth();
+  const t = useTranslations("nav");
   const hasCompletedOnboarding = isAuthenticated && (!user || user.pending_onboarding_steps.length === 0);
 
   const isActive = (path: string) => {
@@ -56,8 +58,8 @@ export function Navigation() {
             <Link href="/" className="text-white font-semibold text-sm tracking-tight mr-2">
               naglasúpan
             </Link>
-            <Link href="/projects" className={linkClass("/projects")}>Projects</Link>
-            <Link href="/competitions" className={linkClass("/competitions")}>Competitions</Link>
+            <Link href="/projects" className={linkClass("/projects")}>{t("projects")}</Link>
+            <Link href="/competitions" className={linkClass("/competitions")}>{t("competitions")}</Link>
           </div>
 
           {/* Mobile logo */}
@@ -68,13 +70,13 @@ export function Navigation() {
           {/* Desktop auth */}
           <div className="hidden md:flex items-center gap-6">
             {isAuthenticated && !hasCompletedOnboarding && pathname !== "/onboarding" && (
-              <Link href="/onboarding" className={linkClass("/onboarding")}>Continue onboarding</Link>
+              <Link href="/onboarding" className={linkClass("/onboarding")}>{t("continueOnboarding")}</Link>
             )}
             {hasCompletedOnboarding && (
-              <Link href="/my-projects" className={linkClass("/my-projects")}>My Projects</Link>
+              <Link href="/my-projects" className={linkClass("/my-projects")}>{t("myProjects")}</Link>
             )}
             {hasCompletedOnboarding && (
-              <Link href="/my-reviews" className={linkClass("/my-reviews")}>My Reviews</Link>
+              <Link href="/my-reviews" className={linkClass("/my-reviews")}>{t("myReviews")}</Link>
             )}
             {isLoading ? (
               <span className="text-slate-600 text-sm">...</span>
@@ -82,15 +84,16 @@ export function Navigation() {
               <UserMenu />
             ) : (
               <div className="flex items-center gap-3">
-                <Link href={loginHref} className={linkClass("/login")}>Log in</Link>
+                <Link href={loginHref} className={linkClass("/login")}>{t("login")}</Link>
                 <Link
                   href={registerHref}
                   className="text-sm font-medium bg-accent hover:bg-accent-hover text-white px-3.5 py-1.5 rounded-md transition-colors duration-150"
                 >
-                  Register
+                  {t("register")}
                 </Link>
               </div>
             )}
+            <LocaleSwitcher />
           </div>
 
           {/* Mobile spacer */}
@@ -127,33 +130,33 @@ export function Navigation() {
           </div>
 
           <div className="space-y-0.5 border-b border-slate-100 pb-4 mb-4">
-            <Link href="/projects" className={mobileLinkClass("/projects")} onClick={closeMenu}>Projects</Link>
-            <Link href="/competitions" className={mobileLinkClass("/competitions")} onClick={closeMenu}>Competitions</Link>
+            <Link href="/projects" className={mobileLinkClass("/projects")} onClick={closeMenu}>{t("projects")}</Link>
+            <Link href="/competitions" className={mobileLinkClass("/competitions")} onClick={closeMenu}>{t("competitions")}</Link>
           </div>
 
           <div className="space-y-0.5">
             {isAuthenticated && !hasCompletedOnboarding && (
-              <Link href="/onboarding" className={mobileLinkClass("/onboarding")} onClick={closeMenu}>Continue onboarding</Link>
+              <Link href="/onboarding" className={mobileLinkClass("/onboarding")} onClick={closeMenu}>{t("continueOnboarding")}</Link>
             )}
             {hasCompletedOnboarding && (
-              <Link href="/my-projects" className={mobileLinkClass("/my-projects")} onClick={closeMenu}>My Projects</Link>
+              <Link href="/my-projects" className={mobileLinkClass("/my-projects")} onClick={closeMenu}>{t("myProjects")}</Link>
             )}
             {hasCompletedOnboarding && (
-              <Link href="/my-reviews" className={mobileLinkClass("/my-reviews")} onClick={closeMenu}>My Reviews</Link>
+              <Link href="/my-reviews" className={mobileLinkClass("/my-reviews")} onClick={closeMenu}>{t("myReviews")}</Link>
             )}
             {isLoading ? (
               <span className="block py-3 text-base text-slate-400">...</span>
             ) : isAuthenticated ? (
               <>
                 {hasCompletedOnboarding && (
-                  <Link href="/profile" className={mobileLinkClass("/profile")} onClick={closeMenu}>Profile</Link>
+                  <Link href="/profile" className={mobileLinkClass("/profile")} onClick={closeMenu}>{t("profile")}</Link>
                 )}
                 <div className="border-t border-slate-100 my-3" />
                 <button
                   onClick={() => { logout(); closeMenu(); }}
                   className="block py-3 text-base text-slate-500 hover:text-foreground transition-colors"
                 >
-                  Log out
+                  {t("logout")}
                 </button>
               </>
             ) : (
@@ -163,17 +166,21 @@ export function Navigation() {
                   className="block w-full text-center py-2.5 text-sm font-medium text-foreground border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
                   onClick={closeMenu}
                 >
-                  Log in
+                  {t("login")}
                 </Link>
                 <Link
                   href={registerHref}
                   className="block w-full text-center py-2.5 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
                   onClick={closeMenu}
                 >
-                  Register
+                  {t("register")}
                 </Link>
               </div>
             )}
+            <div className="border-t border-slate-100 my-3" />
+            <LocaleSwitcher
+              className="block py-3 text-base text-slate-500 hover:text-foreground transition-colors w-full text-left"
+            />
           </div>
         </div>
       </div>

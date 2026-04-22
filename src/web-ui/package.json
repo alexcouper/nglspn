@@ -21,6 +21,7 @@
     "@plausible-analytics/tracker": "^0.4.4",
     "@tailwindcss/typography": "^0.5.19",
     "next": "16.1.6",
+    "next-intl": "^4.9.1",
     "react": "19.2.1",
     "react-dom": "19.2.1",
     "react-markdown": "^10.1.0",

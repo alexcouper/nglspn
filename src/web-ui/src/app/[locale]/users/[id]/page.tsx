@@ -2,7 +2,7 @@
 
 import { useState, useEffect, use } from "react";
 import { api, type PublicUserProfile } from "@/lib/api";
-import { ReadOnlyProfile } from "@/app/profile/ReadOnlyProfile";
+import { ReadOnlyProfile } from "@/app/[locale]/profile/ReadOnlyProfile";
 
 interface PageProps {
   params: Promise<{ id: string }>;

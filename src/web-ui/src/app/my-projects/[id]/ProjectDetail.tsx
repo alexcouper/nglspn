@@ -14,7 +14,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
 import type { Project, ProjectImage } from "@/lib/api";
-import { ProjectDetailContent } from "@/app/projects/[id]/ProjectDetailContent";
+import { ProjectDetailContent } from "@/app/projects/[slug]/ProjectDetailContent";
 import { EditProjectContent } from "./EditProjectContent";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { PublishDialog } from "./PublishDialog";

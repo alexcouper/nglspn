@@ -73,6 +73,7 @@ def list_winners(request: HttpRequest) -> list[WinnerProjectResponse]:
     return [
         WinnerProjectResponse(
             id=w.project.id,
+            slug=w.project.slug,
             title=w.project.title,
             tagline=w.project.tagline,
             icon_url=w.icon_url,

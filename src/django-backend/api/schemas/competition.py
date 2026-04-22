@@ -24,6 +24,7 @@ class CompetitionStatusEnum(str, Enum):
 
 class CompetitionProjectResponse(Schema):
     id: UUID
+    slug: str | None
     title: str
     tags: list[TagWithCategoryResponse]
     main_image_url: str | None = None
@@ -34,6 +35,7 @@ class CompetitionProjectResponse(Schema):
     def from_list_item(cls, item: Any) -> "CompetitionProjectResponse":
         return cls(
             id=item.project.id,
+            slug=item.project.slug,
             title=item.project.title,
             tags=item.tags,
             main_image_url=item.main_image_url,

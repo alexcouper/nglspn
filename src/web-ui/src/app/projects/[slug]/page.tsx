@@ -1,16 +1,17 @@
-import { notFound } from "next/navigation";
+import { notFound, permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ProjectDetailContent } from "./ProjectDetailContent";
 import { fetchProject, ApiNotFoundError } from "@/lib/api/server";
 
 interface PageProps {
-  params: Promise<{ id: string }>;
+  params: Promise<{ slug: string }>;
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { id } = await params;
+  const { slug } = await params;
   try {
-    const project = await fetchProject(id);
+    const project = await fetchProject(slug);
+    const canonicalSlug = project.slug ?? slug;
     const mainImage = project.images?.find((img) => img.is_main) || project.images?.[0];
     const title = project.tagline
       ? `${project.title} — ${project.tagline}`
@@ -26,7 +27,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       openGraph: {
         type: "website",
         siteName: "naglasúpan",
-        url: `https://naglasupan.is/projects/${id}`,
+        url: `https://naglasupan.is/projects/${canonicalSlug}`,
         title,
         description: description,
         ...(mainImage && {
@@ -53,19 +54,25 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function ProjectPage({ params }: PageProps) {
-  const { id } = await params;
+  const { slug } = await params;
 
   let project;
   try {
-    project = await fetchProject(id);
+    project = await fetchProject(slug);
   } catch (err) {
     if (err instanceof ApiNotFoundError) notFound();
     throw err;
   }
 
+  // Canonicalise: if the URL identifier isn't the project's current slug
+  // (e.g. accessed by UUID), 301 to the slug URL.
+  if (project.slug && project.slug !== slug) {
+    permanentRedirect(`/projects/${project.slug}`);
+  }
+
   return (
     <main className="min-h-screen bg-muted pt-14">
-      <ProjectDetailContent project={project} projectId={id} />
+      <ProjectDetailContent project={project} projectId={project.id} />
     </main>
   );
 }

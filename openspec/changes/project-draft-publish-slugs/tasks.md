@@ -60,12 +60,12 @@
 
 ## 9. Web UI — public project routes
 
-- [ ] 9.1 Rename `src/web-ui/src/app/projects/[id]/` to `src/web-ui/src/app/projects/[slug]/`
-- [ ] 9.2 Update the server component's fetch call to use the param as-is against `GET /api/projects/{identifier}`
-- [ ] 9.3 After fetch, if `response.slug !== params.slug`, return `redirect("/projects/" + response.slug, RedirectType.replace)` with `permanent: true` (maps to HTTP 301)
-- [ ] 9.4 Update every internal link that builds `/projects/${project.id}` to use `${project.slug}` instead (`NewArrivalsSection`, `DiscoverView`, `CompetitionProjects`, `ProjectsList`, winners section, most-discussed section, discussions inline, any others found via grep)
-- [ ] 9.5 Confirm `/my-projects/[id]` route and all owner-facing links still use `project.id` (UUID) — no changes
-- [ ] 9.6 Add integration tests (Playwright or similar) for: slug URL renders; UUID URL 301s to slug; unknown slug 404s
+- [x] 9.1 Rename `src/web-ui/src/app/projects/[id]/` to `src/web-ui/src/app/projects/[slug]/`
+- [x] 9.2 Update the server component's fetch call to use the param as-is against `GET /api/projects/{identifier}`
+- [x] 9.3 After fetch, if `response.slug !== params.slug`, return `redirect("/projects/" + response.slug, RedirectType.replace)` with `permanent: true` (maps to HTTP 301)
+- [x] 9.4 Update every internal link that builds `/projects/${project.id}` to use `${project.slug}` instead (`NewArrivalsSection`, `DiscoverView`, `CompetitionProjects`, `ProjectsList`, winners section, most-discussed section, discussions inline, any others found via grep)
+- [x] 9.5 Confirm `/my-projects/[id]` route and all owner-facing links still use `project.id` (UUID) — no changes
+- [ ] 9.6 Add integration tests (Playwright or similar) for: slug URL renders; UUID URL 301s to slug; unknown slug 404s — *deferred to Group 10 manual verification; no Playwright harness exists in the repo today. The backend side of the flow (slug lookup, UUID lookup, 404 on unknown) is covered by Group 4's `TestGetProjectByIdentifier` suite.*
 
 ## 10. End-to-end verification
 

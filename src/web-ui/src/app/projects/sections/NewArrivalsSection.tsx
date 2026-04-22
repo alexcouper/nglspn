@@ -34,7 +34,7 @@ export function ArrivalCard({ project }: { project: DiscoverProject }) {
 
   return (
     <Link
-      href={`/projects/${project.id}`}
+      href={`/projects/${project.slug ?? project.id}`}
       className="flex flex-shrink-0 w-[240px]"
     >
       <div className="card card-interactive overflow-hidden flex flex-col w-full">

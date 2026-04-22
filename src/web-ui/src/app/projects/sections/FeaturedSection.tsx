@@ -37,7 +37,7 @@ export function LargeHeroCard({ project }: { project: DiscoverProject }) {
   const imageUrl = project.hero_banner_url || project.in_use_image_url;
 
   return (
-    <Link href={`/projects/${project.id}`} className="group block">
+    <Link href={`/projects/${project.slug ?? project.id}`} className="group block">
       <div className="card card-interactive overflow-hidden">
         <div className="relative aspect-video">
           {imageUrl ? (
@@ -73,7 +73,7 @@ function SmallHeroCard({ project }: { project: DiscoverProject }) {
   const imageUrl = project.hero_banner_url || project.in_use_image_url;
 
   return (
-    <Link href={`/projects/${project.id}`} className="group block flex-1">
+    <Link href={`/projects/${project.slug ?? project.id}`} className="group block flex-1">
       <div className="card card-interactive overflow-hidden relative h-full">
         <div className="relative aspect-video h-full">
           {imageUrl ? (

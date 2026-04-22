@@ -34,7 +34,7 @@ function WinnerCard({ winner }: { winner: WinnerProject }) {
 
   return (
     <Link
-      href={`/projects/${winner.id}`}
+      href={`/projects/${winner.slug ?? winner.id}`}
       className="flex flex-shrink-0 w-[280px]"
     >
       <div className="card card-interactive overflow-hidden border-amber-200 hover:shadow-[0_0_20px_rgba(251,191,36,0.15)] flex flex-col w-full">

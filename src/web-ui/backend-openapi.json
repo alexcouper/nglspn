@@ -3150,6 +3150,17 @@
             "title": "Id",
             "type": "string"
           },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -3229,6 +3240,7 @@
         },
         "required": [
           "id",
+          "slug",
           "title",
           "tagline"
         ],
@@ -3259,6 +3271,17 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
           },
           "title": {
             "title": "Title",
@@ -3316,6 +3339,7 @@
         },
         "required": [
           "id",
+          "slug",
           "title",
           "tagline",
           "competition_name",
@@ -3331,6 +3355,17 @@
             "format": "uuid",
             "title": "Id",
             "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
           },
           "title": {
             "title": "Title",
@@ -3390,6 +3425,7 @@
         },
         "required": [
           "id",
+          "slug",
           "title",
           "tagline",
           "status",
@@ -4900,6 +4936,17 @@
             "title": "Id",
             "type": "string"
           },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -4944,6 +4991,7 @@
         },
         "required": [
           "id",
+          "slug",
           "title",
           "tags"
         ],

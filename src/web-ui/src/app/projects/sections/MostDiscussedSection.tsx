@@ -30,7 +30,7 @@ function DiscussedItem({ project }: { project: DiscoverProject }) {
   const iconUrl = project.icon_url;
 
   return (
-    <Link href={`/projects/${project.id}`} className="block">
+    <Link href={`/projects/${project.slug ?? project.id}`} className="block">
       <div className="card card-interactive p-3 flex items-center gap-3">
         <div className="flex-shrink-0 w-10 h-10 rounded-lg overflow-hidden">
           {iconUrl ? (

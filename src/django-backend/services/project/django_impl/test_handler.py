@@ -2,13 +2,41 @@ from unittest.mock import patch
 
 import pytest
 
-from apps.projects.models import Project, ProjectStatus
+from apps.projects.models import (
+    CompetitionStatus,
+    Project,
+    ProjectStatus,
+)
 from services.project.django_impl import DjangoProjectHandler
-from services.project.exceptions import ProjectNotFoundError
+from services.project.exceptions import (
+    InvalidProjectStateError,
+    ProjectNotFoundError,
+    PublishPreconditionsError,
+)
 from services.project.handler_interface import CreateProjectInput, UpdateProjectInput
-from tests.factories import ProjectFactory, TagFactory, UserFactory
+from tests.factories import (
+    CompetitionFactory,
+    ProjectFactory,
+    ProjectImageFactory,
+    TagFactory,
+    UserFactory,
+)
 
 handler = DjangoProjectHandler()
+
+
+def _ready_draft(**kwargs):
+    project = ProjectFactory(
+        status=ProjectStatus.DRAFT,
+        title=kwargs.pop("title", "Ready Draft"),
+        description=kwargs.pop("description", "A description"),
+        submission_month="",
+        slug=None,
+        published_at=None,
+        **kwargs,
+    )
+    ProjectImageFactory(project=project, is_main=True, upload_status="uploaded")
+    return project
 
 
 @pytest.mark.django_db
@@ -54,33 +82,47 @@ class TestCreate:
 
         assert tag in project.tags.all()
 
-    def test_enqueues_new_project_notification(self):
+    def test_create_does_not_enqueue_admin_notification(self):
         user = UserFactory()
         data = CreateProjectInput(
             owner_id=user.id,
             website_url="https://example.com",
-            title="Notify Me",
+            title="Quiet Create",
         )
 
         with patch("api.tasks.email.send_new_project_notification") as mock_task:
-            project = handler.create(data)
+            handler.create(data)
 
-        mock_task.enqueue.assert_called_once_with(str(project.id))
+        mock_task.enqueue.assert_not_called()
 
-    def test_create_succeeds_when_enqueue_fails(self):
+    def test_create_leaves_submission_month_and_slug_blank(self):
         user = UserFactory()
         data = CreateProjectInput(
             owner_id=user.id,
             website_url="https://example.com",
-            title="Robust",
+            title="Fresh Draft",
         )
 
-        with patch("api.tasks.email.send_new_project_notification") as mock_task:
-            mock_task.enqueue.side_effect = Exception("queue down")
-            project = handler.create(data)
+        project = handler.create(data)
 
-        assert project.id is not None
-        assert Project.objects.filter(id=project.id).exists()
+        assert project.submission_month == ""
+        assert project.slug is None
+        assert project.published_at is None
+
+    def test_create_does_not_assign_to_open_competition(self):
+        user = UserFactory()
+        competition = CompetitionFactory(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS
+        )
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="No Auto Join",
+        )
+
+        project = handler.create(data)
+
+        assert project not in competition.projects.all()
 
 
 @pytest.mark.django_db
@@ -139,3 +181,126 @@ class TestResubmit:
 
         assert result.status == ProjectStatus.PENDING
         assert result.rejection_reason is None
+
+
+@pytest.mark.django_db
+class TestPublish:
+    def test_publish_ready_draft_transitions_and_sets_metadata(self):
+        user = UserFactory()
+        project = _ready_draft(owner=user, title="Ready App")
+
+        with patch("api.tasks.email.send_new_project_notification") as mock_task:
+            result = handler.publish(project.id, user.id)
+
+        assert result.status == ProjectStatus.PENDING
+        assert result.slug == "ready-app"
+        assert result.published_at is not None
+        assert result.submission_month != ""
+        mock_task.enqueue.assert_called_once_with(str(result.id))
+
+    def test_publish_adds_to_open_competition(self):
+        user = UserFactory()
+        competition = CompetitionFactory(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS
+        )
+        project = _ready_draft(owner=user)
+
+        with patch("api.tasks.email.send_new_project_notification"):
+            handler.publish(project.id, user.id)
+
+        assert project in competition.projects.all()
+
+    def test_publish_without_open_competition_still_succeeds(self):
+        user = UserFactory()
+        project = _ready_draft(owner=user)
+
+        with patch("api.tasks.email.send_new_project_notification"):
+            result = handler.publish(project.id, user.id)
+
+        assert result.status == ProjectStatus.PENDING
+
+    def test_publish_missing_title_raises(self):
+        user = UserFactory()
+        project = _ready_draft(owner=user, title="")
+
+        with (
+            patch("api.tasks.email.send_new_project_notification") as mock_task,
+            pytest.raises(PublishPreconditionsError) as exc,
+        ):
+            handler.publish(project.id, user.id)
+
+        assert "title" in exc.value.missing
+        project.refresh_from_db()
+        assert project.status == ProjectStatus.DRAFT
+        mock_task.enqueue.assert_not_called()
+
+    def test_publish_missing_description_raises(self):
+        user = UserFactory()
+        project = _ready_draft(owner=user, description="")
+
+        with pytest.raises(PublishPreconditionsError) as exc:
+            handler.publish(project.id, user.id)
+
+        assert "description" in exc.value.missing
+
+    def test_publish_missing_main_image_raises(self):
+        user = UserFactory()
+        project = ProjectFactory(
+            owner=user,
+            status=ProjectStatus.DRAFT,
+            title="No Image",
+            description="Has description",
+            submission_month="",
+            slug=None,
+            published_at=None,
+        )
+
+        with pytest.raises(PublishPreconditionsError) as exc:
+            handler.publish(project.id, user.id)
+
+        assert exc.value.missing == ["main_image"]
+
+    def test_publish_lists_all_missing_fields(self):
+        user = UserFactory()
+        project = ProjectFactory(
+            owner=user,
+            status=ProjectStatus.DRAFT,
+            title="",
+            description="",
+            submission_month="",
+            slug=None,
+            published_at=None,
+        )
+
+        with pytest.raises(PublishPreconditionsError) as exc:
+            handler.publish(project.id, user.id)
+
+        assert set(exc.value.missing) == {"title", "description", "main_image"}
+
+    def test_publish_non_draft_raises_invalid_state(self):
+        user = UserFactory()
+        project = _ready_draft(owner=user)
+        project.status = ProjectStatus.PENDING
+        project.save(update_fields=["status"])
+
+        with pytest.raises(InvalidProjectStateError):
+            handler.publish(project.id, user.id)
+
+    def test_publish_by_non_owner_raises_not_found(self):
+        project = _ready_draft()
+        other = UserFactory()
+
+        with pytest.raises(ProjectNotFoundError):
+            handler.publish(project.id, other.id)
+
+    def test_publish_generates_collision_safe_slug(self):
+        user = UserFactory()
+        ProjectFactory(
+            title="Duplicate", slug="duplicate", status=ProjectStatus.APPROVED
+        )
+        project = _ready_draft(owner=user, title="Duplicate")
+
+        with patch("api.tasks.email.send_new_project_notification"):
+            result = handler.publish(project.id, user.id)
+
+        assert result.slug == "duplicate-2"

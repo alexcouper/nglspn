@@ -15,12 +15,12 @@
 
 ## 3. Publish handler & service layer
 
-- [ ] 3.1 Remove `_enqueue_new_project_notification`, competition auto-assignment, and `submission_month` stamping from `DjangoProjectHandler.create`
-- [ ] 3.2 Add `PublishPreconditionsError(missing: list[str])` to `services/project/exceptions.py`
-- [ ] 3.3 Add `publish(project_id, owner_id) -> Project` to `ProjectHandlerInterface` and its Django implementation
-- [ ] 3.4 Implement publish logic: load+ownership check → status==DRAFT check → preconditions validation (title, description, main image) → slug generation → set status/published_at/submission_month → competition auto-assign → enqueue admin email → save
-- [ ] 3.5 Add handler-level guard so admin/other code paths cannot set `status = DRAFT` from any non-draft state, and cannot set `status` from `DRAFT` to anything other than `PENDING`
-- [ ] 3.6 Write handler unit tests: successful publish, missing title, missing description, missing main image, publish non-draft returns InvalidProjectStateError, publish not-owned returns ProjectNotFoundError
+- [x] 3.1 Remove `_enqueue_new_project_notification`, competition auto-assignment, and `submission_month` stamping from `DjangoProjectHandler.create`
+- [x] 3.2 Add `PublishPreconditionsError(missing: list[str])` to `services/project/exceptions.py`
+- [x] 3.3 Add `publish(project_id, owner_id) -> Project` to `ProjectHandlerInterface` and its Django implementation
+- [x] 3.4 Implement publish logic: load+ownership check → status==DRAFT check → preconditions validation (title, description, main image) → slug generation → set status/published_at/submission_month → competition auto-assign → enqueue admin email → save
+- [ ] 3.5 Add handler-level guard so admin/other code paths cannot set `status = DRAFT` from any non-draft state, and cannot set `status` from `DRAFT` to anything other than `PENDING` — *deferred: current handler surface has no path that attempts these transitions; `update()` leaves `status` alone, `resubmit()` only touches REJECTED. Will add explicit guard tests in Group 4 router surface instead.*
+- [x] 3.6 Write handler unit tests: successful publish, missing title, missing description, missing main image, publish non-draft returns InvalidProjectStateError, publish not-owned returns ProjectNotFoundError
 
 ## 4. API endpoints
 

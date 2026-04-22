@@ -19,7 +19,11 @@ class ProjectCreate(Schema):
     demo_url: str | None = None
     tech_stack: list[str] | None = None
     tag_ids: list[UUID] | None = None
-    competition_id: UUID | None = None
+
+
+class PublishMissingFieldsResponse(Schema):
+    detail: str
+    missing: list[str]
 
 
 class ImageVariantResponse(Schema):
@@ -58,6 +62,7 @@ class WonCompetitionInfo(Schema):
 
 class ProjectResponse(Schema):
     id: UUID
+    slug: str | None
     title: str
     tagline: str
     description: str
@@ -69,6 +74,7 @@ class ProjectResponse(Schema):
     status: str
     created_at: datetime
     approved_at: datetime | None
+    published_at: datetime | None
     owner: PublicUserProfile
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []
@@ -125,6 +131,7 @@ class UpdateImageRolesRequest(Schema):
 
 class ProjectListItemResponse(Schema):
     id: UUID
+    slug: str | None
     title: str
     tagline: str
     status: str
@@ -138,6 +145,7 @@ class ProjectListItemResponse(Schema):
     def from_list_item(cls, item: Any) -> "ProjectListItemResponse":
         return cls(
             id=item.project.id,
+            slug=item.project.slug,
             title=item.project.title,
             tagline=item.project.tagline,
             status=item.project.status,
@@ -160,6 +168,7 @@ class ProjectListResponse(Schema):
 
 class DiscoverProjectResponse(Schema):
     id: UUID
+    slug: str | None
     title: str
     tagline: str
     icon_url: str | None = None
@@ -174,6 +183,7 @@ class DiscoverProjectResponse(Schema):
     def from_discover_item(cls, item: Any) -> "DiscoverProjectResponse":
         return cls(
             id=item.project.id,
+            slug=item.project.slug,
             title=item.project.title,
             tagline=item.project.tagline,
             icon_url=item.icon_url,
@@ -195,6 +205,7 @@ class CategoryResponse(Schema):
 
 class WinnerProjectResponse(Schema):
     id: UUID
+    slug: str | None
     title: str
     tagline: str
     icon_url: str | None = None

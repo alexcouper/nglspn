@@ -47,3 +47,6 @@ class ProjectHandlerInterface(ABC):
 
     @abstractmethod
     def resubmit(self, project_id: UUID, owner_id: UUID) -> Project: ...
+
+    @abstractmethod
+    def publish(self, project_id: UUID, owner_id: UUID) -> Project: ...

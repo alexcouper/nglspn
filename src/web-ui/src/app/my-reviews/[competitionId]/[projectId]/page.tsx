@@ -6,7 +6,7 @@ import {
   api,
   ReviewProjectDetail as ReviewProjectDetailType,
 } from "@/lib/api";
-import { ProjectDetailContent } from "@/app/projects/[id]/ProjectDetailContent";
+import { ProjectDetailContent } from "@/app/projects/[slug]/ProjectDetailContent";
 import { useBreadcrumbs } from "../../BreadcrumbContext";
 
 export default function ReviewProjectDetailPage() {

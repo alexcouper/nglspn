@@ -4,7 +4,11 @@ const isDev = process.env.NODE_ENV === "development";
 
 const apiUrl = process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || "https://api.naglasupan.is";
 const cdnUrl = process.env.NEXT_PUBLIC_CDN_URL || "https://cdn.naglasupan.is";
-const cdnHostname = new URL(cdnUrl).hostname;
+const cdnParsed = new URL(cdnUrl);
+const cdnHostname = cdnParsed.hostname;
+const cdnProtocol = cdnParsed.protocol.replace(":", "") as "http" | "https";
+const cdnPort = cdnParsed.port || undefined;
+const cdnOrigin = cdnParsed.origin;
 
 // CSP placeholders — replaced at container startup by entrypoint.sh so a single
 // image can run against any backend/CDN.  In dev we use the real values directly.
@@ -18,7 +22,7 @@ const securityHeaders = [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
       "style-src 'self' 'unsafe-inline'",
-      `img-src 'self' data: ${cspCdnUrl} https://*.s3.fr-par.scw.cloud`,
+      `img-src 'self' data: ${cspCdnUrl} https://*.s3.fr-par.scw.cloud${isDev ? ` ${cdnOrigin}` : ""}`,
       `connect-src 'self' ${cspApiUrl} ${cspCdnUrl} https://s3.fr-par.scw.cloud https://plausible.io${isDev ? " http://localhost:* http://127.0.0.1:*" : ""}`,
       "frame-ancestors 'none'",
     ].join("; "),
@@ -56,8 +60,9 @@ const nextConfig: NextConfig = {
         hostname: "*.s3.fr-par.scw.cloud",
       },
       {
-        protocol: "https",
+        protocol: cdnProtocol,
         hostname: cdnHostname,
+        ...(cdnPort ? { port: cdnPort } : {}),
       },
     ],
   },

@@ -86,7 +86,7 @@ function CategoryCard({ project }: { project: DiscoverProject }) {
   const iconUrl = project.icon_url;
 
   return (
-    <Link href={`/projects/${project.id}`} className="block h-full">
+    <Link href={`/projects/${project.slug ?? project.id}`} className="block h-full">
       <div className="card card-interactive p-3 flex items-start gap-3 h-full">
         <div className="app-icon w-12 h-12">
           {iconUrl ? (

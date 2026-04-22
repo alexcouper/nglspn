@@ -89,6 +89,7 @@ export function ImageRoleDialog({
 
   const previewProject: DiscoverProject = {
     id: projectId,
+    slug: null,
     title: projectTitle || "Untitled Project",
     tagline: projectTagline || "",
     icon_url: null,

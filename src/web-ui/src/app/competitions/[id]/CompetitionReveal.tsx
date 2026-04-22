@@ -171,7 +171,7 @@ function WinnerCard({ project }: { project: CompetitionProject }) {
 
   return (
     <Link
-      href={`/projects/${project.id}`}
+      href={`/projects/${project.slug ?? project.id}`}
       className="group block"
     >
       <div className="card card-interactive overflow-hidden border-amber-200 hover:shadow-[0_0_20px_rgba(251,191,36,0.15)]">
@@ -221,7 +221,7 @@ function ProjectCard({
 
   return (
     <Link
-      href={`/projects/${project.id}`}
+      href={`/projects/${project.slug ?? project.id}`}
       className="group block"
     >
       <div

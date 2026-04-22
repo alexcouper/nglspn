@@ -21,8 +21,9 @@ dev:
 	@if [ -f ../../.backend-port ]; then \
 		export NEXT_PUBLIC_API_URL="http://localhost:$$(cat ../../.backend-port)"; \
 	fi && \
+	export NEXT_PUBLIC_CDN_URL="$${NEXT_PUBLIC_CDN_URL:-http://localhost:9000/naglasupan-dev}" && \
 	PORT=$$(../../scripts/find-free-port.sh 3000) && \
-	echo "Starting Next.js on port $$PORT (backend at $${NEXT_PUBLIC_API_URL:-http://localhost:8000})" && \
+	echo "Starting Next.js on port $$PORT (backend at $${NEXT_PUBLIC_API_URL:-http://localhost:8000}, cdn at $$NEXT_PUBLIC_CDN_URL)" && \
 	PORT=$$PORT npm run dev
 
 run-non-dev:

@@ -1,11 +1,33 @@
 import json
-import uuid
-from datetime import date
+from unittest.mock import patch
 
-from hamcrest import assert_that, equal_to, has_entries, has_length, is_, none
+from hamcrest import (
+    assert_that,
+    contains_inanyorder,
+    equal_to,
+    has_entries,
+    has_key,
+    has_length,
+    is_,
+    none,
+)
 
-from apps.projects.models import CompetitionStatus, Project, ProjectStatus
-from tests.factories import CompetitionFactory, ProjectFactory
+from apps.projects.models import Project, ProjectStatus
+from tests.factories import ProjectFactory, ProjectImageFactory
+
+
+def _ready_draft(**kwargs):
+    project = ProjectFactory(
+        status=ProjectStatus.DRAFT,
+        title=kwargs.pop("title", "Ready Draft"),
+        description=kwargs.pop("description", "A description"),
+        submission_month="",
+        slug=None,
+        published_at=None,
+        **kwargs,
+    )
+    ProjectImageFactory(project=project, is_main=True, upload_status="uploaded")
+    return project
 
 
 class TestListMyProjects:
@@ -74,196 +96,6 @@ class TestCreateProject:
                 description="A great project",
                 tags=has_length(3),
             ),
-        )
-
-
-class TestCreateProjectWithCompetition:
-    def test_create_project_with_explicit_competition_id_adds_to_competition(
-        self,
-        client,
-        auth_headers,
-    ) -> None:
-        competition = CompetitionFactory(
-            status=CompetitionStatus.ACCEPTING_APPLICATIONS
-        )
-        payload = {
-            "website_url": "https://example.com",
-            "competition_id": str(competition.id),
-        }
-
-        response = client.post(
-            "/api/my/projects",
-            data=json.dumps(payload),
-            content_type="application/json",
-            **auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(201))
-        project = Project.objects.get(id=response.json()["id"])
-        assert_that(project.competitions.filter(id=competition.id).exists(), is_(True))
-
-    def test_create_project_with_closed_competition_returns_400(
-        self,
-        client,
-        auth_headers,
-    ) -> None:
-        competition = CompetitionFactory(status=CompetitionStatus.CLOSED)
-        payload = {
-            "website_url": "https://example.com",
-            "competition_id": str(competition.id),
-        }
-
-        response = client.post(
-            "/api/my/projects",
-            data=json.dumps(payload),
-            content_type="application/json",
-            **auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(400))
-        assert_that(
-            response.json(),
-            has_entries(detail="Competition is not accepting applications"),
-        )
-
-    def test_create_project_with_nonexistent_competition_returns_400(
-        self,
-        client,
-        auth_headers,
-    ) -> None:
-        fake_id = str(uuid.uuid4())
-        payload = {
-            "website_url": "https://example.com",
-            "competition_id": fake_id,
-        }
-
-        response = client.post(
-            "/api/my/projects",
-            data=json.dumps(payload),
-            content_type="application/json",
-            **auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(400))
-        assert_that(response.json(), has_entries(detail="Competition not found"))
-
-    def test_create_project_without_competition_id_adds_to_open_competition(
-        self,
-        client,
-        auth_headers,
-    ) -> None:
-        competition = CompetitionFactory(
-            status=CompetitionStatus.ACCEPTING_APPLICATIONS
-        )
-        payload = {"website_url": "https://example.com"}
-
-        response = client.post(
-            "/api/my/projects",
-            data=json.dumps(payload),
-            content_type="application/json",
-            **auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(201))
-        project = Project.objects.get(id=response.json()["id"])
-        assert_that(project.competitions.filter(id=competition.id).exists(), is_(True))
-
-    def test_create_project_without_competition_id_uses_most_recent_open_competition(
-        self,
-        client,
-        auth_headers,
-    ) -> None:
-        older_competition = CompetitionFactory(
-            status=CompetitionStatus.ACCEPTING_APPLICATIONS,
-            start_date=date(2024, 1, 1),
-        )
-        newer_competition = CompetitionFactory(
-            status=CompetitionStatus.ACCEPTING_APPLICATIONS,
-            start_date=date(2025, 6, 1),
-        )
-        payload = {"website_url": "https://example.com"}
-
-        response = client.post(
-            "/api/my/projects",
-            data=json.dumps(payload),
-            content_type="application/json",
-            **auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(201))
-        project = Project.objects.get(id=response.json()["id"])
-        assert_that(
-            project.competitions.filter(id=newer_competition.id).exists(), is_(True)
-        )
-        assert_that(
-            project.competitions.filter(id=older_competition.id).exists(), is_(False)
-        )
-
-    def test_create_project_succeeds_when_no_open_competition(
-        self,
-        client,
-        auth_headers,
-    ) -> None:
-        CompetitionFactory(status=CompetitionStatus.CLOSED)
-        payload = {"website_url": "https://example.com"}
-
-        response = client.post(
-            "/api/my/projects",
-            data=json.dumps(payload),
-            content_type="application/json",
-            **auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(201))
-        project = Project.objects.get(id=response.json()["id"])
-        assert_that(project.competitions.count(), equal_to(0))
-
-    def test_create_project_with_pending_competition_returns_400(
-        self,
-        client,
-        auth_headers,
-    ) -> None:
-        competition = CompetitionFactory(status=CompetitionStatus.PENDING)
-        payload = {
-            "website_url": "https://example.com",
-            "competition_id": str(competition.id),
-        }
-
-        response = client.post(
-            "/api/my/projects",
-            data=json.dumps(payload),
-            content_type="application/json",
-            **auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(400))
-        assert_that(
-            response.json(),
-            has_entries(detail="Competition is not accepting applications"),
-        )
-
-    def test_create_project_with_voting_competition_returns_400(
-        self,
-        client,
-        auth_headers,
-    ) -> None:
-        competition = CompetitionFactory(status=CompetitionStatus.VOTING)
-        payload = {
-            "website_url": "https://example.com",
-            "competition_id": str(competition.id),
-        }
-
-        response = client.post(
-            "/api/my/projects",
-            data=json.dumps(payload),
-            content_type="application/json",
-            **auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(400))
-        assert_that(
-            response.json(),
-            has_entries(detail="Competition is not accepting applications"),
         )
 
 
@@ -366,6 +198,112 @@ class TestResubmitProject:
         )
 
         assert_that(response.status_code, equal_to(400))
+
+
+class TestPublishProject:
+    def test_publish_ready_draft_returns_200_with_slug(
+        self, client, user, auth_headers
+    ) -> None:
+        project = _ready_draft(owner=user, title="Shiny App")
+
+        with patch("api.tasks.email.send_new_project_notification"):
+            response = client.post(
+                f"/api/my/projects/{project.id}/publish",
+                **auth_headers,
+            )
+
+        assert_that(response.status_code, equal_to(200))
+        body = response.json()
+        assert_that(body, has_entries(slug="shiny-app", status="pending"))
+        assert_that(body, has_key("published_at"))
+        assert body["published_at"] is not None
+
+    def test_publish_missing_description_returns_400_with_missing(
+        self, client, user, auth_headers
+    ) -> None:
+        project = _ready_draft(owner=user, description="")
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/publish",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert "description" in response.json()["missing"]
+        project.refresh_from_db()
+        assert_that(project.status, equal_to(ProjectStatus.DRAFT))
+
+    def test_publish_missing_main_image_returns_400(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(
+            owner=user,
+            status=ProjectStatus.DRAFT,
+            title="No Image",
+            description="A description",
+            submission_month="",
+            slug=None,
+            published_at=None,
+        )
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/publish",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(response.json()["missing"], equal_to(["main_image"]))
+
+    def test_publish_lists_all_missing(self, client, user, auth_headers) -> None:
+        project = ProjectFactory(
+            owner=user,
+            status=ProjectStatus.DRAFT,
+            title="",
+            description="",
+            submission_month="",
+            slug=None,
+            published_at=None,
+        )
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/publish",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(
+            response.json()["missing"],
+            contains_inanyorder("title", "description", "main_image"),
+        )
+
+    def test_publish_non_draft_returns_400(self, client, user, auth_headers) -> None:
+        project = ProjectFactory(
+            owner=user, status=ProjectStatus.PENDING, title="Already Published"
+        )
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/publish",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+
+    def test_publish_non_owner_returns_404(self, client, auth_headers) -> None:
+        project = _ready_draft()  # owned by a different user
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/publish",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_publish_requires_auth(self, client) -> None:
+        response = client.post(
+            "/api/my/projects/00000000-0000-0000-0000-000000000000/publish"
+        )
+
+        assert_that(response.status_code, equal_to(401))
 
 
 class TestAuthentication:

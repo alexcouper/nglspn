@@ -3,7 +3,6 @@ from typing import Any
 
 from django.conf import settings
 from django.db import models
-from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.tags.models import Tag
@@ -57,6 +56,7 @@ class ProjectCategory(models.Model):
 
 
 class ProjectStatus(models.TextChoices):
+    DRAFT = "draft", "Draft"
     PENDING = "pending", "Pending"
     APPROVED = "approved", "Approved"
     REJECTED = "rejected", "Rejected"
@@ -74,15 +74,19 @@ class Project(models.Model):
     demo_url = models.URLField(max_length=2083, blank=True, null=True)
     tech_stack = models.JSONField(default=list, blank=True)
     is_featured = models.BooleanField(default=False)
+    slug = models.SlugField(max_length=110, unique=True, null=True, blank=True)
     status = models.CharField(
         max_length=20,
         choices=ProjectStatus.choices,
-        default=ProjectStatus.PENDING,
+        default=ProjectStatus.DRAFT,
         db_index=True,
     )
     rejection_reason = models.TextField(blank=True, null=True)
-    submission_month = models.CharField(max_length=7, db_index=True)  # YYYY-MM format
+    submission_month = models.CharField(
+        max_length=7, blank=True, db_index=True
+    )  # YYYY-MM format; blank until publish
     approved_at = models.DateTimeField(blank=True, null=True)
+    published_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
@@ -116,11 +120,6 @@ class Project(models.Model):
 
     def __str__(self) -> str:
         return self.title
-
-    def save(self, *args: Any, **kwargs: Any) -> None:
-        if not self.submission_month:
-            self.submission_month = timezone.now().strftime("%Y-%m")
-        super().save(*args, **kwargs)
 
 
 class ProjectView(models.Model):

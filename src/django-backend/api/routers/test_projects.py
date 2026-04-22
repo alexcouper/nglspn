@@ -171,3 +171,65 @@ class TestGetPublicProject:
                 title=project.title,
             ),
         )
+
+
+@pytest.mark.django_db
+class TestGetProjectByIdentifier:
+    def test_lookup_by_slug(self, client) -> None:
+        project = ProjectFactory(
+            status=ProjectStatus.APPROVED, slug="cool-app", title="Cool App"
+        )
+
+        response = client.get("/api/projects/cool-app")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            response.json(),
+            has_entries(id=str(project.id), slug="cool-app"),
+        )
+
+    def test_lookup_by_uuid_returns_canonical_slug(self, client) -> None:
+        project = ProjectFactory(
+            status=ProjectStatus.APPROVED, slug="cool-app", title="Cool App"
+        )
+
+        response = client.get(f"/api/projects/{project.id}")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(slug="cool-app"))
+
+    def test_unknown_identifier_returns_404(self, client) -> None:
+        response = client.get("/api/projects/does-not-exist")
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_draft_not_visible_to_anonymous(self, client) -> None:
+        project = ProjectFactory(
+            status=ProjectStatus.DRAFT, slug=None, title="Hidden Draft"
+        )
+
+        response = client.get(f"/api/projects/{project.id}")
+
+        assert_that(response.status_code, equal_to(404))
+
+
+@pytest.mark.django_db
+class TestDraftExclusionFromListings:
+    def test_drafts_excluded_from_main_list(self, client) -> None:
+        ProjectFactory(status=ProjectStatus.APPROVED, title="Shown")
+        ProjectFactory(status=ProjectStatus.DRAFT, title="Hidden")
+
+        response = client.get("/api/projects")
+
+        assert_that(response.status_code, equal_to(200))
+        titles = [p["title"] for p in response.json()["projects"]]
+        assert "Shown" in titles
+        assert "Hidden" not in titles
+
+    def test_drafts_not_counted_in_pending_total(self, client) -> None:
+        ProjectFactory(status=ProjectStatus.DRAFT)
+        ProjectFactory(status=ProjectStatus.PENDING)
+
+        response = client.get("/api/projects")
+
+        assert_that(response.json()["pending_projects_count"], equal_to(1))

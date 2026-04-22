@@ -153,6 +153,20 @@ class DjangoProjectQuery(ProjectQueryInterface):
         except Project.DoesNotExist:
             raise ProjectNotFoundError from None
 
+    def get_by_identifier(self, identifier: str) -> Project:
+        try:
+            uuid_value = UUID(identifier)
+        except (ValueError, TypeError, AttributeError):
+            uuid_value = None
+
+        qs = _base_queryset()
+        try:
+            if uuid_value is not None:
+                return qs.get(id=uuid_value)
+            return qs.get(slug=identifier)
+        except Project.DoesNotExist:
+            raise ProjectNotFoundError from None
+
     def get_for_owner(self, project_id: UUID, owner_id: UUID) -> Project:
         try:
             return _base_queryset().get(id=project_id, owner_id=owner_id)

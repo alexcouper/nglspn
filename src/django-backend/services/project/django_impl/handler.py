@@ -4,18 +4,23 @@ import logging
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
+from django.utils import timezone
+
 from apps.projects.models import (
     Competition,
     CompetitionStatus,
     Project,
+    ProjectImage,
     ProjectStatus,
+    UploadStatus,
 )
+from apps.projects.slugs import assign_unique_slug
 from apps.tags.models import Tag, TagStatus
 from services.project.exceptions import (
-    InvalidCompetitionError,
     InvalidProjectStateError,
     InvalidTagsError,
     ProjectNotFoundError,
+    PublishPreconditionsError,
 )
 from services.project.handler_interface import ProjectHandlerInterface
 
@@ -59,25 +64,6 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         if data.tag_ids:
             valid_tags = _validate_tags(data.tag_ids)
 
-        competition = None
-        if data.competition_id:
-            try:
-                competition = Competition.objects.get(id=data.competition_id)
-            except Competition.DoesNotExist:
-                msg = "Competition not found"
-                raise InvalidCompetitionError(msg) from None
-            if competition.status != CompetitionStatus.ACCEPTING_APPLICATIONS:
-                msg = "Competition is not accepting applications"
-                raise InvalidCompetitionError(msg)
-        else:
-            competition = (
-                Competition.objects.filter(
-                    status=CompetitionStatus.ACCEPTING_APPLICATIONS
-                )
-                .order_by("-start_date")
-                .first()
-            )
-
         project_fields: dict[str, Any] = {
             "owner_id": data.owner_id,
             "website_url": data.website_url,
@@ -102,11 +88,6 @@ class DjangoProjectHandler(ProjectHandlerInterface):
 
         if valid_tags is not None:
             project.tags.set(valid_tags)
-
-        if competition:
-            competition.projects.add(project)
-
-        _enqueue_new_project_notification(project)
 
         return project
 
@@ -178,3 +159,55 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         project.save()
 
         return project
+
+    def publish(self, project_id: UUID, owner_id: UUID) -> Project:
+        try:
+            project = Project.objects.get(id=project_id, owner_id=owner_id)
+        except Project.DoesNotExist:
+            raise ProjectNotFoundError from None
+
+        if project.status != ProjectStatus.DRAFT:
+            msg = "Only draft projects can be published"
+            raise InvalidProjectStateError(msg)
+
+        missing = _publish_preconditions_missing(project)
+        if missing:
+            raise PublishPreconditionsError(missing)
+
+        assign_unique_slug(project)
+
+        now = timezone.now()
+        project.status = ProjectStatus.PENDING
+        project.published_at = now
+        project.submission_month = now.strftime("%Y-%m")
+        project.save(
+            update_fields=["status", "published_at", "submission_month", "updated_at"]
+        )
+
+        open_competition = (
+            Competition.objects.filter(status=CompetitionStatus.ACCEPTING_APPLICATIONS)
+            .order_by("-start_date")
+            .first()
+        )
+        if open_competition is not None:
+            open_competition.projects.add(project)
+
+        _enqueue_new_project_notification(project)
+
+        return project
+
+
+def _publish_preconditions_missing(project: Project) -> list[str]:
+    missing: list[str] = []
+    if not (project.title and project.title.strip()):
+        missing.append("title")
+    if not (project.description and project.description.strip()):
+        missing.append("description")
+    has_main_image = ProjectImage.objects.filter(
+        project=project,
+        is_main=True,
+        upload_status=UploadStatus.UPLOADED,
+    ).exists()
+    if not has_main_image:
+        missing.append("main_image")
+    return missing

@@ -79,7 +79,7 @@ function IconCard({
 
   return (
     <Link
-      href={`/projects/${project.id}`}
+      href={`/projects/${project.slug ?? project.id}`}
       className="block flex-shrink-0 w-[200px] self-stretch"
     >
       <div className="card card-interactive p-3 flex items-start gap-3 h-full">

@@ -42,6 +42,12 @@ export class MyProjectsClient {
     });
   }
 
+  async publish(id: string): Promise<Project> {
+    return this.client.request<Project>(`/api/my/projects/${id}/publish`, {
+      method: "POST",
+    });
+  }
+
   async getImageUploadUrl(
     projectId: string,
     filename: string,

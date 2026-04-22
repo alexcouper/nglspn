@@ -42,12 +42,14 @@ const MAX_IMAGES = 10;
 
 function StatusBadge({ status }: { status: string }) {
   const styles: Record<string, string> = {
+    draft: "badge-neutral",
     pending: "badge-warning",
     approved: "badge-success",
     rejected: "badge-error",
   };
 
   const labels: Record<string, string> = {
+    draft: "Draft",
     pending: "Pending Review",
     approved: "Approved",
     rejected: "Rejected",

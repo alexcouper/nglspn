@@ -12,10 +12,12 @@ import {
 } from "@heroicons/react/24/outline";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
+import { ApiRequestError } from "@/lib/api/base";
 import type { Project, ProjectImage } from "@/lib/api";
 import { ProjectDetailContent } from "@/app/projects/[id]/ProjectDetailContent";
 import { EditProjectContent } from "./EditProjectContent";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
+import { PublishDialog } from "./PublishDialog";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import type { SelectedTag } from "@/components/TagSelector";
 
@@ -45,6 +47,8 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishMissing, setPublishMissing] = useState<string[] | null>(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [images, setImages] = useState<ProjectImage[]>([]);
   const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
@@ -157,6 +161,47 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       setError(err instanceof Error ? err.message : "Failed to save project");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePublish = async () => {
+    if (!formData || !project) return;
+
+    setIsPublishing(true);
+    setError("");
+    setSuccessMessage("");
+
+    try {
+      // Persist any pending edits first so the backend validates current state.
+      await api.myProjects.update(project.id, {
+        title: formData.title,
+        tagline: formData.tagline,
+        description: formData.description,
+        website_url: formData.website_url,
+        tag_ids: formData.tag_ids,
+      });
+
+      const published = await api.myProjects.publish(project.id);
+      if (published.slug) {
+        router.push(`/projects/${published.slug}`);
+      } else {
+        // Unexpected: a successful publish should always carry a slug.
+        setProject(published);
+      }
+    } catch (err) {
+      if (err instanceof ApiRequestError) {
+        const missing = Array.isArray(err.body.missing)
+          ? (err.body.missing as string[])
+          : null;
+        if (missing && missing.length > 0) {
+          setPublishMissing(missing);
+          setIsPublishing(false);
+          return;
+        }
+      }
+      setError(err instanceof Error ? err.message : "Failed to publish project");
+    } finally {
+      setIsPublishing(false);
     }
   };
 
@@ -331,7 +376,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             )}
             <button
               onClick={handleSave}
-              disabled={isSaving}
+              disabled={isSaving || isPublishing}
               className="btn-primary text-sm py-2 px-4"
             >
               {isSaving ? (
@@ -343,6 +388,19 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                 </span>
               )}
             </button>
+            {project.status === "draft" && (
+              <button
+                onClick={handlePublish}
+                disabled={isPublishing || isSaving}
+                className="btn-primary text-sm py-2 px-4"
+              >
+                {isPublishing ? (
+                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Publish"
+                )}
+              </button>
+            )}
             <button
               onClick={() => setShowDeleteDialog(true)}
               title="Delete"
@@ -392,6 +450,12 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteDialog(false)}
         isDeleting={isDeleting}
+      />
+
+      <PublishDialog
+        isOpen={publishMissing !== null}
+        missing={publishMissing ?? []}
+        onClose={() => setPublishMissing(null)}
       />
     </>
   );

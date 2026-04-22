@@ -1,3 +1,5 @@
+import re
+
 from django.db import IntegrityError, transaction
 from django.utils.text import slugify
 
@@ -5,18 +7,20 @@ from apps.projects.models import Project, transliterate_icelandic
 
 MAX_COLLISION_ATTEMPTS = 1000
 
+_NON_ALNUM_RE = re.compile(r"[^A-Za-z0-9]+")
+
 
 def _candidate(base: str, n: int) -> str:
     return base if n == 1 else f"{base}-{n}"
 
 
 def _slugify_preserving_separators(text: str) -> str:
-    # Dots, underscores and slashes carry structural meaning in project names
-    # (domains like "boots.is", paths like "team/boots") — preserve them as
-    # separators instead of letting slugify silently strip them.
-    for ch in (".", "_", "/"):
-        text = text.replace(ch, "-")
-    return slugify(transliterate_icelandic(text))
+    # Every non-alphanumeric run becomes a single separator, so URL-ish titles
+    # like "foo.com/hello?x=1" slug to "foo-com-hello-x-1" instead of silently
+    # dropping the punctuation and collapsing the words together.
+    text = transliterate_icelandic(text)
+    text = _NON_ALNUM_RE.sub(" ", text)
+    return slugify(text)
 
 
 def generate_unique_project_slug(title: str) -> str:

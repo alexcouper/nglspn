@@ -40,6 +40,12 @@ class TestGenerateUniqueProjectSlug:
     def test_slashes_become_dashes(self):
         assert generate_unique_project_slug("team/boots") == "team-boots"
 
+    def test_arbitrary_punctuation_becomes_dashes(self):
+        assert (
+            generate_unique_project_slug("foo.com/hellothere?x=1")
+            == "foo-com-hellothere-x-1"
+        )
+
 
 @pytest.mark.django_db
 class TestAssignUniqueSlug:

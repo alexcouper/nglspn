@@ -33,10 +33,10 @@ The system SHALL generate a project's slug at the moment of publish by applying 
 - **WHEN** a draft titled "Súperþing" is published
 - **THEN** its slug is generated with Icelandic characters replaced using the existing `transliterate_icelandic` mapping (e.g. `"superthing"`)
 
-#### Scenario: Dots, underscores and slashes are preserved as dashes
+#### Scenario: Non-alphanumeric characters are preserved as dashes
 
-- **WHEN** a draft whose title contains `.`, `_`, or `/` (e.g. "boots.is", "my_cool_app", "team/boots") is published
-- **THEN** each such character is converted to `-` before slugification, so that the resulting slug preserves the separator boundary (`"boots-is"`, `"my-cool-app"`, `"team-boots"`) rather than collapsing it away
+- **WHEN** a draft whose title contains any non-alphanumeric characters (e.g. "boots.is", "my_cool_app", "team/boots", "foo.com/hellothere?x=1") is published
+- **THEN** each run of non-alphanumeric characters is treated as a separator before slugification, so the resulting slug preserves word boundaries (`"boots-is"`, `"my-cool-app"`, `"team-boots"`, `"foo-com-hellothere-x-1"`) rather than silently dropping the punctuation and collapsing the words together
 
 ### Requirement: Slugs are immutable after publish
 

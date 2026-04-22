@@ -1,5 +1,9 @@
+import re
+
 from django.db import migrations
 from django.utils.text import slugify
+
+_NON_ALNUM_RE = re.compile(r"[^A-Za-z0-9]+")
 
 # Self-contained copy of the transliteration mapping so this migration does
 # not depend on live model-layer code that may change in future.
@@ -36,9 +40,9 @@ def _transliterate(text: str) -> str:
 def _slug_base(title: str) -> str:
     # Kept in sync with apps.projects.slugs._slugify_preserving_separators —
     # duplicated here so this migration stays self-contained.
-    for ch in (".", "_", "/"):
-        title = title.replace(ch, "-")
-    return slugify(_transliterate(title))
+    title = _transliterate(title)
+    title = _NON_ALNUM_RE.sub(" ", title)
+    return slugify(title)
 
 
 def backfill(apps, schema_editor):

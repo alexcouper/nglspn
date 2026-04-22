@@ -4,6 +4,7 @@ import logging
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
+from django.db import transaction
 from django.utils import timezone
 
 from apps.projects.models import (
@@ -174,23 +175,31 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         if missing:
             raise PublishPreconditionsError(missing)
 
-        assign_unique_slug(project)
+        with transaction.atomic():
+            assign_unique_slug(project)
 
-        now = timezone.now()
-        project.status = ProjectStatus.PENDING
-        project.published_at = now
-        project.submission_month = now.strftime("%Y-%m")
-        project.save(
-            update_fields=["status", "published_at", "submission_month", "updated_at"]
-        )
+            now = timezone.now()
+            project.status = ProjectStatus.PENDING
+            project.published_at = now
+            project.submission_month = now.strftime("%Y-%m")
+            project.save(
+                update_fields=[
+                    "status",
+                    "published_at",
+                    "submission_month",
+                    "updated_at",
+                ]
+            )
 
-        open_competition = (
-            Competition.objects.filter(status=CompetitionStatus.ACCEPTING_APPLICATIONS)
-            .order_by("-start_date")
-            .first()
-        )
-        if open_competition is not None:
-            open_competition.projects.add(project)
+            open_competition = (
+                Competition.objects.filter(
+                    status=CompetitionStatus.ACCEPTING_APPLICATIONS
+                )
+                .order_by("-start_date")
+                .first()
+            )
+            if open_competition is not None:
+                open_competition.projects.add(project)
 
         _enqueue_new_project_notification(project)
 

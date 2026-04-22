@@ -293,6 +293,34 @@ class TestPublish:
         with pytest.raises(ProjectNotFoundError):
             handler.publish(project.id, other.id)
 
+    def test_publish_rolls_back_slug_when_status_save_fails(self):
+        user = UserFactory()
+        project = _ready_draft(owner=user, title="Atomic Publish")
+
+        real_save = Project.save
+        calls = {"n": 0}
+
+        def flaky_save(self, *args, **kwargs):
+            calls["n"] += 1
+            # First save() = slug assignment inside assign_unique_slug;
+            # second save() = status/published_at/submission_month write.
+            if calls["n"] == 2:
+                msg = "simulated failure on status save"
+                raise RuntimeError(msg)
+            return real_save(self, *args, **kwargs)
+
+        with (
+            patch.object(Project, "save", flaky_save),
+            pytest.raises(RuntimeError, match="simulated failure"),
+        ):
+            handler.publish(project.id, user.id)
+
+        project.refresh_from_db()
+        assert project.slug is None
+        assert project.status == ProjectStatus.DRAFT
+        assert project.published_at is None
+        assert project.submission_month == ""
+
     def test_publish_generates_collision_safe_slug(self):
         user = UserFactory()
         ProjectFactory(

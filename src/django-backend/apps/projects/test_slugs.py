@@ -55,6 +55,30 @@ class TestAssignUniqueSlug:
         project.refresh_from_db()
         assert project.slug == "my-cool-thing"
 
+    def test_long_title_with_collision_stays_within_max_length(self):
+        # "þ" transliterates to "th" — a 100-char title of "þ"s produces a
+        # 200-char base slug, well past the 110-char slug field limit.
+        long_title = "þ" * 100
+        project = ProjectFactory(title=long_title, slug=None)
+        slug_max = 110
+
+        assign_unique_slug(project)
+        project.refresh_from_db()
+        first_slug = project.slug
+        assert first_slug is not None
+        assert len(first_slug) <= slug_max
+        assert not first_slug.endswith("-")
+
+        # Force a collision on a second publish of an identical title.
+        other = ProjectFactory(title=long_title, slug=None)
+        assign_unique_slug(other)
+        other.refresh_from_db()
+
+        assert other.slug is not None
+        assert other.slug != first_slug
+        assert len(other.slug) <= slug_max
+        assert other.slug.endswith("-2")
+
     def test_retries_on_concurrent_integrity_error(self):
         project = ProjectFactory(title="Race Case", slug=None)
         real_save = project.save

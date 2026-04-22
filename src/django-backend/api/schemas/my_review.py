@@ -83,6 +83,7 @@ class ReviewProjectDetailResponse(Schema):
     """Full project details for a reviewer."""
 
     id: UUID
+    slug: str | None
     title: str
     tagline: str
     description: str
@@ -94,6 +95,7 @@ class ReviewProjectDetailResponse(Schema):
     status: str
     created_at: datetime
     approved_at: datetime | None
+    published_at: datetime | None
     owner: UserResponse
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []

@@ -40,9 +40,9 @@
 
 ## 6. OpenAPI & types
 
-- [ ] 6.1 Run `make extract-openapi` in `src/django-backend`
-- [ ] 6.2 Run `npm run generate-types` in `src/web-ui`
-- [ ] 6.3 Verify regenerated types include `slug`, `published_at`, the `missing` error shape, and the publish endpoint
+- [x] 6.1 Run `make extract-openapi` in `src/django-backend`
+- [x] 6.2 Run `npm run generate-types` in `src/web-ui`
+- [x] 6.3 Verify regenerated types include `slug`, `published_at`, the `missing` error shape, and the publish endpoint
 
 ## 7. Web UI — submit flow
 

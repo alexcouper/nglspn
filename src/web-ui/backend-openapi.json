@@ -811,16 +811,16 @@
         ]
       }
     },
-    "/api/projects/{project_id}": {
+    "/api/projects/{identifier}": {
       "get": {
         "operationId": "api_routers_projects_get_project",
         "summary": "Get Project",
         "parameters": [
           {
             "in": "path",
-            "name": "project_id",
+            "name": "identifier",
             "schema": {
-              "title": "Project Id",
+              "title": "Identifier",
               "type": "string"
             },
             "required": true
@@ -1486,6 +1486,73 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "My Projects"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/my/projects/{project_id}/publish": {
+      "post": {
+        "operationId": "api_routers_my_projects_publish_project",
+        "summary": "Publish Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PublishMissingFieldsResponse"
                 }
               }
             }
@@ -3587,6 +3654,17 @@
             "title": "Id",
             "type": "string"
           },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -3664,6 +3742,18 @@
             ],
             "title": "Approved At"
           },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
           "owner": {
             "$ref": "#/components/schemas/PublicUserProfile"
           },
@@ -3693,6 +3783,7 @@
         },
         "required": [
           "id",
+          "slug",
           "title",
           "tagline",
           "description",
@@ -3704,6 +3795,7 @@
           "status",
           "created_at",
           "approved_at",
+          "published_at",
           "owner",
           "tags"
         ],
@@ -3966,24 +4058,33 @@
               }
             ],
             "title": "Tag Ids"
-          },
-          "competition_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Competition Id"
           }
         },
         "required": [
           "website_url"
         ],
         "title": "ProjectCreate",
+        "type": "object"
+      },
+      "PublishMissingFieldsResponse": {
+        "properties": {
+          "detail": {
+            "title": "Detail",
+            "type": "string"
+          },
+          "missing": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing",
+            "type": "array"
+          }
+        },
+        "required": [
+          "detail",
+          "missing"
+        ],
+        "title": "PublishMissingFieldsResponse",
         "type": "object"
       },
       "PresignedUploadResponse": {
@@ -4342,6 +4443,17 @@
             "title": "Id",
             "type": "string"
           },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
           "title": {
             "title": "Title",
             "type": "string"
@@ -4419,6 +4531,18 @@
             ],
             "title": "Approved At"
           },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
           "owner": {
             "$ref": "#/components/schemas/UserResponse"
           },
@@ -4448,6 +4572,7 @@
         },
         "required": [
           "id",
+          "slug",
           "title",
           "tagline",
           "description",
@@ -4459,6 +4584,7 @@
           "status",
           "created_at",
           "approved_at",
+          "published_at",
           "owner",
           "tags"
         ],

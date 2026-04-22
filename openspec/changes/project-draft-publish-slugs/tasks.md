@@ -24,13 +24,13 @@
 
 ## 4. API endpoints
 
-- [ ] 4.1 Add `POST /api/my-projects/{id}/publish` in `api/routers/my_projects.py`; map `PublishPreconditionsError` to `400 {detail, missing}`, `InvalidProjectStateError` to `400`, `ProjectNotFoundError` to `404`
-- [ ] 4.2 Update `ProjectResponse` schema to include `slug` and `published_at` (both nullable)
-- [ ] 4.3 Update `GET /api/projects/{identifier}` in `api/routers/projects.py` to accept either a UUID or a slug; resolve slug first, fall back to UUID; keep existing draft/owner visibility rules so drafts never leak
-- [ ] 4.4 Audit every public project list endpoint (`list_projects`, `list_featured`, `list_new_arrivals`, `list_winners`, `list_most_discussed`, `list_by_category`) and ensure `status=DRAFT` is excluded; add tests for each
-- [ ] 4.5 Verify admin views and admin-only listings exclude `DRAFT` as well
-- [ ] 4.6 Write endpoint tests for publish (200 path, 400 missing paths, 400 non-draft, 404 non-owner)
-- [ ] 4.7 Write endpoint tests for `GET /api/projects/{identifier}` by slug, by UUID, unknown identifier, draft invisibility
+- [x] 4.1 Add `POST /api/my-projects/{id}/publish` in `api/routers/my_projects.py`; map `PublishPreconditionsError` to `400 {detail, missing}`, `InvalidProjectStateError` to `400`, `ProjectNotFoundError` to `404`
+- [x] 4.2 Update `ProjectResponse` schema to include `slug` and `published_at` (both nullable)
+- [x] 4.3 Update `GET /api/projects/{identifier}` in `api/routers/projects.py` to accept either a UUID or a slug; resolve slug first, fall back to UUID; keep existing draft/owner visibility rules so drafts never leak
+- [x] 4.4 Audit every public project list endpoint (`list_projects`, `list_featured`, `list_new_arrivals`, `list_winners`, `list_most_discussed`, `list_by_category`) and ensure `status=DRAFT` is excluded; add tests for each — *all listings already filter to `APPROVED`, so DRAFT is excluded by construction; regression tests added in `TestDraftExclusionFromListings`*
+- [x] 4.5 Verify admin views and admin-only listings exclude `DRAFT` as well — *admin approve/reject actions filter to `status=PENDING` explicitly; no code change needed*
+- [x] 4.6 Write endpoint tests for publish (200 path, 400 missing paths, 400 non-draft, 404 non-owner)
+- [x] 4.7 Write endpoint tests for `GET /api/projects/{identifier}` by slug, by UUID, unknown identifier, draft invisibility
 
 ## 5. Data migration (backfill)
 

@@ -16,6 +16,7 @@ from api.schemas.project import (
     ProjectCreate,
     ProjectImageResponse,
     ProjectResponse,
+    PublishMissingFieldsResponse,
     UpdateImageRolesRequest,
 )
 from api.tasks.images import generate_image_variants
@@ -26,10 +27,10 @@ from apps.projects.models import (
 )
 from services import HANDLERS, REPO
 from services.project.exceptions import (
-    InvalidCompetitionError,
     InvalidProjectStateError,
     InvalidTagsError,
     ProjectNotFoundError,
+    PublishPreconditionsError,
 )
 from services.project.handler_interface import CreateProjectInput, UpdateProjectInput
 from services.storage import storage_service
@@ -78,11 +79,10 @@ def create_project(
         demo_url=payload.demo_url,
         tech_stack=payload.tech_stack,
         tag_ids=payload.tag_ids,
-        competition_id=payload.competition_id,
     )
     try:
         project = HANDLERS.project.create(data)
-    except (InvalidTagsError, InvalidCompetitionError) as exc:
+    except InvalidTagsError as exc:
         return 400, {"detail": str(exc)}
     return 201, project
 
@@ -165,6 +165,31 @@ def resubmit_project(
         return 404, {"detail": "Not Found"}
     except InvalidProjectStateError as exc:
         return 400, {"detail": str(exc)}
+
+
+@router.post(
+    "/{project_id}/publish",
+    response={
+        200: ProjectResponse,
+        400: PublishMissingFieldsResponse,
+        401: Error,
+        404: Error,
+    },
+    auth=auth,
+    tags=["My Projects"],
+)
+def publish_project(
+    request: HttpRequest,
+    project_id: str,
+) -> Project | tuple[int, dict[str, Any]]:
+    try:
+        return HANDLERS.project.publish(project_id, request.auth.id)
+    except ProjectNotFoundError:
+        return 404, {"detail": "Not Found"}
+    except PublishPreconditionsError as exc:
+        return 400, {"detail": str(exc), "missing": exc.missing}
+    except InvalidProjectStateError as exc:
+        return 400, {"detail": str(exc), "missing": []}
 
 
 @router.post(

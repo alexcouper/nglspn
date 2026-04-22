@@ -19,7 +19,11 @@ class ProjectCreate(Schema):
     demo_url: str | None = None
     tech_stack: list[str] | None = None
     tag_ids: list[UUID] | None = None
-    competition_id: UUID | None = None
+
+
+class PublishMissingFieldsResponse(Schema):
+    detail: str
+    missing: list[str]
 
 
 class ImageVariantResponse(Schema):
@@ -58,6 +62,7 @@ class WonCompetitionInfo(Schema):
 
 class ProjectResponse(Schema):
     id: UUID
+    slug: str | None
     title: str
     tagline: str
     description: str
@@ -69,6 +74,7 @@ class ProjectResponse(Schema):
     status: str
     created_at: datetime
     approved_at: datetime | None
+    published_at: datetime | None
     owner: PublicUserProfile
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []

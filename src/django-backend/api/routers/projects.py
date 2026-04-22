@@ -161,16 +161,16 @@ def _get_user_from_request(request: HttpRequest) -> "User | None":
 
 
 @router.get(
-    "/{project_id}",
+    "/{identifier}",
     response={200: ProjectResponse, 404: Error},
     tags=["Projects"],
 )
 def get_project(
     request: HttpRequest,
-    project_id: str,
+    identifier: str,
 ) -> Project | tuple[int, dict[str, str]]:
     try:
-        project = REPO.project.get_by_id(project_id)
+        project = REPO.project.get_by_identifier(identifier)
     except ProjectNotFoundError:
         return 404, {"detail": "Project not found"}
 

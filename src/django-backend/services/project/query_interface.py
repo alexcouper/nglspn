@@ -62,6 +62,9 @@ class ProjectQueryInterface(ABC):
     def get_by_id(self, project_id: UUID) -> Project: ...
 
     @abstractmethod
+    def get_by_identifier(self, identifier: str) -> Project: ...
+
+    @abstractmethod
     def get_for_owner(self, project_id: UUID, owner_id: UUID) -> Project: ...
 
     @abstractmethod

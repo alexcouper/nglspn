@@ -1,9 +1,33 @@
 import json
+from unittest.mock import patch
 
-from hamcrest import assert_that, equal_to, has_entries, has_length, is_, none
+from hamcrest import (
+    assert_that,
+    contains_inanyorder,
+    equal_to,
+    has_entries,
+    has_key,
+    has_length,
+    is_,
+    none,
+)
 
 from apps.projects.models import Project, ProjectStatus
-from tests.factories import ProjectFactory
+from tests.factories import ProjectFactory, ProjectImageFactory
+
+
+def _ready_draft(**kwargs):
+    project = ProjectFactory(
+        status=ProjectStatus.DRAFT,
+        title=kwargs.pop("title", "Ready Draft"),
+        description=kwargs.pop("description", "A description"),
+        submission_month="",
+        slug=None,
+        published_at=None,
+        **kwargs,
+    )
+    ProjectImageFactory(project=project, is_main=True, upload_status="uploaded")
+    return project
 
 
 class TestListMyProjects:
@@ -174,6 +198,112 @@ class TestResubmitProject:
         )
 
         assert_that(response.status_code, equal_to(400))
+
+
+class TestPublishProject:
+    def test_publish_ready_draft_returns_200_with_slug(
+        self, client, user, auth_headers
+    ) -> None:
+        project = _ready_draft(owner=user, title="Shiny App")
+
+        with patch("api.tasks.email.send_new_project_notification"):
+            response = client.post(
+                f"/api/my/projects/{project.id}/publish",
+                **auth_headers,
+            )
+
+        assert_that(response.status_code, equal_to(200))
+        body = response.json()
+        assert_that(body, has_entries(slug="shiny-app", status="pending"))
+        assert_that(body, has_key("published_at"))
+        assert body["published_at"] is not None
+
+    def test_publish_missing_description_returns_400_with_missing(
+        self, client, user, auth_headers
+    ) -> None:
+        project = _ready_draft(owner=user, description="")
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/publish",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert "description" in response.json()["missing"]
+        project.refresh_from_db()
+        assert_that(project.status, equal_to(ProjectStatus.DRAFT))
+
+    def test_publish_missing_main_image_returns_400(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(
+            owner=user,
+            status=ProjectStatus.DRAFT,
+            title="No Image",
+            description="A description",
+            submission_month="",
+            slug=None,
+            published_at=None,
+        )
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/publish",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(response.json()["missing"], equal_to(["main_image"]))
+
+    def test_publish_lists_all_missing(self, client, user, auth_headers) -> None:
+        project = ProjectFactory(
+            owner=user,
+            status=ProjectStatus.DRAFT,
+            title="",
+            description="",
+            submission_month="",
+            slug=None,
+            published_at=None,
+        )
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/publish",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(
+            response.json()["missing"],
+            contains_inanyorder("title", "description", "main_image"),
+        )
+
+    def test_publish_non_draft_returns_400(self, client, user, auth_headers) -> None:
+        project = ProjectFactory(
+            owner=user, status=ProjectStatus.PENDING, title="Already Published"
+        )
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/publish",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+
+    def test_publish_non_owner_returns_404(self, client, auth_headers) -> None:
+        project = _ready_draft()  # owned by a different user
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/publish",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_publish_requires_auth(self, client) -> None:
+        response = client.post(
+            "/api/my/projects/00000000-0000-0000-0000-000000000000/publish"
+        )
+
+        assert_that(response.status_code, equal_to(401))
 
 
 class TestAuthentication:

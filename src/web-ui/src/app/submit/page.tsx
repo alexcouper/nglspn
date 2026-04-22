@@ -10,7 +10,6 @@ export default function SubmitPage() {
   const router = useRouter();
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [url, setUrl] = useState("");
-  const [description, setDescription] = useState("");
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -25,15 +24,10 @@ export default function SubmitPage() {
       return;
     }
 
-    if (!description.trim()) {
-      setError("Please provide a description");
-      return;
-    }
-
     setIsLoading(true);
 
     try {
-      const project = await api.myProjects.create({ website_url: url, description });
+      const project = await api.myProjects.create({ website_url: url });
       router.push(`/my-projects/${project.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit project");
@@ -55,10 +49,10 @@ export default function SubmitPage() {
       <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
         <div className="max-w-lg mx-auto">
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            Submit Your Project
+            Start a New Project
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Share what you&apos;ve been building
+            Drop in a URL — you&apos;ll add the rest before publishing.
           </p>
         </div>
       </section>
@@ -86,30 +80,12 @@ export default function SubmitPage() {
                 />
               </div>
 
-              <div>
-                <div className="flex items-center justify-between mb-1.5">
-                  <label htmlFor="description" className="label mb-0">Description</label>
-                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                    Markdown
-                  </span>
-                </div>
-                <textarea
-                  id="description"
-                  required
-                  rows={4}
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  className="input resize-none"
-                  placeholder="Tell us about your project..."
-                />
-              </div>
-
               <button
                 type="submit"
                 disabled={isLoading}
                 className="w-full btn-primary py-2.5"
               >
-                {isLoading ? "Submitting..." : "Submit Project"}
+                {isLoading ? "Creating..." : "Create Draft"}
               </button>
             </form>
 

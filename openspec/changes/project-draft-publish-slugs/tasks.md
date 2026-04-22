@@ -46,8 +46,8 @@
 
 ## 7. Web UI — submit flow
 
-- [ ] 7.1 Simplify `/submit` page: remove description field; keep only URL input
-- [ ] 7.2 After successful create, route to `/my-projects/{id}` (unchanged target, but now lands on a draft)
+- [x] 7.1 Simplify `/submit` page: remove description field; keep only URL input
+- [x] 7.2 After successful create, route to `/my-projects/{id}` (unchanged target, but now lands on a draft)
 
 ## 8. Web UI — edit page + publish
 

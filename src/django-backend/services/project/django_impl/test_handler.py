@@ -27,7 +27,7 @@ class TestCreate:
         assert project.title == "My Project"
         assert project.owner_id == user.id
         assert project.website_url == "https://example.com"
-        assert project.status == ProjectStatus.PENDING
+        assert project.status == ProjectStatus.DRAFT
 
     def test_derives_title_from_url_when_not_provided(self):
         user = UserFactory()

@@ -1,11 +1,11 @@
 ## 1. Model & schema migration
 
-- [ ] 1.1 Add `DRAFT = "draft"` to `ProjectStatus` in `apps/projects/models.py`
-- [ ] 1.2 Change `Project.status` default from `PENDING` to `DRAFT`
-- [ ] 1.3 Add `slug = models.SlugField(max_length=120, unique=True, null=True, blank=True)` to `Project`
-- [ ] 1.4 Add `published_at = models.DateTimeField(null=True, blank=True)` to `Project`
-- [ ] 1.5 Remove the `submission_month` auto-stamping in `Project.save()`; leave the field as a blank-allowed CharField
-- [ ] 1.6 Generate the schema migration (`python manage.py makemigrations projects`) and verify the migration file is clean and non-destructive
+- [x] 1.1 Add `DRAFT = "draft"` to `ProjectStatus` in `apps/projects/models.py`
+- [x] 1.2 Change `Project.status` default from `PENDING` to `DRAFT`
+- [x] 1.3 Add `slug = models.SlugField(max_length=110, unique=True, null=True, blank=True)` to `Project`
+- [x] 1.4 Add `published_at = models.DateTimeField(null=True, blank=True)` to `Project`
+- [x] 1.5 Remove the `submission_month` auto-stamping in `Project.save()`; leave the field as a blank-allowed CharField
+- [x] 1.6 Generate the schema migration (`python manage.py makemigrations projects`) and verify the migration file is clean and non-destructive
 
 ## 2. Slug generator utility
 

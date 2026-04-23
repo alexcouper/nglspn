@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import type { CategoryItem, DiscoverProject } from "@/lib/api";
 import { api } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { Translatable } from "@/components/Translatable";
 import { HorizontalScroll } from "../HorizontalScroll";
 
 interface CategoryRowsSectionProps {
@@ -25,6 +27,7 @@ export function CategoryRowsSection({ categories }: CategoryRowsSectionProps) {
 }
 
 function CategoryRow({ category }: { category: CategoryItem }) {
+  const t = useTranslations();
   const [projects, setProjects] = useState<DiscoverProject[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -48,7 +51,7 @@ function CategoryRow({ category }: { category: CategoryItem }) {
           href={`/projects?category=${category.slug}`}
           className="text-sm text-accent hover:text-accent-hover font-medium"
         >
-          See all
+          <Translatable tKey="projects.category.seeAll">{t("projects.category.seeAll")}</Translatable>
         </Link>
       </div>
       {loading ? (

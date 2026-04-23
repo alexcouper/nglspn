@@ -2,8 +2,11 @@
 
 import { useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
+import { Translatable } from "@/components/Translatable";
 
 export default function VerifyEmailPage() {
+  const t = useTranslations();
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
@@ -15,7 +18,9 @@ export default function VerifyEmailPage() {
 
   return (
     <main className="min-h-screen bg-muted flex items-center justify-center">
-      <div className="text-muted-foreground text-sm">Loading...</div>
+      <div className="text-muted-foreground text-sm">
+        <Translatable tKey="common.loading">{t("common.loading")}</Translatable>
+      </div>
     </main>
   );
 }

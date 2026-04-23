@@ -1,5 +1,457 @@
 {
   "keys": {
+    "about.contact.discordLabel": {
+      "text": "Discord",
+      "source_hash": "053bc65874ad6098"
+    },
+    "about.contact.emailLabel": {
+      "text": "Email",
+      "source_hash": "969ccbd3cf6300ec"
+    },
+    "about.contact.heading": {
+      "text": "Get in touch",
+      "source_hash": "115e410f01dc4013"
+    },
+    "about.heading": {
+      "text": "Supporting Iceland's builder ecosystem",
+      "source_hash": "b302216a9bc73b77"
+    },
+    "about.layout.badge": {
+      "text": "Iceland's builder community",
+      "source_hash": "fd820deb813596c5"
+    },
+    "about.layout.contactTab": {
+      "text": "Contact",
+      "source_hash": "2b5c3d26721ae9c3"
+    },
+    "about.layout.description": {
+      "text": "A platform for Icelandic developers to showcase side projects, get feedback from the community, and compete for recognition.",
+      "source_hash": "332013ca4ea4c145"
+    },
+    "about.layout.heading": {
+      "text": "Shine a light on\nyour work",
+      "source_hash": "7ce0be6b1eaac84f"
+    },
+    "about.layout.prizesTab": {
+      "text": "Prizes",
+      "source_hash": "e0bcc63881bc2293"
+    },
+    "about.layout.whatTab": {
+      "text": "What",
+      "source_hash": "f8cf83a76a98df2d"
+    },
+    "about.layout.whyTab": {
+      "text": "Why",
+      "source_hash": "d3ae14a50bfe463f"
+    },
+    "about.prizes.cta": {
+      "text": "Ready to submit your project?",
+      "source_hash": "68c965b5711f88bd"
+    },
+    "about.prizes.ctaButton": {
+      "text": "Get started",
+      "source_hash": "61e8d44ad423a4a0"
+    },
+    "about.prizes.eligibilityHeading": {
+      "text": "Eligibility",
+      "source_hash": "dfa9dfa5cad2d8f9"
+    },
+    "about.prizes.selectionHeading": {
+      "text": "Prize giving and selection",
+      "source_hash": "084c179e797746fc"
+    },
+    "about.section1.description": {
+      "text": "A space to showcase your side projects and early-stage ideas to the Icelandic tech community.",
+      "source_hash": "bd69c38233b1e602"
+    },
+    "about.section1.heading": {
+      "text": "Show Your Work",
+      "source_hash": "1b5b9305c892b0f6"
+    },
+    "about.section2.description": {
+      "text": "Receive valuable feedback from fellow builders and compete for prizes in community competitions.",
+      "source_hash": "33b603ccfad986ee"
+    },
+    "about.section2.heading": {
+      "text": "Get Feedback",
+      "source_hash": "0ef3fe00e91a9892"
+    },
+    "about.section3.description": {
+      "text": "Share your experience and skills. Learn from others. Grow your project with the community.",
+      "source_hash": "4ad9aa0660c27f8d"
+    },
+    "about.section3.heading": {
+      "text": "Share & Grow",
+      "source_hash": "ec25c58b9bc312eb"
+    },
+    "about.subheading": {
+      "text": "Everything you need to share your work and grow with the community.",
+      "source_hash": "b3078ec1128e801f"
+    },
+    "about.why.geopoliticsHeading": {
+      "text": "Geopolitics & Digital Sovereignty",
+      "source_hash": "633dfcaf7c560c8d"
+    },
+    "about.why.pocHeading": {
+      "text": "PoC cost is almost zero",
+      "source_hash": "0ab8d55e19480873"
+    },
+    "about.why.seniorHeading": {
+      "text": "Senior developer gap",
+      "source_hash": "941a0686e2e74d4c"
+    },
+    "auth.code.attemptsRemaining": {
+      "text": "{count, plural, one {# attempt remaining} other {# attempts remaining}}",
+      "source_hash": "f456cb17bdfb0e83"
+    },
+    "auth.code.heading": {
+      "text": "Enter your code",
+      "source_hash": "62fd9988e2dff052"
+    },
+    "auth.code.subheading": {
+      "text": "We sent a 6-digit code to {email}",
+      "source_hash": "0d81ae9cbaed8386"
+    },
+    "auth.code.verifying": {
+      "text": "Verifying...",
+      "source_hash": "2ec1ac7d45e8079b"
+    },
+    "auth.forgot.heading": {
+      "text": "Forgotten password?",
+      "source_hash": "d16b887823a0dbc5"
+    },
+    "auth.forgot.subheading": {
+      "text": "Enter your email to receive a reset code",
+      "source_hash": "b6a8bda2a122a919"
+    },
+    "auth.forgot.submit": {
+      "text": "Continue",
+      "source_hash": "31fbef162594de01"
+    },
+    "auth.forgot.submitting": {
+      "text": "Sending...",
+      "source_hash": "286a3af7348e8312"
+    },
+    "auth.login.createLink": {
+      "text": "Create one",
+      "source_hash": "b6ab95ea074921f6"
+    },
+    "auth.login.emailLabel": {
+      "text": "Email",
+      "source_hash": "969ccbd3cf6300ec"
+    },
+    "auth.login.emailPlaceholder": {
+      "text": "you@example.com",
+      "source_hash": "53e6cdc30765aade"
+    },
+    "auth.login.forgotPasswordLink": {
+      "text": "Forgotten password?",
+      "source_hash": "d16b887823a0dbc5"
+    },
+    "auth.login.heading": {
+      "text": "Welcome back",
+      "source_hash": "6621249514b7887c"
+    },
+    "auth.login.noAccount": {
+      "text": "Don't have an account?",
+      "source_hash": "1b545b23fae3997a"
+    },
+    "auth.login.passwordLabel": {
+      "text": "Password",
+      "source_hash": "e7cf3ef4f17c3999"
+    },
+    "auth.login.subheading": {
+      "text": "Log in to manage your projects",
+      "source_hash": "202268285e7a590f"
+    },
+    "auth.login.submit": {
+      "text": "Log In",
+      "source_hash": "2ded4a3ee653ffdd"
+    },
+    "auth.login.submitting": {
+      "text": "Logging in...",
+      "source_hash": "09491d85ca1d3d19"
+    },
+    "auth.register.emailLabel": {
+      "text": "Email",
+      "source_hash": "969ccbd3cf6300ec"
+    },
+    "auth.register.emailPlaceholder": {
+      "text": "you@example.com",
+      "source_hash": "53e6cdc30765aade"
+    },
+    "auth.register.haveAccount": {
+      "text": "Already have an account?",
+      "source_hash": "e77fea936d3e0118"
+    },
+    "auth.register.heading": {
+      "text": "Create an account",
+      "source_hash": "86033f75a4c0876a"
+    },
+    "auth.register.kennitalaInvalid": {
+      "text": "Kennitala must be exactly 10 digits",
+      "source_hash": "f54c59f540ec3b5f"
+    },
+    "auth.register.kennitalaLabel": {
+      "text": "Kennitala",
+      "source_hash": "b193e0f514c0a650"
+    },
+    "auth.register.kennitalaPlaceholder": {
+      "text": "10 digits",
+      "source_hash": "2e623f9227968a2d"
+    },
+    "auth.register.loginLink": {
+      "text": "Log in",
+      "source_hash": "c189840cf7e2d6f6"
+    },
+    "auth.register.passwordLabel": {
+      "text": "Password",
+      "source_hash": "e7cf3ef4f17c3999"
+    },
+    "auth.register.passwordPlaceholder": {
+      "text": "At least 8 characters",
+      "source_hash": "977f3b2676a91a7f"
+    },
+    "auth.register.passwordTooShort": {
+      "text": "Password must be at least 8 characters",
+      "source_hash": "e3b8d09d1ac4b9f1"
+    },
+    "auth.register.privacyAgreement": {
+      "text": "By creating an account, you agree to our Privacy Policy.",
+      "source_hash": "9704935222f24172"
+    },
+    "auth.register.privacyLink": {
+      "text": "Privacy Policy",
+      "source_hash": "506ff394621596dd"
+    },
+    "auth.register.subheading": {
+      "text": "Start sharing your projects today",
+      "source_hash": "cebfde05e72a5496"
+    },
+    "auth.register.submit": {
+      "text": "Create Account",
+      "source_hash": "0dffe234b44793b6"
+    },
+    "auth.register.submitting": {
+      "text": "Creating account...",
+      "source_hash": "7dd3701aa3f1ae92"
+    },
+    "auth.reset.heading": {
+      "text": "Set new password",
+      "source_hash": "6ee6d9db42784666"
+    },
+    "auth.reset.passwordLabel": {
+      "text": "New password",
+      "source_hash": "3dd9df4441fb348f"
+    },
+    "auth.reset.subheading": {
+      "text": "Choose a new password for your account",
+      "source_hash": "3eaebfa26b73bda5"
+    },
+    "auth.reset.submit": {
+      "text": "Set password",
+      "source_hash": "4e4116871bf1515d"
+    },
+    "auth.reset.submitting": {
+      "text": "Saving...",
+      "source_hash": "dc85af8f2b1d0d67"
+    },
+    "auth.reset.successMessage": {
+      "text": "Password updated. Please log in.",
+      "source_hash": "6739bad155c86419"
+    },
+    "common.backToHome": {
+      "text": "Back to home",
+      "source_hash": "76c5505ff2e27ef4"
+    },
+    "common.backToLogin": {
+      "text": "Back to login",
+      "source_hash": "3e3806ff17302cba"
+    },
+    "common.cancel": {
+      "text": "Cancel",
+      "source_hash": "19766ed6ccb2f4a3"
+    },
+    "common.close": {
+      "text": "Close",
+      "source_hash": "7d9eb7acb13e2462"
+    },
+    "common.loading": {
+      "text": "Loading...",
+      "source_hash": "47d2a515ef2f05b8"
+    },
+    "common.profile": {
+      "text": "Profile",
+      "source_hash": "d696a35bdd1883da"
+    },
+    "common.tryAgain": {
+      "text": "Try again",
+      "source_hash": "d8b8392e2c542950"
+    },
+    "competitions.detail.allProjects": {
+      "text": "All Projects",
+      "source_hash": "cdd1b8830883fbab"
+    },
+    "competitions.detail.ctaDescription": {
+      "text": "Share your project with the community and compete in {name}",
+      "source_hash": "69f2f4755149c422"
+    },
+    "competitions.detail.ctaHeading": {
+      "text": "Got a project you're working on?",
+      "source_hash": "d4f00bd93f0d9e37"
+    },
+    "competitions.detail.noProjects": {
+      "text": "No projects yet — be the first to submit!",
+      "source_hash": "6ae069b8585cb352"
+    },
+    "competitions.detail.prizeLabel": {
+      "text": "prize",
+      "source_hash": "72a7a4f82e487ef3"
+    },
+    "competitions.detail.submitButton": {
+      "text": "Submit a Project",
+      "source_hash": "7939c8a6f99e462f"
+    },
+    "competitions.detail.votingMessage": {
+      "text": "Voting is in progress. The winner will be announced soon.",
+      "source_hash": "b4ee2eaa595e0007"
+    },
+    "competitions.detail.winnerLabel": {
+      "text": "Winner",
+      "source_hash": "105dc74a45e3688b"
+    },
+    "competitions.empty": {
+      "text": "No competitions found.",
+      "source_hash": "0ce8eefcd5f68ba8"
+    },
+    "competitions.error.message": {
+      "text": "We couldn't load this competition. This may be a temporary issue.",
+      "source_hash": "a95b88378aaa9423"
+    },
+    "competitions.heading": {
+      "text": "Competitions",
+      "source_hash": "b829970ef4349d58"
+    },
+    "competitions.pastCompetitions": {
+      "text": "Past Competitions",
+      "source_hash": "91b4df5ae5aa95c2"
+    },
+    "competitions.pendingProjects": {
+      "text": "{count, plural, one {# pending project} other {# pending projects}}",
+      "source_hash": "9d5e692a6da0d428"
+    },
+    "competitions.projectCount": {
+      "text": "{count, plural, one {# project} other {# projects}}",
+      "source_hash": "d607422698f90502"
+    },
+    "competitions.status.completed": {
+      "text": "Completed",
+      "source_hash": "22a970d2e5b1cc23"
+    },
+    "competitions.status.open": {
+      "text": "Open",
+      "source_hash": "ed077f3d8125d60d"
+    },
+    "competitions.status.voting": {
+      "text": "Voting",
+      "source_hash": "aca2f665db08be74"
+    },
+    "competitions.subheading": {
+      "text": "Community competitions and their results",
+      "source_hash": "49a49585a186f1f0"
+    },
+    "discussions.newDialog.error": {
+      "text": "Failed to post discussion. Please try again.",
+      "source_hash": "39d1498d1318fb8e"
+    },
+    "discussions.newDialog.placeholder": {
+      "text": "What's on your mind?",
+      "source_hash": "a3e9a84f1ff987f6"
+    },
+    "discussions.newDialog.submitLabel": {
+      "text": "Post",
+      "source_hash": "a5554622c655c7a7"
+    },
+    "discussions.newDialog.submitting": {
+      "text": "Saving...",
+      "source_hash": "dc85af8f2b1d0d67"
+    },
+    "discussions.newDialog.title": {
+      "text": "Start a discussion",
+      "source_hash": "7373febfac25054c"
+    },
+    "error.deleteIconFailed": {
+      "text": "Failed to delete icon",
+      "source_hash": "851da54c641eb3e4"
+    },
+    "error.deleteImageFailed": {
+      "text": "Failed to delete image",
+      "source_hash": "2063dbd4fe5b5c78"
+    },
+    "error.deleteProjectFailed": {
+      "text": "Failed to delete project",
+      "source_hash": "e0e158d1a1c54db5"
+    },
+    "error.heading": {
+      "text": "Something went wrong",
+      "source_hash": "ab827e3fe17da220"
+    },
+    "error.loadProjectFailed": {
+      "text": "Failed to load project",
+      "source_hash": "b84177fa1580838a"
+    },
+    "error.loginFailed": {
+      "text": "Login failed",
+      "source_hash": "5a96e8452f1ed477"
+    },
+    "error.publishProjectFailed": {
+      "text": "Failed to publish project",
+      "source_hash": "33891c56de6e9b59"
+    },
+    "error.registrationFailed": {
+      "text": "Registration failed",
+      "source_hash": "d40e3b08ef5084fd"
+    },
+    "error.resendCodeFailed": {
+      "text": "Failed to resend code",
+      "source_hash": "9952e681754fa854"
+    },
+    "error.resetPasswordFailed": {
+      "text": "Failed to reset password",
+      "source_hash": "3ea60318ae1504d8"
+    },
+    "error.saveFailed": {
+      "text": "Failed to save. Please try again.",
+      "source_hash": "7e29b879d2bc1915"
+    },
+    "error.saveProjectFailed": {
+      "text": "Failed to save project",
+      "source_hash": "24c946e30cd75219"
+    },
+    "error.somethingWentWrong": {
+      "text": "Something went wrong",
+      "source_hash": "ab827e3fe17da220"
+    },
+    "error.submitProjectFailed": {
+      "text": "Failed to submit project",
+      "source_hash": "5550c2baaa956da2"
+    },
+    "error.updateImageRolesFailed": {
+      "text": "Failed to update image roles",
+      "source_hash": "ff6dc272a94d221b"
+    },
+    "error.updateProfileFailed": {
+      "text": "Failed to update profile",
+      "source_hash": "eeb7276dab30a337"
+    },
+    "error.verificationFailed": {
+      "text": "Verification failed",
+      "source_hash": "f0f2383f8af8d23d"
+    },
+    "error.verificationFailedRetry": {
+      "text": "Verification failed. Please try again.",
+      "source_hash": "3c8432b0c6a752f5"
+    },
     "footer.about": {
       "text": "About",
       "source_hash": "4efca0d10c5feb8e"
@@ -12,6 +464,62 @@
       "text": "Privacy",
       "source_hash": "54a57c3147c49f33"
     },
+    "home.submitProject": {
+      "text": "Submit a project",
+      "source_hash": "8e8a3907b46de9f3"
+    },
+    "imageUpload.aspectRatio": {
+      "text": "Main image is best at 16:9 ratio (e.g. 1920×1080 or 1280×720)",
+      "source_hash": "6b5cc0e88d2f4d1c"
+    },
+    "imageUpload.dropHere": {
+      "text": "Drop images here",
+      "source_hash": "4f3699e97dff14d1"
+    },
+    "imageUpload.formats": {
+      "text": "PNG, JPG, WebP, GIF up to 10MB",
+      "source_hash": "56458a5c0cf269dc"
+    },
+    "imageUpload.instruction": {
+      "text": "Click to upload or drag and drop",
+      "source_hash": "f0e524faf3919bf7"
+    },
+    "imageUpload.maxReached": {
+      "text": "Maximum images reached",
+      "source_hash": "818c62c322a0e43f"
+    },
+    "imageUpload.slotsRemaining": {
+      "text": "{remaining} of {maxFiles} slots remaining",
+      "source_hash": "9c140942c4dce6a7"
+    },
+    "myProjects.empty": {
+      "text": "You haven't submitted any projects yet.",
+      "source_hash": "a2ee9924740fdb40"
+    },
+    "myProjects.heading": {
+      "text": "My Projects",
+      "source_hash": "452ab89d46b7f2d9"
+    },
+    "myProjects.subheading": {
+      "text": "Manage your submissions",
+      "source_hash": "f3a53511bbd3f79b"
+    },
+    "myProjects.submitFirst": {
+      "text": "Submit your first project",
+      "source_hash": "3ade90a25fedbf80"
+    },
+    "myProjects.submitNew": {
+      "text": "Submit a new project",
+      "source_hash": "730b399a72efa6c1"
+    },
+    "myReviews.heading": {
+      "text": "My Reviews",
+      "source_hash": "cbb118f32cfa1113"
+    },
+    "myReviews.subheading": {
+      "text": "Rank projects for competitions",
+      "source_hash": "8c0cd0fc89d75987"
+    },
     "nav.competitions": {
       "text": "Competitions",
       "source_hash": "b829970ef4349d58"
@@ -19,6 +527,14 @@
     "nav.continueOnboarding": {
       "text": "Continue onboarding",
       "source_hash": "f78a94837a152b24"
+    },
+    "nav.editTranslationsOff": {
+      "text": "Edit translations",
+      "source_hash": "8f65a01c517a31d5"
+    },
+    "nav.editTranslationsOn": {
+      "text": "Editing translations: on",
+      "source_hash": "cc31cb1c714bffcd"
     },
     "nav.login": {
       "text": "Log in",
@@ -47,6 +563,398 @@
     "nav.register": {
       "text": "Register",
       "source_hash": "bb7234ec12451361"
+    },
+    "onboarding.completeProfile.firstNameLabel": {
+      "text": "First Name",
+      "source_hash": "96ce6e6193a04726"
+    },
+    "onboarding.completeProfile.firstNamePlaceholder": {
+      "text": "Your first name",
+      "source_hash": "6d38a850e5b0804f"
+    },
+    "onboarding.completeProfile.heading": {
+      "text": "Complete your profile",
+      "source_hash": "e6c40677fe50e778"
+    },
+    "onboarding.completeProfile.lastNameLabel": {
+      "text": "Last Name",
+      "source_hash": "f55563b386a39dc3"
+    },
+    "onboarding.completeProfile.lastNamePlaceholder": {
+      "text": "Your last name",
+      "source_hash": "4fda057f4c499740"
+    },
+    "onboarding.completeProfile.subheading": {
+      "text": "Add your name so others know who you are",
+      "source_hash": "c779073984340941"
+    },
+    "onboarding.completeProfile.submit": {
+      "text": "Continue",
+      "source_hash": "31fbef162594de01"
+    },
+    "onboarding.completeProfile.submitting": {
+      "text": "Saving...",
+      "source_hash": "dc85af8f2b1d0d67"
+    },
+    "onboarding.verifyEmail.codeSentMessage": {
+      "text": "Code sent!",
+      "source_hash": "64fc251995cb2134"
+    },
+    "onboarding.verifyEmail.heading": {
+      "text": "Verify your email",
+      "source_hash": "bb265946234feb98"
+    },
+    "onboarding.verifyEmail.noCode": {
+      "text": "Didn't receive the code?",
+      "source_hash": "47a081866ba71b83"
+    },
+    "onboarding.verifyEmail.resend": {
+      "text": "Resend",
+      "source_hash": "1f94843777aed851"
+    },
+    "onboarding.verifyEmail.resendCooldown": {
+      "text": "Resend in {count}s",
+      "source_hash": "413c6f8c9dd47d25"
+    },
+    "onboarding.verifyEmail.subheading": {
+      "text": "We sent a 6-digit code to {email}",
+      "source_hash": "0d81ae9cbaed8386"
+    },
+    "onboarding.verifyEmail.verifying": {
+      "text": "Verifying...",
+      "source_hash": "2ec1ac7d45e8079b"
+    },
+    "profile.aboutHelper": {
+      "text": "This will be shown on your public profile and linked to from your projects",
+      "source_hash": "b5d7a3dc1c7f92cc"
+    },
+    "profile.aboutLabel": {
+      "text": "About You",
+      "source_hash": "dd1a46b6b4f8d7c5"
+    },
+    "profile.aboutPlaceholder": {
+      "text": "Tell us about yourself...",
+      "source_hash": "697f10251d5bd2ed"
+    },
+    "profile.anonymousName": {
+      "text": "Anonymous",
+      "source_hash": "e7a8aa2df7e5d0b2"
+    },
+    "profile.editButton": {
+      "text": "Edit",
+      "source_hash": "464c4ffd019e1e96"
+    },
+    "profile.firstNameLabel": {
+      "text": "First Name",
+      "source_hash": "96ce6e6193a04726"
+    },
+    "profile.firstNamePlaceholder": {
+      "text": "Your first name",
+      "source_hash": "6d38a850e5b0804f"
+    },
+    "profile.heading": {
+      "text": "Profile",
+      "source_hash": "d696a35bdd1883da"
+    },
+    "profile.lastNameLabel": {
+      "text": "Last Name",
+      "source_hash": "f55563b386a39dc3"
+    },
+    "profile.lastNamePlaceholder": {
+      "text": "Your last name",
+      "source_hash": "4fda057f4c499740"
+    },
+    "profile.markdownBadge": {
+      "text": "Markdown",
+      "source_hash": "0e52f6b9d02515c5"
+    },
+    "profile.nameRequired": {
+      "text": "At least one name (first or last) is required",
+      "source_hash": "308ab8cd0c1ee1b3"
+    },
+    "profile.previewButton": {
+      "text": "Preview",
+      "source_hash": "324b134f57c70c72"
+    },
+    "profile.saveButton": {
+      "text": "Save",
+      "source_hash": "1509f561f2416598"
+    },
+    "profile.settings.competitionResults": {
+      "text": "Competition results",
+      "source_hash": "ab407df36bb2408c"
+    },
+    "profile.settings.competitionResultsDescription": {
+      "text": "Receive emails about competition outcomes and rankings",
+      "source_hash": "d65375c566cd2607"
+    },
+    "profile.settings.description": {
+      "text": "Manage your email preferences",
+      "source_hash": "84a85d2eb1af4fe9"
+    },
+    "profile.settings.externalPromotions": {
+      "text": "External promotions",
+      "source_hash": "45d4399582331f6d"
+    },
+    "profile.settings.externalPromotionsDescription": {
+      "text": "Allow your participation to be featured on external platforms like LinkedIn",
+      "source_hash": "e931ce5cb75e1aa8"
+    },
+    "profile.settings.heading": {
+      "text": "Settings",
+      "source_hash": "74a883a037bc227f"
+    },
+    "profile.settings.notificationDaily": {
+      "text": "Daily",
+      "source_hash": "b36c2611dcdfa190"
+    },
+    "profile.settings.notificationHourly": {
+      "text": "Hourly",
+      "source_hash": "eab0cd8fdf9bccec"
+    },
+    "profile.settings.notificationImmediate": {
+      "text": "Every time",
+      "source_hash": "b5fefa23ca0b7cf2"
+    },
+    "profile.settings.notificationNever": {
+      "text": "Never",
+      "source_hash": "6300ef800bb88429"
+    },
+    "profile.settings.notificationsDescription": {
+      "text": "How often you receive discussion notifications",
+      "source_hash": "34bbc7b214bc20ee"
+    },
+    "profile.settings.notificationsHeading": {
+      "text": "Notifications",
+      "source_hash": "788011833a5a0f22"
+    },
+    "profile.settings.platformUpdates": {
+      "text": "Platform updates",
+      "source_hash": "7737a2356bffa0b9"
+    },
+    "profile.settings.platformUpdatesDescription": {
+      "text": "Receive emails about new features and improvements",
+      "source_hash": "9b8130b9036fa054"
+    },
+    "profile.settings.privacyDescription": {
+      "text": "Manage your privacy preferences",
+      "source_hash": "add087da3c080de9"
+    },
+    "profile.settings.privacyHeading": {
+      "text": "Privacy",
+      "source_hash": "54a57c3147c49f33"
+    },
+    "profile.subheading": {
+      "text": "Manage your account",
+      "source_hash": "8715da328591af76"
+    },
+    "projects.backToMyProjects": {
+      "text": "Back to my projects",
+      "source_hash": "d2869c934c32506d"
+    },
+    "projects.category.seeAll": {
+      "text": "See all",
+      "source_hash": "d7a8c446069a0585"
+    },
+    "projects.deleteButton": {
+      "text": "Delete",
+      "source_hash": "e2d0a54968ead24e"
+    },
+    "projects.deleteDialog.confirmText": {
+      "text": "delete",
+      "source_hash": "6197595503f01ee2"
+    },
+    "projects.deleteDialog.confirmation": {
+      "text": "Are you sure you want to delete \"{title}\"? This action cannot be undone.",
+      "source_hash": "c6ca92cd28495280"
+    },
+    "projects.deleteDialog.deleteButton": {
+      "text": "Delete Project",
+      "source_hash": "86299605642269e2"
+    },
+    "projects.deleteDialog.deleting": {
+      "text": "Deleting...",
+      "source_hash": "685ecb984ac29ce8"
+    },
+    "projects.deleteDialog.heading": {
+      "text": "Delete Project",
+      "source_hash": "86299605642269e2"
+    },
+    "projects.deleteDialog.instruction": {
+      "text": "Type delete to confirm:",
+      "source_hash": "c2e5ba997b2c6e1b"
+    },
+    "projects.deleteDialog.placeholder": {
+      "text": "Type 'delete' to confirm",
+      "source_hash": "3c80d1b3984ad10d"
+    },
+    "projects.discoverTab": {
+      "text": "Discover",
+      "source_hash": "d4a33d5b78bccebe"
+    },
+    "projects.error.loadProjectMessage": {
+      "text": "We couldn't load this project. This may be a temporary issue.",
+      "source_hash": "4b2ead40cf246529"
+    },
+    "projects.error.loadProjectsMessage": {
+      "text": "We couldn't load projects. This may be a temporary issue.",
+      "source_hash": "7e8d00deff3f3aec"
+    },
+    "projects.mostDiscussed.heading": {
+      "text": "Most Discussed",
+      "source_hash": "12932b9f69008f5d"
+    },
+    "projects.newArrivals.heading": {
+      "text": "New Arrivals",
+      "source_hash": "d0f4365cba7df860"
+    },
+    "projects.notFound": {
+      "text": "Project not found",
+      "source_hash": "758e8416eb8a3588"
+    },
+    "projects.publishButton": {
+      "text": "Publish",
+      "source_hash": "859390eb495b2ead"
+    },
+    "projects.publishDialog.fieldDescription": {
+      "text": "A description",
+      "source_hash": "a4ad1b677f9db4b4"
+    },
+    "projects.publishDialog.fieldMainImage": {
+      "text": "A main image",
+      "source_hash": "97ad6c34a160b55f"
+    },
+    "projects.publishDialog.fieldTitle": {
+      "text": "A title",
+      "source_hash": "0a9a20f49dbd4222"
+    },
+    "projects.publishDialog.heading": {
+      "text": "Not quite ready to publish",
+      "source_hash": "9bdab5a1bcca081d"
+    },
+    "projects.publishDialog.message": {
+      "text": "Before publishing, please add:",
+      "source_hash": "bc69b052d1d73a5b"
+    },
+    "projects.status.approved": {
+      "text": "Approved",
+      "source_hash": "87b42e40c2a290e0"
+    },
+    "projects.status.pending": {
+      "text": "Pending",
+      "source_hash": "331551b0de4157c9"
+    },
+    "projects.status.rejected": {
+      "text": "Rejected",
+      "source_hash": "aea4a04a80426ed8"
+    },
+    "projects.submitButton": {
+      "text": "Submit a project",
+      "source_hash": "8e8a3907b46de9f3"
+    },
+    "projects.untitledProject": {
+      "text": "Untitled Project",
+      "source_hash": "5af46a755793c2ba"
+    },
+    "projects.winnersSection.heading": {
+      "text": "Competition Winners",
+      "source_hash": "25a260b2f85d6e73"
+    },
+    "reviews.finishDialog.confirmation": {
+      "text": "This will lock your rankings. You won't be able to make changes.",
+      "source_hash": "451b56547e560f99"
+    },
+    "reviews.finishDialog.finishButton": {
+      "text": "Finish Review",
+      "source_hash": "0801acff734d78e1"
+    },
+    "reviews.finishDialog.finishing": {
+      "text": "Finishing...",
+      "source_hash": "f573454d6ca08cc3"
+    },
+    "reviews.finishDialog.heading": {
+      "text": "Finish review?",
+      "source_hash": "4372e7ef7143b0ae"
+    },
+    "submit.heading": {
+      "text": "Start a New Project",
+      "source_hash": "1291037f6fe77ef0"
+    },
+    "submit.invalidUrl": {
+      "text": "Please enter a valid URL",
+      "source_hash": "ca0ae580f926d5f5"
+    },
+    "submit.subheading": {
+      "text": "Drop in a URL — you'll add the rest before publishing.",
+      "source_hash": "8a8b37540174f81f"
+    },
+    "submit.submitButton": {
+      "text": "Create Draft",
+      "source_hash": "0f3960b0d6d6d244"
+    },
+    "submit.submitting": {
+      "text": "Creating...",
+      "source_hash": "def70944c9bb9c3b"
+    },
+    "submit.urlLabel": {
+      "text": "Project URL",
+      "source_hash": "03fb44a5243d6ce7"
+    },
+    "submit.urlPlaceholder": {
+      "text": "https://your-project.com",
+      "source_hash": "7c8671ad80d4bdf9"
+    },
+    "translatePopover.cancel": {
+      "text": "Cancel",
+      "source_hash": "19766ed6ccb2f4a3"
+    },
+    "translatePopover.concurrencyConfirm": {
+      "text": "Save anyway",
+      "source_hash": "ef4c87b5083fbe48"
+    },
+    "translatePopover.concurrencyWarning": {
+      "text": "This was edited {seconds} seconds ago by {user}. Save anyway?",
+      "source_hash": "7db034ef4a5b7f05"
+    },
+    "translatePopover.englishReference": {
+      "text": "English",
+      "source_hash": "ba118bf7fc9c1aed"
+    },
+    "translatePopover.history": {
+      "text": "History",
+      "source_hash": "0e76960093379060"
+    },
+    "translatePopover.missingTranslationHint": {
+      "text": "Showing English. Add an Icelandic translation by editing this string.",
+      "source_hash": "380ecc7e96d05e41"
+    },
+    "translatePopover.noHistory": {
+      "text": "No previous edits.",
+      "source_hash": "47c7c5c446d45fdd"
+    },
+    "translatePopover.placeholderLost": {
+      "text": "Don't change or remove the highlighted placeholders.",
+      "source_hash": "47e9996238000c9b"
+    },
+    "translatePopover.revertToThis": {
+      "text": "Revert to this",
+      "source_hash": "225f18fda809749d"
+    },
+    "translatePopover.save": {
+      "text": "Save",
+      "source_hash": "1509f561f2416598"
+    },
+    "translatePopover.saving": {
+      "text": "Saving…",
+      "source_hash": "23e39291d6135814"
+    },
+    "translatePopover.title": {
+      "text": "Edit translation",
+      "source_hash": "434b894fedffb634"
+    },
+    "users.notFound": {
+      "text": "User not found",
+      "source_hash": "4a1793e9900cd312"
     }
   }
 }

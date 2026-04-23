@@ -1,13 +1,15 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { Translatable } from "@/components/Translatable";
 
 const NOTIFICATION_OPTIONS = [
-  { value: "immediate", label: "Every time" },
-  { value: "hourly", label: "Hourly" },
-  { value: "daily", label: "Daily" },
-  { value: "never", label: "Never" },
+  { value: "immediate", tKey: "profile.settings.notificationImmediate" },
+  { value: "hourly", tKey: "profile.settings.notificationHourly" },
+  { value: "daily", tKey: "profile.settings.notificationDaily" },
+  { value: "never", tKey: "profile.settings.notificationNever" },
 ] as const;
 
 interface SettingsProps {
@@ -18,21 +20,25 @@ interface SettingsProps {
 }
 
 interface ToggleProps {
+  labelKey: string;
   label: string;
+  descriptionKey: string;
   description: string;
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
 }
 
-function Toggle({ label, description, checked, onChange, disabled }: ToggleProps) {
+function Toggle({ labelKey, label, descriptionKey, description, checked, onChange, disabled }: ToggleProps) {
   return (
     <label className="flex items-center justify-between py-3.5 cursor-pointer group">
       <div className="pr-4">
         <div className="text-sm font-medium text-foreground">
-          {label}
+          <Translatable tKey={labelKey}>{label}</Translatable>
         </div>
-        <div className="text-xs text-muted-foreground mt-0.5">{description}</div>
+        <div className="text-xs text-muted-foreground mt-0.5">
+          <Translatable tKey={descriptionKey}>{description}</Translatable>
+        </div>
       </div>
       <button
         type="button"
@@ -65,6 +71,7 @@ export function Settings({
   optInToExternalPromotions,
   notificationFrequency,
 }: SettingsProps) {
+  const t = useTranslations();
   const [competitionResults, setCompetitionResults] = useState(emailOptInCompetitionResults);
   const [platformUpdates, setPlatformUpdates] = useState(emailOptInPlatformUpdates);
   const [externalPromotions, setExternalPromotions] = useState(optInToExternalPromotions);
@@ -90,13 +97,19 @@ export function Settings({
 
   return (
     <div className="bg-white rounded-xl border border-border p-5 mt-6">
-      <h2 className="text-sm font-semibold text-foreground mb-1">Settings</h2>
-      <p className="text-xs text-muted-foreground mb-3">Manage your email preferences</p>
+      <h2 className="text-sm font-semibold text-foreground mb-1">
+        <Translatable tKey="profile.settings.heading">{t("profile.settings.heading")}</Translatable>
+      </h2>
+      <p className="text-xs text-muted-foreground mb-3">
+        <Translatable tKey="profile.settings.description">{t("profile.settings.description")}</Translatable>
+      </p>
 
       <div className="divide-y divide-border">
         <Toggle
-          label="Competition results"
-          description="Receive emails about competition outcomes and rankings"
+          labelKey="profile.settings.competitionResults"
+          label={t("profile.settings.competitionResults")}
+          descriptionKey="profile.settings.competitionResultsDescription"
+          description={t("profile.settings.competitionResultsDescription")}
           checked={competitionResults}
           onChange={(v) =>
             handleToggle("email_opt_in_competition_results", v, setCompetitionResults)
@@ -104,8 +117,10 @@ export function Settings({
           disabled={saving === "email_opt_in_competition_results"}
         />
         <Toggle
-          label="Platform updates"
-          description="Receive emails about new features and improvements"
+          labelKey="profile.settings.platformUpdates"
+          label={t("profile.settings.platformUpdates")}
+          descriptionKey="profile.settings.platformUpdatesDescription"
+          description={t("profile.settings.platformUpdatesDescription")}
           checked={platformUpdates}
           onChange={(v) =>
             handleToggle("email_opt_in_platform_updates", v, setPlatformUpdates)
@@ -114,9 +129,11 @@ export function Settings({
         />
       </div>
 
-      <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">Notifications</h2>
+      <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">
+        <Translatable tKey="profile.settings.notificationsHeading">{t("profile.settings.notificationsHeading")}</Translatable>
+      </h2>
       <p className="text-xs text-muted-foreground mb-3">
-        How often you receive discussion notifications
+        <Translatable tKey="profile.settings.notificationsDescription">{t("profile.settings.notificationsDescription")}</Translatable>
       </p>
 
       <div className="flex rounded-lg border border-border overflow-hidden">
@@ -148,18 +165,24 @@ export function Settings({
               ${saving === "notification_frequency" ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
             `}
           >
-            {opt.label}
+            <Translatable tKey={opt.tKey}>{t(opt.tKey)}</Translatable>
           </button>
         ))}
       </div>
 
-      <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">Privacy</h2>
-      <p className="text-xs text-muted-foreground mb-3">Manage your privacy preferences</p>
+      <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">
+        <Translatable tKey="profile.settings.privacyHeading">{t("profile.settings.privacyHeading")}</Translatable>
+      </h2>
+      <p className="text-xs text-muted-foreground mb-3">
+        <Translatable tKey="profile.settings.privacyDescription">{t("profile.settings.privacyDescription")}</Translatable>
+      </p>
 
       <div className="divide-y divide-border">
         <Toggle
-          label="External promotions"
-          description="Allow your participation to be featured on external platforms like LinkedIn"
+          labelKey="profile.settings.externalPromotions"
+          label={t("profile.settings.externalPromotions")}
+          descriptionKey="profile.settings.externalPromotionsDescription"
+          description={t("profile.settings.externalPromotionsDescription")}
           checked={externalPromotions}
           onChange={(v) =>
             handleToggle("opt_in_to_external_promotions", v, setExternalPromotions)

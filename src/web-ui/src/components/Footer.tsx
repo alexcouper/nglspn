@@ -1,5 +1,6 @@
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
+import { Translatable } from "./Translatable";
 
 export function Footer() {
   const t = useTranslations("footer");
@@ -12,13 +13,13 @@ export function Footer() {
               href="/about"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              {t("about")}
+              <Translatable tKey="footer.about">{t("about")}</Translatable>
             </Link>
             <Link
               href="/privacy"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              {t("privacy")}
+              <Translatable tKey="footer.privacy">{t("privacy")}</Translatable>
             </Link>
             <a
               href="https://discord.gg/D47bQjaQ"
@@ -26,7 +27,7 @@ export function Footer() {
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
             >
-              {t("discord")}
+              <Translatable tKey="footer.discord">{t("discord")}</Translatable>
             </a>
           </nav>
         </div>

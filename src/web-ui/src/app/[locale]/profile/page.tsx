@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback } from "react";
 import { PencilIcon, EyeIcon, CloudArrowUpIcon } from "@heroicons/react/24/outline";
 import { ArrowPathIcon } from "@heroicons/react/24/solid";
+import { useTranslations } from "next-intl";
+import { Translatable } from "@/components/Translatable";
 import { useAuth } from "@/contexts/auth";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
@@ -13,6 +15,7 @@ import { Settings } from "./Settings";
 type ViewMode = "edit" | "preview";
 
 export default function ProfilePage() {
+  const t = useTranslations();
   const { isLoading: authLoading } = useRequireAuth();
   const { user, isAuthenticated, refreshUser } = useAuth();
 
@@ -43,7 +46,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!formData) return;
     if (bothNamesEmpty) {
-      setError("At least one name (first or last) is required");
+      setError(t("profile.nameRequired"));
       return;
     }
 
@@ -61,7 +64,7 @@ export default function ProfilePage() {
       setSuccessMessage("Profile updated successfully!");
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update profile");
+      setError(err instanceof Error ? err.message : t("error.updateProfileFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -98,10 +101,10 @@ export default function ProfilePage() {
       <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            Profile
+            <Translatable tKey="profile.heading">{t("profile.heading")}</Translatable>
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage your account
+            <Translatable tKey="profile.subheading">{t("profile.subheading")}</Translatable>
           </p>
         </div>
       </section>
@@ -126,7 +129,7 @@ export default function ProfilePage() {
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setViewMode("edit")}
-                  title="Edit"
+                  title={t("profile.editButton")}
                   className={`p-2 rounded-lg transition-colors ${
                     viewMode === "edit"
                       ? "bg-accent-subtle text-accent"
@@ -137,7 +140,7 @@ export default function ProfilePage() {
                 </button>
                 <button
                   onClick={() => setViewMode("preview")}
-                  title="Preview"
+                  title={t("profile.previewButton")}
                   className={`p-2 rounded-lg transition-colors ${
                     viewMode === "preview"
                       ? "bg-accent-subtle text-accent"
@@ -158,7 +161,7 @@ export default function ProfilePage() {
                 ) : (
                   <span className="flex items-center gap-1.5">
                     <CloudArrowUpIcon className="w-4 h-4" />
-                    Save
+                    <Translatable tKey="profile.saveButton">{t("profile.saveButton")}</Translatable>
                   </span>
                 )}
               </button>

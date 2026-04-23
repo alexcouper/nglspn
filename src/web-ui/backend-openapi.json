@@ -2693,6 +2693,46 @@
       }
     },
     "/api/i18n/{locale}/{key}": {
+      "get": {
+        "operationId": "api_routers_translations_get_translation_detail",
+        "summary": "Get Translation Detail",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "locale",
+            "schema": {
+              "title": "Locale",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "key",
+            "schema": {
+              "title": "Key",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TranslationDetailResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "Return current text + last 10 audit entries for a translation row.",
+        "tags": [
+          "Translations"
+        ]
+      },
       "patch": {
         "operationId": "api_routers_translations_patch_translation",
         "summary": "Patch Translation",
@@ -5366,6 +5406,86 @@
           "version"
         ],
         "title": "TranslationVersionResponse",
+        "type": "object"
+      },
+      "TranslationAuditEntryResponse": {
+        "properties": {
+          "changed_at": {
+            "format": "date-time",
+            "title": "Changed At",
+            "type": "string"
+          },
+          "changed_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Changed By"
+          },
+          "old_text": {
+            "title": "Old Text",
+            "type": "string"
+          },
+          "new_text": {
+            "title": "New Text",
+            "type": "string"
+          }
+        },
+        "required": [
+          "changed_at",
+          "changed_by",
+          "old_text",
+          "new_text"
+        ],
+        "title": "TranslationAuditEntryResponse",
+        "type": "object"
+      },
+      "TranslationDetailResponse": {
+        "properties": {
+          "locale": {
+            "title": "Locale",
+            "type": "string"
+          },
+          "key": {
+            "title": "Key",
+            "type": "string"
+          },
+          "text": {
+            "title": "Text",
+            "type": "string"
+          },
+          "updated_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Updated At"
+          },
+          "history": {
+            "items": {
+              "$ref": "#/components/schemas/TranslationAuditEntryResponse"
+            },
+            "title": "History",
+            "type": "array"
+          }
+        },
+        "required": [
+          "locale",
+          "key",
+          "text",
+          "updated_at",
+          "history"
+        ],
+        "title": "TranslationDetailResponse",
         "type": "object"
       },
       "TranslationResponse": {

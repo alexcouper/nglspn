@@ -1,4 +1,6 @@
 import ReactMarkdown from "react-markdown";
+import { getTranslations } from "next-intl/server";
+import { Translatable } from "@/components/Translatable";
 
 const why = `
 We should be more ambitious in terms of what we can achieve here in Iceland.
@@ -37,7 +39,8 @@ We face increasing geopolitical risk, and we need to take steps to mitigate that
 Naglasúpan will begin by encouraging a community of builders to use each other's side projects but later hopes to identify opportunities for (and enable swarming on) building bigger shared infrastructure.
 `;
 
-export default function WhyPage() {
+export default async function WhyPage() {
+  const t = await getTranslations();
   return (
     <>
       <section className="py-12 px-4 sm:px-6 bg-white">
@@ -51,7 +54,7 @@ export default function WhyPage() {
       <section className="py-12 px-4 sm:px-6 bg-muted">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
-            PoC cost is almost zero
+            <Translatable tKey="about.why.pocHeading">{t("about.why.pocHeading")}</Translatable>
           </h2>
           <article className="article markdown">
             <ReactMarkdown>{pocSection}</ReactMarkdown>
@@ -62,7 +65,7 @@ export default function WhyPage() {
       <section className="py-12 px-4 sm:px-6 bg-white">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
-            Senior developer gap
+            <Translatable tKey="about.why.seniorHeading">{t("about.why.seniorHeading")}</Translatable>
           </h2>
           <article className="article markdown">
             <ReactMarkdown>{seniorSection}</ReactMarkdown>
@@ -73,7 +76,7 @@ export default function WhyPage() {
       <section className="py-12 px-4 sm:px-6 bg-muted">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
-            Geopolitics &amp; Digital Sovereignty
+            <Translatable tKey="about.why.geopoliticsHeading">{t("about.why.geopoliticsHeading")}</Translatable>
           </h2>
           <article className="article markdown">
             <ReactMarkdown>{geopoliticsSection}</ReactMarkdown>

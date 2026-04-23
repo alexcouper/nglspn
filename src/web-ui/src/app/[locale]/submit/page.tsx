@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
+import { Translatable } from "@/components/Translatable";
 
 export default function SubmitPage() {
+  const t = useTranslations();
   const router = useRouter();
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [url, setUrl] = useState("");
@@ -20,7 +23,7 @@ export default function SubmitPage() {
     try {
       new URL(url);
     } catch {
-      setError("Please enter a valid URL");
+      setError(t("submit.invalidUrl"));
       return;
     }
 
@@ -30,7 +33,7 @@ export default function SubmitPage() {
       const project = await api.myProjects.create({ website_url: url });
       router.push(`/my-projects/${project.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit project");
+      setError(err instanceof Error ? err.message : t("error.submitProjectFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -49,10 +52,10 @@ export default function SubmitPage() {
       <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
         <div className="max-w-lg mx-auto">
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            Start a New Project
+            <Translatable tKey="submit.heading">{t("submit.heading")}</Translatable>
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Drop in a URL — you&apos;ll add the rest before publishing.
+            <Translatable tKey="submit.subheading">{t("submit.subheading")}</Translatable>
           </p>
         </div>
       </section>
@@ -68,7 +71,9 @@ export default function SubmitPage() {
               )}
 
               <div>
-                <label htmlFor="url" className="label">Project URL</label>
+                <label htmlFor="url" className="label">
+                  <Translatable tKey="submit.urlLabel">{t("submit.urlLabel")}</Translatable>
+                </label>
                 <input
                   id="url"
                   type="url"
@@ -76,7 +81,7 @@ export default function SubmitPage() {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   className="input"
-                  placeholder="https://your-project.com"
+                  placeholder={t("submit.urlPlaceholder")}
                 />
               </div>
 
@@ -85,7 +90,11 @@ export default function SubmitPage() {
                 disabled={isLoading}
                 className="w-full btn-primary py-2.5"
               >
-                {isLoading ? "Creating..." : "Create Draft"}
+                {isLoading ? (
+                  <Translatable tKey="submit.submitting">{t("submit.submitting")}</Translatable>
+                ) : (
+                  <Translatable tKey="submit.submitButton">{t("submit.submitButton")}</Translatable>
+                )}
               </button>
             </form>
 

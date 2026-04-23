@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAutoResize } from "@/hooks/useAutoResize";
 import { Dialog } from "@/components/Dialog";
+import { Translatable } from "@/components/Translatable";
 
 interface NewDiscussionModalProps {
   open: boolean;
@@ -18,13 +20,17 @@ export function NewDiscussionModal({
   onClose,
   onSubmit,
   initialBody = "",
-  title = "Start a discussion",
-  submitLabel = "Post",
+  title,
+  submitLabel,
 }: NewDiscussionModalProps) {
+  const t = useTranslations();
   const [body, setBody] = useState(initialBody);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const { ref: textareaRef, resize } = useAutoResize("24rem");
+
+  const resolvedTitle = title ?? t("discussions.newDialog.title");
+  const resolvedSubmitLabel = submitLabel ?? t("discussions.newDialog.submitLabel");
 
   useEffect(() => {
     if (open) {
@@ -47,7 +53,7 @@ export function NewDiscussionModal({
       setBody("");
       onClose();
     } catch {
-      setError("Failed to post discussion. Please try again.");
+      setError(t("discussions.newDialog.error"));
     } finally {
       setSubmitting(false);
     }
@@ -62,13 +68,17 @@ export function NewDiscussionModal({
       {/* Header */}
       <div className="flex items-center justify-between -mt-2 mb-3">
         <h2 className="text-base font-semibold text-foreground">
-          {title}
+          {title ? (
+            resolvedTitle
+          ) : (
+            <Translatable tKey="discussions.newDialog.title">{resolvedTitle}</Translatable>
+          )}
         </h2>
         <button
           onClick={handleClose}
           disabled={submitting}
           className="text-muted-foreground hover:text-foreground transition-colors p-1 -mr-2"
-          aria-label="Close"
+          aria-label={t("common.close")}
         >
           <svg
             width="20"
@@ -92,7 +102,7 @@ export function NewDiscussionModal({
           setBody(e.target.value);
           resize();
         }}
-        placeholder="What's on your mind?"
+        placeholder={t("discussions.newDialog.placeholder")}
         rows={4}
         className="w-full resize-none overflow-hidden border-none outline-none text-base leading-relaxed text-foreground placeholder:text-muted-foreground bg-transparent"
       />
@@ -109,7 +119,13 @@ export function NewDiscussionModal({
           disabled={submitting || !body.trim()}
           className="btn-primary text-sm disabled:opacity-50"
         >
-          {submitting ? "Saving..." : submitLabel}
+          {submitting ? (
+            <Translatable tKey="discussions.newDialog.submitting">{t("discussions.newDialog.submitting")}</Translatable>
+          ) : submitLabel ? (
+            resolvedSubmitLabel
+          ) : (
+            <Translatable tKey="discussions.newDialog.submitLabel">{resolvedSubmitLabel}</Translatable>
+          )}
         </button>
       </div>
     </Dialog>

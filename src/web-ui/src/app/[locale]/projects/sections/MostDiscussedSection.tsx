@@ -1,21 +1,24 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { Translatable } from "@/components/Translatable";
 
 interface MostDiscussedSectionProps {
   projects: DiscoverProject[];
 }
 
 export function MostDiscussedSection({ projects }: MostDiscussedSectionProps) {
+  const t = useTranslations();
   if (projects.length === 0) return null;
 
   return (
     <section>
       <h2 className="text-lg font-semibold text-foreground mb-4">
-        Most Discussed
+        <Translatable tKey="projects.mostDiscussed.heading">{t("projects.mostDiscussed.heading")}</Translatable>
       </h2>
       <div className="space-y-2">
         {projects.slice(0, 5).map((project) => (

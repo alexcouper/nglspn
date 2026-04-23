@@ -3,14 +3,17 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import { getPostAuthDestination } from "@/lib/auth-routing";
 import { api, VerifyCodeError } from "@/lib/api";
 import { PinInput } from "@/components/PinInput";
+import { Translatable } from "@/components/Translatable";
 
 type FlowState = "login" | "forgot" | "code" | "reset";
 
 export default function LoginPage() {
+  const t = useTranslations();
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
@@ -50,7 +53,7 @@ export default function LoginPage() {
       const userData = await login(email, password);
       router.push(getPostAuthDestination(userData, next));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      setError(err instanceof Error ? err.message : t("error.loginFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +68,7 @@ export default function LoginPage() {
       await api.auth.forgotPassword(email);
       setFlowState("code");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(err instanceof Error ? err.message : t("error.somethingWentWrong"));
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +88,7 @@ export default function LoginPage() {
           setAttemptsRemaining(err.attemptsRemaining);
           setError(err.message);
         } else {
-          setError(err instanceof Error ? err.message : "Verification failed");
+          setError(err instanceof Error ? err.message : t("error.verificationFailed"));
         }
         setPinKey((k) => k + 1);
       } finally {
@@ -102,38 +105,60 @@ export default function LoginPage() {
 
     try {
       await api.auth.resetPassword(resetToken, newPassword);
-      setSuccessMessage("Password updated. Please log in.");
+      setSuccessMessage(t("auth.reset.successMessage"));
       goToLogin();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reset password");
+      setError(err instanceof Error ? err.message : t("error.resetPasswordFailed"));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const renderTitle = () => {
+  const renderTitle = (): { headingKey: string; heading: string; subKey: string; sub: string } => {
     switch (flowState) {
       case "login":
-        return { heading: "Welcome back", sub: "Log in to manage your projects" };
+        return {
+          headingKey: "auth.login.heading",
+          heading: t("auth.login.heading"),
+          subKey: "auth.login.subheading",
+          sub: t("auth.login.subheading"),
+        };
       case "forgot":
-        return { heading: "Forgotten password?", sub: "Enter your email to receive a reset code" };
+        return {
+          headingKey: "auth.forgot.heading",
+          heading: t("auth.forgot.heading"),
+          subKey: "auth.forgot.subheading",
+          sub: t("auth.forgot.subheading"),
+        };
       case "code":
-        return { heading: "Enter your code", sub: `We sent a 6-digit code to ${email}` };
+        return {
+          headingKey: "auth.code.heading",
+          heading: t("auth.code.heading"),
+          subKey: "auth.code.subheading",
+          sub: t("auth.code.subheading", { email }),
+        };
       case "reset":
-        return { heading: "Set new password", sub: "Choose a new password for your account" };
+        return {
+          headingKey: "auth.reset.heading",
+          heading: t("auth.reset.heading"),
+          subKey: "auth.reset.subheading",
+          sub: t("auth.reset.subheading"),
+        };
     }
   };
 
-  const { heading, sub } = renderTitle();
+  const { headingKey, heading, subKey, sub } = renderTitle();
 
   return (
     <main className="min-h-screen bg-muted flex items-center justify-center px-4 pt-14">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-            {heading}
+            <Translatable tKey={headingKey}>{heading}</Translatable>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">{sub}</p>
+          <p className="text-sm text-muted-foreground mt-1">
+            <Translatable tKey={subKey}>{sub}</Translatable>
+          </p>
         </div>
 
         <div className="bg-white border border-border rounded-xl p-6 shadow-sm">
@@ -152,7 +177,9 @@ export default function LoginPage() {
           {flowState === "login" && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label htmlFor="email" className="label">Email</label>
+                <label htmlFor="email" className="label">
+                  <Translatable tKey="auth.login.emailLabel">{t("auth.login.emailLabel")}</Translatable>
+                </label>
                 <input
                   id="email"
                   name="email"
@@ -162,12 +189,14 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input"
-                  placeholder="you@example.com"
+                  placeholder={t("auth.login.emailPlaceholder")}
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="label">Password</label>
+                <label htmlFor="password" className="label">
+                  <Translatable tKey="auth.login.passwordLabel">{t("auth.login.passwordLabel")}</Translatable>
+                </label>
                 <input
                   id="password"
                   name="password"
@@ -185,7 +214,11 @@ export default function LoginPage() {
                 disabled={isLoading}
                 className="w-full btn-primary py-2.5"
               >
-                {isLoading ? "Logging in..." : "Log In"}
+                {isLoading ? (
+                  <Translatable tKey="auth.login.submitting">{t("auth.login.submitting")}</Translatable>
+                ) : (
+                  <Translatable tKey="auth.login.submit">{t("auth.login.submit")}</Translatable>
+                )}
               </button>
 
               <p className="text-center text-sm text-muted-foreground">
@@ -194,7 +227,7 @@ export default function LoginPage() {
                   onClick={() => { setFlowState("forgot"); setError(""); setSuccessMessage(""); }}
                   className="text-accent hover:text-accent-hover font-medium transition-colors"
                 >
-                  Forgotten password?
+                  <Translatable tKey="auth.login.forgotPasswordLink">{t("auth.login.forgotPasswordLink")}</Translatable>
                 </button>
               </p>
             </form>
@@ -203,7 +236,9 @@ export default function LoginPage() {
           {flowState === "forgot" && (
             <form onSubmit={handleForgotSubmit} className="space-y-4">
               <div>
-                <label htmlFor="forgot-email" className="label">Email</label>
+                <label htmlFor="forgot-email" className="label">
+                  <Translatable tKey="auth.login.emailLabel">{t("auth.login.emailLabel")}</Translatable>
+                </label>
                 <input
                   id="forgot-email"
                   name="email"
@@ -213,7 +248,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input"
-                  placeholder="you@example.com"
+                  placeholder={t("auth.login.emailPlaceholder")}
                 />
               </div>
 
@@ -222,7 +257,11 @@ export default function LoginPage() {
                 disabled={isLoading}
                 className="w-full btn-primary py-2.5"
               >
-                {isLoading ? "Sending..." : "Continue"}
+                {isLoading ? (
+                  <Translatable tKey="auth.forgot.submitting">{t("auth.forgot.submitting")}</Translatable>
+                ) : (
+                  <Translatable tKey="auth.forgot.submit">{t("auth.forgot.submit")}</Translatable>
+                )}
               </button>
 
               <p className="text-center text-sm text-muted-foreground">
@@ -231,7 +270,7 @@ export default function LoginPage() {
                   onClick={goToLogin}
                   className="text-accent hover:text-accent-hover font-medium transition-colors"
                 >
-                  Back to login
+                  <Translatable tKey="common.backToLogin">{t("common.backToLogin")}</Translatable>
                 </button>
               </p>
             </form>
@@ -249,12 +288,16 @@ export default function LoginPage() {
               </div>
 
               {isLoading && (
-                <p className="text-center text-muted-foreground text-sm">Verifying...</p>
+                <p className="text-center text-muted-foreground text-sm">
+                  <Translatable tKey="auth.code.verifying">{t("auth.code.verifying")}</Translatable>
+                </p>
               )}
 
               {attemptsRemaining !== null && attemptsRemaining > 0 && (
                 <p className="text-center text-muted-foreground text-sm">
-                  {attemptsRemaining} {attemptsRemaining === 1 ? "attempt" : "attempts"} remaining
+                  <Translatable tKey="auth.code.attemptsRemaining">
+                    {t("auth.code.attemptsRemaining", { count: attemptsRemaining })}
+                  </Translatable>
                 </p>
               )}
 
@@ -264,7 +307,7 @@ export default function LoginPage() {
                   onClick={goToLogin}
                   className="text-accent hover:text-accent-hover font-medium transition-colors"
                 >
-                  Back to login
+                  <Translatable tKey="common.backToLogin">{t("common.backToLogin")}</Translatable>
                 </button>
               </p>
             </div>
@@ -273,7 +316,9 @@ export default function LoginPage() {
           {flowState === "reset" && (
             <form onSubmit={handleResetSubmit} className="space-y-4">
               <div>
-                <label htmlFor="new-password" className="label">New password</label>
+                <label htmlFor="new-password" className="label">
+                  <Translatable tKey="auth.reset.passwordLabel">{t("auth.reset.passwordLabel")}</Translatable>
+                </label>
                 <input
                   id="new-password"
                   name="new-password"
@@ -291,7 +336,11 @@ export default function LoginPage() {
                 disabled={isLoading}
                 className="w-full btn-primary py-2.5"
               >
-                {isLoading ? "Saving..." : "Set password"}
+                {isLoading ? (
+                  <Translatable tKey="auth.reset.submitting">{t("auth.reset.submitting")}</Translatable>
+                ) : (
+                  <Translatable tKey="auth.reset.submit">{t("auth.reset.submit")}</Translatable>
+                )}
               </button>
 
               <p className="text-center text-sm text-muted-foreground">
@@ -300,7 +349,7 @@ export default function LoginPage() {
                   onClick={goToLogin}
                   className="text-accent hover:text-accent-hover font-medium transition-colors"
                 >
-                  Back to login
+                  <Translatable tKey="common.backToLogin">{t("common.backToLogin")}</Translatable>
                 </button>
               </p>
             </form>
@@ -308,9 +357,9 @@ export default function LoginPage() {
 
           {flowState === "login" && (
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
+              <Translatable tKey="auth.login.noAccount">{t("auth.login.noAccount")}</Translatable>{" "}
               <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="text-accent hover:text-accent-hover font-medium transition-colors">
-                Create one
+                <Translatable tKey="auth.login.createLink">{t("auth.login.createLink")}</Translatable>
               </Link>
             </p>
           )}

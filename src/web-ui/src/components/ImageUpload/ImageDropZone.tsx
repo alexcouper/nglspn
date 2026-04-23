@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { useTranslations } from "next-intl";
 import { CloudArrowUpIcon, PhotoIcon } from "@heroicons/react/24/outline";
+import { Translatable } from "@/components/Translatable";
 
 interface ImageDropZoneProps {
   onFilesSelected: (files: FileList) => void;
@@ -16,6 +18,7 @@ export function ImageDropZone({
   maxFiles = 10,
   currentCount = 0,
 }: ImageDropZoneProps) {
+  const t = useTranslations();
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
@@ -113,22 +116,27 @@ export function ImageDropZone({
 
         <p className="text-sm text-muted-foreground">
           {isDragging ? (
-            "Drop images here"
+            <Translatable tKey="imageUpload.dropHere">{t("imageUpload.dropHere")}</Translatable>
           ) : (
-            <>
-              <span className="text-accent font-medium">Click to upload</span>
-              {" or drag and drop"}
-            </>
+            <Translatable tKey="imageUpload.instruction">{t("imageUpload.instruction")}</Translatable>
           )}
         </p>
 
-        <p className="text-xs text-muted-foreground/70">PNG, JPG, WebP, GIF up to 10MB</p>
-        <p className="text-xs text-muted-foreground/70">Main image is best at 16:9 ratio (e.g. 1920×1080 or 1280×720)</p>
+        <p className="text-xs text-muted-foreground/70">
+          <Translatable tKey="imageUpload.formats">{t("imageUpload.formats")}</Translatable>
+        </p>
+        <p className="text-xs text-muted-foreground/70">
+          <Translatable tKey="imageUpload.aspectRatio">{t("imageUpload.aspectRatio")}</Translatable>
+        </p>
 
         <p className="text-xs text-muted-foreground/50">
-          {remainingSlots > 0
-            ? `${remainingSlots} of ${maxFiles} slots remaining`
-            : "Maximum images reached"}
+          {remainingSlots > 0 ? (
+            <Translatable tKey="imageUpload.slotsRemaining">
+              {t("imageUpload.slotsRemaining", { remaining: remainingSlots, maxFiles })}
+            </Translatable>
+          ) : (
+            <Translatable tKey="imageUpload.maxReached">{t("imageUpload.maxReached")}</Translatable>
+          )}
         </p>
       </div>
     </div>

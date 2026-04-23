@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { TrophyIcon, RocketLaunchIcon } from "@heroicons/react/24/solid";
 import {
   type Competition,
@@ -9,6 +10,7 @@ import {
 } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { Translatable } from "@/components/Translatable";
 import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
 
 function formatDateRange(startDate: string, endDate: string): string {
@@ -33,6 +35,7 @@ interface CompetitionRevealProps {
 }
 
 export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps) {
+  const t = useTranslations();
   const [competition] = useState<Competition>(initialCompetition);
 
   const isOpen = competition.status === "accepting_applications";
@@ -74,10 +77,9 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
             <p className="text-slate-300 text-sm sm:text-base mt-2">
               {formatDateRange(competition.start_date, competition.submission_deadline)}
               {competition.prize_amount &&
-                ` · ${formatPrize(competition.prize_amount)} prize`}
+                ` · ${formatPrize(competition.prize_amount)}${t("competitions.detail.prizeLabel")}`}
               {" · "}
-              {competition.project_count} project
-              {competition.project_count !== 1 ? "s" : ""}
+              {t("competitions.projectCount", { count: competition.project_count })}
             </p>
           </div>
         </div>
@@ -88,10 +90,10 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         <div className="bg-white rounded-xl border border-border p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-foreground font-semibold text-lg">
-              Got a project you&apos;re working on?
+              <Translatable tKey="competitions.detail.ctaHeading">{t("competitions.detail.ctaHeading")}</Translatable>
             </h2>
             <p className="text-muted-foreground text-sm mt-1">
-              Share your project with the community and compete in {competition.name}
+              <Translatable tKey="competitions.detail.ctaDescription">{t("competitions.detail.ctaDescription", { name: competition.name })}</Translatable>
             </p>
           </div>
           <Link
@@ -99,7 +101,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
             className="btn-primary flex-shrink-0 inline-flex items-center gap-2"
           >
             <RocketLaunchIcon className="w-4 h-4" />
-            Submit a Project
+            <Translatable tKey="competitions.detail.submitButton">{t("competitions.detail.submitButton")}</Translatable>
           </Link>
         </div>
       )}
@@ -109,7 +111,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         <div className="bg-violet-50 rounded-xl border border-violet-200 p-5 sm:p-6 flex items-center gap-3">
           <span className="w-2 h-2 bg-violet-500 rounded-full pulse-dot flex-shrink-0" />
           <p className="text-violet-800 font-medium text-sm">
-            Voting is in progress. The winner will be announced soon.
+            <Translatable tKey="competitions.detail.votingMessage">{t("competitions.detail.votingMessage")}</Translatable>
           </p>
         </div>
       )}
@@ -128,7 +130,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         <div>
           <div className="flex items-center gap-2 mb-4">
             <TrophyIcon className="w-5 h-5 text-amber-500" />
-            <h2 className="text-lg font-semibold text-foreground">Winner</h2>
+            <h2 className="text-lg font-semibold text-foreground"><Translatable tKey="competitions.detail.winnerLabel">{t("competitions.detail.winnerLabel")}</Translatable></h2>
           </div>
           <WinnerCard project={competition.winner} />
         </div>
@@ -138,7 +140,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
       <div>
         <div className="flex items-baseline gap-2 mb-4">
           <h2 className="text-lg font-semibold text-foreground">
-            All Projects
+            <Translatable tKey="competitions.detail.allProjects">{t("competitions.detail.allProjects")}</Translatable>
           </h2>
           <span className="text-sm text-muted-foreground">
             ({competition.projects.length})
@@ -156,7 +158,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
           </div>
         ) : (
           <p className="text-muted-foreground text-sm text-center py-8">
-            No projects yet — be the first to submit!
+            <Translatable tKey="competitions.detail.noProjects">{t("competitions.detail.noProjects")}</Translatable>
           </p>
         )}
       </div>

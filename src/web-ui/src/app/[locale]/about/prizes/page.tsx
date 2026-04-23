@@ -3,6 +3,8 @@ import remarkGfm from "remark-gfm";
 import Link from "next/link";
 import { CompetitionHighlight } from "@/app/components/CompetitionHighlight";
 import { fetchCompetitionHighlights } from "@/lib/api/server";
+import { getTranslations } from "next-intl/server";
+import { Translatable } from "@/components/Translatable";
 
 const eligibility = `
 Projects must be built by Iceland-based developers. Projects can be at any stage of development, from idea to launched product.
@@ -23,6 +25,7 @@ If you'd like to help shape how competitions are run, get in touch via [discord]
 `;
 
 export default async function PrizesPage() {
+  const t = await getTranslations();
   const { competitions } = await fetchCompetitionHighlights().catch(
     () => ({ competitions: [] })
   );
@@ -37,7 +40,7 @@ export default async function PrizesPage() {
       <section className="py-12 px-4 sm:px-6 bg-white">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
-            Eligibility
+            <Translatable tKey="about.prizes.eligibilityHeading">{t("about.prizes.eligibilityHeading")}</Translatable>
           </h2>
           <article className="article markdown">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -50,7 +53,7 @@ export default async function PrizesPage() {
       <section className="py-12 px-4 sm:px-6 bg-muted">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
-            Prize giving and selection
+            <Translatable tKey="about.prizes.selectionHeading">{t("about.prizes.selectionHeading")}</Translatable>
           </h2>
           <article className="article markdown">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -63,10 +66,10 @@ export default async function PrizesPage() {
       <section className="py-12 px-4 sm:px-6 bg-white">
         <div className="max-w-2xl mx-auto text-center">
           <p className="text-foreground font-medium mb-5">
-            Ready to submit your project?
+            <Translatable tKey="about.prizes.cta">{t("about.prizes.cta")}</Translatable>
           </p>
           <Link href="/register" className="btn-primary">
-            Get started
+            <Translatable tKey="about.prizes.ctaButton">{t("about.prizes.ctaButton")}</Translatable>
           </Link>
         </div>
       </section>

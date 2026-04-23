@@ -8,11 +8,328 @@
     "login": "Log in",
     "register": "Register",
     "profile": "Profile",
-    "logout": "Log out"
+    "logout": "Log out",
+    "editTranslationsOn": "Editing translations: on",
+    "editTranslationsOff": "Edit translations"
   },
   "footer": {
     "about": "About",
     "privacy": "Privacy",
     "discord": "Discord"
+  },
+  "translatePopover": {
+    "title": "Edit translation",
+    "englishReference": "English",
+    "save": "Save",
+    "cancel": "Cancel",
+    "saving": "Saving…",
+    "history": "History",
+    "revertToThis": "Revert to this",
+    "noHistory": "No previous edits.",
+    "concurrencyWarning": "This was edited {seconds} seconds ago by {user}. Save anyway?",
+    "concurrencyConfirm": "Save anyway",
+    "placeholderLost": "Don't change or remove the highlighted placeholders.",
+    "missingTranslationHint": "Showing English. Add an Icelandic translation by editing this string."
+  },
+  "common": {
+    "loading": "Loading...",
+    "tryAgain": "Try again",
+    "cancel": "Cancel",
+    "close": "Close",
+    "backToHome": "Back to home",
+    "backToLogin": "Back to login",
+    "profile": "Profile"
+  },
+  "error": {
+    "heading": "Something went wrong",
+    "loginFailed": "Login failed",
+    "somethingWentWrong": "Something went wrong",
+    "verificationFailed": "Verification failed",
+    "verificationFailedRetry": "Verification failed. Please try again.",
+    "registrationFailed": "Registration failed",
+    "resetPasswordFailed": "Failed to reset password",
+    "resendCodeFailed": "Failed to resend code",
+    "saveFailed": "Failed to save. Please try again.",
+    "updateProfileFailed": "Failed to update profile",
+    "submitProjectFailed": "Failed to submit project",
+    "loadProjectFailed": "Failed to load project",
+    "saveProjectFailed": "Failed to save project",
+    "publishProjectFailed": "Failed to publish project",
+    "deleteProjectFailed": "Failed to delete project",
+    "updateImageRolesFailed": "Failed to update image roles",
+    "deleteIconFailed": "Failed to delete icon",
+    "deleteImageFailed": "Failed to delete image"
+  },
+  "auth": {
+    "login": {
+      "heading": "Welcome back",
+      "subheading": "Log in to manage your projects",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "submitting": "Logging in...",
+      "submit": "Log In",
+      "forgotPasswordLink": "Forgotten password?",
+      "noAccount": "Don't have an account?",
+      "createLink": "Create one"
+    },
+    "register": {
+      "heading": "Create an account",
+      "subheading": "Start sharing your projects today",
+      "emailLabel": "Email",
+      "emailPlaceholder": "you@example.com",
+      "passwordLabel": "Password",
+      "passwordPlaceholder": "At least 8 characters",
+      "kennitalaLabel": "Kennitala",
+      "kennitalaPlaceholder": "10 digits",
+      "privacyAgreement": "By creating an account, you agree to our Privacy Policy.",
+      "privacyLink": "Privacy Policy",
+      "submitting": "Creating account...",
+      "submit": "Create Account",
+      "haveAccount": "Already have an account?",
+      "loginLink": "Log in",
+      "passwordTooShort": "Password must be at least 8 characters",
+      "kennitalaInvalid": "Kennitala must be exactly 10 digits"
+    },
+    "forgot": {
+      "heading": "Forgotten password?",
+      "subheading": "Enter your email to receive a reset code",
+      "submitting": "Sending...",
+      "submit": "Continue"
+    },
+    "code": {
+      "heading": "Enter your code",
+      "subheading": "We sent a 6-digit code to {email}",
+      "verifying": "Verifying...",
+      "attemptsRemaining": "{count, plural, one {# attempt remaining} other {# attempts remaining}}"
+    },
+    "reset": {
+      "heading": "Set new password",
+      "subheading": "Choose a new password for your account",
+      "passwordLabel": "New password",
+      "submitting": "Saving...",
+      "submit": "Set password",
+      "successMessage": "Password updated. Please log in."
+    }
+  },
+  "onboarding": {
+    "completeProfile": {
+      "heading": "Complete your profile",
+      "subheading": "Add your name so others know who you are",
+      "firstNameLabel": "First Name",
+      "firstNamePlaceholder": "Your first name",
+      "lastNameLabel": "Last Name",
+      "lastNamePlaceholder": "Your last name",
+      "submitting": "Saving...",
+      "submit": "Continue"
+    },
+    "verifyEmail": {
+      "heading": "Verify your email",
+      "subheading": "We sent a 6-digit code to {email}",
+      "codeSentMessage": "Code sent!",
+      "verifying": "Verifying...",
+      "noCode": "Didn't receive the code?",
+      "resendCooldown": "Resend in {count}s",
+      "resend": "Resend"
+    }
+  },
+  "home": {
+    "submitProject": "Submit a project"
+  },
+  "projects": {
+    "submitButton": "Submit a project",
+    "discoverTab": "Discover",
+    "untitledProject": "Untitled Project",
+    "backToMyProjects": "Back to my projects",
+    "notFound": "Project not found",
+    "publishButton": "Publish",
+    "deleteButton": "Delete",
+    "winnersSection": {
+      "heading": "Competition Winners"
+    },
+    "newArrivals": {
+      "heading": "New Arrivals"
+    },
+    "mostDiscussed": {
+      "heading": "Most Discussed"
+    },
+    "category": {
+      "seeAll": "See all"
+    },
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "error": {
+      "loadProjectsMessage": "We couldn't load projects. This may be a temporary issue.",
+      "loadProjectMessage": "We couldn't load this project. This may be a temporary issue."
+    },
+    "deleteDialog": {
+      "heading": "Delete Project",
+      "confirmation": "Are you sure you want to delete \"{title}\"? This action cannot be undone.",
+      "instruction": "Type delete to confirm:",
+      "confirmText": "delete",
+      "placeholder": "Type 'delete' to confirm",
+      "deleting": "Deleting...",
+      "deleteButton": "Delete Project"
+    },
+    "publishDialog": {
+      "heading": "Not quite ready to publish",
+      "message": "Before publishing, please add:",
+      "fieldTitle": "A title",
+      "fieldDescription": "A description",
+      "fieldMainImage": "A main image"
+    }
+  },
+  "myProjects": {
+    "heading": "My Projects",
+    "subheading": "Manage your submissions",
+    "empty": "You haven't submitted any projects yet.",
+    "submitFirst": "Submit your first project",
+    "submitNew": "Submit a new project"
+  },
+  "myReviews": {
+    "heading": "My Reviews",
+    "subheading": "Rank projects for competitions"
+  },
+  "reviews": {
+    "finishDialog": {
+      "heading": "Finish review?",
+      "confirmation": "This will lock your rankings. You won't be able to make changes.",
+      "finishButton": "Finish Review",
+      "finishing": "Finishing..."
+    }
+  },
+  "submit": {
+    "heading": "Start a New Project",
+    "subheading": "Drop in a URL — you'll add the rest before publishing.",
+    "urlLabel": "Project URL",
+    "urlPlaceholder": "https://your-project.com",
+    "submitting": "Creating...",
+    "submitButton": "Create Draft",
+    "invalidUrl": "Please enter a valid URL"
+  },
+  "competitions": {
+    "heading": "Competitions",
+    "subheading": "Community competitions and their results",
+    "pastCompetitions": "Past Competitions",
+    "pendingProjects": "{count, plural, one {# pending project} other {# pending projects}}",
+    "empty": "No competitions found.",
+    "projectCount": "{count, plural, one {# project} other {# projects}}",
+    "status": {
+      "open": "Open",
+      "voting": "Voting",
+      "completed": "Completed"
+    },
+    "error": {
+      "message": "We couldn't load this competition. This may be a temporary issue."
+    },
+    "detail": {
+      "ctaHeading": "Got a project you're working on?",
+      "ctaDescription": "Share your project with the community and compete in {name}",
+      "submitButton": "Submit a Project",
+      "votingMessage": "Voting is in progress. The winner will be announced soon.",
+      "winnerLabel": "Winner",
+      "allProjects": "All Projects",
+      "noProjects": "No projects yet — be the first to submit!",
+      "prizeLabel": "prize"
+    }
+  },
+  "about": {
+    "heading": "Supporting Iceland's builder ecosystem",
+    "subheading": "Everything you need to share your work and grow with the community.",
+    "section1": {
+      "heading": "Show Your Work",
+      "description": "A space to showcase your side projects and early-stage ideas to the Icelandic tech community."
+    },
+    "section2": {
+      "heading": "Get Feedback",
+      "description": "Receive valuable feedback from fellow builders and compete for prizes in community competitions."
+    },
+    "section3": {
+      "heading": "Share & Grow",
+      "description": "Share your experience and skills. Learn from others. Grow your project with the community."
+    },
+    "layout": {
+      "badge": "Iceland's builder community",
+      "heading": "Shine a light on\nyour work",
+      "description": "A platform for Icelandic developers to showcase side projects, get feedback from the community, and compete for recognition.",
+      "whatTab": "What",
+      "whyTab": "Why",
+      "prizesTab": "Prizes",
+      "contactTab": "Contact"
+    },
+    "why": {
+      "pocHeading": "PoC cost is almost zero",
+      "seniorHeading": "Senior developer gap",
+      "geopoliticsHeading": "Geopolitics & Digital Sovereignty"
+    },
+    "prizes": {
+      "eligibilityHeading": "Eligibility",
+      "selectionHeading": "Prize giving and selection",
+      "cta": "Ready to submit your project?",
+      "ctaButton": "Get started"
+    },
+    "contact": {
+      "heading": "Get in touch",
+      "discordLabel": "Discord",
+      "emailLabel": "Email"
+    }
+  },
+  "profile": {
+    "heading": "Profile",
+    "subheading": "Manage your account",
+    "editButton": "Edit",
+    "previewButton": "Preview",
+    "saveButton": "Save",
+    "nameRequired": "At least one name (first or last) is required",
+    "anonymousName": "Anonymous",
+    "firstNameLabel": "First Name",
+    "firstNamePlaceholder": "Your first name",
+    "lastNameLabel": "Last Name",
+    "lastNamePlaceholder": "Your last name",
+    "aboutLabel": "About You",
+    "markdownBadge": "Markdown",
+    "aboutPlaceholder": "Tell us about yourself...",
+    "aboutHelper": "This will be shown on your public profile and linked to from your projects",
+    "settings": {
+      "heading": "Settings",
+      "description": "Manage your email preferences",
+      "competitionResults": "Competition results",
+      "competitionResultsDescription": "Receive emails about competition outcomes and rankings",
+      "platformUpdates": "Platform updates",
+      "platformUpdatesDescription": "Receive emails about new features and improvements",
+      "notificationsHeading": "Notifications",
+      "notificationsDescription": "How often you receive discussion notifications",
+      "notificationImmediate": "Every time",
+      "notificationHourly": "Hourly",
+      "notificationDaily": "Daily",
+      "notificationNever": "Never",
+      "privacyHeading": "Privacy",
+      "privacyDescription": "Manage your privacy preferences",
+      "externalPromotions": "External promotions",
+      "externalPromotionsDescription": "Allow your participation to be featured on external platforms like LinkedIn"
+    }
+  },
+  "users": {
+    "notFound": "User not found"
+  },
+  "imageUpload": {
+    "dropHere": "Drop images here",
+    "instruction": "Click to upload or drag and drop",
+    "formats": "PNG, JPG, WebP, GIF up to 10MB",
+    "aspectRatio": "Main image is best at 16:9 ratio (e.g. 1920×1080 or 1280×720)",
+    "slotsRemaining": "{remaining} of {maxFiles} slots remaining",
+    "maxReached": "Maximum images reached"
+  },
+  "discussions": {
+    "newDialog": {
+      "title": "Start a discussion",
+      "submitLabel": "Post",
+      "placeholder": "What's on your mind?",
+      "error": "Failed to post discussion. Please try again.",
+      "submitting": "Saving..."
+    }
   }
 }

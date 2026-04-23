@@ -1,8 +1,17 @@
 import pytest
-from hamcrest import assert_that, equal_to, has_entries, has_key, is_not
+from hamcrest import (
+    assert_that,
+    equal_to,
+    has_entries,
+    has_key,
+    has_length,
+    is_not,
+    none,
+    not_none,
+)
 
 from services.translations.django_impl.query import DjangoTranslationQuery
-from tests.factories import TranslationFactory
+from tests.factories import TranslationFactory, UserFactory
 
 
 @pytest.mark.django_db
@@ -57,3 +66,53 @@ class TestGetCatalogVersion:
             self.query.get_catalog_version("en"),
             equal_to(int(en.updated_at.timestamp())),
         )
+
+
+@pytest.mark.django_db
+class TestGetDetail:
+    def setup_method(self) -> None:
+        self.query = DjangoTranslationQuery()
+
+    def test_returns_text_and_updated_at_for_existing_row(self) -> None:
+        t = TranslationFactory(locale="is", key="nav.home", text="Heim")
+
+        detail = self.query.get_detail("is", "nav.home")
+
+        assert_that(detail.text, equal_to("Heim"))
+        assert_that(detail.updated_at, equal_to(t.updated_at))
+
+    def test_returns_empty_for_missing_row(self) -> None:
+        detail = self.query.get_detail("is", "nonexistent.key")
+
+        assert_that(detail.text, equal_to(""))
+        assert_that(detail.updated_at, none())
+        assert_that(detail.history, equal_to([]))
+
+    def test_history_is_newest_first_and_capped(self) -> None:
+        user = UserFactory(first_name="Alice", last_name="A")
+        t = TranslationFactory(
+            locale="is", key="nav.home", text="Heim", updated_by=user
+        )
+        # Trigger 3 audits via the .save hook.
+        for new_text in ["Forsida", "Forsíða", "Heim"]:
+            t.text = new_text
+            t.updated_by = user
+            t.save()
+
+        detail = self.query.get_detail("is", "nav.home", history_limit=2)
+
+        assert_that(detail.history, has_length(2))
+        assert_that(detail.history[0].new_text, equal_to("Heim"))
+        assert_that(detail.history[1].new_text, equal_to("Forsíða"))
+        assert_that(detail.history[0].changed_by, not_none())
+
+    def test_history_changed_by_null_for_system_edits(self) -> None:
+        t = TranslationFactory(locale="is", key="nav.home", text="Heim")
+        # No user attached → system edit
+        t.text = "Forsíða"
+        t.updated_by = None
+        t.save()
+
+        detail = self.query.get_detail("is", "nav.home")
+
+        assert_that(detail.history[0].changed_by, none())

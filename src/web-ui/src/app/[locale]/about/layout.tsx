@@ -2,13 +2,8 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const tabs = [
-  { href: "/about", label: "What" },
-  { href: "/about/why", label: "Why" },
-  { href: "/about/prizes", label: "Prizes" },
-  { href: "/about/contact", label: "Contact" },
-];
+import { useTranslations } from "next-intl";
+import { Translatable } from "@/components/Translatable";
 
 export default function AboutLayout({
   children,
@@ -16,22 +11,30 @@ export default function AboutLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const t = useTranslations();
+
+  const tabs = [
+    { href: "/about", tKey: "about.layout.whatTab", label: t("about.layout.whatTab") },
+    { href: "/about/why", tKey: "about.layout.whyTab", label: t("about.layout.whyTab") },
+    { href: "/about/prizes", tKey: "about.layout.prizesTab", label: t("about.layout.prizesTab") },
+    { href: "/about/contact", tKey: "about.layout.contactTab", label: t("about.layout.contactTab") },
+  ];
 
   return (
     <main className="min-h-screen bg-muted pt-14">
       <section className="bg-nav-bg pt-20 pb-20 px-4 sm:px-6">
         <div className="max-w-4xl mx-auto text-center">
           <p className="text-indigo-400 text-sm font-medium tracking-wide uppercase mb-4">
-            Iceland&apos;s builder community
+            <Translatable tKey="about.layout.badge">{t("about.layout.badge")}</Translatable>
           </p>
-          <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-5 tracking-tight leading-[1.1]">
-            Shine a light on
-            <br />
-            your work
+          <h1
+            className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white mb-5 tracking-tight leading-[1.1]"
+            style={{ whiteSpace: "pre-line" }}
+          >
+            <Translatable tKey="about.layout.heading">{t("about.layout.heading")}</Translatable>
           </h1>
           <p className="text-lg text-slate-400 max-w-xl mx-auto leading-relaxed">
-            A platform for Icelandic developers to showcase side projects,
-            get feedback from the community, and compete for recognition.
+            <Translatable tKey="about.layout.description">{t("about.layout.description")}</Translatable>
           </p>
         </div>
       </section>
@@ -51,7 +54,7 @@ export default function AboutLayout({
                       : "border-transparent text-muted-foreground hover:text-foreground hover:border-border"
                   }`}
                 >
-                  {tab.label}
+                  <Translatable tKey={tab.tKey}>{tab.label}</Translatable>
                 </Link>
               );
             })}

@@ -3,31 +3,37 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api, type Project } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
+import { Translatable } from "@/components/Translatable";
 
 function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations();
   const styles: Record<string, string> = {
     pending: "badge-warning",
     approved: "badge-success",
     rejected: "badge-error",
   };
 
-  const labels: Record<string, string> = {
-    pending: "Pending",
-    approved: "Approved",
-    rejected: "Rejected",
+  const labelKeys: Record<string, string> = {
+    pending: "projects.status.pending",
+    approved: "projects.status.approved",
+    rejected: "projects.status.rejected",
   };
+
+  const tKey = labelKeys[status];
 
   return (
     <span className={`badge ${styles[status] || "badge-neutral"}`}>
-      {labels[status] || status}
+      {tKey ? <Translatable tKey={tKey}>{t(tKey)}</Translatable> : status}
     </span>
   );
 }
 
 export function ProjectsList() {
+  const t = useTranslations();
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [error, setError] = useState("");
@@ -84,7 +90,7 @@ export function ProjectsList() {
           {error}
         </div>
         <Link href="/" className="text-sm text-accent hover:text-accent-hover transition-colors">
-          Back to home
+          <Translatable tKey="common.backToHome">{t("common.backToHome")}</Translatable>
         </Link>
       </div>
     );
@@ -94,7 +100,9 @@ export function ProjectsList() {
     <>
       {projects.length === 0 ? (
         <div className="bg-white rounded-xl border border-border p-8 text-center">
-          <p className="text-muted-foreground text-sm">You haven&apos;t submitted any projects yet.</p>
+          <p className="text-muted-foreground text-sm">
+            <Translatable tKey="myProjects.empty">{t("myProjects.empty")}</Translatable>
+          </p>
         </div>
       ) : (
         <div className="space-y-3">
@@ -133,7 +141,7 @@ export function ProjectsList() {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0 flex-1">
                         <h2 className="font-medium text-foreground truncate group-hover:text-accent transition-colors">
-                          {project.title || "Untitled Project"}
+                          {project.title || t("projects.untitledProject")}
                         </h2>
                         <p className="text-muted-foreground text-xs truncate mt-0.5">
                           {project.website_url}
@@ -156,7 +164,11 @@ export function ProjectsList() {
 
       <div className="mt-8 text-center">
         <Link href="/submit" className="btn-primary">
-          {projects.length === 0 ? "Submit your first project" : "Submit a new project"}
+          {projects.length === 0 ? (
+            <Translatable tKey="myProjects.submitFirst">{t("myProjects.submitFirst")}</Translatable>
+          ) : (
+            <Translatable tKey="myProjects.submitNew">{t("myProjects.submitNew")}</Translatable>
+          )}
         </Link>
       </div>
     </>

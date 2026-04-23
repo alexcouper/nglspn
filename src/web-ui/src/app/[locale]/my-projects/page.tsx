@@ -1,15 +1,18 @@
+import { getTranslations } from "next-intl/server";
+import { Translatable } from "@/components/Translatable";
 import { ProjectsList } from "./ProjectsList";
 
-export default function MyProjectsPage() {
+export default async function MyProjectsPage() {
+  const t = await getTranslations();
   return (
     <main className="min-h-screen bg-muted pt-14">
       <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
         <div className="max-w-3xl mx-auto">
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            My Projects
+            <Translatable tKey="myProjects.heading">{t("myProjects.heading")}</Translatable>
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage your submissions
+            <Translatable tKey="myProjects.subheading">{t("myProjects.subheading")}</Translatable>
           </p>
         </div>
       </section>

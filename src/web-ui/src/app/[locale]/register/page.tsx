@@ -3,10 +3,13 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import { getPostAuthDestination } from "@/lib/auth-routing";
+import { Translatable } from "@/components/Translatable";
 
 export default function RegisterPage() {
+  const t = useTranslations();
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
@@ -22,12 +25,12 @@ export default function RegisterPage() {
     setError("");
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t("auth.register.passwordTooShort"));
       return;
     }
 
     if (!/^\d{10}$/.test(kennitala)) {
-      setError("Kennitala must be exactly 10 digits");
+      setError(t("auth.register.kennitalaInvalid"));
       return;
     }
 
@@ -37,7 +40,7 @@ export default function RegisterPage() {
       const userData = await register(email, password, kennitala);
       router.push(getPostAuthDestination(userData, next));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : t("error.registrationFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -48,10 +51,10 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-            Create an account
+            <Translatable tKey="auth.register.heading">{t("auth.register.heading")}</Translatable>
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Start sharing your projects today
+            <Translatable tKey="auth.register.subheading">{t("auth.register.subheading")}</Translatable>
           </p>
         </div>
 
@@ -64,7 +67,9 @@ export default function RegisterPage() {
             )}
 
             <div>
-              <label htmlFor="email" className="label">Email</label>
+              <label htmlFor="email" className="label">
+                <Translatable tKey="auth.register.emailLabel">{t("auth.register.emailLabel")}</Translatable>
+              </label>
               <input
                 id="email"
                 name="email"
@@ -74,12 +79,14 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input"
-                placeholder="you@example.com"
+                placeholder={t("auth.register.emailPlaceholder")}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="label">Password</label>
+              <label htmlFor="password" className="label">
+                <Translatable tKey="auth.register.passwordLabel">{t("auth.register.passwordLabel")}</Translatable>
+              </label>
               <input
                 id="password"
                 name="password"
@@ -90,12 +97,14 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input"
-                placeholder="At least 8 characters"
+                placeholder={t("auth.register.passwordPlaceholder")}
               />
             </div>
 
             <div>
-              <label htmlFor="kennitala" className="label">Kennitala</label>
+              <label htmlFor="kennitala" className="label">
+                <Translatable tKey="auth.register.kennitalaLabel">{t("auth.register.kennitalaLabel")}</Translatable>
+              </label>
               <input
                 id="kennitala"
                 name="kennitala"
@@ -105,14 +114,14 @@ export default function RegisterPage() {
                 value={kennitala}
                 onChange={(e) => setKennitala(e.target.value.replace(/\D/g, ""))}
                 className="input"
-                placeholder="10 digits"
+                placeholder={t("auth.register.kennitalaPlaceholder")}
               />
             </div>
 
             <p className="text-xs text-muted-foreground">
-              By creating an account, you agree to our{" "}
+              <Translatable tKey="auth.register.privacyAgreement">{t("auth.register.privacyAgreement")}</Translatable>{" "}
               <Link href="/privacy" className="text-accent hover:text-accent-hover transition-colors">
-                Privacy Policy
+                <Translatable tKey="auth.register.privacyLink">{t("auth.register.privacyLink")}</Translatable>
               </Link>.
             </p>
 
@@ -121,14 +130,18 @@ export default function RegisterPage() {
               disabled={isLoading}
               className="w-full btn-primary py-2.5"
             >
-              {isLoading ? "Creating account..." : "Create Account"}
+              {isLoading ? (
+                <Translatable tKey="auth.register.submitting">{t("auth.register.submitting")}</Translatable>
+              ) : (
+                <Translatable tKey="auth.register.submit">{t("auth.register.submit")}</Translatable>
+              )}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
+            <Translatable tKey="auth.register.haveAccount">{t("auth.register.haveAccount")}</Translatable>{" "}
             <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="text-accent hover:text-accent-hover font-medium transition-colors">
-              Log in
+              <Translatable tKey="auth.register.loginLink">{t("auth.register.loginLink")}</Translatable>
             </Link>
           </p>
         </div>

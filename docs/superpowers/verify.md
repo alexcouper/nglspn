@@ -1,15 +1,15 @@
 # Dynamic Translations — Session State & Verification
 
-Last updated: 2026-04-22 (end of Phase 3)
+Last updated: 2026-04-23 (end of Phase 4)
 
 ## Where we are
 
 Building **dynamic translations** for Naglasúpan. 5-phase rollout:
 
 - **Phase 1 — Backend catalog + API + webhook:** ✅ Implemented and smoke-tested (see §"Phase 1 smoke test" below if you need to reprove it).
-- **Phase 2 — Web-UI bilingual rendering (`next-intl` + locale routing):** ✅ Implemented and smoke-tested end-to-end (`/` → Icelandic, `/en` → English, live revalidation via `/api/revalidate-i18n`, locale switcher, `hreflang`). Playwright `e2e/i18n.spec.ts` — 3/3 pass.
-- **Phase 3 — Authoring flow (MT generator + Django migrations + lint):** ✅ Implemented. 549 Django tests pass. `make ci` green. One manual follow-up pending: the DeepL end-to-end smoke (needs a real `DEEPL_AUTH_KEY`) was not yet run with a real key.
-- **Phase 4 — Inline edit UX (`<Translatable>`, pencil, popover, chips, history):** ⏳ **NEXT UP.** No plan written yet.
+- **Phase 2 — Web-UI bilingual rendering (`next-intl` + locale routing):** ✅ Implemented and smoke-tested end-to-end. Playwright `e2e/i18n.spec.ts` — 3/3 pass.
+- **Phase 3 — Authoring flow (MT generator + Django migrations + lint):** ✅ Implemented. `make ci` green.
+- **Phase 4 — Inline edit UX (`<Translatable>`, pencil, popover, chips, history):** ✅ Implemented. `make ci` green (557 backend tests + lint + i18n drift). Plan: `docs/superpowers/plans/2026-04-23-translations-inline-edit.md`. **Not yet executed:** the Playwright e2e (`e2e/i18n-edit.spec.ts`) — needs both servers + a logged-in test user; run manually before shipping. **Deferred:** the hardcoded-string sweep on non-chrome pages and the `no-hardcoded-jsx-strings` ESLint rule are both gated on the MT-provider decision (DeepL paused).
 - **Phase 5 — Editor worklist:** Pending.
 
 ## Artifacts
@@ -18,53 +18,117 @@ Building **dynamic translations** for Naglasúpan. 5-phase rollout:
 - **Phase 1 plan:** `docs/superpowers/plans/2026-04-22-translations-backend.md`
 - **Phase 2 plan:** `docs/superpowers/plans/2026-04-22-translations-web-ui.md`
 - **Phase 3 plan:** `docs/superpowers/plans/2026-04-22-translations-authoring.md`
-- **Phase 4 plan:** not yet written — produce it at the start of the next session.
+- **Phase 4 plan:** `docs/superpowers/plans/2026-04-23-translations-inline-edit.md`
 
-## What Phase 2 built (for Phase 4 context)
+---
+
+## Full feature inventory (Phases 1–4)
+
+### Phase 1 — Backend catalog + API + webhook
+
+- `Translation` table (`locale`, `key`, `text`, `source_hash`, `updated_by`, `updated_at`, `is_machine_translated`, `retired`) with `(locale, key)` uniqueness.
+- `TranslationAudit` table (full before/after history, `changed_by`, `changed_at`).
+- `Translation.save()` hook auto-writes an audit row on every text change.
+- `GET /api/i18n/{locale}` — full non-retired catalog as `{key: text}`.
+- `GET /api/i18n/{locale}/version` — `max(updated_at)` as epoch int (cheap probe).
+- `PATCH /api/i18n/{locale}/{key}` — auth-required edit; flips `is_machine_translated` to False; upserts; fires webhook.
+- Service-layer split: `TranslationQueryInterface` (read) and `TranslationHandlerInterface` (write).
+- `notify_web_ui(locale)` webhook → POSTs to web-ui's revalidation endpoint with shared-secret header; failures don't fail the edit.
+
+### Phase 2 — Web-UI bilingual rendering
 
 - All routes moved under `src/web-ui/src/app/[locale]/`.
-- `next-intl` v4.9.1 with `localePrefix: "as-needed"`. Default locale `is`, second locale `en`.
-- `src/web-ui/src/i18n/{config,routing,navigation,request}.ts` — routing + `NextIntlClientProvider` wiring.
-- `src/web-ui/src/lib/i18n/catalog.ts` — server-only `fetchCatalog(locale)` via `unstable_cache` tagged `i18n:<locale>`.
-- `src/web-ui/src/middleware.ts` — `next-intl` middleware (Next 16 emits a deprecation warning: `middleware` is slated to become `proxy`; still functional).
-- `src/web-ui/src/components/LocaleSwitcher.tsx` + mount in `Navigation.tsx`.
+- `next-intl` v4.9.1 with `localePrefix: "as-needed"`. Default `is`, second `en`.
+- `src/web-ui/src/i18n/{config,routing,navigation,request}.ts` — locale config + routing + `NextIntlClientProvider` wiring.
+- `src/web-ui/src/lib/i18n/catalog.ts` — server-only `fetchCatalog(locale)` via `unstable_cache` tagged `i18n:<locale>` (60s safety revalidate).
+- `next-intl` middleware (Accept-Language detection + cookie).
+- `<LocaleSwitcher>` in nav (toggles `/` ↔ `/en`, sets `NEXT_LOCALE` cookie).
 - `src/web-ui/src/app/api/revalidate-i18n/route.ts` — `X-Revalidate-Secret` header + `revalidateTag(tag, "max")` (Next 16 signature).
-- `src/web-ui/src/messages/en.json` — English source of truth (Nav + Footer keys only in Phase 2).
-- Icelandic rows for Nav + Footer seeded by `apps/translations/migrations/0003_seed_phase2_ui_chrome.py`.
-- `Navigation.tsx`, `UserMenu.tsx`, `Footer.tsx` use `useTranslations(...)` + `Link`/`usePathname` from `@/i18n/navigation`. All other pages still have hardcoded strings — **Phase 4 sweeps those**.
+- `src/web-ui/src/messages/en.json` — English source of truth in code.
+- `apps/translations/migrations/0003_seed_phase2_ui_chrome.py` — Icelandic for Nav + Footer keys.
+- Deep-merge fallback in `i18n/request.ts` so missing Icelandic keys never break render.
+- `<LocaleHtmlLang>` sets `<html lang>` per locale.
+- `hreflang` link tags on every page for SEO.
+- Playwright `e2e/i18n.spec.ts` — `/` Icelandic, `/en` English, locale-switcher round-trip.
 
-## What Phase 3 built (for Phase 4 context)
+### Phase 3 — Authoring flow (developer loop)
 
-- `apps/translations/generators/` — `flatten.py`, `hashing.py`, `snapshot.py`, `diff.py`, `translator.py` (with `DeepLTranslator` + `StubTranslator`), `migration_writer.py`. Full unit test coverage.
-- `apps/translations/management/commands/generate_translations.py` — Django management command that diffs, translates, writes a migration. 5 end-to-end tests covering added / retranslated / hash-bumped / retired / no-op.
-- `apps/translations/generators/state/en-snapshot.json` — committed snapshot, seeded from current `en.json`.
-- **`make translate-new-keys`** (from `src/django-backend/`) — the developer-run generator. Requires `DEEPL_AUTH_KEY` in env.
-- **`make lint-translations`** — CI-safe snapshot-drift check (uses `StubTranslator`, no DeepL needed).
-- `src/web-ui/scripts/lint-i18n.mjs` — verifies every `t("key")` resolves in `en.json`. Wired into `npm run lint`.
+- `apps/translations/generators/` — composable pieces:
+  - `flatten.py` — `en.json` nested → dotted-key flat map.
+  - `hashing.py` — stable 16-char `source_hash(text)`.
+  - `snapshot.py` — read/write the committed `en-snapshot.json`.
+  - `diff.py` — added / changed / removed / hash-bump-only categorization.
+  - `translator.py` — `TranslatorProtocol` + `DeepLTranslator` + `StubTranslator`.
+  - `migration_writer.py` — emits idempotent `update_or_create` Django data migrations.
+- `manage.py generate_translations` — full pipeline (diff → translate → write migration). 5 e2e test scenarios.
+- Snapshot state file `apps/translations/generators/state/en-snapshot.json` (committed).
+- `make translate-new-keys` — developer-run pre-push command (needs `DEEPL_AUTH_KEY`).
+- `make lint-translations` — CI-safe drift check (uses StubTranslator, no DeepL needed).
+- `src/web-ui/scripts/lint-i18n.mjs` — every `t("key")` call (resolves through any `useTranslations("ns")`) must exist in `en.json`. Wired into `npm run lint`.
 - Root `Makefile` — `make ci` gates backend lint + translations drift + web-ui lint + backend tests.
 - `CLAUDE.md` has a `### Translations Workflow` section for developers.
+- Re-translate-vs-bump-only rule for changed source: keys still flagged `is_machine_translated=True` get re-translated; human-edited keys only get `source_hash` bumped.
 
-## How to start the next session
+### Phase 4 — Inline edit UX
 
-Open a new Claude Code session in this project and say something like:
+**Backend**
+- `GET /api/i18n/{locale}/{key}` — returns current text + `updated_at` + last 10 audit entries (with display name); empty payload for missing rows.
+- `TranslationDetailResponse` + `TranslationAuditEntryResponse` schemas; OpenAPI + TS types regenerated.
+- PATCH-contract regression test (locks `updated_at` in response).
+- `apps/translations/migrations/0004_seed_phase4_edit_ui.py` — hand-authored Icelandic for all 14 new edit-mode UI keys.
+- `en-snapshot.json` updated (lint-translations green without DeepL).
 
-> Read `docs/superpowers/verify.md` and let's start Phase 4 — the inline edit UX.
+**Web-UI infra**
+- `src/web-ui/src/lib/i18n/edit-mode-cookie.ts` + `.client.ts` — `nglspn-edit-mode` cookie helpers (server read + client read/write).
+- `src/web-ui/src/lib/i18n/api.ts` — typed `getTranslationDetail(locale, key)` + `patchTranslation(locale, key, text, bearerToken)`.
+- `src/web-ui/src/lib/i18n/messages.ts` — server helper `loadMessages(locale)` returning merged + locale-only + English catalogs separately.
+- `src/web-ui/src/contexts/editable-messages.tsx` — `EditableMessagesProvider` that lifts messages into client state and exposes:
+  - `editMode`
+  - `applyOverride(key, text)` — optimistic update, editor sees change instantly.
+  - `isFallback(key)` — true when the locale catalog has no row for this key.
+  - `readEnglish(key)` — English source for the popover reference.
+- Layout rewired to read cookie + wrap children in `EditableMessagesProvider`.
 
-The assistant should:
-1. **Confirm state:** run `make ci` (expect green) and optionally re-run the Phase 1 or Phase 2 smoke test below if anything feels off.
-2. **(Optional) Do the outstanding DeepL smoke** if it hasn't been done: export `DEEPL_AUTH_KEY`, add one throwaway key to `en.json`, run `cd src/django-backend && make translate-new-keys`, inspect the generated migration for a plausible Icelandic translation, then revert.
-3. **Invoke `superpowers:writing-plans`** to produce the Phase 4 plan, consuming the Phase 2 `NextIntlClientProvider` + PATCH endpoint + revalidate webhook.
-4. **Offer execution choice** (subagent-driven vs inline) and run.
+**Edit UI**
+- `<EditModeToggle>` — menu item in `UserMenu` that flips the cookie + `router.refresh()`. Label reads "Edit translations" / "Editing translations: on".
+- `<Translatable tKey="...">` wrapper:
+  - Zero overhead when edit mode is off (renders children inline).
+  - When on: pencil overlay on hover (absolutely positioned, no reflow), `data-i18n-key` attribute, dotted-amber underline marker for English-fallback strings.
+- `<TranslationPopover>` — portal-rendered, anchored to pencil:
+  - Single round-trip on open: text + `updated_at` + history.
+  - English reference block (hidden when locale === "en").
+  - Save / Cancel buttons; Esc and outside-click close.
+  - Bearer-token PATCH; on success calls `applyOverride` for instant render; Django webhook propagates to other users within seconds.
+- `<ChipsEditor>` (`TranslationChips.tsx`):
+  - `contentEditable` div that renders `{name}` / `{count, plural, ...}` placeholders as atomic non-editable amber chips.
+  - `validateAgainstReference(en, draft)` — checks all reference placeholders are still present.
+  - Save disabled + amber warning when chips are missing.
+- History disclosure inside popover — last N entries (who, when, new text), each with "Revert to this" that loads the old text into the draft.
+- Relative-time formatter (`12s ago`, `5m ago`, `2h ago`, …).
+- Concurrency check on save:
+  - Re-fetches detail before PATCH; if `updated_at` moved, shows non-blocking warning `"Edited Ns ago by X. Save anyway?"` with explicit confirm (last-write-wins).
+  - Audit log makes any mis-overwrite recoverable from the same popover.
+- Chrome wrapping: every chrome `t("...")` call in Navigation (desktop + mobile), Footer, and UserMenu wrapped with `<Translatable>`.
+- `e2e/i18n-edit.spec.ts` — Playwright spec for the edit happy path (not yet executed).
 
-### Phase 4 scope reminder (from design spec §Edit UX)
+### Explicitly deferred
+
+- DeepL smoke test with a real key (paused — provider may change).
+- Sweep of hardcoded JSX strings on non-chrome pages + a `no-hardcoded-jsx-strings` ESLint rule (also gated on the MT-provider decision).
+- Phase 5 — editor worklist (admin view of keys with `source_hash` drift or still-MT'd).
+- Long-form / markdown-preview popover layout.
+- Per-user permission gate beyond "logged-in".
+
+---
+
+## Phase 4 scope reminder (from design spec §Edit UX)
 
 - A "Edit translations" toggle in the user menu, cookie-persisted.
 - Global `<Translatable i18n-key="...">` wrapper → pencil-on-hover (absolutely positioned, no reflow).
 - Click → inline popover with: Icelandic textarea, English reference, ICU placeholder chips (non-editable), last-N history, save/cancel/revert.
-- Save path: PATCH to `/api/i18n/{locale}/{key}` → optimistic update to `NextIntlClientProvider` (editor sees change instantly) → Django webhook fires → other users see the change on next render.
+- Save path: PATCH to `/api/i18n/{locale}/{key}` → optimistic update to `NextIntlClientProvider` → Django webhook fires → other users see the change on next render.
 - Concurrency: last-write-wins, with "edited N seconds ago by X" warning if `updated_at` changed since popover open.
-- Missing-translation fallback already handled by Phase 2's `deepMerge` in `request.ts`; edit mode marks fallback strings visually.
-- Also: Phase 4 is the right time to sweep hardcoded strings on the other pages to `t()` and flip on the "no hardcoded JSX strings" lint rule (deferred from Phase 3).
+- Missing-translation fallback handled by Phase 2's `deepMerge` in `request.ts`; edit mode marks fallback strings visually.
 
 ## Phase 1 smoke test (only if you need to re-prove it)
 
@@ -122,9 +186,10 @@ curl -s -X PATCH http://localhost:8001/api/i18n/is/nav.projects \
 
 Expected: Icelandic labels at `/`, English labels at `/en`, `VERKVERK` rendered after PATCH, returns to `Verkefni` after the reset.
 
-## Known open items heading into Phase 4
+## Known open items
 
-- **DeepL smoke not yet run with a real key.** Either do it first (task 10 of Phase 3 plan) or let it happen naturally the first time someone adds a new key.
-- **`revalidateTag(tag, "max")`** — the `"max"` second arg is a Next 16 adaptation made by the Phase 2 implementer. Works end-to-end in dev; re-verify on a prod deploy.
-- **`middleware.ts` vs `proxy.ts`** — Next 16 deprecation warning. Cosmetic for now; rename when the replacement path stabilizes.
-- **Hardcoded strings on non-chrome pages** — Phase 4 sweep.
+- **DeepL smoke not yet run with a real key.** Paused — provider may be swapped. Do it (or its replacement) before shipping.
+- **`revalidateTag(tag, "max")`** — the `"max"` second arg is a Next 16 adaptation. Works end-to-end in dev; re-verify on a prod deploy.
+- **`middleware.ts` vs `proxy.ts`** — Next 16 deprecation warning. Cosmetic; rename when the replacement path stabilizes.
+- **Hardcoded strings on non-chrome pages** — deferred sweep; depends on MT-provider decision.
+- **Playwright `e2e/i18n-edit.spec.ts`** — written but not executed. Run manually before shipping.

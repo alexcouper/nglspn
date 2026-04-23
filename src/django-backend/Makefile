@@ -1,5 +1,5 @@
 APP:=django-backend
-.PHONY: help install dev migrate makemigrations shell test createsuperuser clean extract-openapi lint bootstrap seed seed-prod-copy dev-services dev-services-down translate-new-keys lint-translations
+.PHONY: help install dev migrate makemigrations shell test createsuperuser clean extract-openapi lint bootstrap seed seed-prod-copy dev-services dev-services-down translate-new-keys lint-translations revalidate-i18n
 
 include ../../scripts/app-common.mk
 
@@ -50,6 +50,8 @@ dev: dev-services
 	echo $$PORT > ../../.backend-port && \
 	echo "Starting Django on port $$PORT (saved to .backend-port)" && \
 	ADMIN_ALLOWED_IPS=127.0.0.1 ALLOWED_HOSTS=* DEBUG=true $(DEV_S3_ENV) \
+	WEB_UI_REVALIDATE_URL=$${WEB_UI_REVALIDATE_URL:-http://localhost:3000/api/revalidate-i18n} \
+	WEB_UI_REVALIDATE_SECRET=$${WEB_UI_REVALIDATE_SECRET:-dev-secret} \
 		uv run python manage.py runserver 0.0.0.0:$$PORT
 
 
@@ -117,3 +119,23 @@ lint-translations:
 	  cat $$TMP/out; rm -rf $$TMP; exit 1; \
 	fi; \
 	rm -rf $$TMP
+
+# Ping the running web-ui to force it to refetch Django's translation catalog.
+# Useful after `manage.py migrate` adds seed rows: the migration bypasses the
+# PATCH-edit webhook so Next's unstable_cache still holds the stale payload
+# until its 60s safety revalidate fires. This command flushes it immediately.
+#
+# Usage:
+#   make revalidate-i18n                          # defaults
+#   WEB_UI_URL=http://localhost:3000 WEB_UI_REVALIDATE_SECRET=dev-secret LOCALES="is en" make revalidate-i18n
+revalidate-i18n:
+	@WEB_UI_URL=$${WEB_UI_URL:-http://localhost:3000}; \
+	SECRET=$${WEB_UI_REVALIDATE_SECRET:-dev-secret}; \
+	for locale in $${LOCALES:-is en}; do \
+	  echo "Revalidating $$locale via $$WEB_UI_URL/api/revalidate-i18n"; \
+	  curl -s -o /dev/null -w "  status: %{http_code}\n" \
+	    -X POST "$$WEB_UI_URL/api/revalidate-i18n" \
+	    -H "Content-Type: application/json" \
+	    -H "X-Revalidate-Secret: $$SECRET" \
+	    -d "{\"locale\":\"$$locale\"}"; \
+	done

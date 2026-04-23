@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { api, type CompetitionOverview } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { Translatable } from "@/components/Translatable";
 import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
 
 function formatDateRange(startDate: string, endDate: string): string {
@@ -32,6 +34,7 @@ export function CompetitionsList({
   initialCompetitions,
   initialPendingCount = 0,
 }: CompetitionsListProps) {
+  const t = useTranslations();
   const hasInitialData = initialCompetitions != null;
   const [competitions, setCompetitions] = useState<CompetitionOverview[]>(
     initialCompetitions ?? []
@@ -84,8 +87,8 @@ export function CompetitionsList({
     return (
       <p className="text-muted-foreground text-sm text-center py-12">
         {pendingProjectsCount > 0
-          ? `${pendingProjectsCount} pending project${pendingProjectsCount !== 1 ? "s" : ""}`
-          : "No competitions found."}
+          ? t("competitions.pendingProjects", { count: pendingProjectsCount })
+          : t("competitions.empty")}
       </p>
     );
   }
@@ -109,7 +112,7 @@ export function CompetitionsList({
         <div>
           {featured && (
             <h2 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mt-6 mb-3">
-              Past Competitions
+              <Translatable tKey="competitions.pastCompetitions">{t("competitions.pastCompetitions")}</Translatable>
             </h2>
           )}
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
@@ -124,6 +127,7 @@ export function CompetitionsList({
 }
 
 function HeroBanner({ competition }: { competition: CompetitionOverview }) {
+  const t = useTranslations();
   return (
     <Link
       href={`/competitions/${competition.slug}`}
@@ -153,8 +157,7 @@ function HeroBanner({ competition }: { competition: CompetitionOverview }) {
             <p className="text-slate-300 text-sm mt-1">
               {formatDateRange(competition.start_date, competition.submission_deadline)}
               {" · "}
-              {competition.project_count} project
-              {competition.project_count !== 1 ? "s" : ""}
+              {t("competitions.projectCount", { count: competition.project_count })}
               {competition.prize_amount &&
                 ` · ${formatPrize(competition.prize_amount)}`}
             </p>
@@ -166,6 +169,7 @@ function HeroBanner({ competition }: { competition: CompetitionOverview }) {
 }
 
 function GridCard({ competition }: { competition: CompetitionOverview }) {
+  const t = useTranslations();
   return (
     <Link
       href={`/competitions/${competition.slug}`}
@@ -197,8 +201,7 @@ function GridCard({ competition }: { competition: CompetitionOverview }) {
             )}
           </div>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            {competition.project_count} project
-            {competition.project_count !== 1 ? "s" : ""}
+            {t("competitions.projectCount", { count: competition.project_count })}
           </p>
         </div>
       </div>

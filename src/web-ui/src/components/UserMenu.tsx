@@ -4,6 +4,8 @@ import { useState, useRef, useEffect } from "react";
 import { Link } from "@/i18n/navigation";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
+import { EditModeToggle } from "./EditModeToggle";
+import { Translatable } from "./Translatable";
 
 export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
@@ -54,11 +56,13 @@ export function UserMenu() {
                 className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                {t("profile")}
+                <Translatable tKey="nav.profile">{t("profile")}</Translatable>
               </Link>
               <div className="border-t border-border my-1" />
             </>
           )}
+          <EditModeToggle onClick={() => setIsOpen(false)} />
+          <div className="border-t border-border my-1" />
           <button
             onClick={() => {
               logout();
@@ -66,7 +70,7 @@ export function UserMenu() {
             }}
             className="block w-full text-left px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
-            {t("logout")}
+            <Translatable tKey="nav.logout">{t("logout")}</Translatable>
           </button>
         </div>
       )}

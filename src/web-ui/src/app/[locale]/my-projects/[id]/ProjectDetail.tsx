@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
+import { Translatable } from "@/components/Translatable";
 import {
   PencilIcon,
   EyeIcon,
@@ -36,6 +38,7 @@ interface ProjectDetailProps {
 }
 
 export function ProjectDetail({ projectId }: ProjectDetailProps) {
+  const t = useTranslations();
   const router = useRouter();
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [project, setProject] = useState<Project | null>(null);
@@ -112,7 +115,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       },
       (err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load project");
+          setError(err instanceof Error ? err.message : t("error.loadProjectFailed"));
           setIsLoading(false);
         }
       }
@@ -158,7 +161,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       setSuccessMessage("Project saved successfully!");
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save project");
+      setError(err instanceof Error ? err.message : t("error.saveProjectFailed"));
     } finally {
       setIsSaving(false);
     }
@@ -197,7 +200,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           return;
         }
       }
-      setError(err instanceof Error ? err.message : "Failed to publish project");
+      setError(err instanceof Error ? err.message : t("error.publishProjectFailed"));
     } finally {
       setIsPublishing(false);
     }
@@ -213,7 +216,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       await api.myProjects.delete(project.id);
       router.push("/my-projects");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete project");
+      setError(err instanceof Error ? err.message : t("error.deleteProjectFailed"));
       setIsDeleting(false);
       setShowDeleteDialog(false);
     }
@@ -242,7 +245,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       );
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : "Failed to update image roles"
+        err instanceof Error ? err.message : t("error.updateImageRolesFailed")
       );
     }
   };
@@ -252,7 +255,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       await api.myProjects.deleteImage(projectId, imageId);
       setImages((prev) => prev.filter((img) => img.id !== imageId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete icon");
+      setError(err instanceof Error ? err.message : t("error.deleteIconFailed"));
     }
   };
 
@@ -261,7 +264,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       await api.myProjects.deleteImage(projectId, imageId);
       setImages((prev) => prev.filter((img) => img.id !== imageId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete image");
+      setError(err instanceof Error ? err.message : t("error.deleteImageFailed"));
     }
   };
 
@@ -317,7 +320,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         </div>
         <div>
           <Link href="/my-projects" className="text-sm text-accent hover:text-accent-hover transition-colors">
-            Back to my projects
+            <Translatable tKey="projects.backToMyProjects">{t("projects.backToMyProjects")}</Translatable>
           </Link>
         </div>
       </div>
@@ -327,9 +330,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   if (!project) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground text-sm mb-4">Project not found</p>
+        <p className="text-muted-foreground text-sm mb-4">
+          <Translatable tKey="projects.notFound">{t("projects.notFound")}</Translatable>
+        </p>
         <Link href="/my-projects" className="text-sm text-accent hover:text-accent-hover transition-colors">
-          Back to my projects
+          <Translatable tKey="projects.backToMyProjects">{t("projects.backToMyProjects")}</Translatable>
         </Link>
       </div>
     );
@@ -395,13 +400,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                 {isPublishing ? (
                   <ArrowPathIcon className="w-4 h-4 animate-spin" />
                 ) : (
-                  "Publish"
+                  <Translatable tKey="projects.publishButton">{t("projects.publishButton")}</Translatable>
                 )}
               </button>
             )}
             <button
               onClick={() => setShowDeleteDialog(true)}
-              title="Delete"
+              title={t("projects.deleteButton")}
               className="p-2 rounded-lg text-muted-foreground border border-border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
             >
               <TrashIcon className="w-4 h-4" />
@@ -438,13 +443,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
       <div className="py-6 text-center">
         <Link href="/my-projects" className="text-sm text-accent hover:text-accent-hover transition-colors">
-          Back to my projects
+          <Translatable tKey="projects.backToMyProjects">{t("projects.backToMyProjects")}</Translatable>
         </Link>
       </div>
 
       <DeleteConfirmationDialog
         isOpen={showDeleteDialog}
-        projectTitle={project.title || "Untitled Project"}
+        projectTitle={project.title || t("projects.untitledProject")}
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteDialog(false)}
         isDeleting={isDeleting}

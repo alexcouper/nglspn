@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { CategoryItem } from "@/lib/api";
+import { Translatable } from "@/components/Translatable";
 
 interface CategoryTabsProps {
   categories: CategoryItem[];
@@ -9,6 +11,7 @@ interface CategoryTabsProps {
 }
 
 export function CategoryTabs({ categories, activeCategory }: CategoryTabsProps) {
+  const t = useTranslations();
   return (
     <div className="sticky top-14 z-10 bg-white border-b border-border">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center gap-6">
@@ -16,7 +19,7 @@ export function CategoryTabs({ categories, activeCategory }: CategoryTabsProps) 
           <TabLink
             href="/projects"
             active={!activeCategory}
-            label="Discover"
+            label={t("projects.discoverTab")}
           />
           {categories.map((cat) => (
             <TabLink
@@ -31,7 +34,7 @@ export function CategoryTabs({ categories, activeCategory }: CategoryTabsProps) 
           href="/submit"
           className="hidden sm:inline-block shrink-0 text-sm font-medium bg-accent hover:bg-accent-hover text-white px-3.5 py-1.5 rounded-md transition-colors duration-150"
         >
-          Submit a project
+          <Translatable tKey="projects.submitButton">{t("projects.submitButton")}</Translatable>
         </Link>
       </div>
     </div>

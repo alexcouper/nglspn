@@ -1,6 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { Translatable } from "@/components/Translatable";
 import { BreadcrumbProvider } from "./BreadcrumbContext";
 import { Breadcrumbs } from "./Breadcrumbs";
 
@@ -9,6 +11,7 @@ export default function MyReviewsLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const t = useTranslations();
   const { isReady, isLoading: authLoading } = useRequireAuth();
 
   if (!authLoading && !isReady) {
@@ -21,10 +24,10 @@ export default function MyReviewsLayout({
         <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-              My Reviews
+              <Translatable tKey="myReviews.heading">{t("myReviews.heading")}</Translatable>
             </h1>
             <p className="text-muted-foreground text-sm mt-1">
-              Rank projects for competitions
+              <Translatable tKey="myReviews.subheading">{t("myReviews.subheading")}</Translatable>
             </p>
           </div>
         </section>

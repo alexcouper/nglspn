@@ -1,13 +1,17 @@
-export default function AboutPage() {
+import { getTranslations } from "next-intl/server";
+import { Translatable } from "@/components/Translatable";
+
+export default async function AboutPage() {
+  const t = await getTranslations();
   return (
     <section className="bg-muted py-20 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-14">
           <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
-            Supporting Iceland&apos;s builder ecosystem
+            <Translatable tKey="about.heading">{t("about.heading")}</Translatable>
           </h2>
           <p className="text-muted-foreground max-w-lg mx-auto">
-            Everything you need to share your work and grow with the community.
+            <Translatable tKey="about.subheading">{t("about.subheading")}</Translatable>
           </p>
         </div>
 
@@ -19,10 +23,10 @@ export default function AboutPage() {
               </svg>
             </div>
             <h3 className="font-semibold text-foreground mb-2">
-              Show Your Work
+              <Translatable tKey="about.section1.heading">{t("about.section1.heading")}</Translatable>
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              A space to showcase your side projects and early-stage ideas to the Icelandic tech community.
+              <Translatable tKey="about.section1.description">{t("about.section1.description")}</Translatable>
             </p>
           </div>
 
@@ -33,10 +37,10 @@ export default function AboutPage() {
               </svg>
             </div>
             <h3 className="font-semibold text-foreground mb-2">
-              Get Feedback
+              <Translatable tKey="about.section2.heading">{t("about.section2.heading")}</Translatable>
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Receive valuable feedback from fellow builders and compete for prizes in community competitions.
+              <Translatable tKey="about.section2.description">{t("about.section2.description")}</Translatable>
             </p>
           </div>
 
@@ -47,10 +51,10 @@ export default function AboutPage() {
               </svg>
             </div>
             <h3 className="font-semibold text-foreground mb-2">
-              Share & Grow
+              <Translatable tKey="about.section3.heading">{t("about.section3.heading")}</Translatable>
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Share your experience and skills. Learn from others. Grow your project with the community.
+              <Translatable tKey="about.section3.description">{t("about.section3.description")}</Translatable>
             </p>
           </div>
         </div>

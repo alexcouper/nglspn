@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useEffect, use } from "react";
+import { useTranslations } from "next-intl";
 import { api, type PublicUserProfile } from "@/lib/api";
 import { ReadOnlyProfile } from "@/app/[locale]/profile/ReadOnlyProfile";
+import { Translatable } from "@/components/Translatable";
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
 export default function PublicUserProfilePage({ params }: PageProps) {
+  const t = useTranslations();
   const { id } = use(params);
   const [profile, setProfile] = useState<PublicUserProfile | null>(null);
   const [error, setError] = useState("");
@@ -31,8 +34,8 @@ export default function PublicUserProfilePage({ params }: PageProps) {
   }, [id]);
 
   const fullName = profile
-    ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || "Anonymous"
-    : "Profile";
+    ? [profile.first_name, profile.last_name].filter(Boolean).join(" ") || t("profile.anonymousName")
+    : t("common.profile");
 
   return (
     <main className="min-h-screen bg-muted pt-14">
@@ -57,7 +60,9 @@ export default function PublicUserProfilePage({ params }: PageProps) {
               {error}
             </div>
           ) : !profile ? (
-            <p className="text-muted-foreground text-sm text-center py-12">User not found</p>
+            <p className="text-muted-foreground text-sm text-center py-12">
+              <Translatable tKey="users.notFound">{t("users.notFound")}</Translatable>
+            </p>
           ) : (
             <ReadOnlyProfile profile={profile} />
           )}

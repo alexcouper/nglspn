@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/auth";
 import { buildLoginPath } from "@/lib/auth-routing";
 import { UserMenu } from "./UserMenu";
 import { LocaleSwitcher } from "./LocaleSwitcher";
+import { Translatable } from "./Translatable";
 
 export function Navigation() {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -58,8 +59,8 @@ export function Navigation() {
             <Link href="/" className="text-white font-semibold text-sm tracking-tight mr-2">
               naglasúpan
             </Link>
-            <Link href="/projects" className={linkClass("/projects")}>{t("projects")}</Link>
-            <Link href="/competitions" className={linkClass("/competitions")}>{t("competitions")}</Link>
+            <Link href="/projects" className={linkClass("/projects")}><Translatable tKey="nav.projects">{t("projects")}</Translatable></Link>
+            <Link href="/competitions" className={linkClass("/competitions")}><Translatable tKey="nav.competitions">{t("competitions")}</Translatable></Link>
           </div>
 
           {/* Mobile logo */}
@@ -70,13 +71,13 @@ export function Navigation() {
           {/* Desktop auth */}
           <div className="hidden md:flex items-center gap-6">
             {isAuthenticated && !hasCompletedOnboarding && pathname !== "/onboarding" && (
-              <Link href="/onboarding" className={linkClass("/onboarding")}>{t("continueOnboarding")}</Link>
+              <Link href="/onboarding" className={linkClass("/onboarding")}><Translatable tKey="nav.continueOnboarding">{t("continueOnboarding")}</Translatable></Link>
             )}
             {hasCompletedOnboarding && (
-              <Link href="/my-projects" className={linkClass("/my-projects")}>{t("myProjects")}</Link>
+              <Link href="/my-projects" className={linkClass("/my-projects")}><Translatable tKey="nav.myProjects">{t("myProjects")}</Translatable></Link>
             )}
             {hasCompletedOnboarding && (
-              <Link href="/my-reviews" className={linkClass("/my-reviews")}>{t("myReviews")}</Link>
+              <Link href="/my-reviews" className={linkClass("/my-reviews")}><Translatable tKey="nav.myReviews">{t("myReviews")}</Translatable></Link>
             )}
             {isLoading ? (
               <span className="text-slate-600 text-sm">...</span>
@@ -84,12 +85,12 @@ export function Navigation() {
               <UserMenu />
             ) : (
               <div className="flex items-center gap-3">
-                <Link href={loginHref} className={linkClass("/login")}>{t("login")}</Link>
+                <Link href={loginHref} className={linkClass("/login")}><Translatable tKey="nav.login">{t("login")}</Translatable></Link>
                 <Link
                   href={registerHref}
                   className="text-sm font-medium bg-accent hover:bg-accent-hover text-white px-3.5 py-1.5 rounded-md transition-colors duration-150"
                 >
-                  {t("register")}
+                  <Translatable tKey="nav.register">{t("register")}</Translatable>
                 </Link>
               </div>
             )}
@@ -130,33 +131,33 @@ export function Navigation() {
           </div>
 
           <div className="space-y-0.5 border-b border-slate-100 pb-4 mb-4">
-            <Link href="/projects" className={mobileLinkClass("/projects")} onClick={closeMenu}>{t("projects")}</Link>
-            <Link href="/competitions" className={mobileLinkClass("/competitions")} onClick={closeMenu}>{t("competitions")}</Link>
+            <Link href="/projects" className={mobileLinkClass("/projects")} onClick={closeMenu}><Translatable tKey="nav.projects">{t("projects")}</Translatable></Link>
+            <Link href="/competitions" className={mobileLinkClass("/competitions")} onClick={closeMenu}><Translatable tKey="nav.competitions">{t("competitions")}</Translatable></Link>
           </div>
 
           <div className="space-y-0.5">
             {isAuthenticated && !hasCompletedOnboarding && (
-              <Link href="/onboarding" className={mobileLinkClass("/onboarding")} onClick={closeMenu}>{t("continueOnboarding")}</Link>
+              <Link href="/onboarding" className={mobileLinkClass("/onboarding")} onClick={closeMenu}><Translatable tKey="nav.continueOnboarding">{t("continueOnboarding")}</Translatable></Link>
             )}
             {hasCompletedOnboarding && (
-              <Link href="/my-projects" className={mobileLinkClass("/my-projects")} onClick={closeMenu}>{t("myProjects")}</Link>
+              <Link href="/my-projects" className={mobileLinkClass("/my-projects")} onClick={closeMenu}><Translatable tKey="nav.myProjects">{t("myProjects")}</Translatable></Link>
             )}
             {hasCompletedOnboarding && (
-              <Link href="/my-reviews" className={mobileLinkClass("/my-reviews")} onClick={closeMenu}>{t("myReviews")}</Link>
+              <Link href="/my-reviews" className={mobileLinkClass("/my-reviews")} onClick={closeMenu}><Translatable tKey="nav.myReviews">{t("myReviews")}</Translatable></Link>
             )}
             {isLoading ? (
               <span className="block py-3 text-base text-slate-400">...</span>
             ) : isAuthenticated ? (
               <>
                 {hasCompletedOnboarding && (
-                  <Link href="/profile" className={mobileLinkClass("/profile")} onClick={closeMenu}>{t("profile")}</Link>
+                  <Link href="/profile" className={mobileLinkClass("/profile")} onClick={closeMenu}><Translatable tKey="nav.profile">{t("profile")}</Translatable></Link>
                 )}
                 <div className="border-t border-slate-100 my-3" />
                 <button
                   onClick={() => { logout(); closeMenu(); }}
                   className="block py-3 text-base text-slate-500 hover:text-foreground transition-colors"
                 >
-                  {t("logout")}
+                  <Translatable tKey="nav.logout">{t("logout")}</Translatable>
                 </button>
               </>
             ) : (
@@ -166,14 +167,14 @@ export function Navigation() {
                   className="block w-full text-center py-2.5 text-sm font-medium text-foreground border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
                   onClick={closeMenu}
                 >
-                  {t("login")}
+                  <Translatable tKey="nav.login">{t("login")}</Translatable>
                 </Link>
                 <Link
                   href={registerHref}
                   className="block w-full text-center py-2.5 text-sm font-medium bg-accent text-white rounded-lg hover:bg-accent-hover transition-colors"
                   onClick={closeMenu}
                 >
-                  {t("register")}
+                  <Translatable tKey="nav.register">{t("register")}</Translatable>
                 </Link>
               </div>
             )}

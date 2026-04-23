@@ -18,3 +18,18 @@ class TranslationResponse(Schema):
 
 class TranslationVersionResponse(Schema):
     version: int
+
+
+class TranslationAuditEntryResponse(Schema):
+    changed_at: datetime
+    changed_by: str | None
+    old_text: str
+    new_text: str
+
+
+class TranslationDetailResponse(Schema):
+    locale: str
+    key: str
+    text: str
+    updated_at: datetime | None
+    history: list[TranslationAuditEntryResponse]

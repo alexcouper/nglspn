@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { Translatable } from "@/components/Translatable";
 import { HorizontalScroll } from "../HorizontalScroll";
 
 interface NewArrivalsSectionProps {
@@ -11,13 +13,14 @@ interface NewArrivalsSectionProps {
 }
 
 export function NewArrivalsSection({ projects }: NewArrivalsSectionProps) {
+  const t = useTranslations();
   if (projects.length === 0) return null;
 
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-foreground">
-          New Arrivals
+          <Translatable tKey="projects.newArrivals.heading">{t("projects.newArrivals.heading")}</Translatable>
         </h2>
       </div>
       <HorizontalScroll>

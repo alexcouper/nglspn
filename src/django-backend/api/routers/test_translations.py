@@ -1,5 +1,12 @@
 import pytest
-from hamcrest import assert_that, equal_to, has_entries, has_key, is_not
+from hamcrest import (
+    assert_that,
+    equal_to,
+    has_entries,
+    has_key,
+    has_length,
+    is_not,
+)
 
 from api.auth.jwt import create_access_token
 from apps.translations.models import Translation
@@ -100,3 +107,65 @@ class TestPatchTranslation:
             Translation.objects.filter(locale="is", key="new.key").exists(),
             equal_to(True),
         )
+
+
+@pytest.mark.django_db
+class TestGetTranslationDetail:
+    def test_returns_existing_row_with_text_and_updated_at(self, client) -> None:
+        TranslationFactory(locale="is", key="nav.home", text="Heim")
+
+        response = client.get("/api/i18n/is/nav.home")
+
+        assert_that(response.status_code, equal_to(200))
+        body = response.json()
+        assert_that(body, has_entries(locale="is", key="nav.home", text="Heim"))
+        assert body["updated_at"] is not None
+
+    def test_returns_empty_text_for_missing_row(self, client) -> None:
+        response = client.get("/api/i18n/is/no.such.key")
+
+        assert_that(response.status_code, equal_to(200))
+        body = response.json()
+        assert_that(body["text"], equal_to(""))
+        assert_that(body["updated_at"], equal_to(None))
+        assert_that(body["history"], equal_to([]))
+
+    def test_history_returned_newest_first(self, client) -> None:
+        user = UserFactory(first_name="Alice", last_name="A")
+        t = TranslationFactory(
+            locale="is", key="nav.home", text="Heim", updated_by=user
+        )
+        for txt in ["A", "B", "C"]:
+            t.text = txt
+            t.updated_by = user
+            t.save()
+
+        response = client.get("/api/i18n/is/nav.home")
+
+        body = response.json()
+        # 1 audit on creation + 3 from the loop = 4
+        assert_that(body["history"], has_length(4))
+        assert_that(body["history"][0]["new_text"], equal_to("C"))
+        assert_that(body["history"][-1]["new_text"], equal_to("Heim"))
+
+
+@pytest.mark.django_db
+class TestPatchTranslationContract:
+    def test_response_includes_updated_at(self, client) -> None:
+        user = UserFactory()
+        TranslationFactory(locale="is", key="nav.home", text="Heim")
+
+        response = client.patch(
+            "/api/i18n/is/nav.home",
+            data='{"text":"Forsíða"}',
+            content_type="application/json",
+            **_auth_header(user),
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        body = response.json()
+        assert_that(body["text"], equal_to("Forsíða"))
+        # updated_at must be present and ISO-8601-shaped (popover relies on it
+        # for concurrency checks).
+        assert "updated_at" in body
+        assert "T" in body["updated_at"]

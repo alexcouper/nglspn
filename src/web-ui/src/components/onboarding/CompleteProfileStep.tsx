@@ -1,13 +1,16 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
+import { Translatable } from "@/components/Translatable";
 
 interface CompleteProfileStepProps {
   onComplete: () => void;
 }
 
 export function CompleteProfileStep({ onComplete }: CompleteProfileStepProps) {
+  const t = useTranslations();
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -30,22 +33,22 @@ export function CompleteProfileStep({ onComplete }: CompleteProfileStepProps) {
         });
         onComplete();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to save. Please try again.");
+        setError(err instanceof Error ? err.message : t("error.saveFailed"));
       } finally {
         setIsSaving(false);
       }
     },
-    [firstName, lastName, hasAtLeastOneName, onComplete]
+    [firstName, lastName, hasAtLeastOneName, onComplete, t]
   );
 
   return (
     <>
       <div className="text-center mb-8">
         <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-          Complete your profile
+          <Translatable tKey="onboarding.completeProfile.heading">{t("onboarding.completeProfile.heading")}</Translatable>
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Add your name so others know who you are
+          <Translatable tKey="onboarding.completeProfile.subheading">{t("onboarding.completeProfile.subheading")}</Translatable>
         </p>
       </div>
 
@@ -59,7 +62,7 @@ export function CompleteProfileStep({ onComplete }: CompleteProfileStepProps) {
 
           <div>
             <label htmlFor="firstName" className="label">
-              First Name
+              <Translatable tKey="onboarding.completeProfile.firstNameLabel">{t("onboarding.completeProfile.firstNameLabel")}</Translatable>
             </label>
             <input
               type="text"
@@ -67,14 +70,14 @@ export function CompleteProfileStep({ onComplete }: CompleteProfileStepProps) {
               value={firstName}
               onChange={(e) => setFirstName(e.target.value)}
               className="input"
-              placeholder="Your first name"
+              placeholder={t("onboarding.completeProfile.firstNamePlaceholder")}
               autoFocus
             />
           </div>
 
           <div>
             <label htmlFor="lastName" className="label">
-              Last Name
+              <Translatable tKey="onboarding.completeProfile.lastNameLabel">{t("onboarding.completeProfile.lastNameLabel")}</Translatable>
             </label>
             <input
               type="text"
@@ -82,7 +85,7 @@ export function CompleteProfileStep({ onComplete }: CompleteProfileStepProps) {
               value={lastName}
               onChange={(e) => setLastName(e.target.value)}
               className="input"
-              placeholder="Your last name"
+              placeholder={t("onboarding.completeProfile.lastNamePlaceholder")}
             />
           </div>
 
@@ -91,7 +94,11 @@ export function CompleteProfileStep({ onComplete }: CompleteProfileStepProps) {
             disabled={!hasAtLeastOneName || isSaving}
             className="btn-primary w-full py-2.5"
           >
-            {isSaving ? "Saving..." : "Continue"}
+            {isSaving ? (
+              <Translatable tKey="onboarding.completeProfile.submitting">{t("onboarding.completeProfile.submitting")}</Translatable>
+            ) : (
+              <Translatable tKey="onboarding.completeProfile.submit">{t("onboarding.completeProfile.submit")}</Translatable>
+            )}
           </button>
         </form>
       </div>

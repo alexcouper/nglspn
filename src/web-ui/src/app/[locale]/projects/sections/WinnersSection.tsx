@@ -1,9 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import type { WinnerProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { Translatable } from "@/components/Translatable";
 import { HorizontalScroll } from "../HorizontalScroll";
 
 interface WinnersSectionProps {
@@ -11,13 +13,14 @@ interface WinnersSectionProps {
 }
 
 export function WinnersSection({ winners }: WinnersSectionProps) {
+  const t = useTranslations();
   if (winners.length === 0) return null;
 
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-foreground">
-          Competition Winners
+          <Translatable tKey="projects.winnersSection.heading">{t("projects.winnersSection.heading")}</Translatable>
         </h2>
       </div>
       <HorizontalScroll>

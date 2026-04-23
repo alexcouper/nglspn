@@ -1,6 +1,8 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Dialog } from "@/components/Dialog";
+import { Translatable } from "@/components/Translatable";
 
 interface FinishReviewDialogProps {
   isOpen: boolean;
@@ -15,14 +17,15 @@ export function FinishReviewDialog({
   onCancel,
   isFinishing = false,
 }: FinishReviewDialogProps) {
+  const t = useTranslations();
   return (
     <Dialog isOpen={isOpen} onClose={onCancel}>
       <h2 className="text-base font-semibold text-foreground mb-3">
-        Finish review?
+        <Translatable tKey="reviews.finishDialog.heading">{t("reviews.finishDialog.heading")}</Translatable>
       </h2>
 
       <p className="text-sm text-muted-foreground mb-5">
-        This will lock your rankings. You won&apos;t be able to make changes.
+        <Translatable tKey="reviews.finishDialog.confirmation">{t("reviews.finishDialog.confirmation")}</Translatable>
       </p>
 
       <div className="flex gap-2 justify-end">
@@ -40,7 +43,11 @@ export function FinishReviewDialog({
           disabled={isFinishing}
           className="btn-primary"
         >
-          {isFinishing ? "Finishing..." : "Finish Review"}
+          {isFinishing ? (
+            <Translatable tKey="reviews.finishDialog.finishing">{t("reviews.finishDialog.finishing")}</Translatable>
+          ) : (
+            <Translatable tKey="reviews.finishDialog.finishButton">{t("reviews.finishDialog.finishButton")}</Translatable>
+          )}
         </button>
       </div>
     </Dialog>

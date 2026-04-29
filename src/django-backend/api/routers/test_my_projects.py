@@ -58,12 +58,23 @@ class TestCreateProject:
         )
 
         assert_that(response.status_code, equal_to(201))
+        body = response.json()
         assert_that(
-            response.json(),
+            body,
             has_entries(
                 website_url="https://example.com",
                 title="example.com",
                 owner=has_entries(id=str(user.id)),
+                creator=has_entries(id=str(user.id)),
+            ),
+        )
+        assert_that(body["contributors"], has_length(1))
+        assert_that(
+            body["contributors"][0],
+            has_entries(
+                user=has_entries(id=str(user.id)),
+                role="owner",
+                full_edit=True,
             ),
         )
 

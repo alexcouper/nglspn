@@ -23,6 +23,7 @@ from .models import (
     ImageVariant,
     Project,
     ProjectCategory,
+    ProjectContributor,
     ProjectImage,
     ProjectRanking,
     ProjectStatus,
@@ -295,6 +296,16 @@ class ProjectAdmin(admin.ModelAdmin):
     ) -> None:
         updated = queryset.filter(is_featured=True).update(is_featured=False)
         self.message_user(request, f"{updated} projects were unfeatured.")
+
+
+@admin.register(ProjectContributor)
+class ProjectContributorAdmin(admin.ModelAdmin):
+    list_display = ("project", "user", "role", "full_edit", "created_at")
+    list_filter = ("role", "full_edit", "created_at")
+    search_fields = ("project__title", "user__email")
+    autocomplete_fields = ("project", "user")
+    readonly_fields = ("id", "created_at")
+    ordering = ("project", "role", "created_at")
 
 
 @admin.register(ProjectView)

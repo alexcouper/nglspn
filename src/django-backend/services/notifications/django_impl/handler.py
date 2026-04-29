@@ -22,7 +22,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
     def create_notifications_for_discussion(self, discussion_id: UUID) -> None:
         try:
             discussion = Discussion.objects.select_related(
-                "project__owner", "author", "parent"
+                "project", "author", "parent"
             ).get(id=discussion_id)
         except Discussion.DoesNotExist:
             logger.warning("Discussion %s not found for notification", discussion_id)
@@ -30,10 +30,13 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
 
         recipients: set[User] = set()
 
-        # 1. Project owner
-        project_owner = discussion.project.owner
-        if project_owner and project_owner.is_active:
-            recipients.add(project_owner)
+        # 1. Every project contributor with full edit
+        project_contributors = discussion.project.contributors.filter(
+            full_edit=True
+        ).select_related("user")
+        for contributor in project_contributors:
+            if contributor.user and contributor.user.is_active:
+                recipients.add(contributor.user)
 
         # 2. Root discussion author (if this is a reply)
         root = discussion.parent if discussion.parent else discussion

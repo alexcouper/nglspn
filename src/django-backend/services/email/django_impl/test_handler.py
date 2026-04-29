@@ -48,13 +48,14 @@ class TestSendVerificationEmail:
 @pytest.mark.django_db
 class TestSendProjectApprovedEmail:
     def test_sends_email_with_html_and_text_parts(self, mailoutbox):
-        project = ProjectFactory(title="Awesome App")
+        recipient = UserFactory(first_name="Awesome")
+        project = ProjectFactory(title="Awesome App", owner=recipient)
 
-        handler.send_project_approved_email(project)
+        handler.send_project_approved_email(project, recipient)
 
         assert len(mailoutbox) == 1
         email = mailoutbox[0]
-        assert email.to == [project.owner.email]
+        assert email.to == [recipient.email]
         assert email.subject == "Your project has been approved - Naglasúpan"
         assert "Awesome App" in email.body
         assert len(email.alternatives) == 1

@@ -12,6 +12,7 @@ from apps.projects.models import (
     Competition,
     Project,
     ProjectCategory,
+    ProjectContributor,
     ProjectImage,
     ProjectStatus,
 )
@@ -169,9 +170,16 @@ class DjangoProjectQuery(ProjectQueryInterface):
 
     def get_for_owner(self, project_id: UUID, owner_id: UUID) -> Project:
         try:
-            return _base_queryset().get(id=project_id, owner_id=owner_id)
+            project = _base_queryset().get(id=project_id)
         except Project.DoesNotExist:
             raise ProjectNotFoundError from None
+        if not ProjectContributor.objects.filter(
+            project=project,
+            user_id=owner_id,
+            full_edit=True,
+        ).exists():
+            raise ProjectNotFoundError
+        return project
 
     def list_approved(
         self,
@@ -220,7 +228,14 @@ class DjangoProjectQuery(ProjectQueryInterface):
         )
 
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]:
-        return _base_queryset().filter(owner_id=owner_id)
+        return (
+            _base_queryset()
+            .filter(
+                contributors__user_id=owner_id,
+                contributors__full_edit=True,
+            )
+            .distinct()
+        )
 
     def count_pending(self) -> int:
         return Project.objects.filter(status=ProjectStatus.PENDING).count()

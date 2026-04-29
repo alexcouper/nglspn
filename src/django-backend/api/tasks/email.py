@@ -30,8 +30,10 @@ def send_password_reset_email(user_id: str, code: str, expires_minutes: int) -> 
 def send_project_approved_email(project_id: str) -> None:
     from services import HANDLERS  # noqa: PLC0415
 
-    project = Project.objects.select_related("owner").get(id=UUID(project_id))
-    HANDLERS.email.send_project_approved_email(project)
+    project = Project.objects.get(id=UUID(project_id))
+    contributors = project.contributors.filter(full_edit=True).select_related("user")
+    for contributor in contributors:
+        HANDLERS.email.send_project_approved_email(project, contributor.user)
 
 
 @task()

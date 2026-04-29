@@ -16,6 +16,7 @@ from api.schemas.project import (
 from apps.projects.models import Project, ProjectStatus
 from services import REPO
 from services.project.exceptions import ProjectNotFoundError
+from services.project.permissions import user_can_edit_project
 
 if TYPE_CHECKING:
     from apps.users.models import User
@@ -179,7 +180,7 @@ def get_project(
         return project
 
     user = _get_user_from_request(request)
-    if user and (project.owner == user or user.is_superuser):
+    if user and (user.is_superuser or user_can_edit_project(project, user)):
         return project
 
     return 404, {"detail": "Project not found"}

@@ -2,7 +2,7 @@ import logging
 from typing import Any
 
 from django.db.models import QuerySet
-from django.http import HttpRequest
+from django.http import Http404, HttpRequest
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from ninja import Router
@@ -25,6 +25,7 @@ from apps.projects.models import (
     ProjectImage,
     UploadStatus,
 )
+from apps.users.models import User
 from services import HANDLERS, REPO
 from services.project.exceptions import (
     InvalidProjectStateError,
@@ -33,7 +34,17 @@ from services.project.exceptions import (
     PublishPreconditionsError,
 )
 from services.project.handler_interface import CreateProjectInput, UpdateProjectInput
+from services.project.permissions import user_can_edit_project
 from services.storage import storage_service
+
+
+def _get_editable_project_or_404(project_id: str, user: User) -> Project:
+    """Fetch a project the caller can edit. 404 on missing or no permission."""
+    project = get_object_or_404(Project, id=project_id)
+    if not user_can_edit_project(project, user):
+        raise Http404
+    return project
+
 
 # Image upload configuration
 MAX_IMAGES_PER_PROJECT = 10
@@ -203,7 +214,7 @@ def get_upload_url(
     project_id: str,
     payload: PresignedUploadRequest,
 ) -> PresignedUploadResponse | tuple[int, dict[str, str]]:
-    project = get_object_or_404(Project, id=project_id, owner=request.auth)
+    project = _get_editable_project_or_404(project_id, request.auth)
 
     # Validate content type
     if payload.content_type not in ALLOWED_CONTENT_TYPES:
@@ -270,7 +281,7 @@ def complete_upload(
     image_id: str,
     payload: ImageUploadCompleteRequest,
 ) -> ProjectImage | tuple[int, dict[str, str]]:
-    project = get_object_or_404(Project, id=project_id, owner=request.auth)
+    project = _get_editable_project_or_404(project_id, request.auth)
     image = get_object_or_404(
         ProjectImage,
         id=image_id,
@@ -314,7 +325,7 @@ def update_image_roles(
     image_id: str,
     payload: UpdateImageRolesRequest,
 ) -> ProjectImage | tuple[int, dict[str, str]]:
-    project = get_object_or_404(Project, id=project_id, owner=request.auth)
+    project = _get_editable_project_or_404(project_id, request.auth)
     image = get_object_or_404(
         ProjectImage,
         id=image_id,
@@ -353,7 +364,7 @@ def delete_image(
     project_id: str,
     image_id: str,
 ) -> tuple[int, None]:
-    project = get_object_or_404(Project, id=project_id, owner=request.auth)
+    project = _get_editable_project_or_404(project_id, request.auth)
     image = get_object_or_404(ProjectImage, id=image_id, project=project)
 
     # Delete variant files from S3 (DB rows cascade-delete with the image)

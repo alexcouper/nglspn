@@ -10,8 +10,10 @@ from apps.notifications.models import Notification, NotificationCadence
 from apps.projects.models import (
     Competition,
     CompetitionReviewer,
+    ContributorRole,
     Project,
     ProjectCategory,
+    ProjectContributor,
     ProjectImage,
     ProjectRanking,
     ProjectStatus,
@@ -77,6 +79,7 @@ class ProjectCategoryFactory(factory.django.DjangoModelFactory):
 class ProjectFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Project
+        skip_postgeneration_save = True
 
     title = factory.Faker("company")
     tagline = factory.Faker("catch_phrase")
@@ -91,6 +94,19 @@ class ProjectFactory(factory.django.DjangoModelFactory):
         if not create or not extracted:
             return
         self.tags.add(*extracted)
+
+    @factory.post_generation
+    def _contributor(self, create, extracted, **kwargs) -> None:
+        # Mirror the production invariant: every project has at least one
+        # OWNER contributor with full_edit. Tests that need a different shape
+        # can pass `_contributor=False` and add their own rows.
+        if not create or extracted is False or self.owner_id is None:
+            return
+        ProjectContributor.objects.get_or_create(
+            project=self,
+            user=self.owner,
+            defaults={"role": ContributorRole.OWNER, "full_edit": True},
+        )
 
 
 class DiscussionFactory(factory.django.DjangoModelFactory):

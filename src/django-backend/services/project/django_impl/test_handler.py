@@ -4,7 +4,9 @@ import pytest
 
 from apps.projects.models import (
     CompetitionStatus,
+    ContributorRole,
     Project,
+    ProjectContributor,
     ProjectStatus,
 )
 from services.project.django_impl import DjangoProjectHandler
@@ -56,6 +58,43 @@ class TestCreate:
         assert project.owner_id == user.id
         assert project.website_url == "https://example.com"
         assert project.status == ProjectStatus.DRAFT
+
+    def test_creates_owner_contributor(self):
+        user = UserFactory()
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="My Project",
+        )
+
+        project = handler.create(data)
+
+        contributors = list(project.contributors.all())
+        assert len(contributors) == 1
+        assert contributors[0].user_id == user.id
+        assert contributors[0].role == ContributorRole.OWNER
+        assert contributors[0].full_edit is True
+
+    def test_create_rolls_back_when_contributor_insert_fails(self):
+        user = UserFactory()
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="Atomic",
+        )
+
+        with (
+            patch.object(
+                ProjectContributor.objects,
+                "create",
+                side_effect=RuntimeError("forced"),
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            handler.create(data)
+
+        assert not Project.objects.filter(title="Atomic").exists()
+        assert not ProjectContributor.objects.filter(user_id=user.id).exists()
 
     def test_derives_title_from_url_when_not_provided(self):
         user = UserFactory()

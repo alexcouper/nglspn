@@ -3553,6 +3553,28 @@
         "title": "TagWithCategoryResponse",
         "type": "object"
       },
+      "ContributorSummary": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/PublicUserProfile"
+          },
+          "role": {
+            "title": "Role",
+            "type": "string"
+          },
+          "full_edit": {
+            "title": "Full Edit",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user",
+          "role",
+          "full_edit"
+        ],
+        "title": "ContributorSummary",
+        "type": "object"
+      },
       "ImageVariantResponse": {
         "properties": {
           "size": {
@@ -3793,6 +3815,17 @@
           "owner": {
             "$ref": "#/components/schemas/PublicUserProfile"
           },
+          "creator": {
+            "$ref": "#/components/schemas/PublicUserProfile"
+          },
+          "contributors": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ContributorSummary"
+            },
+            "title": "Contributors",
+            "type": "array"
+          },
           "tags": {
             "items": {
               "$ref": "#/components/schemas/TagWithCategoryResponse"
@@ -3833,6 +3866,7 @@
           "approved_at",
           "published_at",
           "owner",
+          "creator",
           "tags"
         ],
         "title": "ProjectResponse",
@@ -4582,6 +4616,17 @@
           "owner": {
             "$ref": "#/components/schemas/UserResponse"
           },
+          "creator": {
+            "$ref": "#/components/schemas/PublicUserProfile"
+          },
+          "contributors": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ContributorSummary"
+            },
+            "title": "Contributors",
+            "type": "array"
+          },
           "tags": {
             "items": {
               "$ref": "#/components/schemas/TagWithCategoryResponse"
@@ -4622,6 +4667,7 @@
           "approved_at",
           "published_at",
           "owner",
+          "creator",
           "tags"
         ],
         "title": "ReviewProjectDetailResponse",

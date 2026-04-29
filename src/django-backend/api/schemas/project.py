@@ -60,6 +60,12 @@ class WonCompetitionInfo(Schema):
     slug: str
 
 
+class ContributorSummary(Schema):
+    user: PublicUserProfile
+    role: str
+    full_edit: bool
+
+
 class ProjectResponse(Schema):
     id: UUID
     slug: str | None
@@ -76,9 +82,19 @@ class ProjectResponse(Schema):
     approved_at: datetime | None
     published_at: datetime | None
     owner: PublicUserProfile
+    creator: PublicUserProfile
+    contributors: list[ContributorSummary] = []
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
+
+    @staticmethod
+    def resolve_creator(obj: Any) -> Any:
+        return obj.owner
+
+    @staticmethod
+    def resolve_contributors(obj: Any) -> list[Any]:
+        return list(obj.contributors.select_related("user").all())
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:

@@ -20,7 +20,9 @@ class EmailHandlerInterface(ABC):
     ) -> None: ...
 
     @abstractmethod
-    def send_project_approved_email(self, project: Project) -> None: ...
+    def send_project_approved_email(
+        self, project: Project, recipient: User
+    ) -> None: ...
 
     @abstractmethod
     def send_new_project_notification(

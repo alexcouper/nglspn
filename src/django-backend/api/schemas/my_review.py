@@ -5,9 +5,13 @@ from uuid import UUID
 
 from ninja import Schema
 
-from api.schemas.project import ProjectImageResponse, WonCompetitionInfo
+from api.schemas.project import (
+    ContributorSummary,
+    ProjectImageResponse,
+    WonCompetitionInfo,
+)
 from api.schemas.tag import TagWithCategoryResponse
-from api.schemas.user import UserResponse
+from api.schemas.user import PublicUserProfile, UserResponse
 
 
 class ReviewStatusEnum(str, Enum):
@@ -97,9 +101,19 @@ class ReviewProjectDetailResponse(Schema):
     approved_at: datetime | None
     published_at: datetime | None
     owner: UserResponse
+    creator: PublicUserProfile
+    contributors: list[ContributorSummary] = []
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
+
+    @staticmethod
+    def resolve_creator(obj: Any) -> Any:
+        return obj.owner
+
+    @staticmethod
+    def resolve_contributors(obj: Any) -> list[Any]:
+        return list(obj.contributors.select_related("user").all())
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:

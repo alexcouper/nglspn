@@ -10,7 +10,9 @@ from django.utils import timezone
 from apps.projects.models import (
     Competition,
     CompetitionStatus,
+    ContributorRole,
     Project,
+    ProjectContributor,
     ProjectImage,
     ProjectStatus,
     UploadStatus,
@@ -24,6 +26,7 @@ from services.project.exceptions import (
     PublishPreconditionsError,
 )
 from services.project.handler_interface import ProjectHandlerInterface
+from services.project.permissions import user_id_can_edit_project
 
 from .query import get_title_from_url
 
@@ -59,6 +62,17 @@ def _enqueue_new_project_notification(project: Project) -> None:
         )
 
 
+def _get_editable_project(project_id: UUID, user_id: UUID) -> Project:
+    """Fetch a project and assert the user has full-edit access."""
+    try:
+        project = Project.objects.get(id=project_id)
+    except Project.DoesNotExist:
+        raise ProjectNotFoundError from None
+    if not user_id_can_edit_project(project, user_id):
+        raise ProjectNotFoundError
+    return project
+
+
 class DjangoProjectHandler(ProjectHandlerInterface):
     def create(self, data: CreateProjectInput) -> Project:
         valid_tags = None
@@ -85,20 +99,24 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         if not project_fields.get("title"):
             project_fields["title"] = get_title_from_url(data.website_url)
 
-        project = Project.objects.create(**project_fields)
+        with transaction.atomic():
+            project = Project.objects.create(**project_fields)
+            ProjectContributor.objects.create(
+                project=project,
+                user_id=data.owner_id,
+                role=ContributorRole.OWNER,
+                full_edit=True,
+            )
 
-        if valid_tags is not None:
-            project.tags.set(valid_tags)
+            if valid_tags is not None:
+                project.tags.set(valid_tags)
 
         return project
 
     def update(
         self, project_id: UUID, owner_id: UUID, data: UpdateProjectInput
     ) -> Project:
-        try:
-            project = Project.objects.get(id=project_id, owner_id=owner_id)
-        except Project.DoesNotExist:
-            raise ProjectNotFoundError from None
+        project = _get_editable_project(project_id, owner_id)
 
         valid_tags = _validate_tags(data.tag_ids) if data.tag_ids else None
 
@@ -139,17 +157,11 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         return project
 
     def delete(self, project_id: UUID, owner_id: UUID) -> None:
-        try:
-            project = Project.objects.get(id=project_id, owner_id=owner_id)
-        except Project.DoesNotExist:
-            raise ProjectNotFoundError from None
+        project = _get_editable_project(project_id, owner_id)
         project.delete()
 
     def resubmit(self, project_id: UUID, owner_id: UUID) -> Project:
-        try:
-            project = Project.objects.get(id=project_id, owner_id=owner_id)
-        except Project.DoesNotExist:
-            raise ProjectNotFoundError from None
+        project = _get_editable_project(project_id, owner_id)
 
         if project.status != ProjectStatus.REJECTED:
             msg = "Only rejected projects can be resubmitted"
@@ -162,10 +174,7 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         return project
 
     def publish(self, project_id: UUID, owner_id: UUID) -> Project:
-        try:
-            project = Project.objects.get(id=project_id, owner_id=owner_id)
-        except Project.DoesNotExist:
-            raise ProjectNotFoundError from None
+        project = _get_editable_project(project_id, owner_id)
 
         if project.status != ProjectStatus.DRAFT:
             msg = "Only draft projects can be published"

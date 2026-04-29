@@ -1,5 +1,5 @@
 APP:=web-ui
-.PHONY: help install dev run-non-dev build-app lint clean build publish e2e
+.PHONY: help install dev run-non-dev build-app lint test test-watch clean build publish e2e
 
 include ../../scripts/app-common.mk
 help:
@@ -9,6 +9,8 @@ help:
 	@echo "  run-non-dev   Build and run prod-mode server on LAN (reproduce prod bugs)"
 	@echo "  build-app     Build the Next.js application"
 	@echo "  lint          Run linter"
+	@echo "  test          Run unit tests (vitest)"
+	@echo "  test-watch    Run unit tests in watch mode"
 	@echo "  e2e           Run Playwright e2e tests"
 	@echo "  clean         Clean build artifacts"
 	@echo "  build         Build Docker image (requires TAG=xxx)"
@@ -37,6 +39,12 @@ build-app:
 
 lint:
 	npm run lint
+
+test:
+	npm run test
+
+test-watch:
+	npm run test:watch
 
 e2e:
 	@if [ -f ../../.backend-port ]; then \

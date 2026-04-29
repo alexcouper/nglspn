@@ -9,8 +9,8 @@ from apps.users.seed import (
     COMMUNITY_USER_EMAIL,
     COMMUNITY_USER_INFO,
     COMMUNITY_USER_KENNITALA,
-    get_community_user,
 )
+from services import REPO
 from tests.factories import UserFactory
 
 
@@ -76,7 +76,7 @@ class TestCommunityUserSeed:
 
     def test_get_community_user_returns_seed(self):
         # The seed migration runs as part of test DB setup.
-        user = get_community_user()
+        user = REPO.users.get_community_user()
         assert user.kennitala == COMMUNITY_USER_KENNITALA
         assert user.is_system_user is True
 
@@ -84,4 +84,4 @@ class TestCommunityUserSeed:
         self._delete_seed()
 
         with pytest.raises(RuntimeError):
-            get_community_user()
+            REPO.users.get_community_user()

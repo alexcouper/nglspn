@@ -1,15 +1,20 @@
-"""Seed and accessor for the Community/Unowned system user.
+"""Constants and seed helper for the Community/Unowned system user.
 
-Used by both the data migration that establishes the seed at deploy time and
-by the `ensure_community_user` management command for local seeding / recovery.
+The constants are imported by the runtime (services, handler) for foreign-key
+references. `ensure_community_user` is the idempotent writer used by the
+management command for local seeding / recovery; the data migration in
+`migrations/0015_community_user_seed.py` keeps its own inline copy of the
+literal values to remain frozen against future edits to this module.
+
+Runtime read access goes through `REPO.users.get_community_user()`, not this
+module — this file deliberately holds no query helper so apps/ stays free of
+service-layer logic.
 """
 
 from __future__ import annotations
 
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
-
-from django.contrib.auth import get_user_model
 
 if TYPE_CHECKING:
     from apps.users.models import User
@@ -42,15 +47,3 @@ def ensure_community_user(user_model: Any) -> User:
         user.set_unusable_password()
         user.save(update_fields=["password"])
     return user
-
-
-def get_community_user() -> User:
-    user_model = get_user_model()
-    try:
-        return user_model.objects.get(id=COMMUNITY_USER_ID)
-    except user_model.DoesNotExist as exc:
-        msg = (
-            "Community/Unowned seed user not found. The seed migration may "
-            "not have run."
-        )
-        raise RuntimeError(msg) from exc

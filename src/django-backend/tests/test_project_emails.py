@@ -13,7 +13,7 @@ from apps.projects.models import (
     ProjectContributor,
     ProjectStatus,
 )
-from services import HANDLERS
+from services import HANDLERS, REPO
 
 from .factories import ProjectFactory, UserFactory
 
@@ -98,6 +98,30 @@ class TestSendProjectApprovedEmailTask:
             email_tasks.send_project_approved_email.call(str(project.id))
 
         mock_send.assert_not_called()
+
+    def test_does_not_send_to_system_user_contributor(self):
+        # Community-suggested project: seed user is OWNER (full_edit=True),
+        # real user is SUGGESTER (full_edit=True). Approval email must skip
+        # the seed account.
+        suggester = UserFactory()
+        seed = REPO.users.get_community_user()
+        project = ProjectFactory(creator=suggester, _contributor=False)
+        ProjectContributor.objects.create(
+            project=project, user=seed, role=ContributorRole.OWNER, full_edit=True
+        )
+        ProjectContributor.objects.create(
+            project=project,
+            user=suggester,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+
+        with patch.object(HANDLERS.email, "send_project_approved_email") as mock_send:
+            email_tasks.send_project_approved_email.call(str(project.id))
+
+        recipients = {call.args[1].id for call in mock_send.call_args_list}
+        assert recipients == {suggester.id}
+        assert seed.id not in recipients
 
 
 @pytest.mark.django_db

@@ -5,7 +5,7 @@ from hamcrest import assert_that, equal_to
 
 from apps.notifications.models import Notification, NotificationCadence
 from apps.projects.models import ContributorRole, ProjectContributor, ProjectStatus
-from apps.users.seed import get_community_user
+from services import REPO
 from services.notifications.django_impl.handler import DjangoNotificationHandler
 from tests.factories import DiscussionFactory, ProjectFactory, UserFactory
 
@@ -46,7 +46,7 @@ class TestRecipientDetermination:
             status=ProjectStatus.APPROVED,
             _contributor=False,
         )
-        seed = get_community_user()
+        seed = REPO.users.get_community_user()
         ProjectContributor.objects.create(
             project=project, user=seed, role=ContributorRole.OWNER, full_edit=True
         )

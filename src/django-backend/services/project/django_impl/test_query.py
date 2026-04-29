@@ -149,7 +149,9 @@ class TestListForOwner:
 
         assert result.count() == 2
 
-    def test_returns_projects_for_non_creator_full_edit_contributor(self):
+    def test_excludes_projects_where_user_is_only_a_suggester(self):
+        # `list_for_owner` is creator-scoped; SUGGESTER-only projects belong
+        # in `list_suggestions_for`.
         contributor = UserFactory()
         project = ProjectFactory()
         ProjectContributor.objects.create(
@@ -157,20 +159,6 @@ class TestListForOwner:
             user=contributor,
             role=ContributorRole.SUGGESTER,
             full_edit=True,
-        )
-
-        result = query.list_for_owner(contributor.id)
-
-        assert {p.id for p in result} == {project.id}
-
-    def test_excludes_projects_where_full_edit_is_false(self):
-        contributor = UserFactory()
-        project = ProjectFactory()
-        ProjectContributor.objects.create(
-            project=project,
-            user=contributor,
-            role=ContributorRole.SUGGESTER,
-            full_edit=False,
         )
 
         result = query.list_for_owner(contributor.id)

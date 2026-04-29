@@ -9,7 +9,7 @@ from apps.projects.models import (
     ProjectContributor,
     ProjectStatus,
 )
-from apps.users.seed import get_community_user
+from services import REPO
 from services.project.django_impl import DjangoProjectHandler
 from services.project.exceptions import (
     InvalidProjectStateError,
@@ -111,7 +111,7 @@ class TestCreate:
         assert project.creator_id == user.id
         contributors = list(project.contributors.all())
         assert len(contributors) == 2
-        seed = get_community_user()
+        seed = REPO.users.get_community_user()
         seed_owner = next(c for c in contributors if c.role == ContributorRole.OWNER)
         suggester = next(c for c in contributors if c.role == ContributorRole.SUGGESTER)
         assert seed_owner.user_id == seed.id

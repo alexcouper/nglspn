@@ -4,6 +4,7 @@ from typing import TYPE_CHECKING
 
 from django.contrib.auth import get_user_model
 
+from apps.users.seed import COMMUNITY_USER_ID
 from services.users.exceptions import UserNotFoundError
 from services.users.query_interface import UserQueryInterface
 
@@ -47,3 +48,14 @@ class DjangoUserQuery(UserQueryInterface):
         if email_type == "competition_results":
             return base.filter(email_opt_in_competition_results=True)
         return user_model.objects.none()
+
+    def get_community_user(self) -> User:
+        user_model = get_user_model()
+        try:
+            return user_model.objects.get(id=COMMUNITY_USER_ID)
+        except user_model.DoesNotExist as exc:
+            msg = (
+                "Community/Unowned seed user not found. The seed migration may "
+                "not have run."
+            )
+            raise RuntimeError(msg) from exc

@@ -102,24 +102,20 @@ class DjangoProjectHandler(ProjectHandlerInterface):
 
         with transaction.atomic():
             project = Project.objects.create(**project_fields)
+            # FK constant avoids a DB roundtrip; if the seed migration never
+            # ran, the FK insert will fail loudly.
+            owner_user_id = COMMUNITY_USER_ID if data.community_owned else data.owner_id
+            ProjectContributor.objects.create(
+                project=project,
+                user_id=owner_user_id,
+                role=ContributorRole.OWNER,
+                full_edit=True,
+            )
             if data.community_owned:
-                ProjectContributor.objects.create(
-                    project=project,
-                    user_id=COMMUNITY_USER_ID,
-                    role=ContributorRole.OWNER,
-                    full_edit=True,
-                )
                 ProjectContributor.objects.create(
                     project=project,
                     user_id=data.owner_id,
                     role=ContributorRole.SUGGESTER,
-                    full_edit=True,
-                )
-            else:
-                ProjectContributor.objects.create(
-                    project=project,
-                    user_id=data.owner_id,
-                    role=ContributorRole.OWNER,
                     full_edit=True,
                 )
 

@@ -17,7 +17,12 @@ from hamcrest import (
     not_,
 )
 
-from api.auth.jwt import create_access_token, create_refresh_token, verify_token
+from api.auth.jwt import (
+    create_access_token,
+    create_refresh_token,
+    create_reset_token,
+    verify_token,
+)
 from apps.users.models import PasswordResetCode
 from tests.factories import UserFactory
 
@@ -271,6 +276,34 @@ class TestSystemUserAuthGates:
         )
 
         assert_that(response.status_code, equal_to(400))
+
+    def test_reset_password_rejects_system_user(self, client, db) -> None:
+        # Defense-in-depth: if a reset token is somehow minted for a system
+        # user, the reset endpoint must still refuse.
+        system_user = UserFactory(is_system_user=True)
+        token = create_reset_token(system_user.id)
+
+        response = client.post(
+            "/api/auth/reset-password",
+            data=json.dumps({"reset_token": token, "new_password": "newpassword123"}),
+            content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(400))
+
+    def test_resend_verification_rejects_system_user(self, client, db) -> None:
+        # `create_verification_code` itself is not gated; reachability is
+        # blocked upstream because every entry point is auth-gated and
+        # system users cannot pass the JWT auth check.
+        system_user = UserFactory(is_system_user=True, is_verified=False)
+        token = create_access_token(system_user.id)
+
+        response = client.post(
+            "/api/auth/resend-verification",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+
+        assert_that(response.status_code, equal_to(401))
 
 
 class TestGetCurrentUser:

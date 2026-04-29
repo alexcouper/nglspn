@@ -6,7 +6,7 @@ from uuid import UUID
 
 from django.db.models import QuerySet
 
-from apps.projects.models import Project
+from apps.projects.models import Project, ProjectContributor
 
 
 @dataclass(frozen=True)
@@ -88,6 +88,11 @@ class ProjectQueryInterface(ABC):
 
     @abstractmethod
     def list_suggestions_for(self, user_id: UUID) -> QuerySet[Project]: ...
+
+    @abstractmethod
+    def list_notifiable_contributors(
+        self, project_id: UUID
+    ) -> QuerySet[ProjectContributor]: ...
 
     @abstractmethod
     def count_pending(self) -> int: ...

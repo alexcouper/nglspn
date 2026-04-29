@@ -18,7 +18,7 @@ from apps.projects.models import (
     ProjectContributor,
     ProjectStatus,
 )
-from apps.users.seed import get_community_user
+from services import REPO
 from tests.factories import ProjectFactory, ProjectImageFactory
 
 
@@ -51,6 +51,27 @@ class TestListMyProjects:
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json(), has_length(3))
 
+    def test_excludes_projects_where_user_is_only_suggester(
+        self,
+        client,
+        user,
+        auth_headers,
+    ) -> None:
+        # /my-projects is creator-scoped; SUGGESTER-only projects belong in
+        # /suggestions.
+        project = ProjectFactory()  # owned by someone else
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+
+        response = client.get("/api/my/projects", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_length(0))
+
 
 class TestListMySuggestions:
     def test_empty_when_no_suggestions(self, client, user, auth_headers) -> None:
@@ -65,7 +86,7 @@ class TestListMySuggestions:
         self, client, user, auth_headers
     ) -> None:
         # A community-suggested project: seed user is OWNER, calling user is SUGGESTER.
-        seed = get_community_user()
+        seed = REPO.users.get_community_user()
         project = ProjectFactory(creator=user, _contributor=False)
         ProjectContributor.objects.create(
             project=project, user=seed, role=ContributorRole.OWNER, full_edit=True
@@ -127,7 +148,7 @@ class TestCommunityOwnedCreate:
 
         assert_that(response.status_code, equal_to(201))
         body = response.json()
-        seed = get_community_user()
+        seed = REPO.users.get_community_user()
         roles = {c["user"]["id"]: c["role"] for c in body["contributors"]}
         assert_that(roles[str(seed.id)], equal_to("owner"))
         assert_that(roles[str(user.id)], equal_to("suggester"))
@@ -516,23 +537,9 @@ class TestAuthorization:
 
 
 class TestNonCreatorContributorAccess:
-    def test_full_edit_contributor_can_list_project(
-        self, client, user, auth_headers
-    ) -> None:
-        project = ProjectFactory()
-        ProjectContributor.objects.create(
-            project=project,
-            user=user,
-            role=ContributorRole.SUGGESTER,
-            full_edit=True,
-        )
-
-        response = client.get("/api/my/projects", **auth_headers)
-
-        assert_that(response.status_code, equal_to(200))
-        ids = [item["id"] for item in response.json()]
-        assert_that(ids, equal_to([str(project.id)]))
-
+    # `/my-projects` is creator-scoped (see TestListMyProjects above);
+    # SUGGESTER-only listings live at `/my-projects/suggestions`. This class
+    # asserts that contributor-scoped *write* access still works.
     def test_full_edit_contributor_can_get_project(
         self, client, user, auth_headers
     ) -> None:

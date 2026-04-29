@@ -10,6 +10,7 @@ from django.utils import timezone
 
 from apps.projects.models import (
     Competition,
+    ContributorRole,
     Project,
     ProjectCategory,
     ProjectContributor,
@@ -234,8 +235,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
         )
 
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]:
-        # /my-projects is creator-scoped per `community-submissions` spec.
-        # Projects where the caller is only a SUGGESTER appear in /suggestions.
+        # Creator-scoped: SUGGESTER-only projects appear in /suggestions instead.
         return _base_queryset().filter(creator_id=owner_id)
 
     def list_suggestions_for(self, user_id: UUID) -> QuerySet[Project]:
@@ -243,10 +243,22 @@ class DjangoProjectQuery(ProjectQueryInterface):
             _base_queryset()
             .filter(
                 contributors__user_id=user_id,
-                contributors__role="suggester",
+                contributors__role=ContributorRole.SUGGESTER,
                 contributors__full_edit=True,
             )
             .distinct()
+        )
+
+    def list_notifiable_contributors(
+        self, project_id: UUID
+    ) -> QuerySet[ProjectContributor]:
+        return (
+            ProjectContributor.objects.filter(
+                project_id=project_id,
+                full_edit=True,
+            )
+            .exclude(user__is_system_user=True)
+            .select_related("user")
         )
 
     def count_pending(self) -> int:

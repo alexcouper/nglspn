@@ -14,11 +14,13 @@ export class ApiRequestError extends Error {
   }
 }
 
+type RefreshOutcome = "refreshed" | "invalid" | "transient";
+
 export class APIClient {
   private accessToken: string | null = null;
   private refreshToken: string | null = null;
   private isRefreshing: boolean = false;
-  private refreshPromise: Promise<boolean> | null = null;
+  private refreshPromise: Promise<RefreshOutcome> | null = null;
 
   constructor() {
     if (typeof window !== "undefined") {
@@ -58,9 +60,9 @@ export class APIClient {
     return !!this.accessToken;
   }
 
-  private async attemptTokenRefresh(): Promise<boolean> {
+  private async attemptTokenRefresh(): Promise<RefreshOutcome> {
     if (!this.refreshToken) {
-      return false;
+      return "invalid";
     }
 
     if (this.isRefreshing && this.refreshPromise) {
@@ -68,7 +70,7 @@ export class APIClient {
     }
 
     this.isRefreshing = true;
-    this.refreshPromise = (async () => {
+    this.refreshPromise = (async (): Promise<RefreshOutcome> => {
       try {
         const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
           method: "POST",
@@ -76,15 +78,19 @@ export class APIClient {
           body: JSON.stringify({ refresh_token: this.refreshToken }),
         });
 
+        if (response.status === 401) {
+          return "invalid";
+        }
+
         if (!response.ok) {
-          return false;
+          return "transient";
         }
 
         const data = await response.json();
         this.setAccessToken(data.access_token);
-        return true;
+        return "refreshed";
       } catch {
-        return false;
+        return "transient";
       } finally {
         this.isRefreshing = false;
         this.refreshPromise = null;
@@ -116,16 +122,24 @@ export class APIClient {
     });
 
     if (response.status === 401 && !isRetry) {
-      const refreshed = await this.attemptTokenRefresh();
-      if (refreshed) {
+      const outcome = await this.attemptTokenRefresh();
+
+      if (outcome === "refreshed") {
         return this.request<T>(endpoint, options, true);
       }
 
-      this.clearTokens();
-      if (typeof window !== "undefined") {
-        window.dispatchEvent(new Event("auth:logout"));
+      if (outcome === "invalid") {
+        this.clearTokens();
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("auth:logout"));
+        }
+        throw new Error("Unauthorized");
       }
-      throw new Error("Unauthorized");
+
+      // transient: refresh request failed for non-credential reasons
+      // (network blip, 5xx, rate limit). Keep tokens so the user stays
+      // logged in once connectivity / the backend recovers.
+      throw new Error("Token refresh failed");
     }
 
     if (response.status === 401) {

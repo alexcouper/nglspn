@@ -22,8 +22,8 @@ export class MyProjectsClient {
     return this.client.request<Project[]>("/api/my/projects");
   }
 
-  async listSuggestions(): Promise<Project[]> {
-    return this.client.request<Project[]>("/api/my/projects/suggestions");
+  async listTipOffs(): Promise<Project[]> {
+    return this.client.request<Project[]>("/api/my/projects/tip-offs");
   }
 
   async get(id: string): Promise<Project> {

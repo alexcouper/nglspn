@@ -48,7 +48,7 @@ class TestGetForOwner:
         ProjectContributor.objects.create(
             project=project,
             user=contributor,
-            role=ContributorRole.SUGGESTER,
+            role=ContributorRole.TIPSTER,
             full_edit=True,
         )
 
@@ -62,7 +62,7 @@ class TestGetForOwner:
         ProjectContributor.objects.create(
             project=project,
             user=contributor,
-            role=ContributorRole.SUGGESTER,
+            role=ContributorRole.TIPSTER,
             full_edit=False,
         )
 
@@ -103,17 +103,17 @@ class TestUserCanEdit:
 
         assert query.user_can_edit(project.id, owner.id) is False
 
-    def test_returns_true_for_suggester_with_full_edit(self):
+    def test_returns_true_for_tipster_with_full_edit(self):
         project = ProjectFactory()
-        suggester = UserFactory()
+        tipster = UserFactory()
         ProjectContributor.objects.create(
             project=project,
-            user=suggester,
-            role=ContributorRole.SUGGESTER,
+            user=tipster,
+            role=ContributorRole.TIPSTER,
             full_edit=True,
         )
 
-        assert query.user_can_edit(project.id, suggester.id) is True
+        assert query.user_can_edit(project.id, tipster.id) is True
 
 
 @pytest.mark.django_db
@@ -149,15 +149,15 @@ class TestListForOwner:
 
         assert result.count() == 2
 
-    def test_excludes_projects_where_user_is_only_a_suggester(self):
-        # `list_for_owner` is creator-scoped; SUGGESTER-only projects belong
-        # in `list_suggestions_for`.
+    def test_excludes_projects_where_user_is_only_a_tipster(self):
+        # `list_for_owner` is creator-scoped; TIPSTER-only projects belong
+        # in `list_tip_offs_for`.
         contributor = UserFactory()
         project = ProjectFactory()
         ProjectContributor.objects.create(
             project=project,
             user=contributor,
-            role=ContributorRole.SUGGESTER,
+            role=ContributorRole.TIPSTER,
             full_edit=True,
         )
 
@@ -166,8 +166,8 @@ class TestListForOwner:
         assert result.count() == 0
 
     def test_excludes_community_owned_projects_where_user_is_creator(self):
-        # Community tipoffs: the suggester is the creator, but the OWNER
-        # contributor is the seed system user. They belong in /suggestions only.
+        # Community tip-offs: the tipster is the creator, but the OWNER
+        # contributor is the seed system user. They belong in /tip-offs only.
         user = UserFactory()
         system_user = UserFactory(is_system_user=True)
         project = ProjectFactory(creator=user, _contributor=False)
@@ -180,7 +180,7 @@ class TestListForOwner:
         ProjectContributor.objects.create(
             project=project,
             user=user,
-            role=ContributorRole.SUGGESTER,
+            role=ContributorRole.TIPSTER,
             full_edit=True,
         )
 

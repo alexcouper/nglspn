@@ -1274,10 +1274,10 @@
         ]
       }
     },
-    "/api/my/projects/suggestions": {
+    "/api/my/projects/tip-offs": {
       "get": {
-        "operationId": "api_routers_my_projects_list_my_suggestions",
-        "summary": "List My Suggestions",
+        "operationId": "api_routers_my_projects_list_my_tip_offs",
+        "summary": "List My Tip Offs",
         "parameters": [],
         "responses": {
           "200": {
@@ -3612,7 +3612,7 @@
           "role": {
             "enum": [
               "owner",
-              "suggester"
+              "tipster"
             ],
             "title": "Role",
             "type": "string"

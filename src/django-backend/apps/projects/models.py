@@ -124,7 +124,7 @@ class Project(models.Model):
 
 class ContributorRole(models.TextChoices):
     OWNER = "owner", "Owner"
-    SUGGESTER = "suggester", "Suggester"
+    TIPSTER = "tipster", "Tipster"
 
 
 class ProjectContributor(models.Model):
@@ -146,7 +146,7 @@ class ProjectContributor(models.Model):
     class Meta:
         db_table = "project_contributors"
         unique_together = ("project", "user")
-        # "owner" < "suggester" lexicographically, so ascending puts OWNER first.
+        # "owner" < "tipster" lexicographically, so ascending puts OWNER first.
         ordering = ["role", "created_at"]
 
     def __str__(self) -> str:

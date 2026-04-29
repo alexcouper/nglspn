@@ -71,14 +71,14 @@ class TestSendProjectApprovedEmailTask:
         ProjectContributor.objects.create(
             project=project,
             user=extra_full_edit,
-            role=ContributorRole.SUGGESTER,
+            role=ContributorRole.TIPSTER,
             full_edit=True,
         )
         no_edit = UserFactory()
         ProjectContributor.objects.create(
             project=project,
             user=no_edit,
-            role=ContributorRole.SUGGESTER,
+            role=ContributorRole.TIPSTER,
             full_edit=False,
         )
 
@@ -100,19 +100,19 @@ class TestSendProjectApprovedEmailTask:
         mock_send.assert_not_called()
 
     def test_does_not_send_to_system_user_contributor(self):
-        # Community-suggested project: seed user is OWNER (full_edit=True),
-        # real user is SUGGESTER (full_edit=True). Approval email must skip
+        # Community tip-off project: seed user is OWNER (full_edit=True),
+        # real user is TIPSTER (full_edit=True). Approval email must skip
         # the seed account.
-        suggester = UserFactory()
+        tipster = UserFactory()
         seed = REPO.users.get_community_user()
-        project = ProjectFactory(creator=suggester, _contributor=False)
+        project = ProjectFactory(creator=tipster, _contributor=False)
         ProjectContributor.objects.create(
             project=project, user=seed, role=ContributorRole.OWNER, full_edit=True
         )
         ProjectContributor.objects.create(
             project=project,
-            user=suggester,
-            role=ContributorRole.SUGGESTER,
+            user=tipster,
+            role=ContributorRole.TIPSTER,
             full_edit=True,
         )
 
@@ -120,7 +120,7 @@ class TestSendProjectApprovedEmailTask:
             email_tasks.send_project_approved_email.call(str(project.id))
 
         recipients = {call.args[1].id for call in mock_send.call_args_list}
-        assert recipients == {suggester.id}
+        assert recipients == {tipster.id}
         assert seed.id not in recipients
 
 

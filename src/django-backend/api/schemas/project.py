@@ -63,7 +63,7 @@ class WonCompetitionInfo(Schema):
 
 class ContributorSummary(Schema):
     user: PublicUserProfile
-    role: Literal["owner", "suggester"]
+    role: Literal["owner", "tipster"]
     full_edit: bool
 
 

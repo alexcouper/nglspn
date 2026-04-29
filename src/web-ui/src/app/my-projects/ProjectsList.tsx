@@ -31,7 +31,6 @@ function ProjectCard({ project }: { project: Project }) {
   const mainImage =
     project.images?.find((img) => img.is_main) || project.images?.[0];
   const thumbUrl = mainImage ? pickVariant(mainImage.variants, "thumb") : null;
-  const suggested = project.community_owned;
 
   return (
     <Link
@@ -71,11 +70,6 @@ function ProjectCard({ project }: { project: Project }) {
               </p>
             </div>
             <div className="flex items-center gap-2">
-              {suggested && (
-                <span className="badge badge-neutral" data-testid="suggested-badge">
-                  Suggested
-                </span>
-              )}
               <StatusBadge status={project.status} />
             </div>
           </div>
@@ -93,7 +87,7 @@ function ProjectCard({ project }: { project: Project }) {
 export function ProjectsList() {
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [projects, setProjects] = useState<Project[]>([]);
-  const [suggestions, setSuggestions] = useState<Project[]>([]);
+  const [tipOffs, setTipOffs] = useState<Project[]>([]);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(true);
 
@@ -104,12 +98,12 @@ export function ProjectsList() {
 
     Promise.all([
       api.myProjects.list(),
-      api.myProjects.listSuggestions(),
+      api.myProjects.listTipOffs(),
     ]).then(
-      ([projects, suggestions]) => {
+      ([projects, tipOffs]) => {
         if (!cancelled) {
           setProjects(projects);
-          setSuggestions(suggestions);
+          setTipOffs(tipOffs);
           setIsLoading(false);
         }
       },
@@ -175,11 +169,11 @@ export function ProjectsList() {
         )}
       </section>
 
-      {suggestions.length > 0 && (
-        <section className="mt-8" data-testid="suggested-section">
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">Suggested</h2>
+      {tipOffs.length > 0 && (
+        <section className="mt-8" data-testid="tip-offs-section">
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">Tip Offs</h2>
           <div className="space-y-3">
-            {suggestions.map((project) => (
+            {tipOffs.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
           </div>

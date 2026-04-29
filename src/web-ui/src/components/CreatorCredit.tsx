@@ -13,7 +13,7 @@ export function CreatorCredit({ project }: CreatorCreditProps) {
   const creatorIsOwner = displayOwners.some(
     (c) => c.user.id === project.creator.id
   );
-  const label = creatorIsOwner ? "Created by" : "Suggested by";
+  const label = creatorIsOwner ? "Created by" : "Tipped off by";
   const creatorName = getAuthorName(project.creator);
 
   return (

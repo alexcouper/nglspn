@@ -39,10 +39,10 @@ class TestRecipientDetermination:
         assert_that(notifications[0].recipient_id, equal_to(owner.id))
 
     def test_system_user_contributor_is_not_notified(self, handler) -> None:
-        # Community-suggested project: seed user is OWNER, real user is SUGGESTER.
-        suggester = UserFactory(notification_frequency=_IMMEDIATE)
+        # Community tip-off project: seed user is OWNER, real user is TIPSTER.
+        tipster = UserFactory(notification_frequency=_IMMEDIATE)
         project = ProjectFactory(
-            creator=suggester,
+            creator=tipster,
             status=ProjectStatus.APPROVED,
             _contributor=False,
         )
@@ -52,8 +52,8 @@ class TestRecipientDetermination:
         )
         ProjectContributor.objects.create(
             project=project,
-            user=suggester,
-            role=ContributorRole.SUGGESTER,
+            user=tipster,
+            role=ContributorRole.TIPSTER,
             full_edit=True,
         )
         author = UserFactory()
@@ -64,7 +64,7 @@ class TestRecipientDetermination:
 
         recipient_ids = set(Notification.objects.values_list("recipient_id", flat=True))
         assert_that(seed.id in recipient_ids, equal_to(False))
-        assert_that(suggester.id in recipient_ids, equal_to(True))
+        assert_that(tipster.id in recipient_ids, equal_to(True))
 
     def test_root_discussion_by_owner_creates_no_notifications(self, handler) -> None:
         owner = UserFactory()
@@ -161,7 +161,7 @@ class TestRecipientDetermination:
         ProjectContributor.objects.create(
             project=project,
             user=extra_full_edit,
-            role=ContributorRole.SUGGESTER,
+            role=ContributorRole.TIPSTER,
             full_edit=True,
         )
         author = UserFactory()
@@ -180,7 +180,7 @@ class TestRecipientDetermination:
         ProjectContributor.objects.create(
             project=project,
             user=no_edit,
-            role=ContributorRole.SUGGESTER,
+            role=ContributorRole.TIPSTER,
             full_edit=False,
         )
         author = UserFactory()

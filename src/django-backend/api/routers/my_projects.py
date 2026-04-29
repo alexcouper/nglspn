@@ -68,13 +68,13 @@ def list_my_projects(request: HttpRequest) -> QuerySet[Project]:
 
 
 @router.get(
-    "/suggestions",
+    "/tip-offs",
     response={200: list[ProjectResponse], 401: Error},
     auth=auth,
     tags=["My Projects"],
 )
-def list_my_suggestions(request: HttpRequest) -> QuerySet[Project]:
-    return REPO.project.list_suggestions_for(request.auth.id)
+def list_my_tip_offs(request: HttpRequest) -> QuerySet[Project]:
+    return REPO.project.list_tip_offs_for(request.auth.id)
 
 
 @router.post(

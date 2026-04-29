@@ -97,7 +97,7 @@ class TestCreate:
         assert not Project.objects.filter(title="Atomic").exists()
         assert not ProjectContributor.objects.filter(user_id=user.id).exists()
 
-    def test_community_owned_create_attaches_seed_owner_and_suggester(self):
+    def test_community_owned_create_attaches_seed_owner_and_tipster(self):
         user = UserFactory()
         data = CreateProjectInput(
             owner_id=user.id,
@@ -113,11 +113,11 @@ class TestCreate:
         assert len(contributors) == 2
         seed = REPO.users.get_community_user()
         seed_owner = next(c for c in contributors if c.role == ContributorRole.OWNER)
-        suggester = next(c for c in contributors if c.role == ContributorRole.SUGGESTER)
+        tipster = next(c for c in contributors if c.role == ContributorRole.TIPSTER)
         assert seed_owner.user_id == seed.id
         assert seed_owner.full_edit is True
-        assert suggester.user_id == user.id
-        assert suggester.full_edit is True
+        assert tipster.user_id == user.id
+        assert tipster.full_edit is True
 
     def test_community_owned_create_rolls_back_atomically(self):
         user = UserFactory()
@@ -319,12 +319,12 @@ class TestPublish:
             status=CompetitionStatus.ACCEPTING_APPLICATIONS
         )
         # Build a draft via the handler so the contributor wiring matches the
-        # real community-owned shape (seed user as OWNER + user as SUGGESTER).
+        # real community-owned shape (seed user as OWNER + user as TIPSTER).
         data = CreateProjectInput(
             owner_id=user.id,
             website_url="https://example.com",
             title="Community Pub",
-            description="A community-suggested project",
+            description="A community tip-off project",
             community_owned=True,
         )
         project = handler.create(data)

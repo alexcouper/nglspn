@@ -115,7 +115,7 @@ class DjangoProjectHandler(ProjectHandlerInterface):
                 ProjectContributor.objects.create(
                     project=project,
                     user_id=data.owner_id,
-                    role=ContributorRole.SUGGESTER,
+                    role=ContributorRole.TIPSTER,
                     full_edit=True,
                 )
 

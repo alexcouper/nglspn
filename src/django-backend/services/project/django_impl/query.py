@@ -256,17 +256,17 @@ class DjangoProjectQuery(ProjectQueryInterface):
         )
 
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]:
-        # Creator-scoped, but community-owned projects belong in /suggestions:
-        # for tipoffs the suggester is the creator, so without this exclusion
-        # they would appear in both /my-projects and /my-projects/suggestions.
+        # Creator-scoped, but community-owned projects belong in /tip-offs:
+        # for tip-offs the tipster is the creator, so without this exclusion
+        # they would appear in both /my-projects and /my-projects/tip-offs.
         return _base_queryset().filter(creator_id=owner_id, community_owned=False)
 
-    def list_suggestions_for(self, user_id: UUID) -> QuerySet[Project]:
+    def list_tip_offs_for(self, user_id: UUID) -> QuerySet[Project]:
         return (
             _base_queryset()
             .filter(
                 contributors__user_id=user_id,
-                contributors__role=ContributorRole.SUGGESTER,
+                contributors__role=ContributorRole.TIPSTER,
                 contributors__full_edit=True,
             )
             .distinct()

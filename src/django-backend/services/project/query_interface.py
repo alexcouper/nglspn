@@ -87,6 +87,9 @@ class ProjectQueryInterface(ABC):
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]: ...
 
     @abstractmethod
+    def list_suggestions_for(self, user_id: UUID) -> QuerySet[Project]: ...
+
+    @abstractmethod
     def count_pending(self) -> int: ...
 
     @abstractmethod

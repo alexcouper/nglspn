@@ -18,6 +18,7 @@ from apps.projects.models import (
     ProjectContributor,
     ProjectStatus,
 )
+from apps.users.seed import get_community_user
 from tests.factories import ProjectFactory, ProjectImageFactory
 
 
@@ -49,6 +50,109 @@ class TestListMyProjects:
 
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json(), has_length(3))
+
+
+class TestListMySuggestions:
+    def test_empty_when_no_suggestions(self, client, user, auth_headers) -> None:
+        ProjectFactory(owner=user)  # self-owned
+
+        response = client.get("/api/my/projects/suggestions", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_length(0))
+
+    def test_returns_community_suggested_projects(
+        self, client, user, auth_headers
+    ) -> None:
+        # A community-suggested project: seed user is OWNER, calling user is SUGGESTER.
+        seed = get_community_user()
+        project = ProjectFactory(creator=user, _contributor=False)
+        ProjectContributor.objects.create(
+            project=project, user=seed, role=ContributorRole.OWNER, full_edit=True
+        )
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+
+        response = client.get("/api/my/projects/suggestions", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_length(1))
+        assert_that(
+            response.json()[0],
+            has_entries(id=str(project.id)),
+        )
+
+    def test_excludes_suggester_with_full_edit_disabled(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()  # owned by someone else
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.SUGGESTER,
+            full_edit=False,
+        )
+
+        response = client.get("/api/my/projects/suggestions", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_length(0))
+
+    def test_requires_authentication(self, client, db) -> None:
+        response = client.get("/api/my/projects/suggestions")
+
+        assert_that(response.status_code, equal_to(401))
+
+
+class TestCommunityOwnedCreate:
+    def test_community_owned_flag_creates_seed_owner_and_suggester(
+        self, client, user, auth_headers
+    ) -> None:
+        payload = {
+            "website_url": "https://made-by-someone-else.com",
+            "description": "A cool community-suggested project",
+            "community_owned": True,
+        }
+
+        response = client.post(
+            "/api/my/projects",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(201))
+        body = response.json()
+        seed = get_community_user()
+        roles = {c["user"]["id"]: c["role"] for c in body["contributors"]}
+        assert_that(roles[str(seed.id)], equal_to("owner"))
+        assert_that(roles[str(user.id)], equal_to("suggester"))
+        assert_that(body["creator"]["id"], equal_to(str(user.id)))
+
+    def test_default_omitted_creates_self_owned(
+        self, client, user, auth_headers
+    ) -> None:
+        payload = {
+            "website_url": "https://my-own-project.com",
+            "description": "Self-owned",
+        }
+
+        response = client.post(
+            "/api/my/projects",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(201))
+        body = response.json()
+        assert_that(body["contributors"], has_length(1))
+        assert_that(body["contributors"][0]["role"], equal_to("owner"))
+        assert_that(body["contributors"][0]["user"]["id"], equal_to(str(user.id)))
 
 
 class TestCreateProject:

@@ -18,6 +18,7 @@ class CreateProjectInput:
     tech_stack: list[str] | None = None
     tag_ids: list[UUID] | None = None
     competition_id: UUID | None = None
+    community_owned: bool = False
 
 
 @dataclass

@@ -9,6 +9,7 @@ from apps.projects.models import (
     ProjectContributor,
     ProjectStatus,
 )
+from apps.users.seed import get_community_user
 from services.project.django_impl import DjangoProjectHandler
 from services.project.exceptions import (
     InvalidProjectStateError,
@@ -94,6 +95,60 @@ class TestCreate:
             handler.create(data)
 
         assert not Project.objects.filter(title="Atomic").exists()
+        assert not ProjectContributor.objects.filter(user_id=user.id).exists()
+
+    def test_community_owned_create_attaches_seed_owner_and_suggester(self):
+        user = UserFactory()
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="Community Submitted",
+            community_owned=True,
+        )
+
+        project = handler.create(data)
+
+        assert project.creator_id == user.id
+        contributors = list(project.contributors.all())
+        assert len(contributors) == 2
+        seed = get_community_user()
+        seed_owner = next(c for c in contributors if c.role == ContributorRole.OWNER)
+        suggester = next(c for c in contributors if c.role == ContributorRole.SUGGESTER)
+        assert seed_owner.user_id == seed.id
+        assert seed_owner.full_edit is True
+        assert suggester.user_id == user.id
+        assert suggester.full_edit is True
+
+    def test_community_owned_create_rolls_back_atomically(self):
+        user = UserFactory()
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="Atomic Community",
+            community_owned=True,
+        )
+
+        original_create = ProjectContributor.objects.create
+        call_count = {"n": 0}
+
+        def flaky_create(*args, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 2:
+                msg = "forced"
+                raise RuntimeError(msg)
+            return original_create(*args, **kwargs)
+
+        with (
+            patch.object(
+                ProjectContributor.objects,
+                "create",
+                side_effect=flaky_create,
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            handler.create(data)
+
+        assert not Project.objects.filter(title="Atomic Community").exists()
         assert not ProjectContributor.objects.filter(user_id=user.id).exists()
 
     def test_derives_title_from_url_when_not_provided(self):
@@ -257,6 +312,32 @@ class TestPublish:
             result = handler.publish(project.id, user.id)
 
         assert result.status == ProjectStatus.PENDING
+
+    def test_publish_community_owned_skips_competition_entry(self):
+        user = UserFactory()
+        competition = CompetitionFactory(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS
+        )
+        # Build a draft via the handler so the contributor wiring matches the
+        # real community-owned shape (seed user as OWNER + user as SUGGESTER).
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="Community Pub",
+            description="A community-suggested project",
+            community_owned=True,
+        )
+        project = handler.create(data)
+        # Bring the draft up to publish-ready state.
+        project.status = ProjectStatus.DRAFT
+        project.save(update_fields=["status"])
+        ProjectImageFactory(project=project, is_main=True, upload_status="uploaded")
+
+        with patch("api.tasks.email.send_new_project_notification"):
+            result = handler.publish(project.id, user.id)
+
+        assert result.status == ProjectStatus.PENDING
+        assert project not in competition.projects.all()
 
     def test_publish_missing_title_raises(self):
         user = UserFactory()

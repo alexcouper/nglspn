@@ -30,9 +30,11 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
 
         recipients: set[User] = set()
 
-        project_contributors = discussion.project.contributors.filter(
-            full_edit=True
-        ).select_related("user")
+        project_contributors = (
+            discussion.project.contributors.filter(full_edit=True)
+            .exclude(user__is_system_user=True)
+            .select_related("user")
+        )
         for contributor in project_contributors:
             if contributor.user and contributor.user.is_active:
                 recipients.add(contributor.user)

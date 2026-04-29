@@ -19,6 +19,7 @@ class ProjectCreate(Schema):
     demo_url: str | None = None
     tech_stack: list[str] | None = None
     tag_ids: list[UUID] | None = None
+    community_owned: bool = False
 
 
 class PublishMissingFieldsResponse(Schema):

@@ -31,7 +31,11 @@ def send_project_approved_email(project_id: str) -> None:
     from services import HANDLERS  # noqa: PLC0415
 
     project = Project.objects.get(id=UUID(project_id))
-    contributors = project.contributors.filter(full_edit=True).select_related("user")
+    contributors = (
+        project.contributors.filter(full_edit=True)
+        .exclude(user__is_system_user=True)
+        .select_related("user")
+    )
     for contributor in contributors:
         HANDLERS.email.send_project_approved_email(project, contributor.user)
 

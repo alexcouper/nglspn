@@ -19,6 +19,7 @@ from apps.projects.models import (
 )
 from apps.projects.slugs import assign_unique_slug
 from apps.tags.models import Tag, TagStatus
+from apps.users.seed import COMMUNITY_USER_ID
 from services.project.exceptions import (
     InvalidProjectStateError,
     InvalidTagsError,
@@ -101,12 +102,26 @@ class DjangoProjectHandler(ProjectHandlerInterface):
 
         with transaction.atomic():
             project = Project.objects.create(**project_fields)
-            ProjectContributor.objects.create(
-                project=project,
-                user_id=data.owner_id,
-                role=ContributorRole.OWNER,
-                full_edit=True,
-            )
+            if data.community_owned:
+                ProjectContributor.objects.create(
+                    project=project,
+                    user_id=COMMUNITY_USER_ID,
+                    role=ContributorRole.OWNER,
+                    full_edit=True,
+                )
+                ProjectContributor.objects.create(
+                    project=project,
+                    user_id=data.owner_id,
+                    role=ContributorRole.SUGGESTER,
+                    full_edit=True,
+                )
+            else:
+                ProjectContributor.objects.create(
+                    project=project,
+                    user_id=data.owner_id,
+                    role=ContributorRole.OWNER,
+                    full_edit=True,
+                )
 
             if valid_tags is not None:
                 project.tags.set(valid_tags)
@@ -200,15 +215,22 @@ class DjangoProjectHandler(ProjectHandlerInterface):
                 ]
             )
 
-            open_competition = (
-                Competition.objects.filter(
-                    status=CompetitionStatus.ACCEPTING_APPLICATIONS
+            community_owned = ProjectContributor.objects.filter(
+                project=project,
+                role=ContributorRole.OWNER,
+                user__is_system_user=True,
+            ).exists()
+
+            if not community_owned:
+                open_competition = (
+                    Competition.objects.filter(
+                        status=CompetitionStatus.ACCEPTING_APPLICATIONS
+                    )
+                    .order_by("-start_date")
+                    .first()
                 )
-                .order_by("-start_date")
-                .first()
-            )
-            if open_competition is not None:
-                open_competition.projects.add(project)
+                if open_competition is not None:
+                    open_competition.projects.add(project)
 
         _enqueue_new_project_notification(project)
 

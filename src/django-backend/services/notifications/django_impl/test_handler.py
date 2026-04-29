@@ -5,6 +5,7 @@ from hamcrest import assert_that, equal_to
 
 from apps.notifications.models import Notification, NotificationCadence
 from apps.projects.models import ContributorRole, ProjectContributor, ProjectStatus
+from apps.users.seed import get_community_user
 from services.notifications.django_impl.handler import DjangoNotificationHandler
 from tests.factories import DiscussionFactory, ProjectFactory, UserFactory
 
@@ -36,6 +37,34 @@ class TestRecipientDetermination:
         notifications = Notification.objects.all()
         assert_that(notifications.count(), equal_to(1))
         assert_that(notifications[0].recipient_id, equal_to(owner.id))
+
+    def test_system_user_contributor_is_not_notified(self, handler) -> None:
+        # Community-suggested project: seed user is OWNER, real user is SUGGESTER.
+        suggester = UserFactory(notification_frequency=_IMMEDIATE)
+        project = ProjectFactory(
+            creator=suggester,
+            status=ProjectStatus.APPROVED,
+            _contributor=False,
+        )
+        seed = get_community_user()
+        ProjectContributor.objects.create(
+            project=project, user=seed, role=ContributorRole.OWNER, full_edit=True
+        )
+        ProjectContributor.objects.create(
+            project=project,
+            user=suggester,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+        author = UserFactory()
+        discussion = DiscussionFactory(project=project, author=author)
+
+        with patch(_SEND_EMAIL):
+            handler.create_notifications_for_discussion(discussion.id)
+
+        recipient_ids = set(Notification.objects.values_list("recipient_id", flat=True))
+        assert_that(seed.id in recipient_ids, equal_to(False))
+        assert_that(suggester.id in recipient_ids, equal_to(True))
 
     def test_root_discussion_by_owner_creates_no_notifications(self, handler) -> None:
         owner = UserFactory()

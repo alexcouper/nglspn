@@ -109,7 +109,7 @@ def login(
 
     user = authenticate(request, username=payload.email, password=payload.password)
 
-    if not user:
+    if not user or user.is_system_user:
         return 401, {"detail": "Invalid credentials"}
 
     # Send verification email if user is not verified
@@ -159,7 +159,7 @@ def refresh_token_endpoint(
     except UserNotFoundError:
         return 401, {"detail": "User not found"}
 
-    if not user.is_active:
+    if not user.is_active or user.is_system_user:
         return 401, {"detail": "Account is inactive"}
 
     access_token = create_access_token(user.id)
@@ -342,6 +342,9 @@ def reset_password(
     try:
         user = REPO.users.get_by_id(UUID(token_payload["user_id"]))
     except UserNotFoundError:
+        return 400, Error(detail="Invalid or expired reset token")
+
+    if user.is_system_user:
         return 400, Error(detail="Invalid or expired reset token")
 
     HANDLERS.users.reset_password(user, payload.new_password)

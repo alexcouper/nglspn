@@ -234,10 +234,16 @@ class DjangoProjectQuery(ProjectQueryInterface):
         )
 
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]:
+        # /my-projects is creator-scoped per `community-submissions` spec.
+        # Projects where the caller is only a SUGGESTER appear in /suggestions.
+        return _base_queryset().filter(creator_id=owner_id)
+
+    def list_suggestions_for(self, user_id: UUID) -> QuerySet[Project]:
         return (
             _base_queryset()
             .filter(
-                contributors__user_id=owner_id,
+                contributors__user_id=user_id,
+                contributors__role="suggester",
                 contributors__full_edit=True,
             )
             .distinct()

@@ -1274,6 +1274,47 @@
         ]
       }
     },
+    "/api/my/projects/suggestions": {
+      "get": {
+        "operationId": "api_routers_my_projects_list_my_suggestions",
+        "summary": "List My Suggestions",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "My Projects"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
     "/api/my/projects/{project_id}": {
       "get": {
         "operationId": "api_routers_my_projects_get_my_project",
@@ -4132,6 +4173,11 @@
               }
             ],
             "title": "Tag Ids"
+          },
+          "community_owned": {
+            "default": false,
+            "title": "Community Owned",
+            "type": "boolean"
           }
         },
         "required": [

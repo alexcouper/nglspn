@@ -67,6 +67,16 @@ def list_my_projects(request: HttpRequest) -> QuerySet[Project]:
     return REPO.project.list_for_owner(request.auth.id)
 
 
+@router.get(
+    "/suggestions",
+    response={200: list[ProjectResponse], 401: Error},
+    auth=auth,
+    tags=["My Projects"],
+)
+def list_my_suggestions(request: HttpRequest) -> QuerySet[Project]:
+    return REPO.project.list_suggestions_for(request.auth.id)
+
+
 @router.post(
     "",
     response={201: ProjectResponse, 400: Error, 401: Error},
@@ -88,6 +98,7 @@ def create_project(
         demo_url=payload.demo_url,
         tech_stack=payload.tech_stack,
         tag_ids=payload.tag_ids,
+        community_owned=payload.community_owned,
     )
     try:
         project = HANDLERS.project.create(data)

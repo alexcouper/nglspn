@@ -27,17 +27,11 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function isCommunitySuggested(project: Project): boolean {
-  return project.contributors.some(
-    (c) => c.role === "owner" && c.user.is_system_user
-  );
-}
-
 function ProjectCard({ project }: { project: Project }) {
   const mainImage =
     project.images?.find((img) => img.is_main) || project.images?.[0];
   const thumbUrl = mainImage ? pickVariant(mainImage.variants, "thumb") : null;
-  const suggested = isCommunitySuggested(project);
+  const suggested = project.community_owned;
 
   return (
     <Link

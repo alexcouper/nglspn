@@ -4,7 +4,7 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from django.db.models import Count, Prefetch, Q, QuerySet
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q, QuerySet
 from django.db.models.functions import Coalesce, Lower
 from django.utils import timezone
 
@@ -34,30 +34,51 @@ def _top_level_discussion_count() -> Count:
     return Count("discussions", filter=Q(discussions__parent__isnull=True))
 
 
+def _community_owned_annotation() -> Exists:
+    # A project is community-owned iff it has an OWNER contributor that's a
+    # system user (the seed Community user). Exposed as a queryable annotation
+    # so we can both filter on and serialize it without a model column.
+    return Exists(
+        ProjectContributor.objects.filter(
+            project_id=OuterRef("pk"),
+            role=ContributorRole.OWNER,
+            user__is_system_user=True,
+        )
+    )
+
+
 def _discover_queryset() -> QuerySet[Project]:
-    return Project.objects.select_related("creator", "category").prefetch_related(
-        "won_competitions",
-        Prefetch(
-            "images",
-            queryset=ProjectImage.objects.filter(
-                upload_status="uploaded"
-            ).prefetch_related("variants"),
-        ),
+    return (
+        Project.objects.select_related("creator", "category")
+        .prefetch_related(
+            "won_competitions",
+            Prefetch(
+                "images",
+                queryset=ProjectImage.objects.filter(
+                    upload_status="uploaded"
+                ).prefetch_related("variants"),
+            ),
+        )
+        .annotate(community_owned=_community_owned_annotation())
     )
 
 
 def _base_queryset() -> QuerySet[Project]:
-    return Project.objects.select_related("creator").prefetch_related(
-        "tags",
-        "tags__category",
-        "won_competitions",
-        "contributors__user",
-        Prefetch(
-            "images",
-            queryset=ProjectImage.objects.filter(
-                upload_status="uploaded"
-            ).prefetch_related("variants"),
-        ),
+    return (
+        Project.objects.select_related("creator")
+        .prefetch_related(
+            "tags",
+            "tags__category",
+            "won_competitions",
+            "contributors__user",
+            Prefetch(
+                "images",
+                queryset=ProjectImage.objects.filter(
+                    upload_status="uploaded"
+                ).prefetch_related("variants"),
+            ),
+        )
+        .annotate(community_owned=_community_owned_annotation())
     )
 
 
@@ -235,8 +256,10 @@ class DjangoProjectQuery(ProjectQueryInterface):
         )
 
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]:
-        # Creator-scoped: SUGGESTER-only projects appear in /suggestions instead.
-        return _base_queryset().filter(creator_id=owner_id)
+        # Creator-scoped, but community-owned projects belong in /suggestions:
+        # for tipoffs the suggester is the creator, so without this exclusion
+        # they would appear in both /my-projects and /my-projects/suggestions.
+        return _base_queryset().filter(creator_id=owner_id, community_owned=False)
 
     def list_suggestions_for(self, user_id: UUID) -> QuerySet[Project]:
         return (

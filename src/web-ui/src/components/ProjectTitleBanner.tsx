@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import Link from "next/link";
 import type { Project } from "@/lib/api";
 import { getAuthorName } from "@/lib/utils";
+import { TipoffBadge } from "@/components/TipoffBadge";
 
 interface ProjectTitleBannerProps {
   project: Project;
@@ -34,6 +35,11 @@ export function ProjectTitleBanner({ project, iconUrl }: ProjectTitleBannerProps
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
             {project.title || "Untitled Project"}
           </h1>
+          {project.community_owned && (
+            <div className="mt-2">
+              <TipoffBadge />
+            </div>
+          )}
           {project.tagline && (
             <p className="text-foreground text-base mt-1">
               {project.tagline}

@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { TipoffBadge } from "@/components/TipoffBadge";
 import { HorizontalScroll } from "../HorizontalScroll";
 
 interface NewArrivalsSectionProps {
@@ -54,11 +55,14 @@ export function ArrivalCard({ project }: { project: DiscoverProject }) {
           )}
         </div>
         <div className="p-3.5 flex-1">
-          {project.category_name && (
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">
-              {project.category_name}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {project.category_name && (
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">
+                {project.category_name}
+              </span>
+            )}
+            {project.community_owned && <TipoffBadge size="sm" label="Tipoff" />}
+          </div>
           <h3 className="text-sm font-medium text-foreground mt-0.5 truncate">
             {project.title}
           </h3>

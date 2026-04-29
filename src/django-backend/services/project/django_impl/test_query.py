@@ -165,6 +165,29 @@ class TestListForOwner:
 
         assert result.count() == 0
 
+    def test_excludes_community_owned_projects_where_user_is_creator(self):
+        # Community tipoffs: the suggester is the creator, but the OWNER
+        # contributor is the seed system user. They belong in /suggestions only.
+        user = UserFactory()
+        system_user = UserFactory(is_system_user=True)
+        project = ProjectFactory(creator=user, _contributor=False)
+        ProjectContributor.objects.create(
+            project=project,
+            user=system_user,
+            role=ContributorRole.OWNER,
+            full_edit=True,
+        )
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+
+        result = query.list_for_owner(user.id)
+
+        assert result.count() == 0
+
 
 @pytest.mark.django_db
 class TestCountPending:

@@ -1,4 +1,4 @@
-from django.db.models import Prefetch
+from django.db.models import Exists, OuterRef, Prefetch
 from django.http import HttpRequest
 from ninja import Router
 
@@ -18,7 +18,9 @@ from api.schemas.my_review import (
 from apps.projects.models import (
     Competition,
     CompetitionReviewer,
+    ContributorRole,
     Project,
+    ProjectContributor,
     ProjectImage,
     ProjectRanking,
     ProjectStatus,
@@ -240,6 +242,15 @@ def get_review_project(
                     ).prefetch_related("variants"),
                 ),
                 "won_competitions",
+            )
+            .annotate(
+                community_owned=Exists(
+                    ProjectContributor.objects.filter(
+                        project_id=OuterRef("pk"),
+                        role=ContributorRole.OWNER,
+                        user__is_system_user=True,
+                    )
+                )
             )
             .exclude(status__in=EXCLUDED_PROJECT_STATUSES)
             .get(id=project_id)

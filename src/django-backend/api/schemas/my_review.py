@@ -109,6 +109,7 @@ class ReviewProjectDetailResponse(Schema):
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
+    community_owned: bool = False
 
     @staticmethod
     def resolve_owner(obj: Any) -> Any:

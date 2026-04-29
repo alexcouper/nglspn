@@ -91,6 +91,7 @@ class ProjectResponse(Schema):
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
+    community_owned: bool = False
 
     @staticmethod
     def resolve_owner(obj: Any) -> Any:
@@ -198,6 +199,7 @@ class DiscoverProjectResponse(Schema):
     category_slug: str | None = None
     discussion_count: int = 0
     won_competitions: list[WonCompetitionInfo] = []
+    community_owned: bool = False
 
     @classmethod
     def from_discover_item(cls, item: Any) -> "DiscoverProjectResponse":
@@ -213,6 +215,7 @@ class DiscoverProjectResponse(Schema):
             category_slug=item.category_slug,
             discussion_count=item.discussion_count,
             won_competitions=list(item.project.won_competitions.all()),
+            community_owned=getattr(item.project, "community_owned", False),
         )
 
 

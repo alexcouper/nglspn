@@ -4,11 +4,13 @@ import { useRef } from "react";
 import { CameraIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import type { ProjectImage } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
+import { TipoffBadge } from "@/components/TipoffBadge";
 import type { ProjectFormData } from "./ProjectDetail";
 
 interface EditableProjectBannerProps {
   formData: ProjectFormData;
   authorName: string;
+  isTipoff: boolean;
   onChange: (data: ProjectFormData) => void;
   iconImage?: ProjectImage | null;
   onIconFilesSelected?: (files: FileList) => void;
@@ -18,6 +20,7 @@ interface EditableProjectBannerProps {
 export function EditableProjectBanner({
   formData,
   authorName,
+  isTipoff,
   onChange,
   iconImage,
   onIconFilesSelected,
@@ -105,7 +108,11 @@ export function EditableProjectBanner({
             className="w-full text-foreground text-base mt-1 bg-transparent border-0 border-b border-dashed border-border outline-none placeholder:text-muted-foreground/50 focus:ring-0 focus:border-accent px-0 py-1 transition-colors"
           />
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground mt-3">
-            <span className="text-foreground">{authorName}</span>
+            {isTipoff ? (
+              <TipoffBadge label="Community tipoff" />
+            ) : (
+              <span className="text-foreground">{authorName}</span>
+            )}
             <span className="text-border">&middot;</span>
             <input
               type="url"

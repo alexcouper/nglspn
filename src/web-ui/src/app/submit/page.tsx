@@ -84,23 +84,37 @@ export default function SubmitPage() {
                 />
               </div>
 
-              <div>
-                <label htmlFor="i-own-this" className="flex items-start gap-2 cursor-pointer">
+              <fieldset className="space-y-2">
+                <legend className="label mb-1">Who made this project?</legend>
+                <label htmlFor="ownership-mine" className="flex items-start gap-2 cursor-pointer">
                   <input
-                    id="i-own-this"
-                    type="checkbox"
+                    id="ownership-mine"
+                    type="radio"
+                    name="ownership"
                     checked={iOwnThis}
-                    onChange={(e) => setIOwnThis(e.target.checked)}
+                    onChange={() => setIOwnThis(true)}
                     className="mt-1"
                   />
-                  <span className="text-sm text-foreground">
-                    I own this project
+                  <span className="text-sm">
+                    <span className="text-foreground font-medium">Mine</span>
+                    <span className="block text-xs text-muted-foreground">I made this project.</span>
                   </span>
                 </label>
-                <p className="text-xs text-muted-foreground mt-1 ml-6">
-                  Untick if you didn&apos;t make this project — it&apos;ll be added as a community submission.
-                </p>
-              </div>
+                <label htmlFor="ownership-tipoff" className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    id="ownership-tipoff"
+                    type="radio"
+                    name="ownership"
+                    checked={!iOwnThis}
+                    onChange={() => setIOwnThis(false)}
+                    className="mt-1"
+                  />
+                  <span className="text-sm">
+                    <span className="text-foreground font-medium">Tipoff</span>
+                    <span className="block text-xs text-muted-foreground">Someone else made this — I&apos;m flagging it for the community.</span>
+                  </span>
+                </label>
+              </fieldset>
 
               <button
                 type="submit"

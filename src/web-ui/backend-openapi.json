@@ -3282,6 +3282,11 @@
             },
             "title": "Won Competitions",
             "type": "array"
+          },
+          "community_owned": {
+            "default": false,
+            "title": "Community Owned",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3898,6 +3903,11 @@
             },
             "title": "Won Competitions",
             "type": "array"
+          },
+          "community_owned": {
+            "default": false,
+            "title": "Community Owned",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4709,6 +4719,11 @@
             },
             "title": "Won Competitions",
             "type": "array"
+          },
+          "community_owned": {
+            "default": false,
+            "title": "Community Owned",
+            "type": "boolean"
           }
         },
         "required": [

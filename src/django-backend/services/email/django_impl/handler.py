@@ -205,14 +205,14 @@ class DjangoEmailHandler(EmailHandlerInterface):
     def send_new_project_notification(
         self, project: Project, recipient_email: str
     ) -> None:
-        owner = project.owner
-        owner_name = owner.full_name or owner.email
+        creator = project.creator
+        creator_name = creator.full_name or creator.email
         context = {
             "project_title": project.title,
             "project_tagline": project.tagline,
             "project_description": project.description,
-            "owner_name": owner_name,
-            "owner_email": owner.email,
+            "owner_name": creator_name,
+            "owner_email": creator.email,
             "logo_url": EMAIL_LOGO_URL,
             "current_year": timezone.now().year,
         }

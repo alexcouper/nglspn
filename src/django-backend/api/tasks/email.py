@@ -44,7 +44,7 @@ def send_new_project_notification(project_id: str) -> None:
 
     from services import HANDLERS  # noqa: PLC0415
 
-    project = Project.objects.select_related("owner").get(id=UUID(project_id))
+    project = Project.objects.select_related("creator").get(id=UUID(project_id))
     HANDLERS.email.send_new_project_notification(project, recipient)
 
 

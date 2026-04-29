@@ -4617,7 +4617,7 @@
             "$ref": "#/components/schemas/UserResponse"
           },
           "creator": {
-            "$ref": "#/components/schemas/PublicUserProfile"
+            "$ref": "#/components/schemas/UserResponse"
           },
           "contributors": {
             "default": [],

@@ -34,7 +34,7 @@ def _top_level_discussion_count() -> Count:
 
 
 def _discover_queryset() -> QuerySet[Project]:
-    return Project.objects.select_related("owner", "category").prefetch_related(
+    return Project.objects.select_related("creator", "category").prefetch_related(
         "won_competitions",
         Prefetch(
             "images",
@@ -46,7 +46,7 @@ def _discover_queryset() -> QuerySet[Project]:
 
 
 def _base_queryset() -> QuerySet[Project]:
-    return Project.objects.select_related("owner").prefetch_related(
+    return Project.objects.select_related("creator").prefetch_related(
         "tags",
         "tags__category",
         "won_competitions",
@@ -242,14 +242,14 @@ class DjangoProjectQuery(ProjectQueryInterface):
 
     def get_project_with_owner(self, project_id: UUID) -> dict[str, Any]:
         try:
-            project = Project.objects.select_related("owner").get(id=project_id)
+            project = Project.objects.select_related("creator").get(id=project_id)
         except Project.DoesNotExist:
             raise ProjectNotFoundError from None
         return {
             "id": project.id,
             "title": project.title,
-            "owner_email": project.owner.email,
-            "owner_first_name": project.owner.first_name,
+            "owner_email": project.creator.email,
+            "owner_first_name": project.creator.first_name,
         }
 
     def list_featured(self) -> list[DiscoverProjectItem]:

@@ -10,17 +10,27 @@ def backfill_owner_contributors(apps, schema_editor):
     Project = apps.get_model("projects", "Project")
     ProjectContributor = apps.get_model("projects", "ProjectContributor")
 
+    # The creator FK is named "owner" at this migration's historical state, but
+    # gets renamed to "creator" in a later migration. Tests may call this
+    # function against the live model where the rename has already happened, so
+    # detect which name applies.
+    field_names = {f.name for f in Project._meta.get_fields()}
+    fk_attr = "owner" if "owner" in field_names else "creator"
+    fk_id_attr = f"{fk_attr}_id"
+
     existing_pairs = set(
         ProjectContributor.objects.values_list("project_id", "user_id")
     )
     rows = []
-    for project in Project.objects.exclude(owner__isnull=True).only("id", "owner_id"):
-        if (project.id, project.owner_id) in existing_pairs:
+    qs = Project.objects.exclude(**{f"{fk_attr}__isnull": True}).only("id", fk_id_attr)
+    for project in qs:
+        user_id = getattr(project, fk_id_attr)
+        if (project.id, user_id) in existing_pairs:
             continue
         rows.append(
             ProjectContributor(
                 project_id=project.id,
-                user_id=project.owner_id,
+                user_id=user_id,
                 role="owner",
                 full_edit=True,
             )

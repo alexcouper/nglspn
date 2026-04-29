@@ -98,7 +98,7 @@ class Project(models.Model):
         blank=True,
         related_name="projects",
     )
-    owner = models.ForeignKey(
+    creator = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="projects",

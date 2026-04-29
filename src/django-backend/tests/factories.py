@@ -85,9 +85,18 @@ class ProjectFactory(factory.django.DjangoModelFactory):
     tagline = factory.Faker("catch_phrase")
     description = factory.Faker("paragraph")
     website_url = factory.Faker("url")
-    owner = factory.SubFactory(UserFactory)
+    creator = factory.SubFactory(UserFactory)
     status = ProjectStatus.PENDING
     submission_month = factory.LazyFunction(lambda: "2025-01")
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        # Accept `owner=` as a concept-level alias for `creator=` so existing
+        # tests keep reading naturally after the field rename. Always wins
+        # over the default SubFactory-generated `creator`.
+        if "owner" in kwargs:
+            kwargs["creator"] = kwargs.pop("owner")
+        return super()._create(model_class, *args, **kwargs)
 
     @factory.post_generation
     def tags(self, create, extracted, **kwargs) -> None:
@@ -100,11 +109,11 @@ class ProjectFactory(factory.django.DjangoModelFactory):
         # Mirror the production invariant: every project has at least one
         # OWNER contributor with full_edit. Tests that need a different shape
         # can pass `_contributor=False` and add their own rows.
-        if not create or extracted is False or self.owner_id is None:
+        if not create or extracted is False or self.creator_id is None:
             return
         ProjectContributor.objects.get_or_create(
             project=self,
-            user=self.owner,
+            user=self.creator,
             defaults={"role": ContributorRole.OWNER, "full_edit": True},
         )
 

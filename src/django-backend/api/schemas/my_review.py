@@ -11,7 +11,7 @@ from api.schemas.project import (
     WonCompetitionInfo,
 )
 from api.schemas.tag import TagWithCategoryResponse
-from api.schemas.user import PublicUserProfile, UserResponse
+from api.schemas.user import UserResponse
 
 
 class ReviewStatusEnum(str, Enum):
@@ -100,16 +100,19 @@ class ReviewProjectDetailResponse(Schema):
     created_at: datetime
     approved_at: datetime | None
     published_at: datetime | None
+    # `owner` is a transitional shim populated from `creator` so existing
+    # frontend consumers keep working until they migrate. To be removed in a
+    # follow-up change after the FE consumes `creator` directly.
     owner: UserResponse
-    creator: PublicUserProfile
+    creator: UserResponse
     contributors: list[ContributorSummary] = []
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
 
     @staticmethod
-    def resolve_creator(obj: Any) -> Any:
-        return obj.owner
+    def resolve_owner(obj: Any) -> Any:
+        return obj.creator
 
     @staticmethod
     def resolve_contributors(obj: Any) -> list[Any]:

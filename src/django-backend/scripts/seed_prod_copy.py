@@ -372,7 +372,7 @@ def create_projects(users: list[User], admin: User | None) -> list[Project]:
             tech_stack=[],
             status=ProjectStatus.APPROVED,
             submission_month=f"2026-{(i % 3) + 1:02d}",
-            owner=owner,
+            creator=owner,
             approved_by=admin,
             approved_at=timezone.now(),
         )

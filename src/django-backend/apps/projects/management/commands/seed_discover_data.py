@@ -204,7 +204,7 @@ class Command(BaseCommand):
     def _clear(self) -> None:
         user = User.objects.filter(email=SEED_EMAIL).first()
         if user:
-            Project.objects.filter(owner=user).delete()
+            Project.objects.filter(creator=user).delete()
             user.delete()
         ProjectCategory.objects.filter(
             slug__in=[c["slug"] for c in CATEGORIES]
@@ -254,7 +254,7 @@ class Command(BaseCommand):
             approved_at = now - timedelta(days=i)
             project, _ = Project.objects.get_or_create(
                 title=p_data["title"],
-                owner=owner,
+                creator=owner,
                 defaults={
                     "tagline": p_data["tagline"],
                     "description": p_data["tagline"],

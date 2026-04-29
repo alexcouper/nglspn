@@ -81,6 +81,9 @@ class ProjectResponse(Schema):
     created_at: datetime
     approved_at: datetime | None
     published_at: datetime | None
+    # `owner` is a transitional shim populated from `creator` so existing
+    # frontend consumers keep working until they migrate. To be removed in a
+    # follow-up change after the FE consumes `creator` directly.
     owner: PublicUserProfile
     creator: PublicUserProfile
     contributors: list[ContributorSummary] = []
@@ -89,8 +92,8 @@ class ProjectResponse(Schema):
     won_competitions: list[WonCompetitionInfo] = []
 
     @staticmethod
-    def resolve_creator(obj: Any) -> Any:
-        return obj.owner
+    def resolve_owner(obj: Any) -> Any:
+        return obj.creator
 
     @staticmethod
     def resolve_contributors(obj: Any) -> list[Any]:

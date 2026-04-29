@@ -55,7 +55,7 @@ class TestCreate:
         project = handler.create(data)
 
         assert project.title == "My Project"
-        assert project.owner_id == user.id
+        assert project.creator_id == user.id
         assert project.website_url == "https://example.com"
         assert project.status == ProjectStatus.DRAFT
 

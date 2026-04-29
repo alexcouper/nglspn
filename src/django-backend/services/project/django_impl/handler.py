@@ -80,7 +80,7 @@ class DjangoProjectHandler(ProjectHandlerInterface):
             valid_tags = _validate_tags(data.tag_ids)
 
         project_fields: dict[str, Any] = {
-            "owner_id": data.owner_id,
+            "creator_id": data.owner_id,
             "website_url": data.website_url,
         }
         for field in (

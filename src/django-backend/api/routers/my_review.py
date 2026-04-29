@@ -228,7 +228,7 @@ def get_review_project(
 
     try:
         project = (
-            Project.objects.select_related("owner")
+            Project.objects.select_related("creator")
             .prefetch_related(
                 "tags",
                 "tags__category",

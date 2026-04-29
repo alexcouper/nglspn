@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import type { Project } from "@/lib/api";
 import { getAuthorName } from "@/lib/utils";
@@ -10,7 +11,9 @@ interface ProjectTitleBannerProps {
 }
 
 export function ProjectTitleBanner({ project, iconUrl }: ProjectTitleBannerProps) {
-  const authorName = getAuthorName(project.owner);
+  const displayOwners = project.contributors.filter(
+    (c) => c.role === "owner" && c.full_edit && !c.user.is_system_user
+  );
 
   return (
     <section className="relative bg-white border-b border-border py-10 px-4 sm:px-6">
@@ -47,14 +50,22 @@ export function ProjectTitleBanner({ project, iconUrl }: ProjectTitleBannerProps
               <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="shrink-0"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
             </a>
           )}
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground mt-2">
-            <Link
-              href={`/users/${project.owner.id}`}
-              className="text-foreground hover:text-accent transition-colors"
-            >
-              {authorName}
-            </Link>
-          </div>
+          {displayOwners.length > 0 && (
+            <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-muted-foreground mt-2">
+              <span>by</span>
+              {displayOwners.map((contributor, i) => (
+                <Fragment key={contributor.user.id}>
+                  <Link
+                    href={`/users/${contributor.user.id}`}
+                    className="text-foreground hover:text-accent transition-colors"
+                  >
+                    {getAuthorName(contributor.user)}
+                  </Link>
+                  {i < displayOwners.length - 1 && <span>,</span>}
+                </Fragment>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>

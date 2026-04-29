@@ -10,6 +10,7 @@ export default function SubmitPage() {
   const router = useRouter();
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [url, setUrl] = useState("");
+  const [iOwnThis, setIOwnThis] = useState(true);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -29,7 +30,7 @@ export default function SubmitPage() {
     try {
       const project = await api.myProjects.create({
         website_url: url,
-        community_owned: false,
+        community_owned: !iOwnThis,
       });
       router.push(`/my-projects/${project.id}`);
     } catch (err) {
@@ -81,6 +82,24 @@ export default function SubmitPage() {
                   className="input"
                   placeholder="https://your-project.com"
                 />
+              </div>
+
+              <div>
+                <label htmlFor="i-own-this" className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    id="i-own-this"
+                    type="checkbox"
+                    checked={iOwnThis}
+                    onChange={(e) => setIOwnThis(e.target.checked)}
+                    className="mt-1"
+                  />
+                  <span className="text-sm text-foreground">
+                    I own this project
+                  </span>
+                </label>
+                <p className="text-xs text-muted-foreground mt-1 ml-6">
+                  Untick if you didn&apos;t make this project — it&apos;ll be added as a community submission.
+                </p>
               </div>
 
               <button

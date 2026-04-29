@@ -98,7 +98,7 @@ export function EditProjectContent({
   onIconFilesSelected,
   onDeleteIcon,
 }: EditProjectContentProps) {
-  const authorName = getAuthorName(project.owner);
+  const authorName = getAuthorName(project.creator);
   const [roleDialogImage, setRoleDialogImage] = useState<ProjectImage | null>(
     null
   );

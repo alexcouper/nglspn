@@ -179,6 +179,7 @@ export default function ProfilePage() {
                       first_name: formData.first_name,
                       last_name: formData.last_name,
                       info: formData.info,
+                      is_system_user: false,
                     }}
                   />
                 )

@@ -22,6 +22,7 @@ class UserResponse(Schema):
     last_name: str
     info: str
     is_verified: bool
+    is_system_user: bool = False
     created_at: datetime
     groups: list[str]
     email_opt_in_competition_results: bool
@@ -56,3 +57,4 @@ class PublicUserProfile(Schema):
     first_name: str
     last_name: str
     info: str
+    is_system_user: bool = False

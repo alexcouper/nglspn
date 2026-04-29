@@ -2736,6 +2736,11 @@
             "title": "Is Verified",
             "type": "boolean"
           },
+          "is_system_user": {
+            "default": false,
+            "title": "Is System User",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -3935,6 +3940,11 @@
           "info": {
             "title": "Info",
             "type": "string"
+          },
+          "is_system_user": {
+            "default": false,
+            "title": "Is System User",
+            "type": "boolean"
           }
         },
         "required": [

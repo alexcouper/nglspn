@@ -102,7 +102,7 @@ class TestPublicProfile:
         # This check ensures no extra fields are returned
         assert_that(
             list(response.json().keys()),
-            contains_inanyorder("id", "first_name", "last_name", "info"),
+            contains_inanyorder("id", "first_name", "last_name", "info", "is_system_user"),
         )
 
     def test_get_public_profile_does_not_leak_private_settings(

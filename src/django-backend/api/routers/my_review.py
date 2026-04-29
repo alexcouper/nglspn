@@ -232,6 +232,7 @@ def get_review_project(
             .prefetch_related(
                 "tags",
                 "tags__category",
+                "contributors__user",
                 Prefetch(
                     "images",
                     queryset=ProjectImage.objects.filter(

@@ -12,7 +12,12 @@ from hamcrest import (
     none,
 )
 
-from apps.projects.models import Project, ProjectStatus
+from apps.projects.models import (
+    ContributorRole,
+    Project,
+    ProjectContributor,
+    ProjectStatus,
+)
 from tests.factories import ProjectFactory, ProjectImageFactory
 
 
@@ -404,3 +409,102 @@ class TestAuthorization:
         )
 
         assert_that(response.status_code, equal_to(404))
+
+
+class TestNonCreatorContributorAccess:
+    def test_full_edit_contributor_can_list_project(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+
+        response = client.get("/api/my/projects", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        ids = [item["id"] for item in response.json()]
+        assert_that(ids, equal_to([str(project.id)]))
+
+    def test_full_edit_contributor_can_get_project(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+
+        response = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(id=str(project.id)))
+
+    def test_full_edit_contributor_can_update_project(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(title="Original")
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+        payload = {
+            "website_url": "https://updated.com",
+            "title": "Suggested Edit",
+            "description": "Updated description",
+        }
+
+        response = client.put(
+            f"/api/my/projects/{project.id}",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        project.refresh_from_db()
+        assert_that(project.title, equal_to("Suggested Edit"))
+
+    def test_contributor_without_full_edit_returns_404(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.SUGGESTER,
+            full_edit=False,
+        )
+
+        response = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_contributor_without_full_edit_cannot_update(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(title="Original")
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.SUGGESTER,
+            full_edit=False,
+        )
+
+        response = client.put(
+            f"/api/my/projects/{project.id}",
+            data=json.dumps({"website_url": "https://hacked.com", "title": "Hacked"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(404))
+        project.refresh_from_db()
+        assert_that(project.title, equal_to("Original"))

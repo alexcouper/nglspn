@@ -26,9 +26,10 @@ from services.project.exceptions import (
     PublishPreconditionsError,
 )
 from services.project.handler_interface import ProjectHandlerInterface
-from services.project.permissions import user_id_can_edit_project
 
-from .query import get_title_from_url
+from .query import DjangoProjectQuery, get_title_from_url
+
+_query = DjangoProjectQuery()
 
 logger = logging.getLogger(__name__)
 
@@ -63,12 +64,11 @@ def _enqueue_new_project_notification(project: Project) -> None:
 
 
 def _get_editable_project(project_id: UUID, user_id: UUID) -> Project:
-    """Fetch a project and assert the user has full-edit access."""
     try:
         project = Project.objects.get(id=project_id)
     except Project.DoesNotExist:
         raise ProjectNotFoundError from None
-    if not user_id_can_edit_project(project, user_id):
+    if not _query.user_can_edit(project.id, user_id):
         raise ProjectNotFoundError
     return project
 

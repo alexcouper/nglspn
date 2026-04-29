@@ -68,6 +68,9 @@ class ProjectQueryInterface(ABC):
     def get_for_owner(self, project_id: UUID, owner_id: UUID) -> Project: ...
 
     @abstractmethod
+    def user_can_edit(self, project_id: UUID | None, user_id: UUID | None) -> bool: ...
+
+    @abstractmethod
     def list_approved(
         self,
         *,

@@ -2,7 +2,7 @@ from uuid import uuid4
 
 import pytest
 
-from apps.projects.models import ProjectStatus
+from apps.projects.models import ContributorRole, ProjectContributor, ProjectStatus
 from services.project.django_impl import DjangoProjectQuery, get_title_from_url
 from services.project.exceptions import ProjectNotFoundError
 from tests.factories import ProjectFactory, UserFactory
@@ -42,6 +42,79 @@ class TestGetForOwner:
         with pytest.raises(ProjectNotFoundError):
             query.get_for_owner(project.id, other_user.id)
 
+    def test_returns_project_for_non_creator_full_edit_contributor(self):
+        project = ProjectFactory()
+        contributor = UserFactory()
+        ProjectContributor.objects.create(
+            project=project,
+            user=contributor,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+
+        result = query.get_for_owner(project.id, contributor.id)
+
+        assert result.id == project.id
+
+    def test_raises_for_contributor_without_full_edit(self):
+        project = ProjectFactory()
+        contributor = UserFactory()
+        ProjectContributor.objects.create(
+            project=project,
+            user=contributor,
+            role=ContributorRole.SUGGESTER,
+            full_edit=False,
+        )
+
+        with pytest.raises(ProjectNotFoundError):
+            query.get_for_owner(project.id, contributor.id)
+
+
+@pytest.mark.django_db
+class TestUserCanEdit:
+    def test_returns_false_for_none_user_id(self):
+        project = ProjectFactory()
+
+        assert query.user_can_edit(project.id, None) is False
+
+    def test_returns_false_for_none_project_id(self):
+        user = UserFactory()
+
+        assert query.user_can_edit(None, user.id) is False
+
+    def test_returns_false_for_user_without_contributor_row(self):
+        project = ProjectFactory()
+        unrelated = UserFactory()
+
+        assert query.user_can_edit(project.id, unrelated.id) is False
+
+    def test_returns_true_for_owner_contributor_with_full_edit(self):
+        owner = UserFactory()
+        project = ProjectFactory(owner=owner)
+
+        assert query.user_can_edit(project.id, owner.id) is True
+
+    def test_returns_false_when_full_edit_disabled(self):
+        owner = UserFactory()
+        project = ProjectFactory(owner=owner)
+        ProjectContributor.objects.filter(project=project, user=owner).update(
+            full_edit=False
+        )
+
+        assert query.user_can_edit(project.id, owner.id) is False
+
+    def test_returns_true_for_suggester_with_full_edit(self):
+        project = ProjectFactory()
+        suggester = UserFactory()
+        ProjectContributor.objects.create(
+            project=project,
+            user=suggester,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+
+        assert query.user_can_edit(project.id, suggester.id) is True
+
 
 @pytest.mark.django_db
 class TestListApproved:
@@ -75,6 +148,34 @@ class TestListForOwner:
         result = query.list_for_owner(user.id)
 
         assert result.count() == 2
+
+    def test_returns_projects_for_non_creator_full_edit_contributor(self):
+        contributor = UserFactory()
+        project = ProjectFactory()
+        ProjectContributor.objects.create(
+            project=project,
+            user=contributor,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+
+        result = query.list_for_owner(contributor.id)
+
+        assert {p.id for p in result} == {project.id}
+
+    def test_excludes_projects_where_full_edit_is_false(self):
+        contributor = UserFactory()
+        project = ProjectFactory()
+        ProjectContributor.objects.create(
+            project=project,
+            user=contributor,
+            role=ContributorRole.SUGGESTER,
+            full_edit=False,
+        )
+
+        result = query.list_for_owner(contributor.id)
+
+        assert result.count() == 0
 
 
 @pytest.mark.django_db

@@ -4,7 +4,7 @@ import pytest
 from hamcrest import assert_that, equal_to
 
 from apps.notifications.models import Notification, NotificationCadence
-from apps.projects.models import ProjectStatus
+from apps.projects.models import ContributorRole, ProjectContributor, ProjectStatus
 from services.notifications.django_impl.handler import DjangoNotificationHandler
 from tests.factories import DiscussionFactory, ProjectFactory, UserFactory
 
@@ -124,3 +124,41 @@ class TestRecipientDetermination:
 
         notification = Notification.objects.get(recipient=owner)
         assert_that(notification.cadence, equal_to(NotificationCadence.HOURLY))
+
+    def test_notifies_all_full_edit_contributors(self, handler) -> None:
+        creator = UserFactory(notification_frequency=_IMMEDIATE)
+        project = ProjectFactory(owner=creator, status=ProjectStatus.APPROVED)
+        extra_full_edit = UserFactory(notification_frequency=_IMMEDIATE)
+        ProjectContributor.objects.create(
+            project=project,
+            user=extra_full_edit,
+            role=ContributorRole.SUGGESTER,
+            full_edit=True,
+        )
+        author = UserFactory()
+        discussion = DiscussionFactory(project=project, author=author)
+
+        with patch(_SEND_EMAIL):
+            handler.create_notifications_for_discussion(discussion.id)
+
+        recipient_ids = set(Notification.objects.values_list("recipient_id", flat=True))
+        assert_that(recipient_ids, equal_to({creator.id, extra_full_edit.id}))
+
+    def test_excludes_contributors_without_full_edit(self, handler) -> None:
+        creator = UserFactory(notification_frequency=_IMMEDIATE)
+        project = ProjectFactory(owner=creator, status=ProjectStatus.APPROVED)
+        no_edit = UserFactory(notification_frequency=_IMMEDIATE)
+        ProjectContributor.objects.create(
+            project=project,
+            user=no_edit,
+            role=ContributorRole.SUGGESTER,
+            full_edit=False,
+        )
+        author = UserFactory()
+        discussion = DiscussionFactory(project=project, author=author)
+
+        with patch(_SEND_EMAIL):
+            handler.create_notifications_for_discussion(discussion.id)
+
+        recipient_ids = set(Notification.objects.values_list("recipient_id", flat=True))
+        assert_that(recipient_ids, equal_to({creator.id}))

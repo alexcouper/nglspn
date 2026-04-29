@@ -116,7 +116,7 @@ class ReviewProjectDetailResponse(Schema):
 
     @staticmethod
     def resolve_contributors(obj: Any) -> list[Any]:
-        return list(obj.contributors.select_related("user").all())
+        return list(obj.contributors.all())
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:

@@ -85,17 +85,24 @@ class ProjectFactory(factory.django.DjangoModelFactory):
     tagline = factory.Faker("catch_phrase")
     description = factory.Faker("paragraph")
     website_url = factory.Faker("url")
-    creator = factory.SubFactory(UserFactory)
     status = ProjectStatus.PENDING
     submission_month = factory.LazyFunction(lambda: "2025-01")
 
     @classmethod
     def _create(cls, model_class, *args, **kwargs):
         # Accept `owner=` as a concept-level alias for `creator=` so existing
-        # tests keep reading naturally after the field rename. Always wins
-        # over the default SubFactory-generated `creator`.
-        if "owner" in kwargs:
+        # tests keep reading naturally after the field rename. `creator` is not
+        # a class-level SubFactory because that would always populate kwargs and
+        # mask the "passed both" case below.
+        owner_passed = "owner" in kwargs
+        creator_passed = "creator" in kwargs
+        if owner_passed and creator_passed:
+            msg = "ProjectFactory: pass either creator= or owner=, not both"
+            raise TypeError(msg)
+        if owner_passed:
             kwargs["creator"] = kwargs.pop("owner")
+        elif not creator_passed:
+            kwargs["creator"] = UserFactory()
         return super()._create(model_class, *args, **kwargs)
 
     @factory.post_generation

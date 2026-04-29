@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from ninja import Schema
@@ -62,7 +62,7 @@ class WonCompetitionInfo(Schema):
 
 class ContributorSummary(Schema):
     user: PublicUserProfile
-    role: str
+    role: Literal["owner", "suggester"]
     full_edit: bool
 
 
@@ -97,7 +97,7 @@ class ProjectResponse(Schema):
 
     @staticmethod
     def resolve_contributors(obj: Any) -> list[Any]:
-        return list(obj.contributors.select_related("user").all())
+        return list(obj.contributors.all())
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:

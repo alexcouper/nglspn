@@ -50,6 +50,7 @@ def _base_queryset() -> QuerySet[Project]:
         "tags",
         "tags__category",
         "won_competitions",
+        "contributors__user",
         Prefetch(
             "images",
             queryset=ProjectImage.objects.filter(
@@ -173,13 +174,18 @@ class DjangoProjectQuery(ProjectQueryInterface):
             project = _base_queryset().get(id=project_id)
         except Project.DoesNotExist:
             raise ProjectNotFoundError from None
-        if not ProjectContributor.objects.filter(
-            project=project,
-            user_id=owner_id,
-            full_edit=True,
-        ).exists():
+        if not self.user_can_edit(project.id, owner_id):
             raise ProjectNotFoundError
         return project
+
+    def user_can_edit(self, project_id: UUID | None, user_id: UUID | None) -> bool:
+        if project_id is None or user_id is None:
+            return False
+        return ProjectContributor.objects.filter(
+            project_id=project_id,
+            user_id=user_id,
+            full_edit=True,
+        ).exists()
 
     def list_approved(
         self,

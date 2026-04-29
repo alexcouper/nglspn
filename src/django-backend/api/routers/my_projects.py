@@ -34,14 +34,12 @@ from services.project.exceptions import (
     PublishPreconditionsError,
 )
 from services.project.handler_interface import CreateProjectInput, UpdateProjectInput
-from services.project.permissions import user_can_edit_project
 from services.storage import storage_service
 
 
 def _get_editable_project_or_404(project_id: str, user: User) -> Project:
-    """Fetch a project the caller can edit. 404 on missing or no permission."""
     project = get_object_or_404(Project, id=project_id)
-    if not user_can_edit_project(project, user):
+    if not REPO.project.user_can_edit(project.id, user.id):
         raise Http404
     return project
 

@@ -30,7 +30,6 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
 
         recipients: set[User] = set()
 
-        # 1. Every project contributor with full edit
         project_contributors = discussion.project.contributors.filter(
             full_edit=True
         ).select_related("user")
@@ -38,12 +37,10 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             if contributor.user and contributor.user.is_active:
                 recipients.add(contributor.user)
 
-        # 2. Root discussion author (if this is a reply)
         root = discussion.parent if discussion.parent else discussion
         if discussion.parent and root.author and root.author.is_active:
             recipients.add(root.author)
 
-        # 3. All previous participants in the root discussion thread
         participant_ids = (
             Discussion.objects.filter(parent=root)
             .exclude(author__isnull=True)

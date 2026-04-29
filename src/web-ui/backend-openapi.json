@@ -3559,6 +3559,10 @@
             "$ref": "#/components/schemas/PublicUserProfile"
           },
           "role": {
+            "enum": [
+              "owner",
+              "suggester"
+            ],
             "title": "Role",
             "type": "string"
           },

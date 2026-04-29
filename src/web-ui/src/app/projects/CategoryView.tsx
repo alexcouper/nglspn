@@ -6,6 +6,7 @@ import Link from "next/link";
 import type { CategoryItem, DiscoverProject } from "@/lib/api";
 import { api } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { TipoffBadge } from "@/components/TipoffBadge";
 
 type SortOption = "newest" | "name";
 
@@ -107,6 +108,11 @@ function CategoryCard({ project }: { project: DiscoverProject }) {
           <h3 className="text-sm font-medium text-foreground truncate">
             {project.title}
           </h3>
+          {project.community_owned && (
+            <div className="mt-0.5">
+              <TipoffBadge size="sm" label="Tipoff" />
+            </div>
+          )}
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
             {project.tagline}
           </p>

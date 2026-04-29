@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { TipoffBadge } from "@/components/TipoffBadge";
 
 interface MostDiscussedSectionProps {
   projects: DiscoverProject[];
@@ -48,9 +49,12 @@ function DiscussedItem({ project }: { project: DiscoverProject }) {
           )}
         </div>
         <div className="min-w-0 flex-1">
-          <h3 className="text-sm font-medium text-foreground truncate">
-            {project.title}
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-sm font-medium text-foreground truncate">
+              {project.title}
+            </h3>
+            {project.community_owned && <TipoffBadge size="sm" label="Tipoff" />}
+          </div>
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
             {project.tagline}
           </p>

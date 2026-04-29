@@ -26,3 +26,6 @@ class UserQueryInterface(ABC):
 
     @abstractmethod
     def list_opted_in_for_broadcast_type(self, email_type: str) -> QuerySet: ...
+
+    @abstractmethod
+    def get_community_user(self) -> User: ...

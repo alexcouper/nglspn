@@ -137,6 +137,30 @@ class TestResolveBroadcastRecipients:
 
         assert recipients.count() == 0
 
+    def test_system_users_excluded_from_individual_recipients(self):
+        system_user = UserFactory(is_system_user=True)
+        real_user = UserFactory()
+
+        broadcast = BroadcastEmailFactory(
+            email_type=None,
+            individual_recipients=[system_user, real_user],
+        )
+        recipients = query.resolve_broadcast_recipients(broadcast)
+
+        assert set(recipients) == {real_user}
+
+    def test_system_users_excluded_from_platform_updates(self):
+        UserFactory(is_system_user=True, email_opt_in_platform_updates=True)
+        real_user = UserFactory(email_opt_in_platform_updates=True)
+
+        broadcast = BroadcastEmailFactory(
+            email_type="platform_updates",
+            created_by=UserFactory(email_opt_in_platform_updates=False),
+        )
+        recipients = query.resolve_broadcast_recipients(broadcast)
+
+        assert set(recipients) == {real_user}
+
 
 class TestRenderProjectApprovedEmail:
     def test_renders_html_with_project_title(self):

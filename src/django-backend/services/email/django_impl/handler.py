@@ -163,10 +163,9 @@ class DjangoEmailHandler(EmailHandlerInterface):
             html_body=html,
         )
 
-    def send_project_approved_email(self, project: Project) -> None:
-        owner = project.owner
+    def send_project_approved_email(self, project: Project, recipient: User) -> None:
         context = {
-            "user_name": owner.first_name or "there",
+            "user_name": recipient.first_name or "there",
             "project_title": project.title,
             "project_url": f"{settings.FRONTEND_URL}/projects/{project.id}",
             "logo_url": EMAIL_LOGO_URL,
@@ -179,41 +178,41 @@ class DjangoEmailHandler(EmailHandlerInterface):
             subject=subject,
             body=text,
             from_email=settings.DEFAULT_FROM_EMAIL,
-            to=[owner.email],
+            to=[recipient.email],
         )
         email.attach_alternative(html, "text/html")
         try:
             email.send(fail_silently=False)
         except Exception:
             _log_sent_email(
-                recipient=owner,
+                recipient=recipient,
                 email_type=SentEmailType.PROJECT_APPROVED,
                 subject=subject,
-                to_email=owner.email,
+                to_email=recipient.email,
                 success=False,
-                error_message=f"Failed to send to {owner.email}",
+                error_message=f"Failed to send to {recipient.email}",
                 html_body=html,
             )
             raise
         _log_sent_email(
-            recipient=owner,
+            recipient=recipient,
             email_type=SentEmailType.PROJECT_APPROVED,
             subject=subject,
-            to_email=owner.email,
+            to_email=recipient.email,
             html_body=html,
         )
 
     def send_new_project_notification(
         self, project: Project, recipient_email: str
     ) -> None:
-        owner = project.owner
-        owner_name = owner.full_name or owner.email
+        creator = project.creator
+        creator_name = creator.full_name or creator.email
         context = {
             "project_title": project.title,
             "project_tagline": project.tagline,
             "project_description": project.description,
-            "owner_name": owner_name,
-            "owner_email": owner.email,
+            "owner_name": creator_name,
+            "owner_email": creator.email,
             "logo_url": EMAIL_LOGO_URL,
             "current_year": timezone.now().year,
         }

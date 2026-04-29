@@ -6,6 +6,7 @@ import pytest
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
+from django.utils import timezone
 from hamcrest import (
     assert_that,
     contains_inanyorder,
@@ -16,7 +17,13 @@ from hamcrest import (
     not_,
 )
 
-from api.auth.jwt import create_access_token, create_refresh_token, verify_token
+from api.auth.jwt import (
+    create_access_token,
+    create_refresh_token,
+    create_reset_token,
+    verify_token,
+)
+from apps.users.models import PasswordResetCode
 from tests.factories import UserFactory
 
 User = get_user_model()
@@ -188,6 +195,112 @@ class TestLogin:
                 {"email": inactive_user.email, "password": "testpassword123"},
             ),
             content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(401))
+
+    def test_login_with_system_user_returns_401(self, client, db) -> None:
+        # System users must not be able to log in even with the correct password.
+        system_user = UserFactory(is_system_user=True)
+
+        response = client.post(
+            "/api/auth/login",
+            data=json.dumps(
+                {"email": system_user.email, "password": "testpassword123"},
+            ),
+            content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(401))
+        assert_that(response.json(), has_entries(detail="Invalid credentials"))
+
+
+@pytest.mark.django_db
+class TestSystemUserAuthGates:
+    def test_refresh_token_rejects_system_user(self, client) -> None:
+        system_user = UserFactory(is_system_user=True)
+        token = create_refresh_token(system_user.id)
+
+        response = client.post(
+            "/api/auth/refresh",
+            data=json.dumps({"refresh_token": token}),
+            content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(401))
+
+    def test_access_token_for_system_user_does_not_authenticate(self, client) -> None:
+        system_user = UserFactory(is_system_user=True)
+        token = create_access_token(system_user.id)
+
+        response = client.get(
+            "/api/auth/me",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
+        )
+
+        assert_that(response.status_code, equal_to(401))
+
+    def test_forgot_password_does_not_create_code_for_system_user(
+        self, client, db
+    ) -> None:
+        system_user = UserFactory(is_system_user=True)
+
+        response = client.post(
+            "/api/auth/forgot-password",
+            data=json.dumps({"email": system_user.email}),
+            content_type="application/json",
+        )
+
+        # Generic response either way (do not disclose existence)
+        assert_that(response.status_code, equal_to(200))
+        # But no reset code is created.
+        assert_that(
+            PasswordResetCode.objects.filter(user=system_user).exists(),
+            equal_to(False),
+        )
+
+    def test_forgot_password_verify_rejects_system_user(self, client, db) -> None:
+        system_user = UserFactory(is_system_user=True)
+        # Force-create a reset code (bypassing the create gate) to confirm the
+        # verify path also rejects.
+        PasswordResetCode.objects.create(
+            user=system_user,
+            code="000000",
+            expires_at=timezone.now() + timedelta(minutes=15),
+        )
+
+        response = client.post(
+            "/api/auth/forgot-password/verify",
+            data=json.dumps({"email": system_user.email, "code": "000000"}),
+            content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(400))
+
+    def test_reset_password_rejects_system_user(self, client, db) -> None:
+        # Defense-in-depth: if a reset token is somehow minted for a system
+        # user, the reset endpoint must still refuse.
+        system_user = UserFactory(is_system_user=True)
+        token = create_reset_token(system_user.id)
+
+        response = client.post(
+            "/api/auth/reset-password",
+            data=json.dumps({"reset_token": token, "new_password": "newpassword123"}),
+            content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(400))
+
+    def test_resend_verification_rejects_system_user(self, client, db) -> None:
+        # `create_verification_code` itself is not gated; reachability is
+        # blocked upstream because every entry point is auth-gated and
+        # system users cannot pass the JWT auth check.
+        system_user = UserFactory(is_system_user=True, is_verified=False)
+        token = create_access_token(system_user.id)
+
+        response = client.post(
+            "/api/auth/resend-verification",
+            HTTP_AUTHORIZATION=f"Bearer {token}",
         )
 
         assert_that(response.status_code, equal_to(401))

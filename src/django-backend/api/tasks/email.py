@@ -28,10 +28,11 @@ def send_password_reset_email(user_id: str, code: str, expires_minutes: int) -> 
 
 @task()
 def send_project_approved_email(project_id: str) -> None:
-    from services import HANDLERS  # noqa: PLC0415
+    from services import HANDLERS, REPO  # noqa: PLC0415
 
-    project = Project.objects.select_related("owner").get(id=UUID(project_id))
-    HANDLERS.email.send_project_approved_email(project)
+    project = Project.objects.get(id=UUID(project_id))
+    for contributor in REPO.project.list_notifiable_contributors(UUID(project_id)):
+        HANDLERS.email.send_project_approved_email(project, contributor.user)
 
 
 @task()
@@ -42,7 +43,7 @@ def send_new_project_notification(project_id: str) -> None:
 
     from services import HANDLERS  # noqa: PLC0415
 
-    project = Project.objects.select_related("owner").get(id=UUID(project_id))
+    project = Project.objects.select_related("creator").get(id=UUID(project_id))
     HANDLERS.email.send_new_project_notification(project, recipient)
 
 

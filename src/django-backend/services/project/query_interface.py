@@ -6,7 +6,7 @@ from uuid import UUID
 
 from django.db.models import QuerySet
 
-from apps.projects.models import Project
+from apps.projects.models import Project, ProjectContributor
 
 
 @dataclass(frozen=True)
@@ -68,6 +68,9 @@ class ProjectQueryInterface(ABC):
     def get_for_owner(self, project_id: UUID, owner_id: UUID) -> Project: ...
 
     @abstractmethod
+    def user_can_edit(self, project_id: UUID | None, user_id: UUID | None) -> bool: ...
+
+    @abstractmethod
     def list_approved(
         self,
         *,
@@ -82,6 +85,14 @@ class ProjectQueryInterface(ABC):
 
     @abstractmethod
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]: ...
+
+    @abstractmethod
+    def list_tip_offs_for(self, user_id: UUID) -> QuerySet[Project]: ...
+
+    @abstractmethod
+    def list_notifiable_contributors(
+        self, project_id: UUID
+    ) -> QuerySet[ProjectContributor]: ...
 
     @abstractmethod
     def count_pending(self) -> int: ...

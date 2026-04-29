@@ -25,7 +25,7 @@ class TestListProjects:
         assert_that(response.status_code, equal_to(400))
 
     def test_sort_by_rejects_related_field_traversal(self, client) -> None:
-        response = client.get("/api/projects?sort_by=owner__email")
+        response = client.get("/api/projects?sort_by=creator__email")
 
         assert_that(response.status_code, equal_to(400))
 

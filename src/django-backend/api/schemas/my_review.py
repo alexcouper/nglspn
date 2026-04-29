@@ -5,7 +5,11 @@ from uuid import UUID
 
 from ninja import Schema
 
-from api.schemas.project import ProjectImageResponse, WonCompetitionInfo
+from api.schemas.project import (
+    ContributorSummary,
+    ProjectImageResponse,
+    WonCompetitionInfo,
+)
 from api.schemas.tag import TagWithCategoryResponse
 from api.schemas.user import UserResponse
 
@@ -96,10 +100,24 @@ class ReviewProjectDetailResponse(Schema):
     created_at: datetime
     approved_at: datetime | None
     published_at: datetime | None
+    # `owner` is a transitional shim populated from `creator` so existing
+    # frontend consumers keep working until they migrate. To be removed in a
+    # follow-up change after the FE consumes `creator` directly.
     owner: UserResponse
+    creator: UserResponse
+    contributors: list[ContributorSummary] = []
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
+    community_owned: bool = False
+
+    @staticmethod
+    def resolve_owner(obj: Any) -> Any:
+        return obj.creator
+
+    @staticmethod
+    def resolve_contributors(obj: Any) -> list[Any]:
+        return list(obj.contributors.all())
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:

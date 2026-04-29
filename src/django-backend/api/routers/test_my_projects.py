@@ -12,7 +12,13 @@ from hamcrest import (
     none,
 )
 
-from apps.projects.models import Project, ProjectStatus
+from apps.projects.models import (
+    ContributorRole,
+    Project,
+    ProjectContributor,
+    ProjectStatus,
+)
+from services import REPO
 from tests.factories import ProjectFactory, ProjectImageFactory
 
 
@@ -45,6 +51,130 @@ class TestListMyProjects:
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json(), has_length(3))
 
+    def test_excludes_projects_where_user_is_only_tipster(
+        self,
+        client,
+        user,
+        auth_headers,
+    ) -> None:
+        # /my-projects is creator-scoped; TIPSTER-only projects belong in
+        # /tip-offs.
+        project = ProjectFactory()  # owned by someone else
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.TIPSTER,
+            full_edit=True,
+        )
+
+        response = client.get("/api/my/projects", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_length(0))
+
+
+class TestListMyTipOffs:
+    def test_empty_when_no_tip_offs(self, client, user, auth_headers) -> None:
+        ProjectFactory(owner=user)  # self-owned
+
+        response = client.get("/api/my/projects/tip-offs", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_length(0))
+
+    def test_returns_community_tip_off_projects(
+        self, client, user, auth_headers
+    ) -> None:
+        # A community tip-off: seed user is OWNER, calling user is TIPSTER.
+        seed = REPO.users.get_community_user()
+        project = ProjectFactory(creator=user, _contributor=False)
+        ProjectContributor.objects.create(
+            project=project, user=seed, role=ContributorRole.OWNER, full_edit=True
+        )
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.TIPSTER,
+            full_edit=True,
+        )
+
+        response = client.get("/api/my/projects/tip-offs", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_length(1))
+        assert_that(
+            response.json()[0],
+            has_entries(id=str(project.id)),
+        )
+
+    def test_excludes_tipster_with_full_edit_disabled(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()  # owned by someone else
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.TIPSTER,
+            full_edit=False,
+        )
+
+        response = client.get("/api/my/projects/tip-offs", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_length(0))
+
+    def test_requires_authentication(self, client, db) -> None:
+        response = client.get("/api/my/projects/tip-offs")
+
+        assert_that(response.status_code, equal_to(401))
+
+
+class TestCommunityOwnedCreate:
+    def test_community_owned_flag_creates_seed_owner_and_tipster(
+        self, client, user, auth_headers
+    ) -> None:
+        payload = {
+            "website_url": "https://made-by-someone-else.com",
+            "description": "A cool community tip-off project",
+            "community_owned": True,
+        }
+
+        response = client.post(
+            "/api/my/projects",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(201))
+        body = response.json()
+        seed = REPO.users.get_community_user()
+        roles = {c["user"]["id"]: c["role"] for c in body["contributors"]}
+        assert_that(roles[str(seed.id)], equal_to("owner"))
+        assert_that(roles[str(user.id)], equal_to("tipster"))
+        assert_that(body["creator"]["id"], equal_to(str(user.id)))
+
+    def test_default_omitted_creates_self_owned(
+        self, client, user, auth_headers
+    ) -> None:
+        payload = {
+            "website_url": "https://my-own-project.com",
+            "description": "Self-owned",
+        }
+
+        response = client.post(
+            "/api/my/projects",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(201))
+        body = response.json()
+        assert_that(body["contributors"], has_length(1))
+        assert_that(body["contributors"][0]["role"], equal_to("owner"))
+        assert_that(body["contributors"][0]["user"]["id"], equal_to(str(user.id)))
+
 
 class TestCreateProject:
     def test_create_project_with_url(self, client, user, auth_headers) -> None:
@@ -58,12 +188,23 @@ class TestCreateProject:
         )
 
         assert_that(response.status_code, equal_to(201))
+        body = response.json()
         assert_that(
-            response.json(),
+            body,
             has_entries(
                 website_url="https://example.com",
                 title="example.com",
                 owner=has_entries(id=str(user.id)),
+                creator=has_entries(id=str(user.id)),
+            ),
+        )
+        assert_that(body["contributors"], has_length(1))
+        assert_that(
+            body["contributors"][0],
+            has_entries(
+                user=has_entries(id=str(user.id)),
+                role="owner",
+                full_edit=True,
             ),
         )
 
@@ -393,3 +534,88 @@ class TestAuthorization:
         )
 
         assert_that(response.status_code, equal_to(404))
+
+
+class TestNonCreatorContributorAccess:
+    # `/my-projects` is creator-scoped (see TestListMyProjects above);
+    # TIPSTER-only listings live at `/my-projects/tip-offs`. This class
+    # asserts that contributor-scoped *write* access still works.
+    def test_full_edit_contributor_can_get_project(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.TIPSTER,
+            full_edit=True,
+        )
+
+        response = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(id=str(project.id)))
+
+    def test_full_edit_contributor_can_update_project(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(title="Original")
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.TIPSTER,
+            full_edit=True,
+        )
+        payload = {
+            "website_url": "https://updated.com",
+            "title": "Suggested Edit",
+            "description": "Updated description",
+        }
+
+        response = client.put(
+            f"/api/my/projects/{project.id}",
+            data=json.dumps(payload),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        project.refresh_from_db()
+        assert_that(project.title, equal_to("Suggested Edit"))
+
+    def test_contributor_without_full_edit_returns_404(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.TIPSTER,
+            full_edit=False,
+        )
+
+        response = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_contributor_without_full_edit_cannot_update(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(title="Original")
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.TIPSTER,
+            full_edit=False,
+        )
+
+        response = client.put(
+            f"/api/my/projects/{project.id}",
+            data=json.dumps({"website_url": "https://hacked.com", "title": "Hacked"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(404))
+        project.refresh_from_db()
+        assert_that(project.title, equal_to("Original"))

@@ -59,8 +59,8 @@ bootstrap:
 seed: bootstrap
 	uv run python scripts/seed_db.py
 
-seed-prod-copy: bootstrap
-	uv run python scripts/seed_prod_copy.py
+seed-prod-copy: bootstrap dev-services
+	$(DEV_S3_ENV) uv run python scripts/seed_prod_copy.py
 
 migrate:
 	uv run python manage.py migrate

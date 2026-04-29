@@ -179,7 +179,10 @@ def get_project(
         return project
 
     user = _get_user_from_request(request)
-    if user and (project.owner == user or user.is_superuser):
+    if user and user.is_superuser:
+        return project
+    user_id = user.id if user else None
+    if REPO.project.user_can_edit(project.id, user_id):
         return project
 
     return 404, {"detail": "Project not found"}

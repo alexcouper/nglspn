@@ -15,6 +15,7 @@ import { TagGroup } from "@/components/TagBadge";
 import { InlineDiscussions } from "@/components/InlineDiscussions";
 import { ProjectPageLayout } from "@/components/ProjectPageLayout";
 import { ProjectTitleBanner } from "@/components/ProjectTitleBanner";
+import { CreatorCredit } from "@/components/CreatorCredit";
 import { pickVariant, groupTagsByCategory } from "@/lib/utils";
 
 interface Props {
@@ -181,6 +182,8 @@ export function ProjectDetailContent({ project, projectId }: Props) {
           day: "numeric",
         })}
       </p>
+
+      <CreatorCredit project={project} />
     </>
   );
 

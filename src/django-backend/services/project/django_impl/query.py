@@ -4,14 +4,16 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from django.db.models import Count, Prefetch, Q, QuerySet
+from django.db.models import Count, Exists, OuterRef, Prefetch, Q, QuerySet
 from django.db.models.functions import Coalesce, Lower
 from django.utils import timezone
 
 from apps.projects.models import (
     Competition,
+    ContributorRole,
     Project,
     ProjectCategory,
+    ProjectContributor,
     ProjectImage,
     ProjectStatus,
 )
@@ -32,29 +34,51 @@ def _top_level_discussion_count() -> Count:
     return Count("discussions", filter=Q(discussions__parent__isnull=True))
 
 
+def _community_owned_annotation() -> Exists:
+    # A project is community-owned iff it has an OWNER contributor that's a
+    # system user (the seed Community user). Exposed as a queryable annotation
+    # so we can both filter on and serialize it without a model column.
+    return Exists(
+        ProjectContributor.objects.filter(
+            project_id=OuterRef("pk"),
+            role=ContributorRole.OWNER,
+            user__is_system_user=True,
+        )
+    )
+
+
 def _discover_queryset() -> QuerySet[Project]:
-    return Project.objects.select_related("owner", "category").prefetch_related(
-        "won_competitions",
-        Prefetch(
-            "images",
-            queryset=ProjectImage.objects.filter(
-                upload_status="uploaded"
-            ).prefetch_related("variants"),
-        ),
+    return (
+        Project.objects.select_related("creator", "category")
+        .prefetch_related(
+            "won_competitions",
+            Prefetch(
+                "images",
+                queryset=ProjectImage.objects.filter(
+                    upload_status="uploaded"
+                ).prefetch_related("variants"),
+            ),
+        )
+        .annotate(community_owned=_community_owned_annotation())
     )
 
 
 def _base_queryset() -> QuerySet[Project]:
-    return Project.objects.select_related("owner").prefetch_related(
-        "tags",
-        "tags__category",
-        "won_competitions",
-        Prefetch(
-            "images",
-            queryset=ProjectImage.objects.filter(
-                upload_status="uploaded"
-            ).prefetch_related("variants"),
-        ),
+    return (
+        Project.objects.select_related("creator")
+        .prefetch_related(
+            "tags",
+            "tags__category",
+            "won_competitions",
+            "contributors__user",
+            Prefetch(
+                "images",
+                queryset=ProjectImage.objects.filter(
+                    upload_status="uploaded"
+                ).prefetch_related("variants"),
+            ),
+        )
+        .annotate(community_owned=_community_owned_annotation())
     )
 
 
@@ -169,9 +193,21 @@ class DjangoProjectQuery(ProjectQueryInterface):
 
     def get_for_owner(self, project_id: UUID, owner_id: UUID) -> Project:
         try:
-            return _base_queryset().get(id=project_id, owner_id=owner_id)
+            project = _base_queryset().get(id=project_id)
         except Project.DoesNotExist:
             raise ProjectNotFoundError from None
+        if not self.user_can_edit(project.id, owner_id):
+            raise ProjectNotFoundError
+        return project
+
+    def user_can_edit(self, project_id: UUID | None, user_id: UUID | None) -> bool:
+        if project_id is None or user_id is None:
+            return False
+        return ProjectContributor.objects.filter(
+            project_id=project_id,
+            user_id=user_id,
+            full_edit=True,
+        ).exists()
 
     def list_approved(
         self,
@@ -220,21 +256,47 @@ class DjangoProjectQuery(ProjectQueryInterface):
         )
 
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]:
-        return _base_queryset().filter(owner_id=owner_id)
+        # Creator-scoped, but community-owned projects belong in /tip-offs:
+        # for tip-offs the tipster is the creator, so without this exclusion
+        # they would appear in both /my-projects and /my-projects/tip-offs.
+        return _base_queryset().filter(creator_id=owner_id, community_owned=False)
+
+    def list_tip_offs_for(self, user_id: UUID) -> QuerySet[Project]:
+        return (
+            _base_queryset()
+            .filter(
+                contributors__user_id=user_id,
+                contributors__role=ContributorRole.TIPSTER,
+                contributors__full_edit=True,
+            )
+            .distinct()
+        )
+
+    def list_notifiable_contributors(
+        self, project_id: UUID
+    ) -> QuerySet[ProjectContributor]:
+        return (
+            ProjectContributor.objects.filter(
+                project_id=project_id,
+                full_edit=True,
+            )
+            .exclude(user__is_system_user=True)
+            .select_related("user")
+        )
 
     def count_pending(self) -> int:
         return Project.objects.filter(status=ProjectStatus.PENDING).count()
 
     def get_project_with_owner(self, project_id: UUID) -> dict[str, Any]:
         try:
-            project = Project.objects.select_related("owner").get(id=project_id)
+            project = Project.objects.select_related("creator").get(id=project_id)
         except Project.DoesNotExist:
             raise ProjectNotFoundError from None
         return {
             "id": project.id,
             "title": project.title,
-            "owner_email": project.owner.email,
-            "owner_first_name": project.owner.first_name,
+            "owner_email": project.creator.email,
+            "owner_first_name": project.creator.first_name,
         }
 
     def list_featured(self) -> list[DiscoverProjectItem]:

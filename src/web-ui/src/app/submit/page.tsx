@@ -10,6 +10,7 @@ export default function SubmitPage() {
   const router = useRouter();
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [url, setUrl] = useState("");
+  const [iOwnThis, setIOwnThis] = useState(true);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
@@ -27,7 +28,10 @@ export default function SubmitPage() {
     setIsLoading(true);
 
     try {
-      const project = await api.myProjects.create({ website_url: url });
+      const project = await api.myProjects.create({
+        website_url: url,
+        community_owned: !iOwnThis,
+      });
       router.push(`/my-projects/${project.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to submit project");
@@ -79,6 +83,38 @@ export default function SubmitPage() {
                   placeholder="https://your-project.com"
                 />
               </div>
+
+              <fieldset className="space-y-2">
+                <legend className="label mb-1">Who made this project?</legend>
+                <label htmlFor="ownership-mine" className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    id="ownership-mine"
+                    type="radio"
+                    name="ownership"
+                    checked={iOwnThis}
+                    onChange={() => setIOwnThis(true)}
+                    className="mt-1"
+                  />
+                  <span className="text-sm">
+                    <span className="text-foreground font-medium">Mine</span>
+                    <span className="block text-xs text-muted-foreground">I made this project.</span>
+                  </span>
+                </label>
+                <label htmlFor="ownership-tipoff" className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    id="ownership-tipoff"
+                    type="radio"
+                    name="ownership"
+                    checked={!iOwnThis}
+                    onChange={() => setIOwnThis(false)}
+                    className="mt-1"
+                  />
+                  <span className="text-sm">
+                    <span className="text-foreground font-medium">Tipoff</span>
+                    <span className="block text-xs text-muted-foreground">Someone else made this — I&apos;m flagging it for the community.</span>
+                  </span>
+                </label>
+              </fieldset>
 
               <button
                 type="submit"

@@ -98,7 +98,7 @@ class Project(models.Model):
         blank=True,
         related_name="projects",
     )
-    owner = models.ForeignKey(
+    creator = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
         related_name="projects",
@@ -120,6 +120,37 @@ class Project(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+
+class ContributorRole(models.TextChoices):
+    OWNER = "owner", "Owner"
+    TIPSTER = "tipster", "Tipster"
+
+
+class ProjectContributor(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="contributors",
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="project_contributions",
+    )
+    role = models.CharField(max_length=20, choices=ContributorRole.choices)
+    full_edit = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "project_contributors"
+        unique_together = ("project", "user")
+        # "owner" < "tipster" lexicographically, so ascending puts OWNER first.
+        ordering = ["role", "created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.project} - {self.user} ({self.role})"
 
 
 class ProjectView(models.Model):

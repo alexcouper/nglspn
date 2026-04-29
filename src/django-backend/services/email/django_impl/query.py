@@ -39,4 +39,7 @@ class DjangoEmailQuery(EmailQueryInterface):
             return DjangoUserQuery().list_opted_in_for_broadcast_type(
                 broadcast.email_type
             )
-        return broadcast.individual_recipients.filter(is_active=True)
+        # System users never receive broadcasts.
+        return broadcast.individual_recipients.filter(
+            is_active=True, is_system_user=False
+        )

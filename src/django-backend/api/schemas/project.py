@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any
+from typing import Any, Literal
 from uuid import UUID
 
 from ninja import Schema
@@ -19,6 +19,7 @@ class ProjectCreate(Schema):
     demo_url: str | None = None
     tech_stack: list[str] | None = None
     tag_ids: list[UUID] | None = None
+    community_owned: bool = False
 
 
 class PublishMissingFieldsResponse(Schema):
@@ -60,6 +61,12 @@ class WonCompetitionInfo(Schema):
     slug: str
 
 
+class ContributorSummary(Schema):
+    user: PublicUserProfile
+    role: Literal["owner", "tipster"]
+    full_edit: bool
+
+
 class ProjectResponse(Schema):
     id: UUID
     slug: str | None
@@ -75,10 +82,24 @@ class ProjectResponse(Schema):
     created_at: datetime
     approved_at: datetime | None
     published_at: datetime | None
+    # `owner` is a transitional shim populated from `creator` so existing
+    # frontend consumers keep working until they migrate. To be removed in a
+    # follow-up change after the FE consumes `creator` directly.
     owner: PublicUserProfile
+    creator: PublicUserProfile
+    contributors: list[ContributorSummary] = []
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
+    community_owned: bool = False
+
+    @staticmethod
+    def resolve_owner(obj: Any) -> Any:
+        return obj.creator
+
+    @staticmethod
+    def resolve_contributors(obj: Any) -> list[Any]:
+        return list(obj.contributors.all())
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:
@@ -178,6 +199,7 @@ class DiscoverProjectResponse(Schema):
     category_slug: str | None = None
     discussion_count: int = 0
     won_competitions: list[WonCompetitionInfo] = []
+    community_owned: bool = False
 
     @classmethod
     def from_discover_item(cls, item: Any) -> "DiscoverProjectResponse":
@@ -193,6 +215,7 @@ class DiscoverProjectResponse(Schema):
             category_slug=item.category_slug,
             discussion_count=item.discussion_count,
             won_competitions=list(item.project.won_competitions.all()),
+            community_owned=getattr(item.project, "community_owned", False),
         )
 
 

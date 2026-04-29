@@ -4,9 +4,12 @@ import pytest
 
 from apps.projects.models import (
     CompetitionStatus,
+    ContributorRole,
     Project,
+    ProjectContributor,
     ProjectStatus,
 )
+from services import REPO
 from services.project.django_impl import DjangoProjectHandler
 from services.project.exceptions import (
     InvalidProjectStateError,
@@ -53,9 +56,100 @@ class TestCreate:
         project = handler.create(data)
 
         assert project.title == "My Project"
-        assert project.owner_id == user.id
+        assert project.creator_id == user.id
         assert project.website_url == "https://example.com"
         assert project.status == ProjectStatus.DRAFT
+
+    def test_creates_owner_contributor(self):
+        user = UserFactory()
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="My Project",
+        )
+
+        project = handler.create(data)
+
+        contributors = list(project.contributors.all())
+        assert len(contributors) == 1
+        assert contributors[0].user_id == user.id
+        assert contributors[0].role == ContributorRole.OWNER
+        assert contributors[0].full_edit is True
+
+    def test_create_rolls_back_when_contributor_insert_fails(self):
+        user = UserFactory()
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="Atomic",
+        )
+
+        with (
+            patch.object(
+                ProjectContributor.objects,
+                "create",
+                side_effect=RuntimeError("forced"),
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            handler.create(data)
+
+        assert not Project.objects.filter(title="Atomic").exists()
+        assert not ProjectContributor.objects.filter(user_id=user.id).exists()
+
+    def test_community_owned_create_attaches_seed_owner_and_tipster(self):
+        user = UserFactory()
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="Community Submitted",
+            community_owned=True,
+        )
+
+        project = handler.create(data)
+
+        assert project.creator_id == user.id
+        contributors = list(project.contributors.all())
+        assert len(contributors) == 2
+        seed = REPO.users.get_community_user()
+        seed_owner = next(c for c in contributors if c.role == ContributorRole.OWNER)
+        tipster = next(c for c in contributors if c.role == ContributorRole.TIPSTER)
+        assert seed_owner.user_id == seed.id
+        assert seed_owner.full_edit is True
+        assert tipster.user_id == user.id
+        assert tipster.full_edit is True
+
+    def test_community_owned_create_rolls_back_atomically(self):
+        user = UserFactory()
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="Atomic Community",
+            community_owned=True,
+        )
+
+        original_create = ProjectContributor.objects.create
+        call_count = {"n": 0}
+
+        def flaky_create(*args, **kwargs):
+            call_count["n"] += 1
+            if call_count["n"] == 2:
+                msg = "forced"
+                raise RuntimeError(msg)
+            return original_create(*args, **kwargs)
+
+        with (
+            patch.object(
+                ProjectContributor.objects,
+                "create",
+                side_effect=flaky_create,
+            ),
+            pytest.raises(RuntimeError),
+        ):
+            handler.create(data)
+
+        assert not Project.objects.filter(title="Atomic Community").exists()
+        assert not ProjectContributor.objects.filter(user_id=user.id).exists()
 
     def test_derives_title_from_url_when_not_provided(self):
         user = UserFactory()
@@ -218,6 +312,32 @@ class TestPublish:
             result = handler.publish(project.id, user.id)
 
         assert result.status == ProjectStatus.PENDING
+
+    def test_publish_community_owned_skips_competition_entry(self):
+        user = UserFactory()
+        competition = CompetitionFactory(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS
+        )
+        # Build a draft via the handler so the contributor wiring matches the
+        # real community-owned shape (seed user as OWNER + user as TIPSTER).
+        data = CreateProjectInput(
+            owner_id=user.id,
+            website_url="https://example.com",
+            title="Community Pub",
+            description="A community tip-off project",
+            community_owned=True,
+        )
+        project = handler.create(data)
+        # Bring the draft up to publish-ready state.
+        project.status = ProjectStatus.DRAFT
+        project.save(update_fields=["status"])
+        ProjectImageFactory(project=project, is_main=True, upload_status="uploaded")
+
+        with patch("api.tasks.email.send_new_project_notification"):
+            result = handler.publish(project.id, user.id)
+
+        assert result.status == ProjectStatus.PENDING
+        assert project not in competition.projects.all()
 
     def test_publish_missing_title_raises(self):
         user = UserFactory()

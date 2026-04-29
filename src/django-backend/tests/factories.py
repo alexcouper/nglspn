@@ -10,8 +10,10 @@ from apps.notifications.models import Notification, NotificationCadence
 from apps.projects.models import (
     Competition,
     CompetitionReviewer,
+    ContributorRole,
     Project,
     ProjectCategory,
+    ProjectContributor,
     ProjectImage,
     ProjectRanking,
     ProjectStatus,
@@ -77,20 +79,50 @@ class ProjectCategoryFactory(factory.django.DjangoModelFactory):
 class ProjectFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Project
+        skip_postgeneration_save = True
 
     title = factory.Faker("company")
     tagline = factory.Faker("catch_phrase")
     description = factory.Faker("paragraph")
     website_url = factory.Faker("url")
-    owner = factory.SubFactory(UserFactory)
     status = ProjectStatus.PENDING
     submission_month = factory.LazyFunction(lambda: "2025-01")
+
+    @classmethod
+    def _create(cls, model_class, *args, **kwargs):
+        # Accept `owner=` as a concept-level alias for `creator=` so existing
+        # tests keep reading naturally after the field rename. `creator` is not
+        # a class-level SubFactory because that would always populate kwargs and
+        # mask the "passed both" case below.
+        owner_passed = "owner" in kwargs
+        creator_passed = "creator" in kwargs
+        if owner_passed and creator_passed:
+            msg = "ProjectFactory: pass either creator= or owner=, not both"
+            raise TypeError(msg)
+        if owner_passed:
+            kwargs["creator"] = kwargs.pop("owner")
+        elif not creator_passed:
+            kwargs["creator"] = UserFactory()
+        return super()._create(model_class, *args, **kwargs)
 
     @factory.post_generation
     def tags(self, create, extracted, **kwargs) -> None:
         if not create or not extracted:
             return
         self.tags.add(*extracted)
+
+    @factory.post_generation
+    def _contributor(self, create, extracted, **kwargs) -> None:
+        # Mirror the production invariant: every project has at least one
+        # OWNER contributor with full_edit. Tests that need a different shape
+        # can pass `_contributor=False` and add their own rows.
+        if not create or extracted is False or self.creator_id is None:
+            return
+        ProjectContributor.objects.get_or_create(
+            project=self,
+            user=self.creator,
+            defaults={"role": ContributorRole.OWNER, "full_edit": True},
+        )
 
 
 class DiscussionFactory(factory.django.DjangoModelFactory):

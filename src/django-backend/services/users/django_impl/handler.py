@@ -107,6 +107,9 @@ class DjangoUserHandler(UserHandlerInterface):
         except user_model.DoesNotExist:
             return None
 
+        if user.is_system_user:
+            return None
+
         now = timezone.now()
         cooldown_threshold = now - timedelta(seconds=VERIFICATION_COOLDOWN_SECONDS)
 
@@ -135,6 +138,9 @@ class DjangoUserHandler(UserHandlerInterface):
         try:
             user = user_model.objects.get(email=email)
         except user_model.DoesNotExist:
+            return VerifyResetCodeResult(user=None, attempts_remaining=0)
+
+        if user.is_system_user:
             return VerifyResetCodeResult(user=None, attempts_remaining=0)
 
         now = timezone.now()

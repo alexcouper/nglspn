@@ -517,7 +517,7 @@ def create_projects(users: list[User], admin: User | None) -> list[Project]:
             status=p["status"],
             rejection_reason=p.get("rejection_reason"),
             submission_month=f"2025-{(i % 3) + 1:02d}",
-            owner=owner,
+            creator=owner,
             approved_by=admin if p["status"] == ProjectStatus.APPROVED else None,
             approved_at=timezone.now()
             if p["status"] == ProjectStatus.APPROVED

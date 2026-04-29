@@ -72,7 +72,7 @@
 - [x] 10.1 Run `make lint` in `src/django-backend` — all checks passed, 234 files already formatted
 - [x] 10.2 Run `make test` in `src/django-backend` — 496 passed
 - [x] 10.3 Run `npm run lint` in `src/web-ui` — clean (2 pre-existing warnings about unused `reset` prop in two error boundaries)
-- [ ] 10.4 Manual Playwright test: create draft via `/submit`, add description + upload main image in edit, click Publish, confirm redirect to `/projects/{slug}`, confirm admin email enqueued (log/queue inspection), confirm project now appears in public listings — *user to run: needs running stack + auth; see `.env.claude` + CLAUDE.md Playwright instructions*
-- [ ] 10.5 Manual Playwright test: publish a draft missing description → dialog shows, status stays DRAFT — *user to run*
-- [ ] 10.6 Manual check: request a legacy `/projects/{uuid}` URL → 301 to canonical `/projects/{slug}` — *user to run*
+- [x] 10.4 Manual Playwright test: create draft via `/submit`, add description + upload main image in edit, click Publish, confirm redirect to `/projects/{slug}`, confirm admin email enqueued (log/queue inspection), confirm project now appears in public listings — *verified by user*
+- [x] 10.5 Manual Playwright test: publish a draft missing description → dialog shows, status stays DRAFT — *verified by user*
+- [x] 10.6 Manual check: request a legacy `/projects/{uuid}` URL → 301 to canonical `/projects/{slug}` — *verified by user*
 - [x] 10.7 Run `make ci` at project root — *no root `make ci` target exists (CLAUDE.md references it aspirationally); ran the equivalent CI steps from `.github/workflows/ci.yml` manually: Django `make lint` + `make test`, web-ui `npm run generate-types` + `make lint` + `make build-app` — all clean, build produced the expected route map including `/projects/[slug]` and `/my-projects/[id]`*

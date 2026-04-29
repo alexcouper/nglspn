@@ -23,6 +23,7 @@ from .models import (
     ImageVariant,
     Project,
     ProjectCategory,
+    ProjectContributor,
     ProjectImage,
     ProjectRanking,
     ProjectStatus,
@@ -131,8 +132,8 @@ class ProjectViewInline(admin.TabularInline):
 class ProjectAdmin(admin.ModelAdmin):
     list_display = (
         "title",
-        "owner_link",
-        "owner_promo_opt_in",
+        "creator_link",
+        "creator_promo_opt_in",
         "status",
         "is_featured",
         "category",
@@ -144,12 +145,12 @@ class ProjectAdmin(admin.ModelAdmin):
         "status",
         "is_featured",
         "category",
-        "owner__opt_in_to_external_promotions",
+        "creator__opt_in_to_external_promotions",
         "submission_month",
         "created_at",
         "tags",
     )
-    search_fields = ("title", "description", "owner__email", "owner__username")
+    search_fields = ("title", "description", "creator__email", "creator__username")
     ordering = ("-created_at",)
     readonly_fields = ("id", "view_count", "created_at", "updated_at", "approved_at")
     filter_horizontal = ("tags",)
@@ -186,28 +187,28 @@ class ProjectAdmin(admin.ModelAdmin):
             },
         ),
         ("Metrics", {"fields": ("view_count", "submission_month")}),
-        ("Ownership", {"fields": ("owner",)}),
+        ("Ownership", {"fields": ("creator",)}),
         (
             "System",
             {"fields": ("id", "created_at", "updated_at"), "classes": ("collapse",)},
         ),
     )
 
-    @admin.display(description="Owner", ordering="owner__email")
-    def owner_link(self, obj: Project) -> SafeString | str:
-        if obj.owner:
-            url = reverse("admin:users_user_change", args=[obj.owner.pk])
-            return format_html('<a href="{}">{}</a>', url, obj.owner.email)
+    @admin.display(description="Creator", ordering="creator__email")
+    def creator_link(self, obj: Project) -> SafeString | str:
+        if obj.creator:
+            url = reverse("admin:users_user_change", args=[obj.creator.pk])
+            return format_html('<a href="{}">{}</a>', url, obj.creator.email)
         return "-"
 
     @admin.display(
         description="Promo opt-in",
         boolean=True,
-        ordering="owner__opt_in_to_external_promotions",
+        ordering="creator__opt_in_to_external_promotions",
     )
-    def owner_promo_opt_in(self, obj: Project) -> bool | None:
-        if obj.owner:
-            return obj.owner.opt_in_to_external_promotions
+    def creator_promo_opt_in(self, obj: Project) -> bool | None:
+        if obj.creator:
+            return obj.creator.opt_in_to_external_promotions
         return None
 
     @admin.display(description="Total Views")
@@ -218,7 +219,7 @@ class ProjectAdmin(admin.ModelAdmin):
         return (
             super()
             .get_queryset(request)
-            .select_related("owner", "approved_by")
+            .select_related("creator", "approved_by")
             .prefetch_related("tags", "views")
         )
 
@@ -250,7 +251,7 @@ class ProjectAdmin(admin.ModelAdmin):
         queryset: QuerySet[Project],
     ) -> None:
         pending = list(
-            queryset.filter(status=ProjectStatus.PENDING).select_related("owner")
+            queryset.filter(status=ProjectStatus.PENDING).select_related("creator")
         )
         updated = queryset.filter(status=ProjectStatus.PENDING).update(
             status=ProjectStatus.APPROVED,
@@ -295,6 +296,16 @@ class ProjectAdmin(admin.ModelAdmin):
     ) -> None:
         updated = queryset.filter(is_featured=True).update(is_featured=False)
         self.message_user(request, f"{updated} projects were unfeatured.")
+
+
+@admin.register(ProjectContributor)
+class ProjectContributorAdmin(admin.ModelAdmin):
+    list_display = ("project", "user", "role", "full_edit", "created_at")
+    list_filter = ("role", "full_edit", "created_at")
+    search_fields = ("project__title", "user__email")
+    autocomplete_fields = ("project", "user")
+    readonly_fields = ("id", "created_at")
+    ordering = ("project", "role", "created_at")
 
 
 @admin.register(ProjectView)
@@ -358,7 +369,7 @@ class ProjectImageAdmin(admin.ModelAdmin):
         "created_at",
     )
     list_filter = ("is_main", "upload_status", "content_type", "created_at")
-    search_fields = ("original_filename", "project__title", "project__owner__email")
+    search_fields = ("original_filename", "project__title", "project__creator__email")
     ordering = ("-created_at",)
     inlines = (ImageVariantInline,)
     readonly_fields = (
@@ -451,7 +462,7 @@ class ProjectImageAdmin(admin.ModelAdmin):
         return (
             super()
             .get_queryset(request)
-            .select_related("project", "project__owner")
+            .select_related("project", "project__creator")
             .annotate(variant_count=Count("variants"))
         )
 

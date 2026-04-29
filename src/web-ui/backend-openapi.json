@@ -1274,6 +1274,47 @@
         ]
       }
     },
+    "/api/my/projects/tip-offs": {
+      "get": {
+        "operationId": "api_routers_my_projects_list_my_tip_offs",
+        "summary": "List My Tip Offs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ProjectResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "My Projects"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
     "/api/my/projects/{project_id}": {
       "get": {
         "operationId": "api_routers_my_projects_get_my_project",
@@ -2695,6 +2736,11 @@
             "title": "Is Verified",
             "type": "boolean"
           },
+          "is_system_user": {
+            "default": false,
+            "title": "Is System User",
+            "type": "boolean"
+          },
           "created_at": {
             "format": "date-time",
             "title": "Created At",
@@ -3236,6 +3282,11 @@
             },
             "title": "Won Competitions",
             "type": "array"
+          },
+          "community_owned": {
+            "default": false,
+            "title": "Community Owned",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3553,6 +3604,32 @@
         "title": "TagWithCategoryResponse",
         "type": "object"
       },
+      "ContributorSummary": {
+        "properties": {
+          "user": {
+            "$ref": "#/components/schemas/PublicUserProfile"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "tipster"
+            ],
+            "title": "Role",
+            "type": "string"
+          },
+          "full_edit": {
+            "title": "Full Edit",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "user",
+          "role",
+          "full_edit"
+        ],
+        "title": "ContributorSummary",
+        "type": "object"
+      },
       "ImageVariantResponse": {
         "properties": {
           "size": {
@@ -3793,6 +3870,17 @@
           "owner": {
             "$ref": "#/components/schemas/PublicUserProfile"
           },
+          "creator": {
+            "$ref": "#/components/schemas/PublicUserProfile"
+          },
+          "contributors": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ContributorSummary"
+            },
+            "title": "Contributors",
+            "type": "array"
+          },
           "tags": {
             "items": {
               "$ref": "#/components/schemas/TagWithCategoryResponse"
@@ -3815,6 +3903,11 @@
             },
             "title": "Won Competitions",
             "type": "array"
+          },
+          "community_owned": {
+            "default": false,
+            "title": "Community Owned",
+            "type": "boolean"
           }
         },
         "required": [
@@ -3833,6 +3926,7 @@
           "approved_at",
           "published_at",
           "owner",
+          "creator",
           "tags"
         ],
         "title": "ProjectResponse",
@@ -3856,6 +3950,11 @@
           "info": {
             "title": "Info",
             "type": "string"
+          },
+          "is_system_user": {
+            "default": false,
+            "title": "Is System User",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4094,6 +4193,11 @@
               }
             ],
             "title": "Tag Ids"
+          },
+          "community_owned": {
+            "default": false,
+            "title": "Community Owned",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4582,6 +4686,17 @@
           "owner": {
             "$ref": "#/components/schemas/UserResponse"
           },
+          "creator": {
+            "$ref": "#/components/schemas/UserResponse"
+          },
+          "contributors": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ContributorSummary"
+            },
+            "title": "Contributors",
+            "type": "array"
+          },
           "tags": {
             "items": {
               "$ref": "#/components/schemas/TagWithCategoryResponse"
@@ -4604,6 +4719,11 @@
             },
             "title": "Won Competitions",
             "type": "array"
+          },
+          "community_owned": {
+            "default": false,
+            "title": "Community Owned",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4622,6 +4742,7 @@
           "approved_at",
           "published_at",
           "owner",
+          "creator",
           "tags"
         ],
         "title": "ReviewProjectDetailResponse",

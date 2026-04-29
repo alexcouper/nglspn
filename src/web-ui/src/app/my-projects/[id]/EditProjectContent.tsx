@@ -98,7 +98,7 @@ export function EditProjectContent({
   onIconFilesSelected,
   onDeleteIcon,
 }: EditProjectContentProps) {
-  const authorName = getAuthorName(project.owner);
+  const authorName = getAuthorName(project.creator);
   const [roleDialogImage, setRoleDialogImage] = useState<ProjectImage | null>(
     null
   );
@@ -230,6 +230,7 @@ export function EditProjectContent({
           <EditableProjectBanner
             formData={formData}
             authorName={authorName}
+            isTipoff={project.community_owned}
             onChange={onChange}
             iconImage={iconImage}
             onIconFilesSelected={onIconFilesSelected}

@@ -4,6 +4,7 @@ import Link from "next/link";
 
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { TipoffBadge } from "@/components/TipoffBadge";
 
 interface FeaturedSectionProps {
   projects: DiscoverProject[];
@@ -52,11 +53,14 @@ export function LargeHeroCard({ project }: { project: DiscoverProject }) {
           )}
         </div>
         <div className="bg-[#0f172a] p-5">
-          {project.category_name && (
-            <span className="text-xs font-semibold uppercase tracking-wider text-accent">
-              {project.category_name}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {project.category_name && (
+              <span className="text-xs font-semibold uppercase tracking-wider text-accent">
+                {project.category_name}
+              </span>
+            )}
+            {project.community_owned && <TipoffBadge size="sm" label="Tipoff" />}
+          </div>
           <h3 className="text-lg font-semibold text-white mt-1 group-hover:text-accent-subtle transition-colors">
             {project.title}
           </h3>
@@ -89,6 +93,12 @@ function SmallHeroCard({ project }: { project: DiscoverProject }) {
           {/* Scrim + gradient overlay */}
           <div className="absolute inset-0 bg-[rgba(15,23,42,0.15)]" />
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.75)] to-transparent" />
+
+          {project.community_owned && (
+            <div className="absolute top-2 right-2">
+              <TipoffBadge size="sm" label="Tipoff" />
+            </div>
+          )}
 
           {/* Text overlay */}
           <div className="absolute bottom-0 left-0 right-0 p-4">

@@ -10,13 +10,16 @@ from django.utils import timezone
 from apps.projects.models import (
     Competition,
     CompetitionStatus,
+    ContributorRole,
     Project,
+    ProjectContributor,
     ProjectImage,
     ProjectStatus,
     UploadStatus,
 )
 from apps.projects.slugs import assign_unique_slug
 from apps.tags.models import Tag, TagStatus
+from apps.users.seed import COMMUNITY_USER_ID
 from services.project.exceptions import (
     InvalidProjectStateError,
     InvalidTagsError,
@@ -25,7 +28,9 @@ from services.project.exceptions import (
 )
 from services.project.handler_interface import ProjectHandlerInterface
 
-from .query import get_title_from_url
+from .query import DjangoProjectQuery, get_title_from_url
+
+_query = DjangoProjectQuery()
 
 logger = logging.getLogger(__name__)
 
@@ -59,6 +64,16 @@ def _enqueue_new_project_notification(project: Project) -> None:
         )
 
 
+def _get_editable_project(project_id: UUID, user_id: UUID) -> Project:
+    try:
+        project = Project.objects.get(id=project_id)
+    except Project.DoesNotExist:
+        raise ProjectNotFoundError from None
+    if not _query.user_can_edit(project.id, user_id):
+        raise ProjectNotFoundError
+    return project
+
+
 class DjangoProjectHandler(ProjectHandlerInterface):
     def create(self, data: CreateProjectInput) -> Project:
         valid_tags = None
@@ -66,7 +81,7 @@ class DjangoProjectHandler(ProjectHandlerInterface):
             valid_tags = _validate_tags(data.tag_ids)
 
         project_fields: dict[str, Any] = {
-            "owner_id": data.owner_id,
+            "creator_id": data.owner_id,
             "website_url": data.website_url,
         }
         for field in (
@@ -85,20 +100,34 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         if not project_fields.get("title"):
             project_fields["title"] = get_title_from_url(data.website_url)
 
-        project = Project.objects.create(**project_fields)
+        with transaction.atomic():
+            project = Project.objects.create(**project_fields)
+            # FK constant avoids a DB roundtrip; if the seed migration never
+            # ran, the FK insert will fail loudly.
+            owner_user_id = COMMUNITY_USER_ID if data.community_owned else data.owner_id
+            ProjectContributor.objects.create(
+                project=project,
+                user_id=owner_user_id,
+                role=ContributorRole.OWNER,
+                full_edit=True,
+            )
+            if data.community_owned:
+                ProjectContributor.objects.create(
+                    project=project,
+                    user_id=data.owner_id,
+                    role=ContributorRole.TIPSTER,
+                    full_edit=True,
+                )
 
-        if valid_tags is not None:
-            project.tags.set(valid_tags)
+            if valid_tags is not None:
+                project.tags.set(valid_tags)
 
         return project
 
     def update(
         self, project_id: UUID, owner_id: UUID, data: UpdateProjectInput
     ) -> Project:
-        try:
-            project = Project.objects.get(id=project_id, owner_id=owner_id)
-        except Project.DoesNotExist:
-            raise ProjectNotFoundError from None
+        project = _get_editable_project(project_id, owner_id)
 
         valid_tags = _validate_tags(data.tag_ids) if data.tag_ids else None
 
@@ -139,17 +168,11 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         return project
 
     def delete(self, project_id: UUID, owner_id: UUID) -> None:
-        try:
-            project = Project.objects.get(id=project_id, owner_id=owner_id)
-        except Project.DoesNotExist:
-            raise ProjectNotFoundError from None
+        project = _get_editable_project(project_id, owner_id)
         project.delete()
 
     def resubmit(self, project_id: UUID, owner_id: UUID) -> Project:
-        try:
-            project = Project.objects.get(id=project_id, owner_id=owner_id)
-        except Project.DoesNotExist:
-            raise ProjectNotFoundError from None
+        project = _get_editable_project(project_id, owner_id)
 
         if project.status != ProjectStatus.REJECTED:
             msg = "Only rejected projects can be resubmitted"
@@ -162,10 +185,7 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         return project
 
     def publish(self, project_id: UUID, owner_id: UUID) -> Project:
-        try:
-            project = Project.objects.get(id=project_id, owner_id=owner_id)
-        except Project.DoesNotExist:
-            raise ProjectNotFoundError from None
+        project = _get_editable_project(project_id, owner_id)
 
         if project.status != ProjectStatus.DRAFT:
             msg = "Only draft projects can be published"
@@ -191,15 +211,22 @@ class DjangoProjectHandler(ProjectHandlerInterface):
                 ]
             )
 
-            open_competition = (
-                Competition.objects.filter(
-                    status=CompetitionStatus.ACCEPTING_APPLICATIONS
+            community_owned = ProjectContributor.objects.filter(
+                project=project,
+                role=ContributorRole.OWNER,
+                user__is_system_user=True,
+            ).exists()
+
+            if not community_owned:
+                open_competition = (
+                    Competition.objects.filter(
+                        status=CompetitionStatus.ACCEPTING_APPLICATIONS
+                    )
+                    .order_by("-start_date")
+                    .first()
                 )
-                .order_by("-start_date")
-                .first()
-            )
-            if open_competition is not None:
-                open_competition.projects.add(project)
+                if open_competition is not None:
+                    open_competition.projects.add(project)
 
         _enqueue_new_project_notification(project)
 

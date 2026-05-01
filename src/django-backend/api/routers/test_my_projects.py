@@ -129,14 +129,14 @@ class TestListMyTipOffs:
         assert_that(response.status_code, equal_to(401))
 
 
-class TestCommunityOwnedCreate:
-    def test_community_owned_flag_creates_seed_owner_and_tipster(
+class TestCommunityTipoffCreate:
+    def test_tipoff_flag_creates_seed_owner_and_tipster(
         self, client, user, auth_headers
     ) -> None:
         payload = {
             "website_url": "https://made-by-someone-else.com",
             "description": "A cool community tip-off project",
-            "community_owned": True,
+            "is_community_tipoff": True,
         }
 
         response = client.post(

@@ -59,7 +59,7 @@ export function LargeHeroCard({ project }: { project: DiscoverProject }) {
                 {project.category_name}
               </span>
             )}
-            {project.community_owned && <TipoffBadge size="sm" label="Tipoff" />}
+            {project.is_community_tipoff && <TipoffBadge size="sm" label="Tipoff" />}
           </div>
           <h3 className="text-lg font-semibold text-white mt-1 group-hover:text-accent-subtle transition-colors">
             {project.title}
@@ -94,7 +94,7 @@ function SmallHeroCard({ project }: { project: DiscoverProject }) {
           <div className="absolute inset-0 bg-[rgba(15,23,42,0.15)]" />
           <div className="absolute inset-0 bg-gradient-to-t from-[rgba(15,23,42,0.75)] to-transparent" />
 
-          {project.community_owned && (
+          {project.is_community_tipoff && (
             <div className="absolute top-2 right-2">
               <TipoffBadge size="sm" label="Tipoff" />
             </div>

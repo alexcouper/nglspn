@@ -2,17 +2,19 @@ import {
   fetchCategories,
   fetchFeaturedProjects,
   fetchNewArrivals,
+  fetchRecentTipoffs,
   fetchWinners,
 } from "@/lib/api/server";
 import { ProjectsPage } from "./ProjectsPage";
 
 
 export default async function PreviewProjectsPage() {
-  const [categories, featured, newArrivals, winners] =
+  const [categories, featured, newArrivals, recentTipoffs, winners] =
     await Promise.all([
       fetchCategories(),
       fetchFeaturedProjects(),
       fetchNewArrivals(),
+      fetchRecentTipoffs(),
       fetchWinners(),
     ]);
 
@@ -22,6 +24,7 @@ export default async function PreviewProjectsPage() {
         initialCategories={categories}
         initialFeatured={featured}
         initialNewArrivals={newArrivals}
+        initialRecentTipoffs={recentTipoffs}
         initialWinners={winners}
       />
     </main>

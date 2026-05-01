@@ -4,32 +4,48 @@ import Link from "next/link";
 
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { Tooltip } from "@/components/Tooltip";
+import { TIPOFF_EXPLAINER } from "@/lib/constants";
 import { HorizontalScroll } from "../HorizontalScroll";
 
-interface NewArrivalsSectionProps {
+// Hide the section unless there are enough tip-offs to make a row worth its
+// own heading. With fewer than this they look stranded; bump as the volume
+// grows.
+const MIN_TIPOFFS_TO_DISPLAY = 3;
+
+interface RecentTipoffsSectionProps {
   projects: DiscoverProject[];
 }
 
-export function NewArrivalsSection({ projects }: NewArrivalsSectionProps) {
-  if (projects.length === 0) return null;
+export function RecentTipoffsSection({ projects }: RecentTipoffsSectionProps) {
+  if (projects.length < MIN_TIPOFFS_TO_DISPLAY) return null;
 
   return (
     <section>
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center gap-2 mb-4">
         <h2 className="text-lg font-semibold text-foreground">
-          New Arrivals
+          Recent Tipoffs
         </h2>
+        <Tooltip content={TIPOFF_EXPLAINER}>
+          <button
+            type="button"
+            aria-label="What is a community tip-off?"
+            className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-900 border border-amber-200 hover:bg-amber-200 transition-colors"
+          >
+            ?
+          </button>
+        </Tooltip>
       </div>
       <HorizontalScroll>
         {projects.map((project) => (
-          <ArrivalCard key={project.id} project={project} />
+          <TipoffCard key={project.id} project={project} />
         ))}
       </HorizontalScroll>
     </section>
   );
 }
 
-export function ArrivalCard({ project }: { project: DiscoverProject }) {
+function TipoffCard({ project }: { project: DiscoverProject }) {
   const imageUrl = project.in_use_image_url || project.hero_banner_url;
 
   return (

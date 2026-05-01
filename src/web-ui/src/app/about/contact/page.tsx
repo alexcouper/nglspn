@@ -1,3 +1,5 @@
+import { SITE_EMAIL } from "@/lib/constants";
+
 export default function ContactPage() {
   return (
     <section className="py-12 px-4 sm:px-6 bg-white">
@@ -20,10 +22,10 @@ export default function ContactPage() {
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground w-16">Email</span>
             <a
-              href="mailto:alex@naglasupan.is"
+              href={`mailto:${SITE_EMAIL}`}
               className="text-sm text-accent hover:text-accent-hover transition-colors"
             >
-              alex@naglasupan.is
+              {SITE_EMAIL}
             </a>
           </div>
         </div>

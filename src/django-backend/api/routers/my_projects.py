@@ -98,7 +98,7 @@ def create_project(
         demo_url=payload.demo_url,
         tech_stack=payload.tech_stack,
         tag_ids=payload.tag_ids,
-        community_owned=payload.community_owned,
+        is_community_tipoff=payload.is_community_tipoff,
     )
     try:
         project = HANDLERS.project.create(data)

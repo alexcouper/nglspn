@@ -3,12 +3,14 @@
 import type { CategoryItem, DiscoverProject, WinnerProject } from "@/lib/api";
 import { FeaturedSection } from "./sections/FeaturedSection";
 import { NewArrivalsSection } from "./sections/NewArrivalsSection";
+import { RecentTipoffsSection } from "./sections/RecentTipoffsSection";
 import { WinnersSection } from "./sections/WinnersSection";
 import { CategoryRowsSection } from "./sections/CategoryRowsSection";
 
 interface DiscoverViewProps {
   featured: DiscoverProject[];
   newArrivals: DiscoverProject[];
+  recentTipoffs: DiscoverProject[];
   winners: WinnerProject[];
   categories: CategoryItem[];
 }
@@ -16,6 +18,7 @@ interface DiscoverViewProps {
 export function DiscoverView({
   featured,
   newArrivals,
+  recentTipoffs,
   winners,
   categories,
 }: DiscoverViewProps) {
@@ -24,6 +27,7 @@ export function DiscoverView({
       {featured.length > 0 && <FeaturedSection projects={featured} />}
       {newArrivals.length > 0 && <NewArrivalsSection projects={newArrivals} />}
       {winners.length > 0 && <WinnersSection winners={winners} />}
+      <RecentTipoffsSection projects={recentTipoffs} />
       {categories.length > 0 && <CategoryRowsSection categories={categories} />}
     </div>
   );

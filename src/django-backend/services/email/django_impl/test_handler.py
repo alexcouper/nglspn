@@ -108,6 +108,31 @@ class TestSendNewProjectNotification:
         assert logged.success is True
         assert logged.recipient is None
 
+    def test_self_owned_subject_and_body_unchanged(self, mailoutbox):
+        project = ProjectFactory(title="My Own Thing")
+
+        handler.send_new_project_notification(project, "admin@example.com")
+
+        email = mailoutbox[0]
+        assert email.subject == "New project submitted: My Own Thing - Naglasúpan"
+        html, _ = email.alternatives[0]
+        assert "community tip-off" not in html
+
+    def test_tipoff_subject_branches_and_body_includes_explainer(self, mailoutbox):
+        project = ProjectFactory(title="Spotted Thing", is_community_tipoff=True)
+        # ProjectFactory's contributor postgen would recompute the column; we
+        # set it explicitly after creation to keep this test focused on the
+        # email branching, not the contributor wiring.
+        project.is_community_tipoff = True
+        project.save(update_fields=["is_community_tipoff"])
+
+        handler.send_new_project_notification(project, "admin@example.com")
+
+        email = mailoutbox[0]
+        assert email.subject == "New tip-off submitted: Spotted Thing - Naglasúpan"
+        html, _ = email.alternatives[0]
+        assert "community tip-off" in html
+
 
 @pytest.mark.django_db
 class TestSendBroadcast:

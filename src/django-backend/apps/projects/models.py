@@ -85,6 +85,7 @@ class Project(models.Model):
     submission_month = models.CharField(
         max_length=7, blank=True, db_index=True
     )  # YYYY-MM format; blank until publish
+    is_community_tipoff = models.BooleanField(default=False, db_index=True)
     approved_at = models.DateTimeField(blank=True, null=True)
     published_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -120,6 +121,17 @@ class Project(models.Model):
 
     def __str__(self) -> str:
         return self.title
+
+    def recompute_community_tipoff(self) -> None:
+        # Derived from contributor truth: True iff an OWNER contributor is a
+        # system user. Saves only when the value would change.
+        actual = self.contributors.filter(
+            role=ContributorRole.OWNER,
+            user__is_system_user=True,
+        ).exists()
+        if self.is_community_tipoff != actual:
+            self.is_community_tipoff = actual
+            self.save(update_fields=["is_community_tipoff"])
 
 
 class ContributorRole(models.TextChoices):

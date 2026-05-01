@@ -78,6 +78,10 @@ export async function fetchNewArrivals(): Promise<DiscoverProject[]> {
   return serverFetch<DiscoverProject[]>("/api/projects/new-arrivals");
 }
 
+export async function fetchRecentTipoffs(): Promise<DiscoverProject[]> {
+  return serverFetch<DiscoverProject[]>("/api/projects/recent-tipoffs");
+}
+
 export async function fetchWinners(): Promise<WinnerProject[]> {
   return serverFetch<WinnerProject[]>("/api/projects/winners");
 }

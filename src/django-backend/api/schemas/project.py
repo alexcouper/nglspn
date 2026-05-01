@@ -19,7 +19,7 @@ class ProjectCreate(Schema):
     demo_url: str | None = None
     tech_stack: list[str] | None = None
     tag_ids: list[UUID] | None = None
-    community_owned: bool = False
+    is_community_tipoff: bool = False
 
 
 class PublishMissingFieldsResponse(Schema):
@@ -91,7 +91,7 @@ class ProjectResponse(Schema):
     tags: list[TagWithCategoryResponse]
     images: list[ProjectImageResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
-    community_owned: bool = False
+    is_community_tipoff: bool = False
 
     @staticmethod
     def resolve_owner(obj: Any) -> Any:
@@ -199,7 +199,7 @@ class DiscoverProjectResponse(Schema):
     category_slug: str | None = None
     discussion_count: int = 0
     won_competitions: list[WonCompetitionInfo] = []
-    community_owned: bool = False
+    is_community_tipoff: bool = False
 
     @classmethod
     def from_discover_item(cls, item: Any) -> "DiscoverProjectResponse":
@@ -215,7 +215,7 @@ class DiscoverProjectResponse(Schema):
             category_slug=item.category_slug,
             discussion_count=item.discussion_count,
             won_competitions=list(item.project.won_competitions.all()),
-            community_owned=getattr(item.project, "community_owned", False),
+            is_community_tipoff=item.project.is_community_tipoff,
         )
 
 

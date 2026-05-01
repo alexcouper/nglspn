@@ -104,14 +104,16 @@ class DjangoProjectHandler(ProjectHandlerInterface):
             project = Project.objects.create(**project_fields)
             # FK constant avoids a DB roundtrip; if the seed migration never
             # ran, the FK insert will fail loudly.
-            owner_user_id = COMMUNITY_USER_ID if data.community_owned else data.owner_id
+            owner_user_id = (
+                COMMUNITY_USER_ID if data.is_community_tipoff else data.owner_id
+            )
             ProjectContributor.objects.create(
                 project=project,
                 user_id=owner_user_id,
                 role=ContributorRole.OWNER,
                 full_edit=True,
             )
-            if data.community_owned:
+            if data.is_community_tipoff:
                 ProjectContributor.objects.create(
                     project=project,
                     user_id=data.owner_id,
@@ -211,13 +213,7 @@ class DjangoProjectHandler(ProjectHandlerInterface):
                 ]
             )
 
-            community_owned = ProjectContributor.objects.filter(
-                project=project,
-                role=ContributorRole.OWNER,
-                user__is_system_user=True,
-            ).exists()
-
-            if not community_owned:
+            if not project.is_community_tipoff:
                 open_competition = (
                     Competition.objects.filter(
                         status=CompetitionStatus.ACCEPTING_APPLICATIONS

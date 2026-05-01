@@ -99,7 +99,7 @@ export function ImageRoleDialog({
     category_slug: null,
     discussion_count: 0,
     won_competitions: [],
-    community_owned: false,
+    is_community_tipoff: false,
   };
 
   return (

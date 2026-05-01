@@ -109,7 +109,7 @@ export function EditableProjectBanner({
           />
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground mt-3">
             {isTipoff ? (
-              <TipoffBadge label="Community tipoff" />
+              <TipoffBadge label="Community tipoff" withTooltip />
             ) : (
               <span className="text-foreground">{authorName}</span>
             )}

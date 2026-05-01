@@ -53,7 +53,7 @@ function DiscussedItem({ project }: { project: DiscoverProject }) {
             <h3 className="text-sm font-medium text-foreground truncate">
               {project.title}
             </h3>
-            {project.community_owned && <TipoffBadge size="sm" label="Tipoff" />}
+            {project.is_community_tipoff && <TipoffBadge size="sm" label="Tipoff" />}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">
             {project.tagline}

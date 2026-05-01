@@ -21,6 +21,12 @@ export class DiscoverClient {
     return this.client.request<DiscoverProject[]>("/api/projects/new-arrivals");
   }
 
+  async recentTipoffs(): Promise<DiscoverProject[]> {
+    return this.client.request<DiscoverProject[]>(
+      "/api/projects/recent-tipoffs"
+    );
+  }
+
   async winners(): Promise<WinnerProject[]> {
     return this.client.request<WinnerProject[]>("/api/projects/winners");
   }

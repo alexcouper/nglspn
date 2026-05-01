@@ -165,7 +165,7 @@ class TestListForOwner:
 
         assert result.count() == 0
 
-    def test_excludes_community_owned_projects_where_user_is_creator(self):
+    def test_excludes_tipoff_projects_where_user_is_creator(self):
         # Community tip-offs: the tipster is the creator, but the OWNER
         # contributor is the seed system user. They belong in /tip-offs only.
         user = UserFactory()

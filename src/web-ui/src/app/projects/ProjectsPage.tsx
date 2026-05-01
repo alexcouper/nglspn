@@ -11,6 +11,7 @@ interface ProjectsPageProps {
   initialCategories: CategoryItem[];
   initialFeatured: DiscoverProject[];
   initialNewArrivals: DiscoverProject[];
+  initialRecentTipoffs: DiscoverProject[];
   initialWinners: WinnerProject[];
 }
 
@@ -18,6 +19,7 @@ export function ProjectsPage({
   initialCategories,
   initialFeatured,
   initialNewArrivals,
+  initialRecentTipoffs,
   initialWinners,
 }: ProjectsPageProps) {
   const searchParams = useSearchParams();
@@ -45,6 +47,7 @@ export function ProjectsPage({
             <DiscoverView
               featured={initialFeatured}
               newArrivals={initialNewArrivals}
+              recentTipoffs={initialRecentTipoffs}
               winners={initialWinners}
               categories={categoriesWithProjects}
             />

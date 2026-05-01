@@ -76,7 +76,7 @@
 - [x] 12.2 Add `src/web-ui/src/app/projects/sections/RecentTipoffsSection.tsx`. Renders a heading "Recent Tipoffs" with a "?" affordance (the new `Tooltip` wrapping a small icon button), then the list of cards. Hide the heading and list entirely unless there are at least three tip-off projects (`MIN_TIPOFFS_TO_DISPLAY = 3`).
 - [x] 12.3 In `RecentTipoffsSection`, do not render `TipoffBadge` on the hero/large card or on smaller cards in the section.
 - [x] 12.4 Modify `NewArrivalsSection.tsx`: remove the `<TipoffBadge>` rendering at line ~64. The component no longer takes a per-card tip-off badge.
-- [x] 12.5 Modify `DiscoverView.tsx` to render `<RecentTipoffsSection />` directly below `<NewArrivalsSection />`. Also threaded `recentTipoffs` through `page.tsx` and `ProjectsPage.tsx`.
+- [x] 12.5 Modify `DiscoverView.tsx` to render `<RecentTipoffsSection />` directly below `<WinnersSection />` (and above the category rows). Also threaded `recentTipoffs` through `page.tsx` and `ProjectsPage.tsx`. The section's own threshold (≥3) handles the hide-on-empty case.
 - [ ] 12.6 Visual check: when there are no tip-offs in the system, the Discover page shows New Arrivals and no Recent Tipoffs section. When there are tip-offs, both sections show, the New Arrivals section has no tipoff cards, and the Recent Tipoffs section has cards without per-card pills.
 
 ## 13. Frontend: badge tooltip on detail page

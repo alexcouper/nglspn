@@ -1,7 +1,7 @@
 "use client";
 
 import { Tooltip } from "@/components/Tooltip";
-import { TIPOFF_EXPLAINER } from "@/lib/constants";
+import { TipoffExplainer } from "@/components/TipoffExplainer";
 
 interface TipoffBadgeProps {
   size?: "sm" | "md";
@@ -29,7 +29,7 @@ export function TipoffBadge({
   if (!withTooltip) return badge;
 
   return (
-    <Tooltip content={TIPOFF_EXPLAINER}>
+    <Tooltip content={<TipoffExplainer />}>
       <button
         type="button"
         aria-label={label}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 import { Tooltip } from "@/components/Tooltip";
-import { TIPOFF_EXPLAINER } from "@/lib/constants";
+import { TipoffExplainer } from "@/components/TipoffExplainer";
 import { HorizontalScroll } from "../HorizontalScroll";
 
 // Hide the section unless there are enough tip-offs to make a row worth its
@@ -26,7 +26,7 @@ export function RecentTipoffsSection({ projects }: RecentTipoffsSectionProps) {
         <h2 className="text-lg font-semibold text-foreground">
           Recent Tipoffs
         </h2>
-        <Tooltip content={TIPOFF_EXPLAINER}>
+        <Tooltip content={<TipoffExplainer />}>
           <button
             type="button"
             aria-label="What is a community tip-off?"

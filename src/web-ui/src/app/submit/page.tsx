@@ -30,7 +30,7 @@ export default function SubmitPage() {
     try {
       const project = await api.myProjects.create({
         website_url: url,
-        community_owned: !iOwnThis,
+        is_community_tipoff: !iOwnThis,
       });
       router.push(`/my-projects/${project.id}`);
     } catch (err) {

@@ -108,7 +108,7 @@ function CategoryCard({ project }: { project: DiscoverProject }) {
           <h3 className="text-sm font-medium text-foreground truncate">
             {project.title}
           </h3>
-          {project.community_owned && (
+          {project.is_community_tipoff && (
             <div className="mt-0.5">
               <TipoffBadge size="sm" label="Tipoff" />
             </div>

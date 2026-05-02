@@ -134,6 +134,7 @@ class ProjectAdmin(admin.ModelAdmin):
         "title",
         "creator_link",
         "creator_promo_opt_in",
+        "is_community_tipoff",
         "status",
         "is_featured",
         "category",
@@ -143,6 +144,7 @@ class ProjectAdmin(admin.ModelAdmin):
     )
     list_filter = (
         "status",
+        "is_community_tipoff",
         "is_featured",
         "category",
         "creator__opt_in_to_external_promotions",
@@ -152,7 +154,14 @@ class ProjectAdmin(admin.ModelAdmin):
     )
     search_fields = ("title", "description", "creator__email", "creator__username")
     ordering = ("-created_at",)
-    readonly_fields = ("id", "view_count", "created_at", "updated_at", "approved_at")
+    readonly_fields = (
+        "id",
+        "view_count",
+        "created_at",
+        "updated_at",
+        "approved_at",
+        "is_community_tipoff",
+    )
     filter_horizontal = ("tags",)
     inlines = [ProjectImageInline, ProjectViewInline]
 
@@ -187,7 +196,7 @@ class ProjectAdmin(admin.ModelAdmin):
             },
         ),
         ("Metrics", {"fields": ("view_count", "submission_month")}),
-        ("Ownership", {"fields": ("creator",)}),
+        ("Ownership", {"fields": ("creator", "is_community_tipoff")}),
         (
             "System",
             {"fields": ("id", "created_at", "updated_at"), "classes": ("collapse",)},

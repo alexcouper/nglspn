@@ -230,7 +230,7 @@ export function EditProjectContent({
           <EditableProjectBanner
             formData={formData}
             authorName={authorName}
-            isTipoff={project.community_owned}
+            isTipoff={project.is_community_tipoff}
             onChange={onChange}
             iconImage={iconImage}
             onIconFilesSelected={onIconFilesSelected}

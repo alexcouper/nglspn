@@ -576,6 +576,32 @@
         ]
       }
     },
+    "/api/projects/recent-tipoffs": {
+      "get": {
+        "operationId": "api_routers_projects_list_recent_tipoffs",
+        "summary": "List Recent Tipoffs",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/DiscoverProjectResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Projects"
+        ]
+      }
+    },
     "/api/projects/winners": {
       "get": {
         "operationId": "api_routers_projects_list_winners",
@@ -3283,9 +3309,9 @@
             "title": "Won Competitions",
             "type": "array"
           },
-          "community_owned": {
+          "is_community_tipoff": {
             "default": false,
-            "title": "Community Owned",
+            "title": "Is Community Tipoff",
             "type": "boolean"
           }
         },
@@ -3904,9 +3930,9 @@
             "title": "Won Competitions",
             "type": "array"
           },
-          "community_owned": {
+          "is_community_tipoff": {
             "default": false,
-            "title": "Community Owned",
+            "title": "Is Community Tipoff",
             "type": "boolean"
           }
         },
@@ -4194,9 +4220,9 @@
             ],
             "title": "Tag Ids"
           },
-          "community_owned": {
+          "is_community_tipoff": {
             "default": false,
-            "title": "Community Owned",
+            "title": "Is Community Tipoff",
             "type": "boolean"
           }
         },
@@ -4720,9 +4746,9 @@
             "title": "Won Competitions",
             "type": "array"
           },
-          "community_owned": {
+          "is_community_tipoff": {
             "default": false,
-            "title": "Community Owned",
+            "title": "Is Community Tipoff",
             "type": "boolean"
           }
         },

@@ -1,7 +1,12 @@
 import pytest
 from django.utils import timezone
 
-from apps.projects.models import Project, ProjectStatus
+from apps.projects.models import (
+    ContributorRole,
+    Project,
+    ProjectContributor,
+    ProjectStatus,
+)
 from services.project.django_impl.query import resolve_image_by_purpose
 from tests.factories import (
     CompetitionFactory,
@@ -9,7 +14,23 @@ from tests.factories import (
     ProjectCategoryFactory,
     ProjectFactory,
     ProjectImageFactory,
+    UserFactory,
 )
+
+
+def _make_tipoff_project(**kwargs) -> Project:
+    """A tip-off project: OWNER is a system user, creator is a regular user."""
+    creator = UserFactory()
+    system_user = UserFactory(is_system_user=True)
+    project = ProjectFactory(creator=creator, _contributor=False, **kwargs)
+    ProjectContributor.objects.create(
+        project=project, user=system_user, role=ContributorRole.OWNER
+    )
+    ProjectContributor.objects.create(
+        project=project, user=creator, role=ContributorRole.TIPSTER
+    )
+    project.refresh_from_db()
+    return project
 
 
 @pytest.mark.django_db
@@ -114,6 +135,23 @@ class TestListNewArrivals:
         data = response.json()
         assert len(data) >= 1
 
+    def test_excludes_tipoff_projects(self, client):
+        regular = ProjectFactory(
+            status=ProjectStatus.APPROVED,
+            approved_at=timezone.now(),
+        )
+        tipoff = _make_tipoff_project(
+            status=ProjectStatus.APPROVED,
+            approved_at=timezone.now(),
+        )
+
+        response = client.get("/api/projects/new-arrivals")
+
+        assert response.status_code == 200
+        ids = [p["id"] for p in response.json()]
+        assert str(regular.id) in ids
+        assert str(tipoff.id) not in ids
+
     def test_includes_projects_with_null_approved_at_using_created_at(self, client):
         old = ProjectFactory(
             status=ProjectStatus.APPROVED,
@@ -147,6 +185,52 @@ class TestListNewArrivals:
         assert response.status_code == 200
         data = response.json()
         assert len(data) == 3
+
+
+@pytest.mark.django_db
+class TestListRecentTipoffs:
+    def test_returns_only_tipoff_projects(self, client):
+        regular = ProjectFactory(
+            status=ProjectStatus.APPROVED,
+            approved_at=timezone.now(),
+        )
+        tipoff = _make_tipoff_project(
+            status=ProjectStatus.APPROVED,
+            approved_at=timezone.now(),
+        )
+
+        response = client.get("/api/projects/recent-tipoffs")
+
+        assert response.status_code == 200
+        ids = [p["id"] for p in response.json()]
+        assert str(tipoff.id) in ids
+        assert str(regular.id) not in ids
+
+    def test_returns_empty_when_no_tipoffs(self, client):
+        ProjectFactory(
+            status=ProjectStatus.APPROVED,
+            approved_at=timezone.now(),
+        )
+
+        response = client.get("/api/projects/recent-tipoffs")
+
+        assert response.status_code == 200
+        assert response.json() == []
+
+    def test_orders_by_arrival_date_desc(self, client):
+        old = _make_tipoff_project(
+            status=ProjectStatus.APPROVED,
+            approved_at=timezone.now() - timezone.timedelta(days=5),
+        )
+        new = _make_tipoff_project(
+            status=ProjectStatus.APPROVED,
+            approved_at=timezone.now() - timezone.timedelta(days=1),
+        )
+
+        response = client.get("/api/projects/recent-tipoffs")
+
+        ids = [p["id"] for p in response.json()]
+        assert ids.index(str(new.id)) < ids.index(str(old.id))
 
 
 @pytest.mark.django_db

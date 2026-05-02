@@ -65,6 +65,18 @@ def list_new_arrivals(request: HttpRequest) -> list[DiscoverProjectResponse]:
 
 
 @router.get(
+    "/recent-tipoffs",
+    response={200: list[DiscoverProjectResponse]},
+    tags=["Projects"],
+)
+def list_recent_tipoffs(request: HttpRequest) -> list[DiscoverProjectResponse]:
+    return [
+        DiscoverProjectResponse.from_discover_item(item)
+        for item in REPO.project.list_recent_tipoffs()
+    ]
+
+
+@router.get(
     "/winners",
     response={200: list[WinnerProjectResponse]},
     tags=["Projects"],

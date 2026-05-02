@@ -4,7 +4,7 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from django.db.models import Count, Exists, OuterRef, Prefetch, Q, QuerySet
+from django.db.models import Count, Prefetch, Q, QuerySet
 from django.db.models.functions import Coalesce, Lower
 from django.utils import timezone
 
@@ -34,51 +34,30 @@ def _top_level_discussion_count() -> Count:
     return Count("discussions", filter=Q(discussions__parent__isnull=True))
 
 
-def _community_owned_annotation() -> Exists:
-    # A project is community-owned iff it has an OWNER contributor that's a
-    # system user (the seed Community user). Exposed as a queryable annotation
-    # so we can both filter on and serialize it without a model column.
-    return Exists(
-        ProjectContributor.objects.filter(
-            project_id=OuterRef("pk"),
-            role=ContributorRole.OWNER,
-            user__is_system_user=True,
-        )
-    )
-
-
 def _discover_queryset() -> QuerySet[Project]:
-    return (
-        Project.objects.select_related("creator", "category")
-        .prefetch_related(
-            "won_competitions",
-            Prefetch(
-                "images",
-                queryset=ProjectImage.objects.filter(
-                    upload_status="uploaded"
-                ).prefetch_related("variants"),
-            ),
-        )
-        .annotate(community_owned=_community_owned_annotation())
+    return Project.objects.select_related("creator", "category").prefetch_related(
+        "won_competitions",
+        Prefetch(
+            "images",
+            queryset=ProjectImage.objects.filter(
+                upload_status="uploaded"
+            ).prefetch_related("variants"),
+        ),
     )
 
 
 def _base_queryset() -> QuerySet[Project]:
-    return (
-        Project.objects.select_related("creator")
-        .prefetch_related(
-            "tags",
-            "tags__category",
-            "won_competitions",
-            "contributors__user",
-            Prefetch(
-                "images",
-                queryset=ProjectImage.objects.filter(
-                    upload_status="uploaded"
-                ).prefetch_related("variants"),
-            ),
-        )
-        .annotate(community_owned=_community_owned_annotation())
+    return Project.objects.select_related("creator").prefetch_related(
+        "tags",
+        "tags__category",
+        "won_competitions",
+        "contributors__user",
+        Prefetch(
+            "images",
+            queryset=ProjectImage.objects.filter(
+                upload_status="uploaded"
+            ).prefetch_related("variants"),
+        ),
     )
 
 
@@ -256,10 +235,10 @@ class DjangoProjectQuery(ProjectQueryInterface):
         )
 
     def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]:
-        # Creator-scoped, but community-owned projects belong in /tip-offs:
-        # for tip-offs the tipster is the creator, so without this exclusion
-        # they would appear in both /my-projects and /my-projects/tip-offs.
-        return _base_queryset().filter(creator_id=owner_id, community_owned=False)
+        # Creator-scoped, but tip-off projects belong in /tip-offs: for tip-offs
+        # the tipster is the creator, so without this exclusion they would
+        # appear in both /my-projects and /my-projects/tip-offs.
+        return _base_queryset().filter(creator_id=owner_id, is_community_tipoff=False)
 
     def list_tip_offs_for(self, user_id: UUID) -> QuerySet[Project]:
         return (
@@ -312,20 +291,37 @@ class DjangoProjectQuery(ProjectQueryInterface):
     ) -> list[DiscoverProjectItem]:
         cutoff = timezone.now() - timedelta(days=days)
         arrival_date = Coalesce("approved_at", "created_at")
+        base = _discover_queryset().filter(
+            status=ProjectStatus.APPROVED, is_community_tipoff=False
+        )
         recent = (
-            _discover_queryset()
-            .filter(status=ProjectStatus.APPROVED)
-            .annotate(arrival_date=arrival_date)
+            base.annotate(arrival_date=arrival_date)
             .filter(arrival_date__gte=cutoff)
             .order_by("-arrival_date")
         )
         if recent.count() < min_count:
-            recent = (
-                _discover_queryset()
-                .filter(status=ProjectStatus.APPROVED)
-                .annotate(arrival_date=arrival_date)
-                .order_by("-arrival_date")[:min_count]
-            )
+            recent = base.annotate(arrival_date=arrival_date).order_by("-arrival_date")[
+                :min_count
+            ]
+        return [to_discover_item(p) for p in recent]
+
+    def list_recent_tipoffs(
+        self, *, min_count: int = 5, days: int = 30
+    ) -> list[DiscoverProjectItem]:
+        cutoff = timezone.now() - timedelta(days=days)
+        arrival_date = Coalesce("approved_at", "created_at")
+        base = _discover_queryset().filter(
+            status=ProjectStatus.APPROVED, is_community_tipoff=True
+        )
+        recent = (
+            base.annotate(arrival_date=arrival_date)
+            .filter(arrival_date__gte=cutoff)
+            .order_by("-arrival_date")
+        )
+        if recent.count() < min_count:
+            recent = base.annotate(arrival_date=arrival_date).order_by("-arrival_date")[
+                :min_count
+            ]
         return [to_discover_item(p) for p in recent]
 
     def list_winners(self) -> list[WinnerItem]:

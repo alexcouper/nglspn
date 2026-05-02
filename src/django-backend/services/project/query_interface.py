@@ -109,6 +109,11 @@ class ProjectQueryInterface(ABC):
     ) -> list[DiscoverProjectItem]: ...
 
     @abstractmethod
+    def list_recent_tipoffs(
+        self, *, min_count: int = 5, days: int = 30
+    ) -> list[DiscoverProjectItem]: ...
+
+    @abstractmethod
     def list_winners(self) -> list[WinnerItem]: ...
 
     @abstractmethod

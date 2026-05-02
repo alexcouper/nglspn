@@ -97,13 +97,13 @@ class TestCreate:
         assert not Project.objects.filter(title="Atomic").exists()
         assert not ProjectContributor.objects.filter(user_id=user.id).exists()
 
-    def test_community_owned_create_attaches_seed_owner_and_tipster(self):
+    def test_tipoff_create_attaches_seed_owner_and_tipster(self):
         user = UserFactory()
         data = CreateProjectInput(
             owner_id=user.id,
             website_url="https://example.com",
             title="Community Submitted",
-            community_owned=True,
+            is_community_tipoff=True,
         )
 
         project = handler.create(data)
@@ -119,13 +119,13 @@ class TestCreate:
         assert tipster.user_id == user.id
         assert tipster.full_edit is True
 
-    def test_community_owned_create_rolls_back_atomically(self):
+    def test_tipoff_create_rolls_back_atomically(self):
         user = UserFactory()
         data = CreateProjectInput(
             owner_id=user.id,
             website_url="https://example.com",
             title="Atomic Community",
-            community_owned=True,
+            is_community_tipoff=True,
         )
 
         original_create = ProjectContributor.objects.create
@@ -313,19 +313,19 @@ class TestPublish:
 
         assert result.status == ProjectStatus.PENDING
 
-    def test_publish_community_owned_skips_competition_entry(self):
+    def test_publish_tipoff_skips_competition_entry(self):
         user = UserFactory()
         competition = CompetitionFactory(
             status=CompetitionStatus.ACCEPTING_APPLICATIONS
         )
         # Build a draft via the handler so the contributor wiring matches the
-        # real community-owned shape (seed user as OWNER + user as TIPSTER).
+        # real tip-off shape (seed user as OWNER + user as TIPSTER).
         data = CreateProjectInput(
             owner_id=user.id,
             website_url="https://example.com",
             title="Community Pub",
             description="A community tip-off project",
-            community_owned=True,
+            is_community_tipoff=True,
         )
         project = handler.create(data)
         # Bring the draft up to publish-ready state.

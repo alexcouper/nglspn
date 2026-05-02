@@ -207,18 +207,23 @@ class DjangoEmailHandler(EmailHandlerInterface):
     ) -> None:
         creator = project.creator
         creator_name = creator.full_name or creator.email
+        is_tipoff = project.is_community_tipoff
         context = {
             "project_title": project.title,
             "project_tagline": project.tagline,
             "project_description": project.description,
             "owner_name": creator_name,
             "owner_email": creator.email,
+            "is_community_tipoff": is_tipoff,
             "logo_url": EMAIL_LOGO_URL,
             "current_year": timezone.now().year,
         }
         html, text = render_email("new_project_notification", context)
 
-        subject = f"New project submitted: {project.title} - Naglasúpan"
+        if is_tipoff:
+            subject = f"New tip-off submitted: {project.title} - Naglasúpan"
+        else:
+            subject = f"New project submitted: {project.title} - Naglasúpan"
         email = EmailMultiAlternatives(
             subject=subject,
             body=text,

@@ -1,16 +1,19 @@
 {% extends "email/base.mjml" %}
 
-{% block title %}New project submitted - Naglasúpan{% endblock %}
+{% block title %}{% if is_community_tipoff %}New tip-off submitted{% else %}New project submitted{% endif %} - Naglasúpan{% endblock %}
 
 {% block content %}
 <mj-section background-color="#ffffff" border-radius="16px" padding="40px 30px">
   <mj-column>
     <mj-text font-size="24px" font-weight="600" align="center" padding-bottom="10px">
-      New project submitted
+      {% if is_community_tipoff %}New tip-off submitted{% else %}New project submitted{% endif %}
     </mj-text>
     <mj-text align="center" padding-bottom="20px">
       A new project has been submitted to Naglasúpan and is waiting for review.
     </mj-text>
+    {% if is_community_tipoff %}
+    <mj-text padding-bottom="6px"><em>This is a community tip-off — the submitter is not the project's maker.</em></mj-text>
+    {% endif %}
     <mj-text padding-bottom="6px"><strong>Title:</strong> {{ project_title }}</mj-text>
     {% if project_tagline %}
     <mj-text padding-bottom="6px"><strong>Tagline:</strong> {{ project_tagline }}</mj-text>

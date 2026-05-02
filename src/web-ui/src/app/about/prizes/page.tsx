@@ -3,6 +3,7 @@ import remarkGfm from "remark-gfm";
 import Link from "next/link";
 import { CompetitionHighlight } from "@/app/components/CompetitionHighlight";
 import { fetchCompetitionHighlights } from "@/lib/api/server";
+import { SITE_EMAIL } from "@/lib/constants";
 
 const eligibility = `
 Projects must be built by Iceland-based developers. Projects can be at any stage of development, from idea to launched product.
@@ -19,7 +20,7 @@ Prize frequency will be variable dependent on uptake, but somewhere in the weekl
 
 Prize sizes and quantity will depend on sponsorships, but we're good for a few months at least.
 
-If you'd like to help shape how competitions are run, get in touch via [discord](https://discord.gg/D47bQjaQ) or [email](mailto:alex@naglasupan.is).
+If you'd like to help shape how competitions are run, get in touch via [discord](https://discord.gg/D47bQjaQ) or [email](mailto:${SITE_EMAIL}).
 `;
 
 export default async function PrizesPage() {

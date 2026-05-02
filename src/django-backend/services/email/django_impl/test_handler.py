@@ -3,6 +3,8 @@ from unittest.mock import patch
 import pytest
 
 from apps.emails.models import BroadcastEmailRecipient, SentEmail, SentEmailType
+from apps.projects.models import ContributorRole, ProjectContributor
+from services import REPO
 from services.email.django_impl import DjangoEmailHandler
 from tests.factories import (
     BroadcastEmailFactory,
@@ -62,6 +64,71 @@ class TestSendProjectApprovedEmail:
         html_content, mime_type = email.alternatives[0]
         assert mime_type == "text/html"
         assert "Awesome App" in html_content
+
+    def test_link_uses_slug_when_available(self, mailoutbox):
+        recipient = UserFactory()
+        project = ProjectFactory(slug="my-cool-project", owner=recipient)
+
+        handler.send_project_approved_email(project, recipient)
+
+        email = mailoutbox[0]
+        assert "/projects/my-cool-project" in email.body
+        assert f"/projects/{project.id}" not in email.body
+
+    def test_link_falls_back_to_id_when_slug_missing(self, mailoutbox):
+        recipient = UserFactory()
+        project = ProjectFactory(slug="", owner=recipient)
+
+        handler.send_project_approved_email(project, recipient)
+
+        email = mailoutbox[0]
+        assert f"/projects/{project.id}" in email.body
+
+    def test_regular_project_copy_does_not_mention_tip_off(self, mailoutbox):
+        recipient = UserFactory()
+        project = ProjectFactory(
+            title="Regular Thing",
+            owner=recipient,
+            is_community_tipoff=False,
+        )
+
+        handler.send_project_approved_email(project, recipient)
+
+        email = mailoutbox[0]
+        assert "your project" in email.body.lower()
+        assert "tip-off" not in email.body.lower()
+        html_content, _ = email.alternatives[0]
+        assert "tip-off" not in html_content.lower()
+        assert "Your project has been approved!" in html_content
+
+    def test_community_tipoff_copy_uses_tip_off_phrasing(self, mailoutbox):
+        tipster = UserFactory()
+        seed = REPO.users.get_community_user()
+        project = ProjectFactory(
+            title="Spotted Gem",
+            creator=tipster,
+            _contributor=False,
+        )
+        ProjectContributor.objects.create(
+            project=project, user=seed, role=ContributorRole.OWNER, full_edit=True
+        )
+        ProjectContributor.objects.create(
+            project=project,
+            user=tipster,
+            role=ContributorRole.TIPSTER,
+            full_edit=True,
+        )
+        project.refresh_from_db()
+        assert project.is_community_tipoff is True
+
+        handler.send_project_approved_email(project, tipster)
+
+        email = mailoutbox[0]
+        assert "your tip-off project" in email.body.lower()
+        html_content, _ = email.alternatives[0]
+        assert "your tip-off project" in html_content.lower()
+        assert "Your tip-off has been approved!" in html_content
+        assert "Your project has been approved!" not in html_content
 
 
 @pytest.mark.django_db

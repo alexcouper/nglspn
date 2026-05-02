@@ -4,18 +4,22 @@ import logging
 from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
+from django.conf import settings
 from django.contrib import admin, messages
 from django.db.models import Count, Q, QuerySet
 from django.http import HttpRequest, HttpResponse
-from django.shortcuts import get_object_or_404, render
+from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import path, reverse
 from django.utils import timezone
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
 
 from api.tasks import email as email_tasks
+from apps.emails.models import SentEmail, SentEmailType
 from apps.users.models import User
 from services import HANDLERS
+from services.email import EMAIL_LOGO_URL
+from services.email.django_impl import render_email
 
 from .models import (
     Competition,
@@ -130,6 +134,8 @@ class ProjectViewInline(admin.TabularInline):
 
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
+    change_form_template = "admin/projects/project/change_form.html"
+
     list_display = (
         "title",
         "creator_link",
@@ -305,6 +311,122 @@ class ProjectAdmin(admin.ModelAdmin):
     ) -> None:
         updated = queryset.filter(is_featured=True).update(is_featured=False)
         self.message_user(request, f"{updated} projects were unfeatured.")
+
+    def get_urls(self) -> list:
+        custom_urls = [
+            path(
+                "<uuid:pk>/preview-approval-email/",
+                self.admin_site.admin_view(self.preview_approval_email),
+                name="projects_project_preview_approval_email",
+            ),
+            path(
+                "<uuid:pk>/send-approval-email/",
+                self.admin_site.admin_view(self.send_approval_email),
+                name="projects_project_send_approval_email",
+            ),
+        ]
+        return custom_urls + super().get_urls()
+
+    def preview_approval_email(
+        self,
+        request: HttpRequest,
+        pk: str,
+    ) -> HttpResponse:
+        project = get_object_or_404(Project, pk=pk)
+        recipient = project.creator
+        slug_or_id = project.slug or project.id
+        context = {
+            "user_name": (recipient.first_name or "there") if recipient else "there",
+            "project_title": project.title,
+            "project_url": f"{settings.FRONTEND_URL}/projects/{slug_or_id}",
+            "is_community_tipoff": project.is_community_tipoff,
+            "logo_url": EMAIL_LOGO_URL,
+            "current_year": timezone.now().year,
+        }
+        html, _ = render_email("project_approved", context)
+        return HttpResponse(html)
+
+    def send_approval_email(
+        self,
+        request: HttpRequest,
+        pk: str,
+    ) -> HttpResponse:
+        project = get_object_or_404(Project, pk=pk)
+        change_url = reverse("admin:projects_project_change", args=[project.pk])
+
+        if project.status != ProjectStatus.APPROVED:
+            messages.error(
+                request,
+                "Approval email can only be sent for approved projects.",
+            )
+            return redirect(change_url)
+
+        if project.creator is None:
+            messages.error(request, "Project has no creator to email.")
+            return redirect(change_url)
+
+        prior_send = (
+            SentEmail.objects.filter(
+                recipient=project.creator,
+                project=project,
+                email_type=SentEmailType.PROJECT_APPROVED,
+                success=True,
+            )
+            .order_by("-created_at")
+            .first()
+        )
+
+        if request.method == "POST":
+            email_tasks.send_project_approved_email.enqueue(str(project.id))
+            messages.success(
+                request,
+                f"Approval email queued for {project.creator.email}.",
+            )
+            return redirect(change_url)
+
+        context = {
+            **self.admin_site.each_context(request),
+            "project": project,
+            "recipient": project.creator,
+            "preview_url": reverse(
+                "admin:projects_project_preview_approval_email",
+                args=[project.pk],
+            ),
+            "prior_send": prior_send,
+            "opts": self.model._meta,  # noqa: SLF001
+            "title": "Send approval email",
+        }
+        return render(
+            request,
+            "admin/projects/project/send_approval_email.html",
+            context,
+        )
+
+    def change_view(
+        self,
+        request: HttpRequest,
+        object_id: str,
+        form_url: str = "",
+        extra_context: dict[str, Any] | None = None,
+    ) -> HttpResponse:
+        extra_context = extra_context or {}
+        obj = self.get_object(request, object_id)
+        if obj and obj.status == ProjectStatus.APPROVED:
+            extra_context["show_approval_email_panel"] = True
+            extra_context["preview_approval_email_url"] = reverse(
+                "admin:projects_project_preview_approval_email",
+                args=[obj.pk],
+            )
+            extra_context["send_approval_email_url"] = reverse(
+                "admin:projects_project_send_approval_email",
+                args=[obj.pk],
+            )
+        return super().change_view(
+            request,
+            object_id,
+            form_url,
+            extra_context=extra_context,
+        )
 
 
 @admin.register(ProjectContributor)

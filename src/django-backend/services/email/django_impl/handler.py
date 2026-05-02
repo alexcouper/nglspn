@@ -40,6 +40,7 @@ def _log_sent_email(
     success: bool = True,
     error_message: str = "",
     html_body: str = "",
+    project: Project | None = None,
 ) -> None:
     try:
         SentEmail.objects.create(
@@ -50,6 +51,7 @@ def _log_sent_email(
             success=success,
             error_message=error_message,
             html_body=html_body,
+            project=project,
         )
     except Exception:
         logger.exception("Failed to log sent email record for %s", to_email)
@@ -194,6 +196,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
                 success=False,
                 error_message=f"Failed to send to {recipient.email}",
                 html_body=html,
+                project=project,
             )
             raise
         _log_sent_email(
@@ -202,6 +205,7 @@ class DjangoEmailHandler(EmailHandlerInterface):
             subject=subject,
             to_email=recipient.email,
             html_body=html,
+            project=project,
         )
 
     def send_new_project_notification(

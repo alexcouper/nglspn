@@ -368,6 +368,7 @@ class ProjectAdmin(admin.ModelAdmin):
         prior_send = (
             SentEmail.objects.filter(
                 recipient=project.creator,
+                project=project,
                 email_type=SentEmailType.PROJECT_APPROVED,
                 success=True,
             )

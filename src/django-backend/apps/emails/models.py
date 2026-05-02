@@ -128,6 +128,13 @@ class SentEmail(models.Model):
         null=True,
         blank=True,
     )
+    project = models.ForeignKey(
+        "projects.Project",
+        on_delete=models.SET_NULL,
+        related_name="sent_emails",
+        null=True,
+        blank=True,
+    )
     email_type = models.CharField(
         max_length=30,
         choices=SentEmailType.choices,

@@ -159,6 +159,7 @@ def _record_prior_approval_email(
 ) -> SentEmail:
     return SentEmail.objects.create(
         recipient=project.creator,
+        project=project,
         email_type=SentEmailType.PROJECT_APPROVED,
         subject="Your project has been approved - Naglasúpan",
         to_email=project.creator.email,
@@ -223,6 +224,19 @@ class TestProjectApprovalEmailAdminViews:
         _record_prior_approval_email(project, success=False)
 
         response = admin_client.get(self._send_url(project))
+
+        assert response.status_code == 200
+        assert b"already received" not in response.content
+
+    def test_send_get_no_warning_when_prior_send_was_for_different_project(
+        self, admin_client
+    ):
+        creator = UserFactory()
+        other_project = _approved_project(creator=creator)
+        _record_prior_approval_email(other_project, success=True)
+        target_project = _approved_project(creator=creator)
+
+        response = admin_client.get(self._send_url(target_project))
 
         assert response.status_code == 200
         assert b"already received" not in response.content

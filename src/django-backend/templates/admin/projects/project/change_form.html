@@ -3,12 +3,14 @@
 {% block submit_buttons_bottom %}
     {{ block.super }}
     {% if show_approval_email_panel %}
-    <div class="submit-row" style="margin-top: 0; border-top: none; padding-top: 0; background: #fff8e1;">
+    <div class="submit-row"
+         style="margin-top: 0; border-top: 1px solid var(--border-color);
+                background: var(--message-warning-bg);
+                color: var(--body-fg);">
         <strong style="margin-right: 12px;">Approval email:</strong>
         <a href="{{ preview_approval_email_url }}" target="_blank" class="button"
            style="margin-right: 8px;">Preview</a>
-        <a href="{{ send_approval_email_url }}" class="button"
-           style="background: #16a34a; color: white;">Send approval email</a>
+        <a href="{{ send_approval_email_url }}" class="button default">Send approval email</a>
     </div>
     {% endif %}
 {% endblock %}

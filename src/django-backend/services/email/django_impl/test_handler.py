@@ -63,6 +63,25 @@ class TestSendProjectApprovedEmail:
         assert mime_type == "text/html"
         assert "Awesome App" in html_content
 
+    def test_link_uses_slug_when_available(self, mailoutbox):
+        recipient = UserFactory()
+        project = ProjectFactory(slug="my-cool-project", owner=recipient)
+
+        handler.send_project_approved_email(project, recipient)
+
+        email = mailoutbox[0]
+        assert "/projects/my-cool-project" in email.body
+        assert f"/projects/{project.id}" not in email.body
+
+    def test_link_falls_back_to_id_when_slug_missing(self, mailoutbox):
+        recipient = UserFactory()
+        project = ProjectFactory(slug="", owner=recipient)
+
+        handler.send_project_approved_email(project, recipient)
+
+        email = mailoutbox[0]
+        assert f"/projects/{project.id}" in email.body
+
 
 @pytest.mark.django_db
 class TestSendNewProjectNotification:

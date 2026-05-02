@@ -164,10 +164,11 @@ class DjangoEmailHandler(EmailHandlerInterface):
         )
 
     def send_project_approved_email(self, project: Project, recipient: User) -> None:
+        slug_or_id = project.slug or project.id
         context = {
             "user_name": recipient.first_name or "there",
             "project_title": project.title,
-            "project_url": f"{settings.FRONTEND_URL}/projects/{project.id}",
+            "project_url": f"{settings.FRONTEND_URL}/projects/{slug_or_id}",
             "logo_url": EMAIL_LOGO_URL,
             "current_year": timezone.now().year,
         }

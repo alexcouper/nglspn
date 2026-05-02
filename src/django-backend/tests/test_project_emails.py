@@ -203,13 +203,16 @@ class TestProjectApprovalEmailAdminViews:
         assert project.creator.email.encode() in response.content
 
     def test_send_get_warns_when_already_successfully_sent(self, admin_client):
-        project = _approved_project()
+        project = _approved_project(title="Echoey")
         _record_prior_approval_email(project, success=True)
 
         response = admin_client.get(self._send_url(project))
 
         assert response.status_code == 200
         assert b"already received" in response.content
+        # Warning links the prior project title — verifies <a>Echoey</a>
+        # is rendered (not just the bare title in headings/cancel buttons).
+        assert b">Echoey</a>" in response.content
 
     def test_send_get_no_warning_when_no_prior_send(self, admin_client):
         project = _approved_project()

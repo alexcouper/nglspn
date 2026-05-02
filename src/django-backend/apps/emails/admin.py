@@ -263,14 +263,16 @@ class SentEmailAdmin(admin.ModelAdmin):
         "email_type",
         "to_email",
         "subject",
+        "project_link",
         "success",
         "preview_link",
     )
     list_filter = ("email_type", "success", "created_at")
-    search_fields = ("to_email", "subject")
+    search_fields = ("to_email", "subject", "project__title")
     readonly_fields = (
         "id",
         "recipient",
+        "project",
         "email_type",
         "subject",
         "to_email",
@@ -281,6 +283,13 @@ class SentEmailAdmin(admin.ModelAdmin):
     )
     exclude = ("html_body",)
     ordering = ("-created_at",)
+
+    @admin.display(description="Project", ordering="project__title")
+    def project_link(self, obj: SentEmail) -> str:
+        if not obj.project:
+            return "-"
+        url = reverse("admin:projects_project_change", args=[obj.project.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.project.title)
 
     @admin.display(description="Preview")
     def preview_link(self, obj: SentEmail) -> str:

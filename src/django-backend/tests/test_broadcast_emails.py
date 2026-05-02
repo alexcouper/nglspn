@@ -14,9 +14,16 @@ from apps.emails.models import (
     BroadcastEmail,
     BroadcastEmailImage,
     BroadcastEmailStatus,
+    SentEmail,
+    SentEmailType,
 )
 
-from .factories import BroadcastEmailFactory, BroadcastEmailImageFactory, UserFactory
+from .factories import (
+    BroadcastEmailFactory,
+    BroadcastEmailImageFactory,
+    ProjectFactory,
+    UserFactory,
+)
 
 
 @pytest.mark.django_db
@@ -366,3 +373,35 @@ class TestSendBroadcastEmailTask:
 
         broadcast.refresh_from_db()
         assert broadcast.status == BroadcastEmailStatus.FAILED
+
+
+@pytest.mark.django_db
+class TestSentEmailAdmin:
+    def _create_sent_email(self, project=None) -> SentEmail:
+        recipient = project.creator if project else UserFactory()
+        return SentEmail.objects.create(
+            recipient=recipient,
+            project=project,
+            email_type=SentEmailType.PROJECT_APPROVED,
+            subject="Your project has been approved - Naglasúpan",
+            to_email=recipient.email,
+            success=True,
+        )
+
+    def test_list_view_links_to_associated_project(self, admin_client):
+        project = ProjectFactory(title="Linked Project")
+        self._create_sent_email(project=project)
+
+        response = admin_client.get(reverse("admin:emails_sentemail_changelist"))
+
+        assert response.status_code == 200
+        project_url = reverse("admin:projects_project_change", args=[project.pk])
+        assert project_url.encode() in response.content
+        assert b"Linked Project" in response.content
+
+    def test_list_view_renders_when_project_is_null(self, admin_client):
+        self._create_sent_email(project=None)
+
+        response = admin_client.get(reverse("admin:emails_sentemail_changelist"))
+
+        assert response.status_code == 200

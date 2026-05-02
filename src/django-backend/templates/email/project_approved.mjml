@@ -6,10 +6,14 @@
 <mj-section background-color="#ffffff" border-radius="16px" padding="40px 30px">
   <mj-column>
     <mj-text font-size="24px" font-weight="600" align="center" padding-bottom="10px">
-      Your project has been approved!
+      {% if is_community_tipoff %}Your tip-off has been approved!{% else %}Your project has been approved!{% endif %}
     </mj-text>
     <mj-text align="center" padding-bottom="30px">
+      {% if is_community_tipoff %}
+      Hi {{ user_name }}, great news &mdash; your tip-off project <strong>{{ project_title }}</strong> has been approved and is now live on Naglasúpan.
+      {% else %}
       Hi {{ user_name }}, great news &mdash; your project <strong>{{ project_title }}</strong> has been approved and is now live on Naglasúpan.
+      {% endif %}
     </mj-text>
     <mj-button href="{{ project_url }}" align="center">
       View your project

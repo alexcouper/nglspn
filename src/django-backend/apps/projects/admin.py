@@ -339,6 +339,7 @@ class ProjectAdmin(admin.ModelAdmin):
             "user_name": (recipient.first_name or "there") if recipient else "there",
             "project_title": project.title,
             "project_url": f"{settings.FRONTEND_URL}/projects/{slug_or_id}",
+            "is_community_tipoff": project.is_community_tipoff,
             "logo_url": EMAIL_LOGO_URL,
             "current_year": timezone.now().year,
         }

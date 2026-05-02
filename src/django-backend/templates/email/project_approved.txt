@@ -3,7 +3,7 @@ Project approved - Naglasúpan
 
 Hi {{ user_name }},
 
-Great news — your project "{{ project_title }}" has been approved and is now live on Naglasúpan.
+{% if is_community_tipoff %}Great news — your tip-off project "{{ project_title }}" has been approved and is now live on Naglasúpan.{% else %}Great news — your project "{{ project_title }}" has been approved and is now live on Naglasúpan.{% endif %}
 
 View your project: {{ project_url }}
 

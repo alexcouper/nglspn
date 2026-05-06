@@ -71,20 +71,20 @@
 
 ## 9. Web UI — Notifications page
 
-- [ ] 9.1 Create `/notifications` page (authenticated users)
-- [ ] 9.2 Render the unread-groups feed (action-queue model — no read items in v1)
-- [ ] 9.3 Each group renders the same visual layout as the popover, with a checkbox for selection
-- [ ] 9.4 Clicking a group navigates to `/projects/<slug>?comment=<id>` for that group's `latest_notification_id`
-- [ ] 9.5 "Mark selected as read" button calls `mark-thread-read` for each selected group's root discussion
-- [ ] 9.6 "Mark all as read" button iterates current visible unread groups
-- [ ] 9.7 Empty state when no unread groups
+- [x] 9.1 Create `/notifications` page (authenticated users)
+- [x] 9.2 Render the unread-groups feed (action-queue model — no read items in v1)
+- [x] 9.3 Each group renders the same visual layout as the popover, with a checkbox for selection
+- [x] 9.4 Clicking a group navigates to `/projects/<slug>?comment=<id>` for that group's `latest_notification_id`
+- [x] 9.5 "Mark selected as read" button calls `mark-thread-read` for each selected group's root discussion
+- [x] 9.6 "Mark all as read" button iterates current visible unread groups
+- [x] 9.7 Empty state when no unread groups
 
 ## 10. Web UI — Toaster
 
-- [ ] 10.1 On each poll, diff the new unread groups vs the previous set
-- [ ] 10.2 For each group with new unread activity since the last shown toast for that thread, show one toaster (matching coalesced text)
-- [ ] 10.3 Per-thread debounce: suppress further toasts for that thread within a 2-minute window
-- [ ] 10.4 Toast click → same deep-link as feed click
+- [x] 10.1 On each poll, diff the new unread groups vs the previous set
+- [x] 10.2 For each group with new unread activity since the last shown toast for that thread, show one toaster (matching coalesced text)
+- [x] 10.3 Per-thread debounce: suppress further toasts for that thread within a 2-minute window
+- [x] 10.4 Toast click → same deep-link as feed click
 
 ## 11. Web UI — Project page click-through
 

@@ -11,8 +11,12 @@ from services.email.handler_interface import EmailHandlerInterface
 from services.email.query_interface import EmailQueryInterface
 from services.image.django_impl import DjangoImageHandler
 from services.image.handler_interface import ImageHandlerInterface
-from services.notifications.django_impl import DjangoNotificationHandler
+from services.notifications.django_impl import (
+    DjangoNotificationHandler,
+    DjangoNotificationQuery,
+)
 from services.notifications.handler_interface import NotificationHandlerInterface
+from services.notifications.query_interface import NotificationQueryInterface
 from services.project.django_impl import DjangoProjectHandler, DjangoProjectQuery
 from services.project.handler_interface import ProjectHandlerInterface
 from services.project.query_interface import ProjectQueryInterface
@@ -47,6 +51,9 @@ class HandlerServices:
 class QueryServices:
     discussions: DiscussionQueryInterface = field(default_factory=DjangoDiscussionQuery)
     email: EmailQueryInterface = field(default_factory=DjangoEmailQuery)
+    notifications: NotificationQueryInterface = field(
+        default_factory=DjangoNotificationQuery
+    )
     project: ProjectQueryInterface = field(default_factory=DjangoProjectQuery)
     users: UserQueryInterface = field(default_factory=DjangoUserQuery)
 

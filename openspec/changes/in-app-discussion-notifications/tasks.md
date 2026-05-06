@@ -26,12 +26,12 @@
 
 ## 3. Service layer — repository (REPO.notifications)
 
-- [ ] 3.1 Add a `notifications` repository module exposing read-only queries:
+- [x] 3.1 Add a `notifications` repository module exposing read-only queries:
   - `list_unread_for_user(user_id)` — raw rows with `select_related` for project/discussion/author
   - `count_unread_groups_for_user(user_id)` — distinct root-discussion count
   - `unread_rows_for_thread(user_id, root_discussion_id)` — used by mark-read
-- [ ] 3.2 Register `REPO.notifications` in `services/__init__.py`
-- [ ] 3.3 Tests: each repo query (matches expected rows, respects user scope)
+- [x] 3.2 Register `REPO.notifications` in `services/__init__.py`
+- [x] 3.3 Tests: each repo query (matches expected rows, respects user scope)
 
 ## 4. API endpoints
 

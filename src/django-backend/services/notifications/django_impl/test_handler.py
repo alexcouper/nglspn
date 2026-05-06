@@ -133,15 +133,21 @@ class TestRecipientDetermination:
         author_notifications = Notification.objects.filter(recipient=author)
         assert_that(author_notifications.count(), equal_to(0))
 
-    def test_skips_users_with_never_cadence(self, handler) -> None:
+    def test_never_cadence_creates_row_but_no_email(self, handler) -> None:
         owner = UserFactory(notification_frequency=NotificationCadence.NEVER)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
         author = UserFactory()
         discussion = DiscussionFactory(project=project, author=author)
 
-        handler.create_notifications_for_discussion(discussion.id)
+        with patch(_SEND_EMAIL) as send:
+            handler.create_notifications_for_discussion(discussion.id)
 
-        assert_that(Notification.objects.count(), equal_to(0))
+        notifications = Notification.objects.filter(recipient=owner)
+        assert_that(notifications.count(), equal_to(1))
+        assert_that(notifications[0].email_cadence, equal_to(NotificationCadence.NEVER))
+        assert_that(notifications[0].email_sent, equal_to(False))
+        assert_that(notifications[0].in_app_read_at is None, equal_to(True))
+        assert_that(send.called, equal_to(False))
 
     def test_snapshots_user_cadence_at_creation_time(self, handler) -> None:
         owner = UserFactory(notification_frequency=NotificationCadence.HOURLY)

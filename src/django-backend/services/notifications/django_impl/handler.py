@@ -2,20 +2,99 @@ from __future__ import annotations
 
 import logging
 from collections import defaultdict
+from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from django.utils import timezone
 
 from apps.discussions.models import Discussion
 from apps.notifications.models import Notification, NotificationCadence
+from services.notifications import (
+    NotificationGroup,
+    NotificationProject,
+    NotificationSummary,
+)
 from services.notifications.handler_interface import NotificationHandlerInterface
 
 if TYPE_CHECKING:
+    from collections.abc import Iterable
     from uuid import UUID
 
+    from apps.projects.models import Project
     from apps.users.models import User
 
 logger = logging.getLogger(__name__)
+
+_BODY_EXCERPT_MAX = 240
+_RETENTION_DAYS = 30
+
+
+def _resolve_project_image_url(project: Project) -> str | None:
+    images = list(project.images.all())
+    main = next((i for i in images if i.is_main), None) or (images[0] if images else None)
+    if main is None:
+        return None
+    variants = list(main.variants.all())
+    thumb = next((v for v in variants if v.size == "thumb"), None)
+    return thumb.url if thumb else main.url
+
+
+def _root_id(notification: Notification) -> UUID:
+    return notification.discussion.parent_id or notification.discussion_id
+
+
+def _actor_name(user: User | None) -> str:
+    if user is None:
+        return "Someone"
+    full = user.full_name if hasattr(user, "full_name") else None
+    if full:
+        return full
+    return user.first_name or user.email or "Someone"
+
+
+def _body_excerpt(text: str) -> str:
+    text = text.strip()
+    if len(text) <= _BODY_EXCERPT_MAX:
+        return text
+    return text[:_BODY_EXCERPT_MAX].rstrip() + "…"
+
+
+def _build_group(
+    rows: Iterable[Notification], root_id: UUID
+) -> NotificationGroup:
+    rows = sorted(rows, key=lambda n: n.discussion.created_at, reverse=True)
+    latest = rows[0]
+    project = latest.discussion.project
+
+    headline_kind = "started"
+    for r in rows:
+        if r.discussion.parent_id is not None:
+            headline_kind = "replied"
+            break
+
+    actor_names: list[str] = []
+    seen: set[str] = set()
+    for r in rows:
+        name = _actor_name(r.discussion.author)
+        if name not in seen:
+            seen.add(name)
+            actor_names.append(name)
+
+    return NotificationGroup(
+        root_discussion_id=root_id,
+        project=NotificationProject(
+            id=project.id,
+            slug=project.slug,
+            title=project.title,
+            image_url=_resolve_project_image_url(project),
+        ),
+        headline_kind=headline_kind,
+        actor_names=actor_names,
+        latest_body_excerpt=_body_excerpt(latest.discussion.body),
+        latest_event_at=latest.discussion.created_at,
+        unread_count=len(rows),
+        latest_comment_id=latest.discussion_id,
+    )
 
 
 class DjangoNotificationHandler(NotificationHandlerInterface):
@@ -57,11 +136,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
         if discussion.author:
             recipients.discard(discussion.author)
 
-        # Skip users with NEVER cadence, create notifications for the rest
         for recipient in recipients:
-            if recipient.notification_frequency == NotificationCadence.NEVER:
-                continue
-
             notification = Notification.objects.create(
                 recipient=recipient,
                 discussion=discussion,
@@ -127,3 +202,44 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
                 )
             except Exception:
                 logger.exception("Failed to send digest to user %s", _recipient_id)
+
+    def list_unread_groups_for_user(
+        self, user_id: UUID, limit: int = 50
+    ) -> list[NotificationGroup]:
+        from services import REPO  # noqa: PLC0415
+
+        rows = list(
+            REPO.notifications.list_unread_for_user(user_id).prefetch_related(
+                "discussion__project__images__variants"
+            )
+        )
+
+        by_root: defaultdict[UUID, list[Notification]] = defaultdict(list)
+        for r in rows:
+            by_root[_root_id(r)].append(r)
+
+        groups = [_build_group(rs, root_id) for root_id, rs in by_root.items()]
+        groups.sort(key=lambda g: g.latest_event_at, reverse=True)
+        return groups[:limit]
+
+    def get_unread_summary_for_user(self, user_id: UUID) -> NotificationSummary:
+        from services import REPO  # noqa: PLC0415
+
+        count = REPO.notifications.count_unread_groups_for_user(user_id)
+        return NotificationSummary(has_unread=count > 0, unread_group_count=count)
+
+    def mark_thread_read_for_user(
+        self, user_id: UUID, root_discussion_id: UUID
+    ) -> int:
+        from services import REPO  # noqa: PLC0415
+
+        return REPO.notifications.unread_rows_for_thread(
+            user_id, root_discussion_id
+        ).update(in_app_read_at=timezone.now())
+
+    def delete_old_read_notifications(self) -> int:
+        cutoff = timezone.now() - timedelta(days=_RETENTION_DAYS)
+        deleted, _ = Notification.objects.filter(
+            in_app_read_at__isnull=False, in_app_read_at__lt=cutoff
+        ).delete()
+        return deleted

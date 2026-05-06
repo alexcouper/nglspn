@@ -8,21 +8,21 @@
 
 ## 2. Service layer — handler additions
 
-- [ ] 2.1 Add to `NotificationHandlerInterface`:
+- [x] 2.1 Add to `NotificationHandlerInterface`:
   - `list_unread_groups_for_user(user_id, limit) -> list[NotificationGroup]`
   - `get_unread_summary_for_user(user_id) -> NotificationSummary`
   - `mark_thread_read_for_user(user_id, root_discussion_id) -> int`
   - `delete_old_read_notifications() -> int`
-- [ ] 2.2 Define `NotificationGroup` and `NotificationSummary` dataclasses in the service module (the API serializers map from these)
-- [ ] 2.3 Implement the four methods in `DjangoNotificationHandler`, delegating read-side joins to `REPO.notifications`
-- [ ] 2.4 Move the `NEVER`-cadence check in `create_notifications_for_discussion`: still create the row; only skip `_send_immediate` and rely on the existing batch filter for digests
-- [ ] 2.5 Update `send_batch_notifications` digest filter to add `in_app_read_at__isnull=True`
-- [ ] 2.6 Tests: `list_unread_groups_for_user` (empty, multiple groups, mixed read/unread, ordering by latest event)
-- [ ] 2.7 Tests: `get_unread_summary_for_user` (zero, non-zero, dedup across rows of same thread)
-- [ ] 2.8 Tests: `mark_thread_read_for_user` (marks all unread rows for the thread, idempotent, scoped to the calling user, returns count)
-- [ ] 2.9 Tests: `delete_old_read_notifications` (deletes only rows with `in_app_read_at` older than 30 days; leaves unread rows alone regardless of age)
-- [ ] 2.10 Tests: NEVER cadence still creates row, no email sent, in-app delivery still works
-- [ ] 2.11 Tests: hourly + daily digest filters exclude rows with `in_app_read_at IS NOT NULL`
+- [x] 2.2 Define `NotificationGroup` and `NotificationSummary` dataclasses in the service module (the API serializers map from these)
+- [x] 2.3 Implement the four methods in `DjangoNotificationHandler`, delegating read-side joins to `REPO.notifications`
+- [x] 2.4 Move the `NEVER`-cadence check in `create_notifications_for_discussion`: still create the row; only skip `_send_immediate` and rely on the existing batch filter for digests
+- [x] 2.5 Update `send_batch_notifications` digest filter to add `in_app_read_at__isnull=True`
+- [x] 2.6 Tests: `list_unread_groups_for_user` (empty, multiple groups, mixed read/unread, ordering by latest event)
+- [x] 2.7 Tests: `get_unread_summary_for_user` (zero, non-zero, dedup across rows of same thread)
+- [x] 2.8 Tests: `mark_thread_read_for_user` (marks all unread rows for the thread, idempotent, scoped to the calling user, returns count)
+- [x] 2.9 Tests: `delete_old_read_notifications` (deletes only rows with `in_app_read_at` older than 30 days; leaves unread rows alone regardless of age)
+- [x] 2.10 Tests: NEVER cadence still creates row, no email sent, in-app delivery still works
+- [x] 2.11 Tests: hourly + daily digest filters exclude rows with `in_app_read_at IS NOT NULL`
 
 ## 3. Service layer — repository (REPO.notifications)
 

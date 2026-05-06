@@ -9,6 +9,7 @@ from api.routers import (
     discussions,
     my_projects,
     my_review,
+    notifications,
     projects,
     tags,
     users,
@@ -29,6 +30,7 @@ api.add_router("/my/reviews", my_review.router)
 api.add_router("/tags", tags.router)
 api.add_router("/competitions", competitions.router)
 api.add_router("/users", users.router)
+api.add_router("/notifications", notifications.router)
 
 
 @api.get("/")

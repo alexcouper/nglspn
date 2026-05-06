@@ -35,14 +35,14 @@
 
 ## 4. API endpoints
 
-- [ ] 4.1 Add notification routes to the API (new router or extend existing). All routes call `HANDLERS.notifications.*` — no ORM access.
+- [x] 4.1 Add notification routes to the API (new router or extend existing). All routes call `HANDLERS.notifications.*` — no ORM access.
   - `GET  /api/notifications/summary`
   - `GET  /api/notifications/groups?limit=N`
   - `POST /api/notifications/mark-thread-read`
-- [ ] 4.2 All endpoints require authentication; return 401 otherwise
-- [ ] 4.3 Tests: `summary` shape and auth
-- [ ] 4.4 Tests: `groups` shape, auth, default and explicit limit, only the calling user's notifications
-- [ ] 4.5 Tests: `mark-thread-read` updates expected rows, idempotent, scoped to caller, 200 on already-read
+- [x] 4.2 All endpoints require authentication; return 401 otherwise
+- [x] 4.3 Tests: `summary` shape and auth
+- [x] 4.4 Tests: `groups` shape, auth, default and explicit limit, only the calling user's notifications
+- [x] 4.5 Tests: `mark-thread-read` updates expected rows, idempotent, scoped to caller, 200 on already-read
 
 ## 5. Retention task
 

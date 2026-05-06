@@ -73,7 +73,7 @@ def build_digest_groups(notifications: Sequence[Notification]) -> list[dict]:
                 "project_title": project.title,
                 "project_url": (
                     f"{settings.FRONTEND_URL}/projects/{slug_or_id}"
-                    f"?comment={n.discussion_id}"
+                    f"?comment={n.discussion_id}#discussions"
                 ),
                 "comment_count": 0,
                 "_latest_created_at": n.discussion.created_at,
@@ -84,7 +84,7 @@ def build_digest_groups(notifications: Sequence[Notification]) -> list[dict]:
                 entry["_latest_created_at"] = n.discussion.created_at
                 entry["project_url"] = (
                     f"{settings.FRONTEND_URL}/projects/{slug_or_id}"
-                    f"?comment={n.discussion_id}"
+                    f"?comment={n.discussion_id}#discussions"
                 )
         groups_dict[project_key]["comment_count"] += 1
 
@@ -345,12 +345,10 @@ class DjangoEmailHandler(EmailHandlerInterface):
             "author_initial": author_name[0].upper() if author_name else "?",
             "project_title": discussion.project.title,
             "comment_body": discussion.body[:500],
-            "project_url": (
-                f"{settings.FRONTEND_URL}/projects/{slug_or_id}"
-            ),
+            "project_url": (f"{settings.FRONTEND_URL}/projects/{slug_or_id}"),
             "discussion_url": (
                 f"{settings.FRONTEND_URL}/projects/{slug_or_id}"
-                f"?comment={discussion.id}"
+                f"?comment={discussion.id}#discussions"
             ),
             "profile_url": f"{settings.FRONTEND_URL}/profile",
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",

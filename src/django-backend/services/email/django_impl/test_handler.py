@@ -385,7 +385,7 @@ class TestSendDiscussionNotificationEmail:
 
         handler.send_discussion_notification_email(notification, discussion)
 
-        expected = f"/projects/my-app?comment={discussion.id}"
+        expected = f"/projects/my-app?comment={discussion.id}#discussions"
         assert expected in mailoutbox[0].body
         html, _ = mailoutbox[0].alternatives[0]
         assert expected in html
@@ -422,5 +422,5 @@ class TestSendDiscussionDigestEmail:
         handler.send_discussion_digest_email([n_old, n_new])
 
         html, _ = mailoutbox[0].alternatives[0]
-        expected = f"/projects/my-app?comment={latest.id}"
+        expected = f"/projects/my-app?comment={latest.id}#discussions"
         assert expected in html

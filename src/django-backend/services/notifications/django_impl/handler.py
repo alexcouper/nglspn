@@ -30,13 +30,13 @@ _RETENTION_DAYS = 30
 
 
 def _resolve_project_image_url(project: Project) -> str | None:
-    images = list(project.images.all())
-    main = next((i for i in images if i.is_main), None) or (images[0] if images else None)
-    if main is None:
-        return None
-    variants = list(main.variants.all())
-    thumb = next((v for v in variants if v.size == "thumb"), None)
-    return thumb.url if thumb else main.url
+    from services.project.django_impl.query import (  # noqa: PLC0415
+        _variant_url,
+        resolve_image_by_purpose,
+    )
+
+    image = resolve_image_by_purpose(project, "icon")
+    return _variant_url(image, "thumb")
 
 
 def _root_id(notification: Notification) -> UUID:
@@ -59,9 +59,7 @@ def _body_excerpt(text: str) -> str:
     return text[:_BODY_EXCERPT_MAX].rstrip() + "…"
 
 
-def _build_group(
-    rows: Iterable[Notification], root_id: UUID
-) -> NotificationGroup:
+def _build_group(rows: Iterable[Notification], root_id: UUID) -> NotificationGroup:
     rows = sorted(rows, key=lambda n: n.discussion.created_at, reverse=True)
     latest = rows[0]
     project = latest.discussion.project
@@ -228,9 +226,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
         count = REPO.notifications.count_unread_groups_for_user(user_id)
         return NotificationSummary(has_unread=count > 0, unread_group_count=count)
 
-    def mark_thread_read_for_user(
-        self, user_id: UUID, root_discussion_id: UUID
-    ) -> int:
+    def mark_thread_read_for_user(self, user_id: UUID, root_discussion_id: UUID) -> int:
         from services import REPO  # noqa: PLC0415
 
         return REPO.notifications.unread_rows_for_thread(

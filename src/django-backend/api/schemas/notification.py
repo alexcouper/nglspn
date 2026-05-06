@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from datetime import datetime
 from uuid import UUID
 
@@ -13,7 +11,9 @@ class NotificationSummaryResponse(Schema):
     unread_group_count: int
 
     @classmethod
-    def from_dataclass(cls, summary: NotificationSummary) -> "NotificationSummaryResponse":
+    def from_dataclass(
+        cls, summary: NotificationSummary
+    ) -> "NotificationSummaryResponse":
         return cls(
             has_unread=summary.has_unread,
             unread_group_count=summary.unread_group_count,

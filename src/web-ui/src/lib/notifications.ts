@@ -2,7 +2,7 @@ import type { NotificationGroup } from "@/lib/api";
 
 export function buildDeepLink(group: NotificationGroup): string {
   const slugOrId = group.project.slug ?? group.project.id;
-  return `/projects/${slugOrId}?comment=${group.latest_comment_id}`;
+  return `/projects/${slugOrId}?comment=${group.latest_comment_id}#discussions`;
 }
 
 export function buildHeadline(group: NotificationGroup): string {

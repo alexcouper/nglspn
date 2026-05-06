@@ -184,7 +184,7 @@ class TestDeleteOldReadNotifications:
     def test_deletes_only_old_read_rows(self, handler) -> None:
         user = UserFactory()
         project = ProjectFactory()
-        old_read = NotificationFactory(
+        NotificationFactory(
             recipient=user,
             discussion=DiscussionFactory(project=project),
             in_app_read_at=timezone.now() - timedelta(days=31),
@@ -197,9 +197,7 @@ class TestDeleteOldReadNotifications:
         old_unread = NotificationFactory(
             recipient=user, discussion=DiscussionFactory(project=project)
         )
-        Notification.objects.filter(id=old_unread.id).update(
-            in_app_read_at=None
-        )
+        Notification.objects.filter(id=old_unread.id).update(in_app_read_at=None)
 
         deleted = handler.delete_old_read_notifications()
 

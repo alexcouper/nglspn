@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
@@ -10,6 +9,7 @@ import {
   buildHeadline,
   relativeTime,
 } from "@/lib/notifications";
+import { NotificationProjectIcon } from "@/components/NotificationProjectIcon";
 
 export function NotificationsFeed() {
   const { isReady } = useRequireAuth();
@@ -113,17 +113,11 @@ export function NotificationsFeed() {
                 href={buildDeepLink(group)}
                 className="flex flex-1 min-w-0 gap-3"
               >
-                <div className="flex-shrink-0 w-12 h-12 rounded bg-slate-100 overflow-hidden">
-                  {group.project.image_url ? (
-                    <Image
-                      src={group.project.image_url}
-                      alt=""
-                      width={48}
-                      height={48}
-                      className="w-full h-full object-cover"
-                    />
-                  ) : null}
-                </div>
+                <NotificationProjectIcon
+                  imageUrl={group.project.image_url}
+                  title={group.project.title}
+                  size={48}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="text-sm text-foreground leading-snug">
                     {buildHeadline(group)}

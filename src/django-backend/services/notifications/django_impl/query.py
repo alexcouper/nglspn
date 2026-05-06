@@ -35,9 +35,7 @@ class DjangoNotificationQuery(NotificationQueryInterface):
 
     def count_unread_groups_for_user(self, user_id: UUID) -> int:
         # Root id is discussion.parent_id when present, else discussion.id.
-        rows = _unread_qs(user_id).values_list(
-            "discussion_id", "discussion__parent_id"
-        )
+        rows = _unread_qs(user_id).values_list("discussion_id", "discussion__parent_id")
         roots: set[UUID] = set()
         for discussion_id, parent_id in rows:
             roots.add(parent_id or discussion_id)

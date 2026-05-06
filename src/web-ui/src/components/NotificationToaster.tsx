@@ -1,11 +1,11 @@
 "use client";
 
-import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { NotificationGroup } from "@/lib/api";
 import { useNotifications } from "@/contexts/notifications";
 import { buildDeepLink, buildHeadline } from "@/lib/notifications";
+import { NotificationProjectIcon } from "./NotificationProjectIcon";
 
 const DEBOUNCE_MS = 2 * 60 * 1000;
 const TOAST_TTL_MS = 6_000;
@@ -68,17 +68,11 @@ export function NotificationToaster() {
           className="bg-white shadow-lg rounded-lg border border-slate-200 p-3 flex gap-3 items-start cursor-pointer hover:bg-slate-50 transition-colors"
           onClick={() => handleClick(toast)}
         >
-          <div className="flex-shrink-0 w-9 h-9 rounded bg-slate-100 overflow-hidden">
-            {toast.group.project.image_url ? (
-              <Image
-                src={toast.group.project.image_url}
-                alt=""
-                width={36}
-                height={36}
-                className="w-full h-full object-cover"
-              />
-            ) : null}
-          </div>
+          <NotificationProjectIcon
+            imageUrl={toast.group.project.image_url}
+            title={toast.group.project.title}
+            size={36}
+          />
           <div className="flex-1 min-w-0">
             <div className="text-sm text-slate-900 leading-snug">
               {buildHeadline(toast.group)}

@@ -16,6 +16,7 @@ import { InlineDiscussions } from "@/components/InlineDiscussions";
 import { ProjectPageLayout } from "@/components/ProjectPageLayout";
 import { ProjectTitleBanner } from "@/components/ProjectTitleBanner";
 import { CreatorCredit } from "@/components/CreatorCredit";
+import { useNotifications } from "@/contexts/notifications";
 import { pickVariant, groupTagsByCategory } from "@/lib/utils";
 
 interface Props {
@@ -25,6 +26,14 @@ interface Props {
 
 export function ProjectDetailContent({ project, projectId }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const { groups: unreadGroups } = useNotifications();
+  const unreadDiscussionCount = useMemo(() => {
+    let total = 0;
+    for (const group of unreadGroups) {
+      if (group.project.id === projectId) total += group.unread_count;
+    }
+    return total;
+  }, [unreadGroups, projectId]);
 
   const tagsByCategory = useMemo(
     () => groupTagsByCategory(project.tags),
@@ -223,9 +232,14 @@ export function ProjectDetailContent({ project, projectId }: Props) {
       label: (
         <span className="flex items-center gap-1.5">
           Discussions
-          <span className="text-[10px] font-semibold leading-none bg-accent text-white px-1.5 py-0.5 rounded-full uppercase">
-            New
-          </span>
+          {unreadDiscussionCount > 0 ? (
+            <span
+              className="text-[10px] font-semibold leading-none bg-accent text-white px-1.5 py-0.5 rounded-full"
+              aria-label={`${unreadDiscussionCount} unread`}
+            >
+              {unreadDiscussionCount}
+            </span>
+          ) : null}
         </span>
       ),
       content: <InlineDiscussions projectId={projectId} />,

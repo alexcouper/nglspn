@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, type ReactNode } from "react";
+import { useSearchParams } from "next/navigation";
 
 export interface TabDef {
   id: string;
@@ -27,9 +28,17 @@ export function ProjectPageLayout({
   tabs,
   winnerBanner,
 }: ProjectPageLayoutProps) {
-  const [activeTab, setActiveTab] = useState(
-    () => getTabFromHash(tabs) ?? tabs[0]?.id ?? ""
-  );
+  const searchParams = useSearchParams();
+  const hasCommentParam = !!searchParams.get("comment");
+  const initialTab = (() => {
+    const fromHash = getTabFromHash(tabs);
+    if (fromHash) return fromHash;
+    if (hasCommentParam && tabs.some((t) => t.id === "discussions")) {
+      return "discussions";
+    }
+    return tabs[0]?.id ?? "";
+  })();
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   useEffect(() => {
     const onHashChange = () => {

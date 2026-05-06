@@ -8,7 +8,6 @@ from tests.factories import (
     DiscussionFactory,
     NotificationFactory,
     ProjectFactory,
-    UserFactory,
 )
 
 
@@ -107,9 +106,7 @@ class TestGroupsEndpoint:
             d = DiscussionFactory(project=project)
             NotificationFactory(recipient=user, discussion=d)
 
-        response = client.get(
-            "/api/notifications/groups?limit=2", **auth_headers
-        )
+        response = client.get("/api/notifications/groups?limit=2", **auth_headers)
 
         assert_that(response.json(), has_length(2))
 
@@ -146,9 +143,7 @@ class TestMarkThreadReadEndpoint:
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json(), equal_to({"marked": 0}))
 
-    def test_scoped_to_caller(
-        self, client, user, other_user, auth_headers
-    ) -> None:
+    def test_scoped_to_caller(self, client, user, other_user, auth_headers) -> None:
         from apps.notifications.models import Notification  # noqa: PLC0415
 
         project = ProjectFactory()

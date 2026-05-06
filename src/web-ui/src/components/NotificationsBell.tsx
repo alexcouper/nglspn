@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useNotifications } from "@/contexts/notifications";
@@ -9,6 +8,7 @@ import {
   buildHeadline,
   relativeTime,
 } from "@/lib/notifications";
+import { NotificationProjectIcon } from "./NotificationProjectIcon";
 
 const POPOVER_LIMIT = 5;
 
@@ -104,17 +104,11 @@ export function NotificationsBell() {
                   onClick={() => setOpen(false)}
                   className="flex gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0"
                 >
-                  <div className="flex-shrink-0 w-10 h-10 rounded bg-slate-100 overflow-hidden">
-                    {group.project.image_url ? (
-                      <Image
-                        src={group.project.image_url}
-                        alt=""
-                        width={40}
-                        height={40}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : null}
-                  </div>
+                  <NotificationProjectIcon
+                    imageUrl={group.project.image_url}
+                    title={group.project.title}
+                    size={40}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-slate-900 leading-snug">
                       {buildHeadline(group)}

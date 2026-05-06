@@ -65,10 +65,10 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             notification = Notification.objects.create(
                 recipient=recipient,
                 discussion=discussion,
-                cadence=recipient.notification_frequency,
+                email_cadence=recipient.notification_frequency,
             )
 
-            if notification.cadence == NotificationCadence.IMMEDIATE:
+            if notification.email_cadence == NotificationCadence.IMMEDIATE:
                 self._send_immediate(notification, discussion)
 
     def _send_immediate(
@@ -81,9 +81,9 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
                 notification=notification,
                 discussion=discussion,
             )
-            notification.sent = True
-            notification.sent_at = timezone.now()
-            notification.save(update_fields=["sent", "sent_at"])
+            notification.email_sent = True
+            notification.email_sent_at = timezone.now()
+            notification.save(update_fields=["email_sent", "email_sent_at"])
         except Exception:
             logger.exception(
                 "Failed to send immediate notification %s", notification.id
@@ -92,7 +92,10 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
     def send_batch_notifications(self, cadence: str) -> None:
         unsent = (
             Notification.objects.filter(
-                cadence=cadence, sent=False, recipient__is_active=True
+                email_cadence=cadence,
+                email_sent=False,
+                in_app_read_at__isnull=True,
+                recipient__is_active=True,
             )
             .select_related(
                 "recipient",
@@ -117,8 +120,10 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
                 )
                 now = timezone.now()
                 for notification in notifications:
-                    notification.sent = True
-                    notification.sent_at = now
-                Notification.objects.bulk_update(notifications, ["sent", "sent_at"])
+                    notification.email_sent = True
+                    notification.email_sent_at = now
+                Notification.objects.bulk_update(
+                    notifications, ["email_sent", "email_sent_at"]
+                )
             except Exception:
                 logger.exception("Failed to send digest to user %s", _recipient_id)

@@ -152,7 +152,7 @@ class TestRecipientDetermination:
         handler.create_notifications_for_discussion(discussion.id)
 
         notification = Notification.objects.get(recipient=owner)
-        assert_that(notification.cadence, equal_to(NotificationCadence.HOURLY))
+        assert_that(notification.email_cadence, equal_to(NotificationCadence.HOURLY))
 
     def test_notifies_all_full_edit_contributors(self, handler) -> None:
         creator = UserFactory(notification_frequency=_IMMEDIATE)

@@ -1,10 +1,10 @@
 ## 1. Schema migration
 
-- [ ] 1.1 Rename `Notification.sent` → `email_sent`, `Notification.sent_at` → `email_sent_at`, `Notification.cadence` → `email_cadence` via a single `RenameField` migration
-- [ ] 1.2 Add `Notification.in_app_read_at: DateTimeField(null=True, blank=True)` in the same migration (or a follow-on)
-- [ ] 1.3 Add a database index on `(recipient_id, in_app_read_at)` to support the unread-feed and summary queries
-- [ ] 1.4 Update `Notification.__str__`, admin classes, and any direct field references throughout the codebase to use the new names
-- [ ] 1.5 Tests: existing notification tests still pass after the rename
+- [x] 1.1 Rename `Notification.sent` → `email_sent`, `Notification.sent_at` → `email_sent_at`, `Notification.cadence` → `email_cadence` via a single `RenameField` migration
+- [x] 1.2 Add `Notification.in_app_read_at: DateTimeField(null=True, blank=True)` in the same migration (or a follow-on)
+- [x] 1.3 Add a database index on `(recipient_id, in_app_read_at)` to support the unread-feed and summary queries
+- [x] 1.4 Update `Notification.__str__`, admin classes, and any direct field references throughout the codebase to use the new names
+- [x] 1.5 Tests: existing notification tests still pass after the rename
 
 ## 2. Service layer — handler additions
 

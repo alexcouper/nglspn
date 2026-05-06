@@ -141,7 +141,7 @@ class NotificationFactory(factory.django.DjangoModelFactory):
 
     recipient = factory.SubFactory(UserFactory)
     discussion = factory.SubFactory(DiscussionFactory)
-    cadence = NotificationCadence.IMMEDIATE
+    email_cadence = NotificationCadence.IMMEDIATE
 
 
 class ProjectImageFactory(factory.django.DjangoModelFactory):

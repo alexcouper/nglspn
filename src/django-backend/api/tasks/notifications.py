@@ -24,3 +24,10 @@ def send_daily_notifications() -> None:
     from services import HANDLERS  # noqa: PLC0415
 
     HANDLERS.notifications.send_batch_notifications("daily")
+
+
+@task()
+def delete_old_read_notifications() -> None:
+    from services import HANDLERS  # noqa: PLC0415
+
+    HANDLERS.notifications.delete_old_read_notifications()

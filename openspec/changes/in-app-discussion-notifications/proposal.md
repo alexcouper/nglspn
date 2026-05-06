@@ -16,7 +16,7 @@ This change adds in-app notifications for **discussion events only**. Project st
   - `GET /api/notifications/summary` (cheap badge poll)
   - `GET /api/notifications/groups` (coalesced unread feed)
   - `POST /api/notifications/mark-thread-read`
-- New scheduled task `delete_old_read_notifications` that removes read rows older than 30 days; cron schedule defined externally
+- New scheduled task `delete_old_read_notifications` (full path: `api.tasks.notifications.delete_old_read_notifications`) that removes read rows older than 30 days; cron schedule defined externally — runs daily
 - Existing discussion notification email templates updated so their CTA link includes the comment id (same deep-link format as in-app)
 
 ### Web UI

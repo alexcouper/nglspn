@@ -46,9 +46,9 @@
 
 ## 5. Retention task
 
-- [ ] 5.1 Add `delete_old_read_notifications` django-task that calls `HANDLERS.notifications.delete_old_read_notifications`
-- [ ] 5.2 Document the task name in this change so the externally-defined cron can schedule it daily
-- [ ] 5.3 Tests: task invokes handler
+- [x] 5.1 Add `delete_old_read_notifications` django-task that calls `HANDLERS.notifications.delete_old_read_notifications`
+- [x] 5.2 Document the task name in this change so the externally-defined cron can schedule it daily
+- [x] 5.3 Tests: task invokes handler
 
 ## 6. Email link alignment
 

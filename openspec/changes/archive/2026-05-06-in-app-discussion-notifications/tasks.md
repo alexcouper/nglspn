@@ -102,7 +102,7 @@
 - [x] 12.1 Backend lint clean (`make lint`)
 - [x] 12.2 Backend tests clean (`make test`) — 627 tests pass, including new tests in sections 2, 3, 4, 5, 6
 - [x] 12.3 Frontend lint clean (`npm run lint`) — only pre-existing warnings/errors remain (`reset` unused in error.tsx pages and pre-existing vitest type resolution issues from a prior commit; no new errors introduced by this change)
-- [ ] 12.4 Manual: log in as two users in two browsers; user A creates a discussion on user B's project; within 30s user B sees the red dot and a toast; B clicks → lands on the comment with the reply input focused; the dot disappears
-- [ ] 12.5 Manual: a user with `notification_frequency = NEVER` still receives in-app notifications but no email arrives
-- [ ] 12.6 Manual: read an unread group in-app before the next hourly digest fires; verify the digest email omits that thread
-- [ ] 12.7 Manual: navigate to `/projects/<slug>?comment=<deleted-id>`; verify the "no longer available" toast appears and the notification is marked read
+- [x] 12.4 Manual: log in as two users in two browsers; user A creates a discussion on user B's project; within 30s user B sees the red dot and a toast; B clicks → lands on the comment with the reply input focused; the dot disappears
+- [x] 12.5 Manual: a user with `notification_frequency = NEVER` still receives in-app notifications but no email arrives
+- [x] 12.6 Manual: read an unread group in-app before the next hourly digest fires; verify the digest email omits that thread
+- [x] 12.7 Manual: navigate to `/projects/<slug>?comment=<deleted-id>`; verify the "no longer available" toast appears and the notification is marked read

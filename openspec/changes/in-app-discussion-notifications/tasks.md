@@ -52,8 +52,8 @@
 
 ## 6. Email link alignment
 
-- [ ] 6.1 Update the discussion notification email templates (immediate + digest) so the CTA URL points at `/projects/<slug>?comment=<id>` using the relevant comment id (the triggering comment for immediate, the latest for digest entries)
-- [ ] 6.2 Tests: emitted email body contains the deep-link format
+- [x] 6.1 Update the discussion notification email templates (immediate + digest) so the CTA URL points at `/projects/<slug>?comment=<id>` using the relevant comment id (the triggering comment for immediate, the latest for digest entries)
+- [x] 6.2 Tests: emitted email body contains the deep-link format
 
 ## 7. OpenAPI & types
 

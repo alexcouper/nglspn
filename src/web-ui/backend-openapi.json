@@ -2731,6 +2731,112 @@
           "Users"
         ]
       }
+    },
+    "/api/notifications/summary": {
+      "get": {
+        "operationId": "api_routers_notifications_get_summary",
+        "summary": "Get Summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationSummaryResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/notifications/groups": {
+      "get": {
+        "operationId": "api_routers_notifications_list_groups",
+        "summary": "List Groups",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 50,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/NotificationGroupResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/notifications/mark-thread-read": {
+      "post": {
+        "operationId": "api_routers_notifications_mark_thread_read",
+        "summary": "Mark Thread Read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkThreadReadResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MarkThreadReadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
     }
   },
   "components": {
@@ -5363,6 +5469,147 @@
           "project_count"
         ],
         "title": "CompetitionSummaryResponse",
+        "type": "object"
+      },
+      "NotificationSummaryResponse": {
+        "properties": {
+          "has_unread": {
+            "title": "Has Unread",
+            "type": "boolean"
+          },
+          "unread_group_count": {
+            "title": "Unread Group Count",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "has_unread",
+          "unread_group_count"
+        ],
+        "title": "NotificationSummaryResponse",
+        "type": "object"
+      },
+      "NotificationGroupResponse": {
+        "properties": {
+          "root_discussion_id": {
+            "format": "uuid",
+            "title": "Root Discussion Id",
+            "type": "string"
+          },
+          "project": {
+            "$ref": "#/components/schemas/NotificationProjectResponse"
+          },
+          "headline_kind": {
+            "title": "Headline Kind",
+            "type": "string"
+          },
+          "actor_names": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Actor Names",
+            "type": "array"
+          },
+          "latest_body_excerpt": {
+            "title": "Latest Body Excerpt",
+            "type": "string"
+          },
+          "latest_event_at": {
+            "format": "date-time",
+            "title": "Latest Event At",
+            "type": "string"
+          },
+          "unread_count": {
+            "title": "Unread Count",
+            "type": "integer"
+          },
+          "latest_comment_id": {
+            "format": "uuid",
+            "title": "Latest Comment Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "root_discussion_id",
+          "project",
+          "headline_kind",
+          "actor_names",
+          "latest_body_excerpt",
+          "latest_event_at",
+          "unread_count",
+          "latest_comment_id"
+        ],
+        "title": "NotificationGroupResponse",
+        "type": "object"
+      },
+      "NotificationProjectResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "image_url"
+        ],
+        "title": "NotificationProjectResponse",
+        "type": "object"
+      },
+      "MarkThreadReadResponse": {
+        "properties": {
+          "marked": {
+            "title": "Marked",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "marked"
+        ],
+        "title": "MarkThreadReadResponse",
+        "type": "object"
+      },
+      "MarkThreadReadRequest": {
+        "properties": {
+          "root_discussion_id": {
+            "format": "uuid",
+            "title": "Root Discussion Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "root_discussion_id"
+        ],
+        "title": "MarkThreadReadRequest",
         "type": "object"
       }
     },

@@ -57,8 +57,8 @@
 
 ## 7. OpenAPI & types
 
-- [ ] 7.1 Regenerate OpenAPI spec (`make extract-openapi`)
-- [ ] 7.2 Regenerate TypeScript types (`npm run generate-types`)
+- [x] 7.1 Regenerate OpenAPI spec (`make extract-openapi`)
+- [x] 7.2 Regenerate TypeScript types (`npm run generate-types`)
 
 ## 8. Web UI — Bell, popover, polling
 

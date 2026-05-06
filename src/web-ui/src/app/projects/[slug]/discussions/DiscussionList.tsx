@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAutoResize } from "@/hooks/useAutoResize";
 import type { Discussion, Reply } from "@/lib/api";
 import { NewDiscussionModal } from "@/components/NewDiscussionModal";
 import { ReplyForm } from "./ReplyForm";
+
+const HIGHLIGHT_CLASSES =
+  "ring-2 ring-amber-300/80 ring-offset-1 transition-shadow duration-700";
 
 function fullDate(dateStr: string): string {
   return new Date(dateStr).toLocaleString("en-US", {
@@ -46,9 +49,17 @@ interface ReplyItemProps {
   onEdit: (id: string, body: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onReplyClick: () => void;
+  isAnchor?: boolean;
 }
 
-function ReplyItem({ reply, currentUserId, onEdit, onDelete, onReplyClick }: ReplyItemProps) {
+function ReplyItem({
+  reply,
+  currentUserId,
+  onEdit,
+  onDelete,
+  onReplyClick,
+  isAnchor,
+}: ReplyItemProps) {
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(reply.body);
@@ -81,8 +92,24 @@ function ReplyItem({ reply, currentUserId, onEdit, onDelete, onReplyClick }: Rep
     setEditing(false);
   };
 
+  const itemRef = useRef<HTMLDivElement>(null);
+  const [highlighted, setHighlighted] = useState(false);
+  useEffect(() => {
+    if (!isAnchor) return;
+    itemRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlighted(true);
+    const t = window.setTimeout(() => setHighlighted(false), 2_000);
+    return () => window.clearTimeout(t);
+  }, [isAnchor]);
+
   return (
-    <div className="px-5 py-3 border-b border-border last:border-b-0">
+    <div
+      ref={itemRef}
+      id={`comment-${reply.id}`}
+      className={`px-5 py-3 border-b border-border last:border-b-0 ${
+        highlighted ? HIGHLIGHT_CLASSES : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-3 ml-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 text-sm mb-1">
@@ -169,6 +196,7 @@ interface DiscussionItemProps {
   onReply: (discussionId: string, body: string) => Promise<void>;
   onEdit: (discussionId: string, body: string) => Promise<void>;
   onDelete: (discussionId: string) => Promise<void>;
+  anchorCommentId?: string | null;
 }
 
 function DiscussionItem({
@@ -177,11 +205,30 @@ function DiscussionItem({
   onReply,
   onEdit,
   onDelete,
+  anchorCommentId,
 }: DiscussionItemProps) {
   const [showReply, setShowReply] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [rootHighlighted, setRootHighlighted] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const isAuthor = currentUserId && discussion.author?.id === currentUserId;
+  const matchesRoot = anchorCommentId === discussion.id;
+  const matchesReply =
+    anchorCommentId !== null &&
+    anchorCommentId !== undefined &&
+    discussion.replies.some((r) => r.id === anchorCommentId);
+
+  useEffect(() => {
+    if (!matchesRoot && !matchesReply) return;
+    setShowReply(true);
+    if (matchesRoot) {
+      rootRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setRootHighlighted(true);
+      const t = window.setTimeout(() => setRootHighlighted(false), 2_000);
+      return () => window.clearTimeout(t);
+    }
+  }, [matchesRoot, matchesReply]);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -203,7 +250,13 @@ function DiscussionItem({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-border overflow-hidden">
+    <div
+      ref={rootRef}
+      id={`comment-${discussion.id}`}
+      className={`bg-white rounded-xl border border-border overflow-hidden ${
+        rootHighlighted ? HIGHLIGHT_CLASSES : ""
+      }`}
+    >
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -269,6 +322,7 @@ function DiscussionItem({
               onEdit={onEdit}
               onDelete={onDelete}
               onReplyClick={() => setShowReply(true)}
+              isAnchor={anchorCommentId === reply.id}
             />
           ))}
         </div>
@@ -292,6 +346,7 @@ interface DiscussionListProps {
   onReply: (discussionId: string, body: string) => Promise<void>;
   onEdit: (discussionId: string, body: string) => Promise<void>;
   onDelete: (discussionId: string) => Promise<void>;
+  anchorCommentId?: string | null;
 }
 
 export function DiscussionList({
@@ -300,6 +355,7 @@ export function DiscussionList({
   onReply,
   onEdit,
   onDelete,
+  anchorCommentId,
 }: DiscussionListProps) {
   if (discussions.length === 0) {
     return null;
@@ -315,6 +371,7 @@ export function DiscussionList({
           onReply={onReply}
           onEdit={onEdit}
           onDelete={onDelete}
+          anchorCommentId={anchorCommentId}
         />
       ))}
     </div>

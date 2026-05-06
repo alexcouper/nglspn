@@ -88,14 +88,14 @@
 
 ## 11. Web UI — Project page click-through
 
-- [ ] 11.1 On project page load, read `?comment=<id>` from the URL
-- [ ] 11.2 If the matching comment is in the loaded discussion data, scroll it into view (UI scroll, not reorder) and apply a brief highlight class
-- [ ] 11.3 Focus the appropriate reply input:
+- [x] 11.1 On project page load, read `?comment=<id>` from the URL
+- [x] 11.2 If the matching comment is in the loaded discussion data, scroll it into view (UI scroll, not reorder) and apply a brief highlight class
+- [x] 11.3 Focus the appropriate reply input:
   - root discussion → its own reply input
   - reply → its thread's reply input
-- [ ] 11.4 Call `POST /api/notifications/mark-thread-read` with the comment's root discussion id
-- [ ] 11.5 If the comment id is not found (deleted discussion / unlisted / removed), show a toast "This discussion is no longer available" and still call `mark-thread-read`
-- [ ] 11.6 Browser back returns to the prior page; no special history manipulation
+- [x] 11.4 Call `POST /api/notifications/mark-thread-read` with the comment's root discussion id
+- [x] 11.5 If the comment id is not found (deleted discussion / unlisted / removed), show a toast "This discussion is no longer available" and still call `mark-thread-read`
+- [x] 11.6 Browser back returns to the prior page; no special history manipulation
 
 ## 12. Verification
 

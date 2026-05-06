@@ -13,7 +13,7 @@ import {
 
 export function NotificationsFeed() {
   const { isReady } = useRequireAuth();
-  const { groups, loadingGroups, refreshGroups, markThreadRead } = useNotifications();
+  const { groups, refreshGroups, markThreadRead } = useNotifications();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
 

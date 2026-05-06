@@ -62,12 +62,12 @@
 
 ## 8. Web UI — Bell, popover, polling
 
-- [ ] 8.1 Add a bell icon + unread dot to the top bar; visible to authenticated users only
-- [ ] 8.2 Implement summary-poll client (on focus + 30s interval); update dot from `has_unread`
-- [ ] 8.3 Bell click opens popover with up to 5 most recent unread groups and a "See all" link to `/notifications`
-- [ ] 8.4 Add "Notifications" entry to the user dropdown menu
-- [ ] 8.5 Popover items render: project image, headline ("X started a discussion on Y" / "A and N others replied to <thread title> on Y"), truncated body, relative time
-- [ ] 8.6 Popover item click navigates to the deep link
+- [x] 8.1 Add a bell icon + unread dot to the top bar; visible to authenticated users only
+- [x] 8.2 Implement summary-poll client (on focus + 30s interval); update dot from `has_unread`
+- [x] 8.3 Bell click opens popover with up to 5 most recent unread groups and a "See all" link to `/notifications`
+- [x] 8.4 Add "Notifications" entry to the user dropdown menu
+- [x] 8.5 Popover items render: project image, headline ("X started a discussion on Y" / "A and N others replied to <thread title> on Y"), truncated body, relative time
+- [x] 8.6 Popover item click navigates to the deep link
 
 ## 9. Web UI — Notifications page
 

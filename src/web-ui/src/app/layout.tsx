@@ -2,8 +2,10 @@ import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
 import { Suspense } from "react";
 import { AuthProvider } from "@/contexts/auth";
+import { NotificationsProvider } from "@/contexts/notifications";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
+import { NotificationToaster } from "@/components/NotificationToaster";
 import { PlausibleTracker } from "@/components/PlausibleTracker";
 import "./globals.css";
 
@@ -62,13 +64,16 @@ export default function RootLayout({
       <body className={`${inter.variable} ${jetbrainsMono.variable} antialiased min-h-screen flex flex-col`}>
         <PlausibleTracker />
         <AuthProvider>
-          <Suspense>
-            <Navigation />
-          </Suspense>
-          <Suspense>
-            <div className="flex-1 flex flex-col">{children}</div>
-          </Suspense>
-          <Footer />
+          <NotificationsProvider>
+            <Suspense>
+              <Navigation />
+            </Suspense>
+            <Suspense>
+              <div className="flex-1 flex flex-col">{children}</div>
+            </Suspense>
+            <Footer />
+            <NotificationToaster />
+          </NotificationsProvider>
         </AuthProvider>
       </body>
     </html>

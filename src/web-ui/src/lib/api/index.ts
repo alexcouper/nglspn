@@ -12,6 +12,7 @@ export { DiscussionsClient } from "./discussions";
 export { ProjectsClient } from "./projects";
 export { MyProjectsClient } from "./my-projects";
 export { MyReviewClient } from "./my-review";
+export { NotificationsClient } from "./notifications";
 export { UsersClient } from "./users";
 export { TagsClient } from "./tags";
 
@@ -62,3 +63,10 @@ export type { PublicUserProfile } from "./users";
 
 // Types - Tags
 export type { TagCategory, TagWithCategory, TagGrouped, TagSuggestRequest } from "./tags";
+
+// Types - Notifications
+export type {
+  NotificationGroup,
+  NotificationProject,
+  NotificationSummary,
+} from "./notifications";

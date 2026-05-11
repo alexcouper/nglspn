@@ -81,7 +81,7 @@ export function Navigation() {
               <span className="text-slate-600 text-sm">...</span>
             ) : isAuthenticated ? (
               <>
-                <NotificationsBell />
+                {hasCompletedOnboarding && <NotificationsBell />}
                 <UserMenu />
               </>
             ) : (

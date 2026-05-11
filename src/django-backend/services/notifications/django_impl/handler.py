@@ -224,6 +224,11 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             user_id, root_discussion_id
         ).update(in_app_read_at=timezone.now())
 
+    def mark_all_read_for_user(self, user_id: UUID) -> int:
+        return Notification.objects.filter(
+            recipient_id=user_id, in_app_read_at__isnull=True
+        ).update(in_app_read_at=timezone.now())
+
     def delete_old_read_notifications(self) -> int:
         cutoff = timezone.now() - timedelta(days=_RETENTION_DAYS)
         deleted, _ = Notification.objects.filter(

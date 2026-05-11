@@ -33,4 +33,11 @@ export class NotificationsClient {
       }
     );
   }
+
+  async markAllRead(): Promise<{ marked: number }> {
+    return this.client.request<{ marked: number }>(
+      "/api/notifications/mark-all-read",
+      { method: "POST" }
+    );
+  }
 }

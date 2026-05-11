@@ -159,3 +159,43 @@ class TestMarkThreadReadEndpoint:
             )
         )
         assert_that(unread_recipients, equal_to({other_user.id}))
+
+
+@pytest.mark.django_db
+class TestMarkAllReadEndpoint:
+    def test_unauthenticated_returns_401(self, client) -> None:
+        response = client.post("/api/notifications/mark-all-read")
+        assert_that(response.status_code, equal_to(401))
+
+    def test_marks_all_unread_for_caller(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        root_a = DiscussionFactory(project=project)
+        root_b = DiscussionFactory(project=project)
+        NotificationFactory(recipient=user, discussion=root_a)
+        NotificationFactory(recipient=user, discussion=root_b)
+
+        response = client.post("/api/notifications/mark-all-read", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), equal_to({"marked": 2}))
+
+    def test_does_not_touch_other_users(
+        self, client, user, other_user, auth_headers
+    ) -> None:
+        from apps.notifications.models import Notification  # noqa: PLC0415
+
+        project = ProjectFactory()
+        root = DiscussionFactory(project=project)
+        NotificationFactory(recipient=user, discussion=root)
+        NotificationFactory(recipient=other_user, discussion=root)
+
+        client.post("/api/notifications/mark-all-read", **auth_headers)
+
+        unread_recipients = set(
+            Notification.objects.filter(in_app_read_at__isnull=True).values_list(
+                "recipient_id", flat=True
+            )
+        )
+        assert_that(unread_recipients, equal_to({other_user.id}))

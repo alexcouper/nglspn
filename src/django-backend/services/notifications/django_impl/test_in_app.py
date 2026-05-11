@@ -180,6 +180,53 @@ class TestMarkThreadReadForUser:
 
 
 @pytest.mark.django_db
+class TestMarkAllReadForUser:
+    def test_marks_all_unread_rows_for_caller(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        root_a = DiscussionFactory(project=project)
+        root_b = DiscussionFactory(project=project)
+        reply = DiscussionFactory(project=project, parent=root_a)
+        NotificationFactory(recipient=user, discussion=root_a)
+        NotificationFactory(recipient=user, discussion=root_b)
+        NotificationFactory(recipient=user, discussion=reply)
+
+        marked = handler.mark_all_read_for_user(user.id)
+
+        assert_that(marked, equal_to(3))
+        assert_that(
+            Notification.objects.filter(
+                recipient=user, in_app_read_at__isnull=True
+            ).count(),
+            equal_to(0),
+        )
+
+    def test_does_not_touch_other_users_rows(self, handler) -> None:
+        user = UserFactory()
+        other = UserFactory()
+        project = ProjectFactory()
+        d = DiscussionFactory(project=project)
+        NotificationFactory(recipient=user, discussion=d)
+        other_n = NotificationFactory(recipient=other, discussion=d)
+
+        handler.mark_all_read_for_user(user.id)
+
+        other_n.refresh_from_db()
+        assert_that(other_n.in_app_read_at is None, equal_to(True))
+
+    def test_idempotent(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        d = DiscussionFactory(project=project)
+        NotificationFactory(recipient=user, discussion=d)
+
+        handler.mark_all_read_for_user(user.id)
+        second = handler.mark_all_read_for_user(user.id)
+
+        assert_that(second, equal_to(0))
+
+
+@pytest.mark.django_db
 class TestDeleteOldReadNotifications:
     def test_deletes_only_old_read_rows(self, handler) -> None:
         user = UserFactory()

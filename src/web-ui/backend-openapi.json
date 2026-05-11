@@ -1029,6 +1029,16 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "tags": [
@@ -2831,6 +2841,33 @@
           },
           "required": true
         },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/notifications/mark-all-read": {
+      "post": {
+        "operationId": "api_routers_notifications_mark_all_read",
+        "summary": "Mark All Read",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MarkAllReadResponse"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Notifications"
+        ],
         "security": [
           {
             "JWTAuth": []
@@ -5617,6 +5654,19 @@
           "root_discussion_id"
         ],
         "title": "MarkThreadReadRequest",
+        "type": "object"
+      },
+      "MarkAllReadResponse": {
+        "properties": {
+          "marked": {
+            "title": "Marked",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "marked"
+        ],
+        "title": "MarkAllReadResponse",
         "type": "object"
       }
     },

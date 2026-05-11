@@ -13,7 +13,8 @@ import { NotificationProjectIcon } from "@/components/NotificationProjectIcon";
 
 export function NotificationsFeed() {
   const { isReady } = useRequireAuth();
-  const { groups, refreshGroups, markThreadRead } = useNotifications();
+  const { groups, refreshGroups, markThreadRead, markAllRead } =
+    useNotifications();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
 
@@ -51,9 +52,7 @@ export function NotificationsFeed() {
     if (groups.length === 0) return;
     setBusy(true);
     try {
-      await Promise.all(
-        groups.map((g) => markThreadRead(g.root_discussion_id))
-      );
+      await markAllRead();
       setSelected(new Set());
       await refreshGroups();
     } finally {

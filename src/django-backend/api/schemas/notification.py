@@ -66,3 +66,7 @@ class MarkThreadReadRequest(Schema):
 
 class MarkThreadReadResponse(Schema):
     marked: int
+
+
+class MarkAllReadResponse(Schema):
+    marked: int

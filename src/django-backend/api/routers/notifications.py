@@ -5,6 +5,7 @@ from ninja import Router
 
 from api.auth.security import auth
 from api.schemas.notification import (
+    MarkAllReadResponse,
     MarkThreadReadRequest,
     MarkThreadReadResponse,
     NotificationGroupResponse,
@@ -58,3 +59,14 @@ def mark_thread_read(
         request.auth.id, payload.root_discussion_id
     )
     return MarkThreadReadResponse(marked=marked)
+
+
+@router.post(
+    "/mark-all-read",
+    response={200: MarkAllReadResponse},
+    auth=auth,
+    tags=["Notifications"],
+)
+def mark_all_read(request: HttpRequest) -> MarkAllReadResponse:
+    marked = HANDLERS.notifications.mark_all_read_for_user(request.auth.id)
+    return MarkAllReadResponse(marked=marked)

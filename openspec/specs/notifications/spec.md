@@ -232,6 +232,26 @@ The handler SHALL set `in_app_read_at = now()` on every unread row belonging to 
 - **WHEN** an unauthenticated request hits `POST /api/notifications/mark-thread-read`
 - **THEN** the system returns 401 Unauthorized
 
+### Requirement: Mark all read endpoint
+
+The system SHALL provide `POST /api/notifications/mark-all-read` that marks every one of the calling user's unread in-app notifications as read in a single request. The endpoint SHALL require authentication and SHALL be idempotent. The response SHALL be `{ marked: <int> }`.
+
+The endpoint SHALL be implemented as a thin pass-through to `HANDLERS.notifications.mark_all_read_for_user` and SHALL NOT access ORM models directly.
+
+The handler SHALL set `in_app_read_at = now()` on every unread row belonging to the calling user. Other users' rows SHALL NOT be affected.
+
+#### Scenario: Marks every unread row for the caller
+- **GIVEN** user A has 5 unread notifications spread across multiple threads
+- **WHEN** A sends `POST /api/notifications/mark-all-read`
+- **THEN** all 5 of A's rows have `in_app_read_at` set to the current time
+- **AND** the response is `{ "marked": 5 }`
+
+#### Scenario: Idempotent when nothing is unread
+- **GIVEN** user A has no unread notifications
+- **WHEN** A sends `POST /api/notifications/mark-all-read`
+- **THEN** no rows change
+- **AND** the response is `{ "marked": 0 }` with HTTP 200
+
 ### Requirement: Notification retention task
 
 The system SHALL provide a django-task `delete_old_read_notifications` that deletes `Notification` rows where `in_app_read_at IS NOT NULL` AND `in_app_read_at < now() - 30 days`. Rows with `in_app_read_at IS NULL` SHALL NOT be deleted by this task regardless of their age.

@@ -28,6 +28,7 @@ interface NotificationsContextValue {
   refreshSummary: () => Promise<void>;
   refreshGroups: () => Promise<void>;
   markThreadRead: (rootDiscussionId: string) => Promise<void>;
+  markAllRead: () => Promise<void>;
   subscribeDiff: (listener: DiffListener) => () => void;
 }
 
@@ -114,6 +115,14 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     [refreshSummary]
   );
 
+  const markAllRead = useCallback(async () => {
+    try {
+      await api.notifications.markAllRead();
+    } finally {
+      await refreshSummary();
+    }
+  }, [refreshSummary]);
+
   const subscribeDiff = useCallback((listener: DiffListener) => {
     listenersRef.current.add(listener);
     return () => {
@@ -153,6 +162,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         refreshSummary,
         refreshGroups,
         markThreadRead,
+        markAllRead,
         subscribeDiff,
       }}
     >

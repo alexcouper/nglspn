@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from django.db.models import Q
+from django.db.models import F, Q
+from django.db.models.functions import Coalesce
 
 from apps.notifications.models import Notification
 from services.notifications.query_interface import NotificationQueryInterface
@@ -34,12 +35,13 @@ class DjangoNotificationQuery(NotificationQueryInterface):
         )
 
     def count_unread_groups_for_user(self, user_id: UUID) -> int:
-        # Root id is discussion.parent_id when present, else discussion.id.
-        rows = _unread_qs(user_id).values_list("discussion_id", "discussion__parent_id")
-        roots: set[UUID] = set()
-        for discussion_id, parent_id in rows:
-            roots.add(parent_id or discussion_id)
-        return len(roots)
+        return (
+            _unread_qs(user_id)
+            .annotate(root=Coalesce(F("discussion__parent_id"), F("discussion_id")))
+            .values("root")
+            .distinct()
+            .count()
+        )
 
     def unread_rows_for_thread(
         self, user_id: UUID, root_discussion_id: UUID

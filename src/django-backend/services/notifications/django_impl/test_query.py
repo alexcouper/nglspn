@@ -1,4 +1,6 @@
 import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 from hamcrest import assert_that, equal_to
 
@@ -77,6 +79,23 @@ class TestCountUnreadGroupsForUser:
         NotificationFactory(recipient=user, discussion=d, in_app_read_at=_read())
 
         assert_that(query.count_unread_groups_for_user(user.id), equal_to(0))
+
+    def test_count_query_runs_in_one_query_with_distinct(self, query) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        root = DiscussionFactory(project=project)
+        NotificationFactory(recipient=user, discussion=root)
+        for _ in range(50):
+            reply = DiscussionFactory(project=project, parent=root)
+            NotificationFactory(recipient=user, discussion=reply)
+
+        with CaptureQueriesContext(connection) as ctx:
+            result = query.count_unread_groups_for_user(user.id)
+
+        assert_that(result, equal_to(1))
+        assert_that(len(ctx.captured_queries), equal_to(1))
+        sql = ctx.captured_queries[0]["sql"].lower()
+        assert "distinct" in sql or "group by" in sql, sql
 
 
 @pytest.mark.django_db

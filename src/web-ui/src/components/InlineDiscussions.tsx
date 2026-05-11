@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/auth";
 import { useNotifications } from "@/contexts/notifications";
+import { useToasts } from "@/contexts/toasts";
 import { api } from "@/lib/api";
 import type { Discussion, Reply } from "@/lib/api";
 import { DiscussionList } from "@/app/projects/[slug]/discussions/DiscussionList";
@@ -55,13 +56,13 @@ function DiscussionsSkeleton() {
 export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { markThreadRead, markThreadByComment } = useNotifications();
+  const { showToast } = useToasts();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const commentParam = searchParams.get("comment");
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [fetched, setFetched] = useState(false);
   const [error, setError] = useState("");
-  const [staleToast, setStaleToast] = useState(false);
   const processedCommentRef = useRef<string | null>(null);
 
   const refreshDiscussions = useCallback(async (): Promise<Discussion[]> => {
@@ -109,7 +110,14 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
     // Anchor not found in current data — refetch once, then decide.
     processedCommentRef.current = commentParam;
     let cancelled = false;
-    const showIds: number[] = [];
+    const notifyUnavailable = () => {
+      void markThreadByComment(commentParam);
+      showToast({
+        kind: "warning",
+        title: "This discussion is no longer available.",
+        ttlMs: 5_000,
+      });
+    };
     queueMicrotask(() => {
       refreshDiscussions()
         .then((fresh) => {
@@ -119,22 +127,15 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
             void markThreadRead(freshAnchor.rootId);
             return;
           }
-          // Truly unavailable.
-          void markThreadByComment(commentParam);
-          showIds.push(window.setTimeout(() => setStaleToast(true), 0));
-          showIds.push(window.setTimeout(() => setStaleToast(false), 5_000));
+          notifyUnavailable();
         })
         .catch(() => {
-          // Best-effort: treat as unavailable.
           if (cancelled) return;
-          void markThreadByComment(commentParam);
-          showIds.push(window.setTimeout(() => setStaleToast(true), 0));
-          showIds.push(window.setTimeout(() => setStaleToast(false), 5_000));
+          notifyUnavailable();
         });
     });
     return () => {
       cancelled = true;
-      for (const id of showIds) window.clearTimeout(id);
     };
   }, [
     commentParam,
@@ -143,6 +144,7 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
     markThreadRead,
     markThreadByComment,
     refreshDiscussions,
+    showToast,
   ]);
 
   const shouldShowSkeleton = authLoading || (isAuthenticated && !fetched);
@@ -226,15 +228,6 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
     <div>
       {error && (
         <p className="text-red-500 text-sm mb-4">{error}</p>
-      )}
-
-      {staleToast && (
-        <div
-          role="status"
-          className="mb-4 bg-amber-50 border border-amber-200 text-amber-900 rounded-lg px-4 py-3 text-sm"
-        >
-          This discussion is no longer available.
-        </div>
       )}
 
       <NewDiscussionForm onSubmit={handleNewDiscussion} />

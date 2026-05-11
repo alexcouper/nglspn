@@ -414,3 +414,12 @@ class DjangoProjectQuery(ProjectQueryInterface):
             )
             for c in categories
         ]
+
+    def get_project_icon_url(self, project: Project | UUID) -> str | None:
+        if isinstance(project, UUID):
+            try:
+                project = Project.objects.get(id=project)
+            except Project.DoesNotExist:
+                return None
+        icon = resolve_image_by_purpose(project, "icon")
+        return _variant_url(icon, "thumb")

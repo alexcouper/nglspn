@@ -21,23 +21,12 @@ if TYPE_CHECKING:
     from collections.abc import Iterable
     from uuid import UUID
 
-    from apps.projects.models import Project
     from apps.users.models import User
 
 logger = logging.getLogger(__name__)
 
 _BODY_EXCERPT_MAX = 240
 _RETENTION_DAYS = 30
-
-
-def _resolve_project_image_url(project: Project) -> str | None:
-    from services.project.django_impl.query import (  # noqa: PLC0415
-        _variant_url,
-        resolve_image_by_purpose,
-    )
-
-    image = resolve_image_by_purpose(project, "icon")
-    return _variant_url(image, "thumb")
 
 
 def _root_id(notification: Notification) -> UUID:
@@ -60,6 +49,8 @@ def _body_excerpt(text: str) -> str:
 
 
 def _build_group(rows: Iterable[Notification], root_id: UUID) -> NotificationGroup:
+    from services import REPO  # noqa: PLC0415
+
     rows = sorted(rows, key=lambda n: n.discussion.created_at, reverse=True)
     latest = rows[0]
     project = latest.discussion.project
@@ -84,7 +75,7 @@ def _build_group(rows: Iterable[Notification], root_id: UUID) -> NotificationGro
             id=project.id,
             slug=project.slug,
             title=project.title,
-            image_url=_resolve_project_image_url(project),
+            image_url=REPO.project.get_project_icon_url(project),
         ),
         headline_kind=headline_kind,
         actor_names=actor_names,

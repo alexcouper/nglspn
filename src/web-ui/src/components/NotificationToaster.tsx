@@ -4,8 +4,8 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { NotificationGroup } from "@/lib/api";
 import { useNotifications } from "@/contexts/notifications";
-import { buildDeepLink, buildHeadline } from "@/lib/notifications";
-import { NotificationProjectIcon } from "./NotificationProjectIcon";
+import { buildDeepLink } from "@/lib/notifications";
+import { NotificationGroupItem } from "./NotificationGroupItem";
 
 const DEBOUNCE_MS = 2 * 60 * 1000;
 const TOAST_TTL_MS = 6_000;
@@ -68,19 +68,7 @@ export function NotificationToaster() {
           className="bg-white shadow-lg rounded-lg border border-slate-200 p-3 flex gap-3 items-start cursor-pointer hover:bg-slate-50 transition-colors"
           onClick={() => handleClick(toast)}
         >
-          <NotificationProjectIcon
-            imageUrl={toast.group.project.image_url}
-            title={toast.group.project.title}
-            size={36}
-          />
-          <div className="flex-1 min-w-0">
-            <div className="text-sm text-slate-900 leading-snug">
-              {buildHeadline(toast.group)}
-            </div>
-            <div className="text-xs text-slate-500 truncate mt-0.5">
-              {toast.group.latest_body_excerpt}
-            </div>
-          </div>
+          <NotificationGroupItem group={toast.group} variant="toaster" />
           <button
             type="button"
             aria-label="Dismiss"

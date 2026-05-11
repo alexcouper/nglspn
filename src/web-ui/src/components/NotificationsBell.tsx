@@ -3,12 +3,8 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useNotifications } from "@/contexts/notifications";
-import {
-  buildDeepLink,
-  buildHeadline,
-  relativeTime,
-} from "@/lib/notifications";
-import { NotificationProjectIcon } from "./NotificationProjectIcon";
+import { buildDeepLink } from "@/lib/notifications";
+import { NotificationGroupItem } from "./NotificationGroupItem";
 
 const POPOVER_LIMIT = 5;
 
@@ -104,22 +100,7 @@ export function NotificationsBell() {
                   onClick={() => setOpen(false)}
                   className="flex gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0"
                 >
-                  <NotificationProjectIcon
-                    imageUrl={group.project.image_url}
-                    title={group.project.title}
-                    size={40}
-                  />
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-slate-900 leading-snug">
-                      {buildHeadline(group)}
-                    </div>
-                    <div className="text-xs text-slate-500 truncate mt-0.5">
-                      {group.latest_body_excerpt}
-                    </div>
-                    <div className="text-xs text-slate-400 mt-1">
-                      {relativeTime(group.latest_event_at)}
-                    </div>
-                  </div>
+                  <NotificationGroupItem group={group} variant="popover" />
                 </Link>
               ))
             )}

@@ -4,12 +4,8 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useNotifications } from "@/contexts/notifications";
-import {
-  buildDeepLink,
-  buildHeadline,
-  relativeTime,
-} from "@/lib/notifications";
-import { NotificationProjectIcon } from "@/components/NotificationProjectIcon";
+import { buildDeepLink } from "@/lib/notifications";
+import { NotificationGroupItem } from "@/components/NotificationGroupItem";
 
 export function NotificationsFeed() {
   const { isReady } = useRequireAuth();
@@ -112,23 +108,11 @@ export function NotificationsFeed() {
                 href={buildDeepLink(group)}
                 className="flex flex-1 min-w-0 gap-3"
               >
-                <NotificationProjectIcon
-                  imageUrl={group.project.image_url}
-                  title={group.project.title}
-                  size={48}
+                <NotificationGroupItem
+                  group={group}
+                  variant="feed"
+                  showUnreadSuffix
                 />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm text-foreground leading-snug">
-                    {buildHeadline(group)}
-                  </div>
-                  <div className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-                    {group.latest_body_excerpt}
-                  </div>
-                  <div className="text-xs text-slate-400 mt-1">
-                    {relativeTime(group.latest_event_at)}
-                    {group.unread_count > 1 ? ` · ${group.unread_count} unread` : ""}
-                  </div>
-                </div>
               </Link>
             </div>
           );

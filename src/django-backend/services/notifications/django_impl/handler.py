@@ -11,6 +11,7 @@ from apps.discussions.models import Discussion
 from apps.notifications.models import Notification, NotificationCadence
 from services.notifications import (
     NotificationGroup,
+    NotificationHeadlineKind,
     NotificationProject,
     NotificationSummary,
 )
@@ -63,10 +64,10 @@ def _build_group(rows: Iterable[Notification], root_id: UUID) -> NotificationGro
     latest = rows[0]
     project = latest.discussion.project
 
-    headline_kind = "started"
+    headline_kind = NotificationHeadlineKind.STARTED
     for r in rows:
         if r.discussion.parent_id is not None:
-            headline_kind = "replied"
+            headline_kind = NotificationHeadlineKind.REPLIED
             break
 
     actor_names: list[str] = []

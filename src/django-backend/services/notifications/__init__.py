@@ -1,6 +1,12 @@
 from dataclasses import dataclass
 from datetime import datetime
+from enum import Enum
 from uuid import UUID
+
+
+class NotificationHeadlineKind(str, Enum):
+    STARTED = "started"
+    REPLIED = "replied"
 
 
 @dataclass(frozen=True)
@@ -15,7 +21,7 @@ class NotificationProject:
 class NotificationGroup:
     root_discussion_id: UUID
     project: NotificationProject
-    headline_kind: str
+    headline_kind: NotificationHeadlineKind
     actor_names: list[str]
     latest_body_excerpt: str
     latest_event_at: datetime
@@ -31,6 +37,7 @@ class NotificationSummary:
 
 __all__ = [
     "NotificationGroup",
+    "NotificationHeadlineKind",
     "NotificationProject",
     "NotificationSummary",
 ]

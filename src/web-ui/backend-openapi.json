@@ -5500,8 +5500,7 @@
             "$ref": "#/components/schemas/NotificationProjectResponse"
           },
           "headline_kind": {
-            "title": "Headline Kind",
-            "type": "string"
+            "$ref": "#/components/schemas/NotificationHeadlineKind"
           },
           "actor_names": {
             "items": {
@@ -5541,6 +5540,14 @@
         ],
         "title": "NotificationGroupResponse",
         "type": "object"
+      },
+      "NotificationHeadlineKind": {
+        "enum": [
+          "started",
+          "replied"
+        ],
+        "title": "NotificationHeadlineKind",
+        "type": "string"
       },
       "NotificationProjectResponse": {
         "properties": {

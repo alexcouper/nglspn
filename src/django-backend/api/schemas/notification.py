@@ -3,7 +3,11 @@ from uuid import UUID
 
 from ninja import Schema
 
-from services.notifications import NotificationGroup, NotificationSummary
+from services.notifications import (
+    NotificationGroup,
+    NotificationHeadlineKind,
+    NotificationSummary,
+)
 
 
 class NotificationSummaryResponse(Schema):
@@ -30,7 +34,7 @@ class NotificationProjectResponse(Schema):
 class NotificationGroupResponse(Schema):
     root_discussion_id: UUID
     project: NotificationProjectResponse
-    headline_kind: str
+    headline_kind: NotificationHeadlineKind
     actor_names: list[str]
     latest_body_excerpt: str
     latest_event_at: datetime

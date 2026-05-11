@@ -46,9 +46,8 @@ def _root_id(notification: Notification) -> UUID:
 def _actor_name(user: User | None) -> str:
     if user is None:
         return "Someone"
-    full = user.full_name if hasattr(user, "full_name") else None
-    if full:
-        return full
+    if user.full_name:
+        return user.full_name
     return user.first_name or user.email or "Someone"
 
 

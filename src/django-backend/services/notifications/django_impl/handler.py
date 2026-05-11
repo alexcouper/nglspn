@@ -224,6 +224,14 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             user_id, root_discussion_id
         ).update(in_app_read_at=timezone.now())
 
+    def mark_thread_read_for_comment(self, user_id: UUID, comment_id: UUID) -> int:
+        try:
+            d = Discussion.objects.values("id", "parent_id").get(id=comment_id)
+        except Discussion.DoesNotExist:
+            return 0
+        root_id = d["parent_id"] or d["id"]
+        return self.mark_thread_read_for_user(user_id, root_id)
+
     def mark_all_read_for_user(self, user_id: UUID) -> int:
         return Notification.objects.filter(
             recipient_id=user_id, in_app_read_at__isnull=True

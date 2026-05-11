@@ -55,9 +55,16 @@ def mark_thread_read(
     request: HttpRequest,
     payload: MarkThreadReadRequest,
 ) -> MarkThreadReadResponse:
-    marked = HANDLERS.notifications.mark_thread_read_for_user(
-        request.auth.id, payload.root_discussion_id
-    )
+    if payload.root_discussion_id is not None:
+        marked = HANDLERS.notifications.mark_thread_read_for_user(
+            request.auth.id, payload.root_discussion_id
+        )
+    else:
+        # validator on MarkThreadReadRequest guarantees comment_id is set here
+        marked = HANDLERS.notifications.mark_thread_read_for_comment(
+            request.auth.id,
+            payload.comment_id,  # type: ignore[arg-type]
+        )
     return MarkThreadReadResponse(marked=marked)
 
 

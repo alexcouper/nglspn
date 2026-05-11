@@ -34,6 +34,16 @@ export class NotificationsClient {
     );
   }
 
+  async markThreadByComment(commentId: string): Promise<{ marked: number }> {
+    return this.client.request<{ marked: number }>(
+      "/api/notifications/mark-thread-read",
+      {
+        method: "POST",
+        body: JSON.stringify({ comment_id: commentId }),
+      }
+    );
+  }
+
   async markAllRead(): Promise<{ marked: number }> {
     return this.client.request<{ marked: number }>(
       "/api/notifications/mark-all-read",

@@ -5645,14 +5645,30 @@
       "MarkThreadReadRequest": {
         "properties": {
           "root_discussion_id": {
-            "format": "uuid",
-            "title": "Root Discussion Id",
-            "type": "string"
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Root Discussion Id"
+          },
+          "comment_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Comment Id"
           }
         },
-        "required": [
-          "root_discussion_id"
-        ],
         "title": "MarkThreadReadRequest",
         "type": "object"
       },

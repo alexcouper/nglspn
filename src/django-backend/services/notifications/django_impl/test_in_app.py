@@ -180,6 +180,40 @@ class TestMarkThreadReadForUser:
 
 
 @pytest.mark.django_db
+class TestMarkThreadReadForComment:
+    def test_marks_thread_when_comment_is_a_reply(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        root = DiscussionFactory(project=project)
+        reply = DiscussionFactory(project=project, parent=root)
+        NotificationFactory(recipient=user, discussion=root)
+        NotificationFactory(recipient=user, discussion=reply)
+
+        marked = handler.mark_thread_read_for_comment(user.id, reply.id)
+
+        assert_that(marked, equal_to(2))
+
+    def test_marks_thread_when_comment_is_a_root(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        root = DiscussionFactory(project=project)
+        reply = DiscussionFactory(project=project, parent=root)
+        NotificationFactory(recipient=user, discussion=root)
+        NotificationFactory(recipient=user, discussion=reply)
+
+        marked = handler.mark_thread_read_for_comment(user.id, root.id)
+
+        assert_that(marked, equal_to(2))
+
+    def test_returns_zero_when_comment_does_not_exist(self, handler) -> None:
+        from uuid import uuid4  # noqa: PLC0415
+
+        user = UserFactory()
+
+        assert_that(handler.mark_thread_read_for_comment(user.id, uuid4()), equal_to(0))
+
+
+@pytest.mark.django_db
 class TestMarkAllReadForUser:
     def test_marks_all_unread_rows_for_caller(self, handler) -> None:
         user = UserFactory()

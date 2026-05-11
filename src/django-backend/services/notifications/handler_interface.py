@@ -30,6 +30,9 @@ class NotificationHandlerInterface(ABC):
     ) -> int: ...
 
     @abstractmethod
+    def mark_thread_read_for_comment(self, user_id: UUID, comment_id: UUID) -> int: ...
+
+    @abstractmethod
     def mark_all_read_for_user(self, user_id: UUID) -> int: ...
 
     @abstractmethod

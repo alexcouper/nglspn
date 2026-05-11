@@ -162,14 +162,63 @@ class TestMarkThreadReadEndpoint:
 
 
 @pytest.mark.django_db
+class TestMarkThreadReadByComment:
+    def test_marks_thread_when_only_comment_id_is_provided(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        root = DiscussionFactory(project=project)
+        reply = DiscussionFactory(project=project, parent=root)
+        NotificationFactory(recipient=user, discussion=root)
+        NotificationFactory(recipient=user, discussion=reply)
+
+        response = client.post(
+            "/api/notifications/mark-thread-read",
+            data=json.dumps({"comment_id": str(reply.id)}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), equal_to({"marked": 2}))
+
+    def test_rejects_request_with_both_fields(self, client, user, auth_headers) -> None:
+        project = ProjectFactory()
+        root = DiscussionFactory(project=project)
+        response = client.post(
+            "/api/notifications/mark-thread-read",
+            data=json.dumps(
+                {
+                    "root_discussion_id": str(root.id),
+                    "comment_id": str(root.id),
+                }
+            ),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+
+    def test_rejects_request_with_neither_field(
+        self, client, user, auth_headers
+    ) -> None:
+        response = client.post(
+            "/api/notifications/mark-thread-read",
+            data=json.dumps({}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+
+
+@pytest.mark.django_db
 class TestMarkAllReadEndpoint:
     def test_unauthenticated_returns_401(self, client) -> None:
         response = client.post("/api/notifications/mark-all-read")
         assert_that(response.status_code, equal_to(401))
 
-    def test_marks_all_unread_for_caller(
-        self, client, user, auth_headers
-    ) -> None:
+    def test_marks_all_unread_for_caller(self, client, user, auth_headers) -> None:
         project = ProjectFactory()
         root_a = DiscussionFactory(project=project)
         root_b = DiscussionFactory(project=project)

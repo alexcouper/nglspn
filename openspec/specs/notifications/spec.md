@@ -203,9 +203,9 @@ The endpoint SHALL be implemented as a thin pass-through to `HANDLERS.notificati
 
 ### Requirement: Mark thread read endpoint
 
-The system SHALL provide `POST /api/notifications/mark-thread-read` that marks all of the calling user's unread notifications belonging to a given root discussion as read. The body SHALL accept `{ root_discussion_id: UUID }`. The endpoint SHALL require authentication and SHALL be idempotent. The response SHALL be `{ marked: <int> }`.
+The system SHALL provide `POST /api/notifications/mark-thread-read` that marks all of the calling user's unread notifications belonging to a given root discussion as read. The body SHALL be a one-of: exactly one of `root_discussion_id: UUID` or `comment_id: UUID`. When `comment_id` is given, the backend SHALL resolve the comment's root discussion (the comment itself if it is a root, otherwise the comment's parent) and mark that thread. When neither or both fields are provided, the request SHALL be rejected with HTTP 422. The endpoint SHALL require authentication and SHALL be idempotent. The response SHALL be `{ marked: <int> }`.
 
-The endpoint SHALL be implemented as a thin pass-through to `HANDLERS.notifications.mark_thread_read_for_user` and SHALL NOT access ORM models directly.
+The endpoint SHALL be implemented as a thin pass-through to `HANDLERS.notifications.mark_thread_read_for_user` (or `mark_thread_read_for_comment` for the comment-id path) and SHALL NOT access ORM models directly.
 
 The handler SHALL set `in_app_read_at = now()` on every unread row belonging to the given user and root discussion. Other users' rows SHALL NOT be affected.
 
@@ -227,6 +227,16 @@ The handler SHALL set `in_app_read_at = now()` on every unread row belonging to 
 - **WHEN** A sends `POST /api/notifications/mark-thread-read` with `root_discussion_id = R`
 - **THEN** A's R-rows are marked read
 - **AND** B's R-rows are unaffected
+
+#### Scenario: Marks thread when only comment id is known
+- **GIVEN** user A has 2 unread notifications, one for root discussion R and one for its reply C
+- **WHEN** A sends `POST /api/notifications/mark-thread-read` with `comment_id = C` (no `root_discussion_id`)
+- **THEN** the backend resolves C's root (R) and marks both rows read
+- **AND** the response is `{ "marked": 2 }`
+
+#### Scenario: Rejects request with both fields or neither field
+- **WHEN** an authenticated client sends a request body containing both `root_discussion_id` and `comment_id`, or neither
+- **THEN** the system returns 422 Unprocessable Entity
 
 #### Scenario: Authentication required
 - **WHEN** an unauthenticated request hits `POST /api/notifications/mark-thread-read`

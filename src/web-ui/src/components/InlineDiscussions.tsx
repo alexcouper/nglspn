@@ -54,7 +54,7 @@ function DiscussionsSkeleton() {
 
 export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
-  const { markThreadRead } = useNotifications();
+  const { markThreadRead, markThreadByComment } = useNotifications();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const commentParam = searchParams.get("comment");
@@ -120,14 +120,14 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
             return;
           }
           // Truly unavailable.
-          void markThreadRead(commentParam);
+          void markThreadByComment(commentParam);
           showIds.push(window.setTimeout(() => setStaleToast(true), 0));
           showIds.push(window.setTimeout(() => setStaleToast(false), 5_000));
         })
         .catch(() => {
           // Best-effort: treat as unavailable.
           if (cancelled) return;
-          void markThreadRead(commentParam);
+          void markThreadByComment(commentParam);
           showIds.push(window.setTimeout(() => setStaleToast(true), 0));
           showIds.push(window.setTimeout(() => setStaleToast(false), 5_000));
         });
@@ -136,7 +136,14 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
       cancelled = true;
       for (const id of showIds) window.clearTimeout(id);
     };
-  }, [commentParam, fetched, anchor, markThreadRead, refreshDiscussions]);
+  }, [
+    commentParam,
+    fetched,
+    anchor,
+    markThreadRead,
+    markThreadByComment,
+    refreshDiscussions,
+  ]);
 
   const shouldShowSkeleton = authLoading || (isAuthenticated && !fetched);
 

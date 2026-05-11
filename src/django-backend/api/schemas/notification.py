@@ -2,6 +2,7 @@ from datetime import datetime
 from uuid import UUID
 
 from ninja import Schema
+from pydantic import model_validator
 
 from services.notifications import (
     NotificationGroup,
@@ -61,7 +62,18 @@ class NotificationGroupResponse(Schema):
 
 
 class MarkThreadReadRequest(Schema):
-    root_discussion_id: UUID
+    root_discussion_id: UUID | None = None
+    comment_id: UUID | None = None
+
+    @model_validator(mode="after")
+    def exactly_one(self) -> "MarkThreadReadRequest":
+        provided = sum(
+            x is not None for x in (self.root_discussion_id, self.comment_id)
+        )
+        if provided != 1:
+            msg = "exactly one of root_discussion_id or comment_id is required"
+            raise ValueError(msg)
+        return self
 
 
 class MarkThreadReadResponse(Schema):

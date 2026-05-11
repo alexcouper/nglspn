@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 from apps.discussions.models import Discussion
 from services.discussions.exceptions import (
     DiscussionNotFoundError,
+    NestedReplyNotAllowedError,
     NotDiscussionAuthorError,
 )
 from services.discussions.handler_interface import DiscussionHandlerInterface
@@ -26,6 +27,8 @@ class DjangoDiscussionHandler(DiscussionHandlerInterface):
                 parent = Discussion.objects.select_related("project").get(id=parent_id)
             except Discussion.DoesNotExist:
                 raise DiscussionNotFoundError from None
+            if parent.parent_id is not None:
+                raise NestedReplyNotAllowedError
             project_id = parent.project_id
 
         discussion = Discussion.objects.create(

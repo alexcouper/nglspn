@@ -110,6 +110,20 @@ class TestReplyToDiscussion:
         )
         assert_that(response.status_code, equal_to(404))
 
+    def test_reply_to_a_reply_returns_422(self, client, auth_headers) -> None:
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        root = DiscussionFactory(project=project)
+        reply = DiscussionFactory(project=project, parent=root)
+
+        response = client.post(
+            f"/api/projects/{project.id}/discussions/{reply.id}/replies",
+            data={"body": "nested"},
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+
 
 @pytest.mark.django_db
 class TestDeleteDiscussion:

@@ -4,3 +4,7 @@ class DiscussionNotFoundError(Exception):
 
 class NotDiscussionAuthorError(Exception):
     pass
+
+
+class NestedReplyNotAllowedError(Exception):
+    pass

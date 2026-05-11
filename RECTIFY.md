@@ -534,3 +534,51 @@ These were raised in review but explicitly NOT in this plan:
 - WebSocket / SSE delivery (deferred per design.md).
 - The synced UI spec's `Purpose: TBD` placeholder — fix opportunistically when next editing that file.
 - Untracked `gulrót-*.jpg` / `sellerí-*.jpg` trophy images in `src/web-ui/public/trophies/` — unrelated to this change.
+
+---
+
+## Completion status (2026-05-11)
+
+Each completed item is one jj changeset stacked on the RECTIFY commit (`kqun b56f`). Order reflects the suggested execution order, not item number.
+
+### Done
+
+| Item | Subject | Changeset description |
+|------|---------|------------------------|
+| 5 | log delete count | `rectify item 5: log delete_old_read_notifications row count` |
+| 6 | drop hasattr full_name | `rectify item 6: drop defensive hasattr full_name guard` |
+| 1 | NotificationHeadlineKind enum | `rectify item 1: NotificationHeadlineKind enum` |
+| 3 | get_project_icon_url through ProjectQueryInterface | `rectify item 3: get_project_icon_url through ProjectQueryInterface` |
+| 4 | count dedup pushed to SQL | `rectify item 4: push count dedup to SQL via DISTINCT COALESCE(parent_id, discussion_id)` |
+| 2 | enforce single-level nesting (option **A**) | `rectify item 2A: enforce single-level discussion nesting` |
+| 12 | mark-all-read endpoint | `rectify item 12: mark-all-read endpoint` |
+| 13 | mark-thread-read accepts comment_id | `rectify item 13: mark-thread-read accepts comment_id` |
+| 8 | extract `<NotificationGroupItem>` | `rectify item 8: extract NotificationGroupItem` |
+| 9 | unify toast UIs via `ToastContext` | `rectify item 9: unify toast UIs via ToastContext` |
+| 10 | hide bell during onboarding (desktop) | `rectify item 10: hide bell during onboarding on desktop` |
+| 11 | remove unread badge from Discussions tab | `rectify item 11: remove unread badge from Discussions tab` |
+
+### Not done
+
+- **Item 7 — DI refactor (`from services import HANDLERS/REPO` removal).** Deferred to a follow-up change on the user's instruction. Production code still uses lazy module-level imports; nothing else in the codebase depends on the proposed `_attach`/`_handlers`/`_repo` shape.
+- **Item 2 option B (denormalized `Discussion.root` column + arbitrary nesting).** Not chosen. Option A enforces single-level via a server-side validator on the reply create endpoint and adds a 422 path; frontend code remains 2-level by accident as before.
+
+### What was tested
+
+- **Backend:** Full pytest suite green at the end of the pass: 647 passed (~2m40s), no failures. Per-item, the relevant subset was run after each change (notifications, discussions, project query, tasks).
+- **Backend lint:** `make lint` (ruff check + format) passes with zero issues at the tip of the stack.
+- **Backend new tests added:** caplog assertion on `delete_old_read_notifications` log line; `get_project_icon_url` (4 cases inc. fallback to original URL when no thumb variant); `count_unread_groups_for_user` query-shape (CaptureQueriesContext, asserts single query containing `distinct`/`group by`); reply-of-reply 422; `mark_all_read_for_user` (3 cases) + API tests (auth, marks all, scoped to caller); `mark_thread_read_for_comment` (reply, root, missing) + API tests (comment-only, both-fields-rejected, neither-rejected).
+- **Backend SQL change captured:** Item 4 — old SQL pulled `(discussion_id, parent_id)` for every unread row and deduped in Python; new SQL is `SELECT COUNT(*) FROM (SELECT DISTINCT COALESCE("discussions"."parent_id", "notifications"."discussion_id") AS "root" FROM "notifications" INNER JOIN "discussions" ON ... WHERE in_app_read_at IS NULL AND recipient_id = ?) subquery`.
+- **OpenAPI / TS types regenerated** after items 1, 12, 13. The new `NotificationHeadlineKind` shows up as `enum: ["started","replied"]` in `backend-openapi.json` and as the literal union `"started" | "replied"` in `src/lib/api-types.ts`.
+- **Frontend type-check:** `npx tsc --noEmit` is clean for the rectify changes. The four pre-existing `Cannot find module 'vitest'` errors (`src/lib/api/base.test.ts`, `src/test/helpers.ts`, `src/test/setup.ts`, `vitest.config.ts`) are unrelated to this work.
+- **Frontend eslint:** `npx eslint .` returns 0 errors. The two pre-existing warnings (unused `reset` in `src/app/projects/error.tsx`) are unrelated.
+- **Spec updates:** `openspec/specs/discussions/spec.md` (new "Reply to a reply is rejected" scenario + sentence in the threaded-replies requirement); `openspec/specs/notifications/spec.md` (mark-thread-read body now one-of root_discussion_id|comment_id; new "Marks thread when only comment id is known" + "Rejects request with both fields or neither field" scenarios; new "Mark all read endpoint" requirement with two scenarios).
+
+### What was NOT tested
+
+- **No browser / Playwright verification.** Items 9, 10, and 11 list manual visual checks in their acceptance criteria; none were run. Specifically untested:
+  - Item 9: that the toaster floating card and the "discussion no longer available" warning render through the same `<ToastContainer>` mounted in `src/app/layout.tsx` and look acceptable side-by-side.
+  - Item 10: that the bell is actually hidden for a desktop user in onboarding (only the conditional was changed and read).
+  - Item 11: that the project page Discussions tab now shows plain text and the top-bar bell still shows the dot for the same project.
+- **No end-to-end run** of the new `POST /api/notifications/mark-all-read` from the `/notifications` page in a real browser. The unit + API tests cover the contract; the "exactly one API request" check from Item 12's acceptance was not done in DevTools.
+- **No Playwright / e2e suite run.** The repo has Playwright wiring but it was not exercised.

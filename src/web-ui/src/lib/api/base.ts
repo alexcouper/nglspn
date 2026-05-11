@@ -9,7 +9,7 @@ export class ApiRequestError extends Error {
   constructor(
     message: string,
     public body: Record<string, unknown>,
-    public status: number,
+    public status: number = 0,
   ) {
     super(message);
   }

@@ -74,9 +74,6 @@ export function Navigation() {
             {hasCompletedOnboarding && (
               <Link href="/my-projects" className={linkClass("/my-projects")}>My Projects</Link>
             )}
-            {hasCompletedOnboarding && (
-              <Link href="/my-reviews" className={linkClass("/my-reviews")}>My Reviews</Link>
-            )}
             {isLoading ? (
               <span className="text-slate-600 text-sm">...</span>
             ) : isAuthenticated ? (
@@ -143,9 +140,6 @@ export function Navigation() {
             )}
             {hasCompletedOnboarding && (
               <Link href="/my-projects" className={mobileLinkClass("/my-projects")} onClick={closeMenu}>My Projects</Link>
-            )}
-            {hasCompletedOnboarding && (
-              <Link href="/my-reviews" className={mobileLinkClass("/my-reviews")} onClick={closeMenu}>My Reviews</Link>
             )}
             {isLoading ? (
               <span className="block py-3 text-base text-slate-400">...</span>

@@ -10,6 +10,7 @@ import {
 import { pickVariant } from "@/lib/utils";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
+import { MyRanking } from "./MyRanking";
 
 function formatDateRange(startDate: string, endDate: string): string {
   const start = new Date(startDate);
@@ -109,9 +110,18 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         <div className="bg-violet-50 rounded-xl border border-violet-200 p-5 sm:p-6 flex items-center gap-3">
           <span className="w-2 h-2 bg-violet-500 rounded-full pulse-dot flex-shrink-0" />
           <p className="text-violet-800 font-medium text-sm">
-            Voting is in progress. The winner will be announced soon.
+            Voting is in progress. Rank the projects below to help pick the winner.
           </p>
         </div>
+      )}
+
+      {/* My Ranking — embedded voting flow during voting period */}
+      {isVoting && (
+        <MyRanking
+          competitionId={competition.id}
+          competitionName={competition.name}
+          returnPath={`/competitions/${competition.slug ?? competition.id}`}
+        />
       )}
 
       {/* Quote */}

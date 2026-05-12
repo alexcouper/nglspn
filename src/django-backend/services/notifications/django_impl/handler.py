@@ -126,13 +126,13 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             recipients.discard(discussion.author)
 
         for recipient in recipients:
-            notification = Notification.objects.create(
+            notification, created = Notification.objects.get_or_create(
                 recipient=recipient,
                 discussion=discussion,
-                email_cadence=recipient.notification_frequency,
+                defaults={"email_cadence": recipient.notification_frequency},
             )
 
-            if notification.email_cadence == NotificationCadence.IMMEDIATE:
+            if created and notification.email_cadence == NotificationCadence.IMMEDIATE:
                 self._send_immediate(notification, discussion)
 
     def _send_immediate(

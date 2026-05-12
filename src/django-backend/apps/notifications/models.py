@@ -41,6 +41,12 @@ class Notification(models.Model):
                 name="notifications_recip_inapp_idx",
             ),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["recipient", "discussion"],
+                name="notifications_recip_disc_uniq",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"Notification for {self.recipient} re: {self.discussion_id}"

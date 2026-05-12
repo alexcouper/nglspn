@@ -179,6 +179,19 @@ class TestRecipientDetermination:
         recipient_ids = set(Notification.objects.values_list("recipient_id", flat=True))
         assert_that(recipient_ids, equal_to({creator.id, extra_full_edit.id}))
 
+    def test_idempotent_on_repeat_invocation(self, handler) -> None:
+        owner = UserFactory(notification_frequency=_IMMEDIATE)
+        project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
+        author = UserFactory()
+        discussion = DiscussionFactory(project=project, author=author)
+
+        with patch(_SEND_EMAIL) as send:
+            handler.create_notifications_for_discussion(discussion.id)
+            handler.create_notifications_for_discussion(discussion.id)
+
+        assert_that(Notification.objects.filter(recipient=owner).count(), equal_to(1))
+        assert_that(send.call_count, equal_to(1))
+
     def test_excludes_contributors_without_full_edit(self, handler) -> None:
         creator = UserFactory(notification_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=creator, status=ProjectStatus.APPROVED)

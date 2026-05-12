@@ -54,6 +54,13 @@ export function UserMenu() {
               >
                 Profile
               </Link>
+              <Link
+                href="/notifications"
+                className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
+                onClick={() => setIsOpen(false)}
+              >
+                Notifications
+              </Link>
               <div className="border-t border-border my-1" />
             </>
           )}

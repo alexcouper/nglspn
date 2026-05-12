@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAutoResize } from "@/hooks/useAutoResize";
 import type { Discussion, Reply } from "@/lib/api";
 import { NewDiscussionModal } from "@/components/NewDiscussionModal";
 import { ReplyForm } from "./ReplyForm";
+
+const HIGHLIGHT_CLASSES =
+  "ring-2 ring-amber-300/80 ring-offset-1 transition-shadow duration-700";
 
 function fullDate(dateStr: string): string {
   return new Date(dateStr).toLocaleString("en-US", {
@@ -46,9 +49,17 @@ interface ReplyItemProps {
   onEdit: (id: string, body: string) => Promise<void>;
   onDelete: (id: string) => Promise<void>;
   onReplyClick: () => void;
+  isAnchor?: boolean;
 }
 
-function ReplyItem({ reply, currentUserId, onEdit, onDelete, onReplyClick }: ReplyItemProps) {
+function ReplyItem({
+  reply,
+  currentUserId,
+  onEdit,
+  onDelete,
+  onReplyClick,
+  isAnchor,
+}: ReplyItemProps) {
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [editBody, setEditBody] = useState(reply.body);
@@ -81,8 +92,24 @@ function ReplyItem({ reply, currentUserId, onEdit, onDelete, onReplyClick }: Rep
     setEditing(false);
   };
 
+  const itemRef = useRef<HTMLDivElement>(null);
+  const [highlighted, setHighlighted] = useState(false);
+  useEffect(() => {
+    if (!isAnchor) return;
+    itemRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+    setHighlighted(true);
+    const t = window.setTimeout(() => setHighlighted(false), 2_000);
+    return () => window.clearTimeout(t);
+  }, [isAnchor]);
+
   return (
-    <div className="px-5 py-3 border-b border-border last:border-b-0">
+    <div
+      ref={itemRef}
+      id={`comment-${reply.id}`}
+      className={`px-5 py-3 border-b border-border last:border-b-0 ${
+        highlighted ? HIGHLIGHT_CLASSES : ""
+      }`}
+    >
       <div className="flex items-start justify-between gap-3 ml-4">
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 text-sm mb-1">
@@ -169,6 +196,7 @@ interface DiscussionItemProps {
   onReply: (discussionId: string, body: string) => Promise<void>;
   onEdit: (discussionId: string, body: string) => Promise<void>;
   onDelete: (discussionId: string) => Promise<void>;
+  anchorCommentId?: string | null;
 }
 
 function DiscussionItem({
@@ -177,11 +205,29 @@ function DiscussionItem({
   onReply,
   onEdit,
   onDelete,
+  anchorCommentId,
 }: DiscussionItemProps) {
-  const [showReply, setShowReply] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [rootHighlighted, setRootHighlighted] = useState(false);
+  const rootRef = useRef<HTMLDivElement>(null);
   const isAuthor = currentUserId && discussion.author?.id === currentUserId;
+  const matchesRoot = anchorCommentId === discussion.id;
+  const anchoredReply = anchorCommentId
+    ? discussion.replies.find((r) => r.id === anchorCommentId)
+    : undefined;
+
+  useEffect(() => {
+    if (!matchesRoot && !anchoredReply) return;
+    setReplyingTo(matchesRoot ? discussion.id : anchoredReply!.id);
+    if (matchesRoot) {
+      rootRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setRootHighlighted(true);
+      const t = window.setTimeout(() => setRootHighlighted(false), 2_000);
+      return () => window.clearTimeout(t);
+    }
+  }, [matchesRoot, anchoredReply, discussion.id]);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -194,8 +240,11 @@ function DiscussionItem({
 
   const handleReply = async (body: string) => {
     await onReply(discussion.id, body);
-    setShowReply(false);
+    setReplyingTo(null);
   };
+
+  const toggleReplyingTo = (id: string) =>
+    setReplyingTo((prev) => (prev === id ? null : id));
 
   const handleSaveEdit = async (body: string) => {
     await onEdit(discussion.id, body);
@@ -203,7 +252,13 @@ function DiscussionItem({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-border overflow-hidden">
+    <div
+      ref={rootRef}
+      id={`comment-${discussion.id}`}
+      className={`bg-white rounded-xl border border-border overflow-hidden ${
+        rootHighlighted ? HIGHLIGHT_CLASSES : ""
+      }`}
+    >
       <div className="p-5">
         <div className="flex items-start justify-between gap-3">
           <div className="flex-1 min-w-0">
@@ -245,16 +300,16 @@ function DiscussionItem({
 
         <div className="mt-3">
           <button
-            onClick={() => setShowReply(!showReply)}
+            onClick={() => toggleReplyingTo(discussion.id)}
             className="text-xs text-muted-foreground hover:text-accent transition-colors"
           >
             Reply
           </button>
         </div>
 
-        {showReply && (
+        {replyingTo === discussion.id && (
           <div className="mt-3">
-            <ReplyForm onSubmit={handleReply} onCancel={() => setShowReply(false)} />
+            <ReplyForm onSubmit={handleReply} onCancel={() => setReplyingTo(null)} />
           </div>
         )}
       </div>
@@ -262,14 +317,24 @@ function DiscussionItem({
       {discussion.replies.length > 0 && (
         <div className="border-t border-border bg-muted/50">
           {discussion.replies.map((reply) => (
-            <ReplyItem
-              key={reply.id}
-              reply={reply}
-              currentUserId={currentUserId}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onReplyClick={() => setShowReply(true)}
-            />
+            <Fragment key={reply.id}>
+              <ReplyItem
+                reply={reply}
+                currentUserId={currentUserId}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onReplyClick={() => toggleReplyingTo(reply.id)}
+                isAnchor={anchorCommentId === reply.id}
+              />
+              {replyingTo === reply.id && (
+                <div className="px-5 py-3 border-b border-border last:border-b-0 bg-muted/30">
+                  <ReplyForm
+                    onSubmit={handleReply}
+                    onCancel={() => setReplyingTo(null)}
+                  />
+                </div>
+              )}
+            </Fragment>
           ))}
         </div>
       )}
@@ -292,6 +357,7 @@ interface DiscussionListProps {
   onReply: (discussionId: string, body: string) => Promise<void>;
   onEdit: (discussionId: string, body: string) => Promise<void>;
   onDelete: (discussionId: string) => Promise<void>;
+  anchorCommentId?: string | null;
 }
 
 export function DiscussionList({
@@ -300,6 +366,7 @@ export function DiscussionList({
   onReply,
   onEdit,
   onDelete,
+  anchorCommentId,
 }: DiscussionListProps) {
   if (discussions.length === 0) {
     return null;
@@ -315,6 +382,7 @@ export function DiscussionList({
           onReply={onReply}
           onEdit={onEdit}
           onDelete={onDelete}
+          anchorCommentId={anchorCommentId}
         />
       ))}
     </div>

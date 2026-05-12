@@ -220,14 +220,7 @@ export function ProjectDetailContent({ project, projectId }: Props) {
     },
     {
       id: "discussions",
-      label: (
-        <span className="flex items-center gap-1.5">
-          Discussions
-          <span className="text-[10px] font-semibold leading-none bg-accent text-white px-1.5 py-0.5 rounded-full uppercase">
-            New
-          </span>
-        </span>
-      ),
+      label: "Discussions",
       content: <InlineDiscussions projectId={projectId} />,
     },
   ];

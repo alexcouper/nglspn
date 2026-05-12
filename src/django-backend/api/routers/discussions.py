@@ -9,6 +9,7 @@ from apps.discussions.models import Discussion
 from services import HANDLERS, REPO
 from services.discussions.exceptions import (
     DiscussionNotFoundError,
+    NestedReplyNotAllowedError,
     NotDiscussionAuthorError,
 )
 
@@ -49,7 +50,7 @@ def create_discussion(
 
 @router.post(
     "/{project_id}/discussions/{discussion_id}/replies",
-    response={201: ReplyResponse, 401: Error, 404: Error},
+    response={201: ReplyResponse, 401: Error, 404: Error, 422: Error},
     auth=auth,
     tags=["Discussions"],
 )
@@ -68,6 +69,8 @@ def reply_to_discussion(
         )
     except DiscussionNotFoundError:
         return 404, {"detail": "Discussion not found"}
+    except NestedReplyNotAllowedError:
+        return 422, {"detail": "Replies to replies are not supported"}
     return 201, reply
 
 

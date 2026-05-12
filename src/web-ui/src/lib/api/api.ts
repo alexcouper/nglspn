@@ -6,6 +6,7 @@ import { DiscussionsClient } from "./discussions";
 import { ProjectsClient } from "./projects";
 import { MyProjectsClient } from "./my-projects";
 import { MyReviewClient } from "./my-review";
+import { NotificationsClient } from "./notifications";
 import { UsersClient } from "./users";
 import { TagsClient } from "./tags";
 
@@ -19,6 +20,7 @@ export class API {
   readonly projects: ProjectsClient;
   readonly myProjects: MyProjectsClient;
   readonly myReview: MyReviewClient;
+  readonly notifications: NotificationsClient;
   readonly users: UsersClient;
   readonly tags: TagsClient;
 
@@ -31,6 +33,7 @@ export class API {
     this.projects = new ProjectsClient(this.client);
     this.myProjects = new MyProjectsClient(this.client);
     this.myReview = new MyReviewClient(this.client);
+    this.notifications = new NotificationsClient(this.client);
     this.users = new UsersClient(this.client);
     this.tags = new TagsClient(this.client);
   }

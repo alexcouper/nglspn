@@ -28,12 +28,13 @@ class NotificationAdmin(admin.ModelAdmin):
         "id",
         "recipient",
         "discussion",
-        "cadence",
-        "sent",
+        "email_cadence",
+        "email_sent",
+        "in_app_read_at",
         "created_at",
-        "sent_at",
+        "email_sent_at",
     )
-    list_filter = ("cadence", "sent", "created_at")
+    list_filter = ("email_cadence", "email_sent", "created_at")
     search_fields = ("recipient__email",)
     readonly_fields = ("id", "created_at")
     ordering = ("-created_at",)
@@ -69,7 +70,7 @@ class NotificationAdmin(admin.ModelAdmin):
 
     def preview_digest_list_view(self, request: HttpRequest) -> HttpResponse:
         unsent = (
-            Notification.objects.filter(sent=False)
+            Notification.objects.filter(email_sent=False)
             .select_related(
                 "recipient",
                 "discussion",
@@ -120,7 +121,7 @@ class NotificationAdmin(admin.ModelAdmin):
         self, request: HttpRequest, recipient_id: str
     ) -> HttpResponse:
         unsent = (
-            Notification.objects.filter(recipient_id=recipient_id, sent=False)
+            Notification.objects.filter(recipient_id=recipient_id, email_sent=False)
             .select_related(
                 "recipient",
                 "discussion",

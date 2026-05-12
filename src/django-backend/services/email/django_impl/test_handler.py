@@ -377,3 +377,50 @@ class TestSendDiscussionNotificationEmail:
         # The context passes body[:500], so the full 1000-char body should not appear
         assert long_body not in mailoutbox[0].body
         assert "x" * 500 in mailoutbox[0].body
+
+    def test_cta_uses_comment_deep_link(self, mailoutbox):
+        project = ProjectFactory(slug="my-app", title="My App")
+        discussion = DiscussionFactory(project=project)
+        notification = NotificationFactory(discussion=discussion)
+
+        handler.send_discussion_notification_email(notification, discussion)
+
+        expected = f"/projects/my-app?comment={discussion.id}#discussions"
+        assert expected in mailoutbox[0].body
+        html, _ = mailoutbox[0].alternatives[0]
+        assert expected in html
+
+
+@pytest.mark.django_db
+class TestSendDiscussionDigestEmail:
+    def test_cta_per_project_group_uses_latest_comment_deep_link(
+        self, mailoutbox, settings
+    ):
+        from datetime import timedelta  # noqa: PLC0415
+
+        from django.utils import timezone  # noqa: PLC0415
+
+        from apps.notifications.models import Notification  # noqa: PLC0415
+
+        recipient = UserFactory()
+        project = ProjectFactory(slug="my-app", title="My App")
+        older = DiscussionFactory(project=project)
+        latest = DiscussionFactory(project=project)
+        # Force ordering deterministically
+        Notification.objects.all().delete()
+        Notification.objects.filter(id__in=[]).update()
+        n_old = NotificationFactory(recipient=recipient, discussion=older)
+        n_new = NotificationFactory(recipient=recipient, discussion=latest)
+        # Ensure created_at order is older < latest
+        older.created_at = timezone.now() - timedelta(hours=2)
+        older.save(update_fields=["created_at"])
+        latest.created_at = timezone.now()
+        latest.save(update_fields=["created_at"])
+        n_old.discussion.refresh_from_db()
+        n_new.discussion.refresh_from_db()
+
+        handler.send_discussion_digest_email([n_old, n_new])
+
+        html, _ = mailoutbox[0].alternatives[0]
+        expected = f"/projects/my-app?comment={latest.id}#discussions"
+        assert expected in html

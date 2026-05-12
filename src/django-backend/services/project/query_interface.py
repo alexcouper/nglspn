@@ -126,3 +126,6 @@ class ProjectQueryInterface(ABC):
 
     @abstractmethod
     def list_categories(self) -> list[CategoryItem]: ...
+
+    @abstractmethod
+    def get_project_icon_url(self, project: Project | UUID) -> str | None: ...

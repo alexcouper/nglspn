@@ -58,22 +58,40 @@ def _log_sent_email(
 
 
 def build_digest_groups(notifications: Sequence[Notification]) -> list[dict]:
-    """Group notifications by project for digest emails."""
+    """Group notifications by project for digest emails.
+
+    Each group's CTA deep-links to the latest comment id in that project group,
+    so the recipient lands on the most recent comment when they click through.
+    """
     groups_dict: dict[str, dict] = {}
     for n in notifications:
         project = n.discussion.project
         project_key = str(project.id)
+        slug_or_id = project.slug or project.id
         if project_key not in groups_dict:
             groups_dict[project_key] = {
                 "project_title": project.title,
                 "project_url": (
-                    f"{settings.FRONTEND_URL}/projects/{project.id}#discussions"
+                    f"{settings.FRONTEND_URL}/projects/{slug_or_id}"
+                    f"?comment={n.discussion_id}#discussions"
                 ),
                 "comment_count": 0,
+                "_latest_created_at": n.discussion.created_at,
             }
+        else:
+            entry = groups_dict[project_key]
+            if n.discussion.created_at > entry["_latest_created_at"]:
+                entry["_latest_created_at"] = n.discussion.created_at
+                entry["project_url"] = (
+                    f"{settings.FRONTEND_URL}/projects/{slug_or_id}"
+                    f"?comment={n.discussion_id}#discussions"
+                )
         groups_dict[project_key]["comment_count"] += 1
 
-    return list(groups_dict.values())
+    return [
+        {k: v for k, v in g.items() if not k.startswith("_")}
+        for g in groups_dict.values()
+    ]
 
 
 class DjangoEmailHandler(EmailHandlerInterface):
@@ -320,17 +338,17 @@ class DjangoEmailHandler(EmailHandlerInterface):
             author_name = discussion.author.full_name or discussion.author.email
 
         recipient = notification.recipient
+        slug_or_id = discussion.project.slug or discussion.project.id
         context = {
             "recipient_name": recipient.first_name or "there",
             "author_name": author_name,
             "author_initial": author_name[0].upper() if author_name else "?",
             "project_title": discussion.project.title,
             "comment_body": discussion.body[:500],
-            "project_url": (
-                f"{settings.FRONTEND_URL}/projects/{discussion.project_id}"
-            ),
+            "project_url": (f"{settings.FRONTEND_URL}/projects/{slug_or_id}"),
             "discussion_url": (
-                f"{settings.FRONTEND_URL}/projects/{discussion.project_id}#discussions"
+                f"{settings.FRONTEND_URL}/projects/{slug_or_id}"
+                f"?comment={discussion.id}#discussions"
             ),
             "profile_url": f"{settings.FRONTEND_URL}/profile",
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",

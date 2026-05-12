@@ -2,10 +2,16 @@ from uuid import uuid4
 
 import pytest
 
-from apps.projects.models import ContributorRole, ProjectContributor, ProjectStatus
+from apps.projects.models import (
+    ContributorRole,
+    ImageVariant,
+    ProjectContributor,
+    ProjectStatus,
+    VariantSize,
+)
 from services.project.django_impl import DjangoProjectQuery, get_title_from_url
 from services.project.exceptions import ProjectNotFoundError
-from tests.factories import ProjectFactory, UserFactory
+from tests.factories import ProjectFactory, ProjectImageFactory, UserFactory
 
 query = DjangoProjectQuery()
 
@@ -213,3 +219,49 @@ class TestGetTitleFromUrl:
 
     def test_special_handling_for_github_projects(self):
         assert get_title_from_url("https://github.com/x/y") == "y"
+
+
+@pytest.mark.django_db
+class TestGetProjectIconUrl:
+    def test_returns_thumb_variant_url_when_icon_has_thumb(self):
+        project = ProjectFactory()
+        icon = ProjectImageFactory(project=project, is_icon=True)
+        ImageVariant.objects.create(
+            image=icon,
+            size=VariantSize.THUMB,
+            storage_key="projects/images/icon-thumb.jpg",
+            width=384,
+            height=384,
+            file_size=2048,
+        )
+
+        result = query.get_project_icon_url(project)
+
+        assert result is not None
+        assert result.endswith("icon-thumb.jpg")
+
+    def test_falls_back_to_image_url_when_no_thumb_variant(self):
+        project = ProjectFactory()
+        icon = ProjectImageFactory(
+            project=project,
+            is_icon=True,
+            storage_key="projects/images/icon-original.jpg",
+        )
+
+        result = query.get_project_icon_url(project)
+
+        assert result == icon.url
+
+    def test_returns_none_when_project_has_no_icon(self):
+        project = ProjectFactory()
+
+        assert query.get_project_icon_url(project) is None
+
+    def test_accepts_uuid_argument(self):
+        project = ProjectFactory()
+        icon = ProjectImageFactory(project=project, is_icon=True)
+
+        assert query.get_project_icon_url(project.id) == icon.url
+
+    def test_returns_none_for_unknown_uuid(self):
+        assert query.get_project_icon_url(uuid4()) is None

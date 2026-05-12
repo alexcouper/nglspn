@@ -1,17 +1,36 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/contexts/auth";
+import { useNotifications } from "@/contexts/notifications";
+import { useToasts } from "@/contexts/toasts";
 import { api } from "@/lib/api";
 import type { Discussion, Reply } from "@/lib/api";
 import { DiscussionList } from "@/app/projects/[slug]/discussions/DiscussionList";
 import { NewDiscussionForm } from "@/app/projects/[slug]/discussions/NewDiscussionForm";
 import { buildLoginPath } from "@/lib/auth-routing";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 interface InlineDiscussionsProps {
   projectId: string;
+}
+
+function findCommentInTree(
+  discussions: Discussion[],
+  commentId: string
+): { rootId: string; isRoot: boolean } | null {
+  for (const d of discussions) {
+    if (d.id === commentId) {
+      return { rootId: d.id, isRoot: true };
+    }
+    for (const r of d.replies) {
+      if (r.id === commentId) {
+        return { rootId: d.id, isRoot: false };
+      }
+    }
+  }
+  return null;
 }
 
 function DiscussionsSkeleton() {
@@ -36,29 +55,97 @@ function DiscussionsSkeleton() {
 
 export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const { markThreadRead, markThreadByComment } = useNotifications();
+  const { showToast } = useToasts();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const commentParam = searchParams.get("comment");
   const [discussions, setDiscussions] = useState<Discussion[]>([]);
   const [fetched, setFetched] = useState(false);
   const [error, setError] = useState("");
+  const processedCommentRef = useRef<string | null>(null);
+
+  const refreshDiscussions = useCallback(async (): Promise<Discussion[]> => {
+    const data = await api.discussions.list(projectId);
+    setDiscussions(data);
+    return data;
+  }, [projectId]);
 
   useEffect(() => {
     if (!isAuthenticated || authLoading) return;
     let cancelled = false;
-    api.discussions
-      .list(projectId)
-      .then((data) => {
-        if (!cancelled) setDiscussions(data);
-      })
-      .catch(() => {
-        if (!cancelled) setError("Failed to load discussions");
-      })
-      .finally(() => {
-        if (!cancelled) setFetched(true);
-      });
+    queueMicrotask(() => {
+      refreshDiscussions()
+        .catch(() => {
+          if (!cancelled) setError("Failed to load discussions");
+        })
+        .finally(() => {
+          if (!cancelled) setFetched(true);
+        });
+    });
     return () => {
       cancelled = true;
     };
-  }, [projectId, isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading, refreshDiscussions]);
+
+  // Resolve the comment param to {rootId, isRoot} from currently-loaded data.
+  const anchor = useMemo(() => {
+    if (!commentParam || !fetched) return null;
+    return findCommentInTree(discussions, commentParam);
+  }, [commentParam, fetched, discussions]);
+
+  // Click-through side effects: when a `?comment=<id>` arrives, find the
+  // comment in the loaded data; if missing, refetch once (the user may have
+  // been viewing a stale list) and re-check on the fresh data. Highlight is
+  // handled in children via anchorCommentId; here we mark the thread read
+  // and surface a "no longer available" toast as needed.
+  useEffect(() => {
+    if (!commentParam || !fetched) return;
+    if (processedCommentRef.current === commentParam) return;
+    if (anchor) {
+      processedCommentRef.current = commentParam;
+      void markThreadRead(anchor.rootId);
+      return;
+    }
+    // Anchor not found in current data — refetch once, then decide.
+    processedCommentRef.current = commentParam;
+    let cancelled = false;
+    const notifyUnavailable = () => {
+      void markThreadByComment(commentParam);
+      showToast({
+        kind: "warning",
+        title: "This discussion is no longer available.",
+        ttlMs: 5_000,
+      });
+    };
+    queueMicrotask(() => {
+      refreshDiscussions()
+        .then((fresh) => {
+          if (cancelled) return;
+          const freshAnchor = findCommentInTree(fresh, commentParam);
+          if (freshAnchor) {
+            void markThreadRead(freshAnchor.rootId);
+            return;
+          }
+          notifyUnavailable();
+        })
+        .catch(() => {
+          if (cancelled) return;
+          notifyUnavailable();
+        });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    commentParam,
+    fetched,
+    anchor,
+    markThreadRead,
+    markThreadByComment,
+    refreshDiscussions,
+    showToast,
+  ]);
 
   const shouldShowSkeleton = authLoading || (isAuthenticated && !fetched);
 
@@ -151,6 +238,7 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
         onReply={handleReply}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        anchorCommentId={anchor ? commentParam : null}
       />
     </div>
   );

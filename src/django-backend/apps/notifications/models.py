@@ -23,17 +23,24 @@ class Notification(models.Model):
         on_delete=models.CASCADE,
         related_name="notifications",
     )
-    cadence = models.CharField(
+    email_cadence = models.CharField(
         max_length=20,
         choices=NotificationCadence.choices,
     )
-    sent = models.BooleanField(default=False)
+    email_sent = models.BooleanField(default=False)
+    email_sent_at = models.DateTimeField(null=True, blank=True)
+    in_app_read_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    sent_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         db_table = "notifications"
         ordering = ["-created_at"]
+        indexes = [
+            models.Index(
+                fields=["recipient", "in_app_read_at"],
+                name="notifications_recip_inapp_idx",
+            ),
+        ]
 
     def __str__(self) -> str:
         return f"Notification for {self.recipient} re: {self.discussion_id}"

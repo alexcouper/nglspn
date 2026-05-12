@@ -26,7 +26,7 @@ The `DiscussionResponse` and `ReplyResponse` API schemas SHALL include an `is_ed
 
 ### Requirement: Discussion model with threaded replies
 
-The system SHALL store discussions in a single model with a self-referential parent foreign key. A discussion with no parent is a root discussion (tied to a project). A discussion with a parent is a reply. Both require a project foreign key and an author foreign key.
+The system SHALL store discussions in a single model with a self-referential parent foreign key. A discussion with no parent is a root discussion (tied to a project). A discussion with a parent is a reply. Both require a project foreign key and an author foreign key. Replies-of-replies are not supported: a reply MUST have a root discussion (parent.parent_id is null) as its parent.
 
 Each discussion SHALL have: id (UUID), project (FK), author (FK to User), parent (nullable FK to self), body (text), created_at, and updated_at.
 
@@ -41,6 +41,10 @@ Each discussion SHALL have: id (UUID), project (FK), author (FK to User), parent
 #### Scenario: Reply inherits project from parent
 - **WHEN** a reply is created referencing a parent discussion
 - **THEN** the reply's project SHALL be set to the parent's project regardless of any project value provided in the request
+
+#### Scenario: Reply to a reply is rejected
+- **WHEN** an authenticated user submits a reply whose parent is itself a reply
+- **THEN** the API responds with 422 and the reply is not created
 
 ### Requirement: Discussions Django app
 

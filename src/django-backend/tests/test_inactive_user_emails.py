@@ -120,12 +120,12 @@ class TestDiscussionNotificationsExcludeInactiveUsers:
         NotificationFactory(
             recipient=inactive,
             discussion=discussion,
-            cadence=NotificationCadence.HOURLY,
+            email_cadence=NotificationCadence.HOURLY,
         )
         NotificationFactory(
             recipient=active,
             discussion=discussion,
-            cadence=NotificationCadence.HOURLY,
+            email_cadence=NotificationCadence.HOURLY,
         )
 
         with patch(

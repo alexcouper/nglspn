@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useAuth } from "@/contexts/auth";
 import { buildLoginPath } from "@/lib/auth-routing";
+import { NotificationsBell } from "./NotificationsBell";
 import { UserMenu } from "./UserMenu";
 
 export function Navigation() {
@@ -79,7 +80,10 @@ export function Navigation() {
             {isLoading ? (
               <span className="text-slate-600 text-sm">...</span>
             ) : isAuthenticated ? (
-              <UserMenu />
+              <>
+                {hasCompletedOnboarding && <NotificationsBell />}
+                <UserMenu />
+              </>
             ) : (
               <div className="flex items-center gap-3">
                 <Link href={loginHref} className={linkClass("/login")}>Log in</Link>
@@ -93,8 +97,10 @@ export function Navigation() {
             )}
           </div>
 
-          {/* Mobile spacer */}
-          <div className="md:hidden w-8" />
+          {/* Mobile right-side: bell when authenticated, spacer otherwise */}
+          <div className="md:hidden flex items-center justify-end w-8">
+            {isAuthenticated && hasCompletedOnboarding && <NotificationsBell />}
+          </div>
         </div>
       </nav>
 

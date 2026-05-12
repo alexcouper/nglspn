@@ -40,6 +40,10 @@ export function ReplyForm({ onSubmit, onCancel }: ReplyFormProps) {
             e.preventDefault();
             handleSubmit(e);
           }
+          if (e.key === "Escape" && !submitting) {
+            e.preventDefault();
+            onCancel();
+          }
         }}
         placeholder="Write a reply..."
         rows={2}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { Fragment, useEffect, useRef, useState } from "react";
 import { PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAutoResize } from "@/hooks/useAutoResize";
 import type { Discussion, Reply } from "@/lib/api";
@@ -207,28 +207,27 @@ function DiscussionItem({
   onDelete,
   anchorCommentId,
 }: DiscussionItemProps) {
-  const [showReply, setShowReply] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [editing, setEditing] = useState(false);
   const [rootHighlighted, setRootHighlighted] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
   const isAuthor = currentUserId && discussion.author?.id === currentUserId;
   const matchesRoot = anchorCommentId === discussion.id;
-  const matchesReply =
-    anchorCommentId !== null &&
-    anchorCommentId !== undefined &&
-    discussion.replies.some((r) => r.id === anchorCommentId);
+  const anchoredReply = anchorCommentId
+    ? discussion.replies.find((r) => r.id === anchorCommentId)
+    : undefined;
 
   useEffect(() => {
-    if (!matchesRoot && !matchesReply) return;
-    setShowReply(true);
+    if (!matchesRoot && !anchoredReply) return;
+    setReplyingTo(matchesRoot ? discussion.id : anchoredReply!.id);
     if (matchesRoot) {
       rootRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
       setRootHighlighted(true);
       const t = window.setTimeout(() => setRootHighlighted(false), 2_000);
       return () => window.clearTimeout(t);
     }
-  }, [matchesRoot, matchesReply]);
+  }, [matchesRoot, anchoredReply, discussion.id]);
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -241,8 +240,11 @@ function DiscussionItem({
 
   const handleReply = async (body: string) => {
     await onReply(discussion.id, body);
-    setShowReply(false);
+    setReplyingTo(null);
   };
+
+  const toggleReplyingTo = (id: string) =>
+    setReplyingTo((prev) => (prev === id ? null : id));
 
   const handleSaveEdit = async (body: string) => {
     await onEdit(discussion.id, body);
@@ -298,16 +300,16 @@ function DiscussionItem({
 
         <div className="mt-3">
           <button
-            onClick={() => setShowReply(!showReply)}
+            onClick={() => toggleReplyingTo(discussion.id)}
             className="text-xs text-muted-foreground hover:text-accent transition-colors"
           >
             Reply
           </button>
         </div>
 
-        {showReply && (
+        {replyingTo === discussion.id && (
           <div className="mt-3">
-            <ReplyForm onSubmit={handleReply} onCancel={() => setShowReply(false)} />
+            <ReplyForm onSubmit={handleReply} onCancel={() => setReplyingTo(null)} />
           </div>
         )}
       </div>
@@ -315,15 +317,24 @@ function DiscussionItem({
       {discussion.replies.length > 0 && (
         <div className="border-t border-border bg-muted/50">
           {discussion.replies.map((reply) => (
-            <ReplyItem
-              key={reply.id}
-              reply={reply}
-              currentUserId={currentUserId}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onReplyClick={() => setShowReply(true)}
-              isAnchor={anchorCommentId === reply.id}
-            />
+            <Fragment key={reply.id}>
+              <ReplyItem
+                reply={reply}
+                currentUserId={currentUserId}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onReplyClick={() => toggleReplyingTo(reply.id)}
+                isAnchor={anchorCommentId === reply.id}
+              />
+              {replyingTo === reply.id && (
+                <div className="px-5 py-3 border-b border-border last:border-b-0 bg-muted/30">
+                  <ReplyForm
+                    onSubmit={handleReply}
+                    onCancel={() => setReplyingTo(null)}
+                  />
+                </div>
+              )}
+            </Fragment>
           ))}
         </div>
       )}

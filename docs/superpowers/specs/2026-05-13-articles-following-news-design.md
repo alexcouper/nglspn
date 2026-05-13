@@ -53,59 +53,68 @@ Each Follow × Channel pair carries an email switch and an in-app switch. The Fo
 
 ## Phase 1 — Following
 
-Adds the Follow primitive and the "Follow this project" UX. No notifications wired up yet (Phase 2 does that).
+Adds the Follow primitive, the "Follow this project" UX, and the one-shot data migration that seeds per-channel preferences for existing users from the legacy email flags. No notification firing yet (Phase 3 wires that up). No per-channel settings UI yet (Phase 2 adds that).
 
 ### UX
 
 - **Follow button** in the project page's top bar — subtle but visible. Label: "Follow" (unfollowed) / "Following" (followed).
-- **First-click behaviour**: opens a small popover listing channels × mediums with all switches defaulting on. Two actions: "Save" (commit the follow with these settings) or dismissing the popover (commits the follow with defaults). Either way, you're now following.
-- **Subsequent clicks**: opens the same popover; "Unfollow" lives at the bottom.
-- The exact visual/interaction detail of the popover is deferred — design pass will happen in phase 2 when settings are first wired up.
+- **Click when not following**: instantly follows, with all channels × mediums defaulted to on. No popover, no confirmation.
+- **Click when following**: instantly unfollows. No popover, no confirmation.
+- Per-channel × per-medium switches are not exposed in Phase 1. The switches exist in storage (auto-follow writes them, migration seeds them), but no UI surface lets the user see or edit them until Phase 2.
+
+### Identifying the house project
+
+A new boolean `is_house_project` on Project, default `False`. Exactly one Project carries it: Naglasúpan. The Phase 1 data migration sets this on the existing Naglasúpan Project row. Auto-follow signals and the reserved `/news` highlight slot (Phase 5) look it up via this flag rather than a hardcoded slug or UUID.
+
+A DB-level partial unique constraint (or a save-time guard) ensures only one Project carries the flag.
 
 ### Auto-follow Naglasúpan
 
-- On user creation: a Follow row is created against the Naglasúpan Project with all channels × mediums set to on.
-- Backfill migration creates Follow rows for every existing user, also all on. (See migration semantics in Phase 2.)
+- On user creation: a Follow row is created against the house project (Naglasúpan) with all channels × mediums set to on.
+- **One-shot data migration** creates Follow rows for every existing user. For Naglasúpan, the per-channel email switches are seeded **from the legacy global flags** — not defaulted to on:
+  - `email_opt_in_competition_results` → "Competition Winners" channel → email switch
+  - `email_opt_in_platform_updates` → "Product Updates" channel → email switch
+  - In-app switches default on (no prior signal to migrate from).
+- The legacy `email_opt_in_*` fields stay in place on User. The outbound email pipeline continues to read them through Phase 2 — they're removed in Phase 3 when the send path flips over.
 
 ### Behaviour
 
 - Following is permitted whether or not the project is approved/featured/etc. — same visibility rules as today's project pages.
-- Unfollow deletes the Follow row (and its per-channel preferences).
+- Unfollow hard-deletes the Follow row and its per-channel preferences.
+- Re-following after an unfollow is a fresh start: defaults-on across all channels × mediums. Any prior per-channel tweaks are not preserved.
 - No "followers count" visible anywhere in v1. Not exposed to project owners either. Keeps follow private until we decide the social model.
 
 ---
 
-## Phase 2 — Per-project notification settings & migration
+## Phase 2 — Per-project notification settings UI
 
-Migrates today's user-global email flags into per-Follow channel preferences, and adds the UI to manage them.
+Adds the UI to view and manage the per-channel × per-medium preferences that Phase 1 already populated. Pure UI/API work; no data migration (that landed in Phase 1).
 
 ### Settings location
 
 Two places — both required:
 
-- **On the project page**, via the Follow popover (see Phase 1). Same popover, more polished now: clear list of channels with email + in-app toggles per channel.
+- **On the project page**, via the Follow popover. Clicking the "Following" button now opens a popover with a list of channels and email + in-app toggles per channel. Unfollow lives at the bottom. (This replaces Phase 1's instant-unfollow on click.)
 - **Global "My followed projects" page**, accessed from user settings (existing settings nav). Lists every Project the user follows with each project's channel preferences inline (collapsed by default; click to expand).
 
-### Migration of existing global flags
-
-Today's User fields and what happens to each:
+### User-global fields left alone
 
 | Field | Fate |
 |---|---|
-| `email_opt_in_competition_results` | Maps to Naglasúpan → "Competition Winners" channel → email switch. |
-| `email_opt_in_platform_updates` | Maps to Naglasúpan → "Product Updates" channel → email switch. |
-| `notification_frequency` | Stays as user-global. Governs discussion-notification cadence (existing behaviour). |
-| `opt_in_to_external_promotions` | Stays as user-global. Unrelated to channels. |
+| `notification_frequency` | Stays user-global. Continues to govern discussion-notification cadence. |
+| `opt_in_to_external_promotions` | Stays user-global. Unrelated to channels. |
 
-In-app switches default on for migrated users (they didn't have a control before; on is the closer-to-current behaviour for an existing in-app notification system).
+### Outbound email path
 
-The migration is a one-shot data migration that runs on phase-2 deploy. After it runs, the two `email_opt_in_*` fields are removed (or left in place and ignored — pick at implementation time, doesn't affect the design).
+Phase 2 does **not** flip the outbound email send path — that happens in Phase 3, when articles can actually be published. Between Phase 2 and Phase 3:
 
-### What Phase 2 changes vs. what it leaves alone
+- The legacy `email_opt_in_*` flags continue to drive the email pipeline.
+- When the user changes a Naglasúpan channel email switch in the new UI, the corresponding legacy flag is **mirrored** so the legacy pipeline reflects the change. Mirror logic is scoped strictly: only the two named channels ("Competition Winners" → `email_opt_in_competition_results`, "Product Updates" → `email_opt_in_platform_updates`), and only on the house project. Other projects' channels have no legacy correlate.
+- When the user **unfollows the house project entirely** (via the popover or the global page), both legacy flags are set to `False`. This is also a mirror: the user's intent "stop hearing from Naglasúpan" must be honoured by the legacy pipeline that still reads the flags.
+- POST (create a follow) does NOT touch the legacy flags. Newly-created per-channel preferences are defaulted to all-on regardless of the user's existing legacy flag values — but the legacy pipeline keeps reading the legacy flag, so the user's email behaviour is the legacy flag's value until Phase 3 (or until the user manually toggles a switch, which mirrors).
+- The legacy fields are removed in Phase 3 when the send path flips over.
 
-- Phase 2 builds the per-channel Follow data, the migration, and the settings UI to manage it.
-- Phase 2 does **not** yet flip the outbound email send path — that happens in Phase 3, when articles can actually be published. Between Phase 2 and Phase 3, the legacy email pipeline keeps reading `email_opt_in_*` (which are kept in sync with the new per-channel switches during the transition, or unchanged because nothing yet writes to them through the new UI — implementation choice).
-- The cutover is "no-regression" because by the time Phase 4 backfills content, the new send path is live (Phase 3) and seeded migration values match what users had before.
+The cutover is "no-regression" because Phase 1's backfill seeded preferences from the legacy flags (so the new switches reflect what users had), and Phase 2's mirror logic keeps the legacy flags in sync with user intent expressed through the new UI for the duration of the gap.
 
 ---
 
@@ -136,8 +145,10 @@ Slug is generated from the title on publish (Icelandic transliteration applied, 
 ### Lifecycle
 
 - **Draft** state: not visible anywhere, not in notifications. Can be edited freely.
-- **Publish**: explicit action. Sets `published_at`, creates the slug, fires notifications (Phase 5 wires those).
-- **Edit after publish**: allowed. Body/title/hero/channel all editable. No "edited" badge on the article — owner is trusted with their own content. Approval state doesn't reset on edit.
+- **Publish**: explicit action. Sets `published_at` (defaults to now), creates the slug, and fires notifications **only if `published_at` is "now"** (see Backdated publish below).
+- **Backdated publish**: the author may override `published_at` to a date in the past at publish time. A backdated publish does **not** fire notifications — neither email nor in-app. This is the mechanism by which Phase 4's content backfill runs without notification storms: admins enter historical articles with their original send date, silently.
+- Setting `published_at` to a date in the **future** is out of scope for v1; the publish action commits immediately.
+- **Edit after publish**: allowed. Body/title/hero/channel all editable. No "edited" badge on the article — owner is trusted with their own content. Approval state doesn't reset on edit. Editing `published_at` after publish is also allowed but never fires notifications retroactively.
 - **Delete after publish**: allowed. Hard delete (mirrors how Discussions work today). Followers who already received notifications keep them.
 
 ### URL & rendering
@@ -158,11 +169,13 @@ Project owners manage their project's channels in project settings, under a new 
 
 ### Notifications fire on publish
 
-Notification firing is wired up in this phase, because Phase 4's backfill is meant to "result in users getting them — same experience as today". When an Article is published (and approved, if applicable):
+Notification firing is wired up in this phase. When an Article is published with `published_at` ≈ now (i.e. not backdated, see Lifecycle):
 
 - For each User who Follows the Project: look up their preference for this Article's Channel.
   - If email switch on → enqueue email (subject to existing email rate-limit / cadence — `notification_frequency` continues to govern, applied at user-global level).
   - If in-app switch on → create an in-app notification.
+
+Backdated publishes (Phase 4's mechanism) silently skip the notification fan-out. Followers find historical articles via `/news`, the project page carousel, or direct link — not via inbox or in-app notification.
 
 The in-app notification surface extension (so existing `Notification` model can point at an Article in addition to a Discussion) is part of this phase. See **Notes on existing models** below for options.
 
@@ -172,15 +185,16 @@ The article-publish path is also where the **outbound email send path is flipped
 
 ## Phase 4 — Backfill Naglasúpan content (not code)
 
-Content op, no engineering. The point is to validate that the user-facing experience is unchanged before flipping the send-path over.
+Content op, no engineering. The point is to put recent historical Naglasúpan output (product updates, competition results) onto the platform as Articles so they're visible on `/news`, the project page carousel, and in the Discover carousel — **without re-notifying anyone about content they've already received by email**.
 
 Steps:
-- Create the Naglasúpan Project row if it doesn't already exist (already exists, per A1).
+- Confirm the Naglasúpan Project row exists with `is_house_project=True` (Phase 1's data migration set this).
 - Confirm the two channels exist: "Competition Winners", "Product Updates".
-- Write internal Articles for the recent product updates and competition results that historically went out by email. Each one assigned to the appropriate channel.
-- Soft-launch by toggling the email send path to read from the Naglasúpan Follow → channel switches (Phase 2's outbound change). At this point existing users continue to receive emails because they were migrated to "all on".
+- Write internal Articles for the recent product updates and competition results that historically went out by email. Each assigned to the appropriate channel, with `published_at` set to the original send date (in the past) so the **notification fan-out is suppressed** (see Phase 3 Lifecycle).
 
-Acceptance: an existing subscriber's inbox experience matches the pre-deploy experience, and the same content is also viewable on the project page and at `/news`.
+Acceptance: historical content is visible on the project page carousel, on `/news`, and in the Discover carousel — and **no notifications fire** for it (no in-app, no email).
+
+The "no inbox regression for new content" property is delivered by Phase 3's send-path flip combined with Phase 1's migrated preferences — not by Phase 4. Phase 4 is purely about populating the visible-content surface.
 
 ---
 
@@ -280,7 +294,8 @@ These are observations about how the design plugs into what's already there. Not
 - **`Notification` model** is currently anchored to a Discussion (`notifications.Notification.discussion` FK). Articles need to fire notifications too. Options for the implementation plan to pick from: (a) generalise the existing model to point at either a Discussion or an Article via a nullable FK pair, (b) add a separate `ArticleNotification` model, (c) introduce a generic notifiable polymorphism. The design accommodates any of these; choice depends on how invasive the migration of in-app notification UI ends up being.
 - **`NotificationCadence`** (immediate/hourly/daily/never) is currently per-user. The migration plan keeps this user-global and uses it for both Article and Discussion notifications. Per-Follow-per-channel cadence is not in scope for v1.
 - **Project slugs** already handle Icelandic transliteration — Article slugs reuse the same helper.
-- **Naglasúpan is already a Project row** (per your A1/A2 answers). No special-casing in the model; the only special-casing is the auto-follow on user creation and the reserved highlight slot on `/news`.
+- **Naglasúpan is already a Project row.** Identified at runtime by a new boolean `is_house_project` on Project (default `False`). Phase 1's data migration sets the flag on the existing Naglasúpan row. A DB-level partial unique constraint (or a save-time guard) ensures only one Project carries the flag.
+- **Legacy email flags** (`email_opt_in_competition_results`, `email_opt_in_platform_updates`) stay on the User model through Phases 1 and 2. Phase 1's data migration reads them to seed per-channel preferences; the legacy email pipeline keeps reading them until Phase 3 flips the send path; Phase 3 removes the fields.
 
 ---
 
@@ -305,7 +320,9 @@ These don't block the spec but are worth surfacing for implementation planning:
 2. **Channel renaming and follower preferences** — if a project owner renames a channel, follower preferences against the old channel transparently follow the rename (preferences are FK'd to the Channel row, not the name). Worth a test.
 3. **Deleting a channel with articles** — design says "guard, owner reassigns articles first". Worth a confirmation UX, not just an error.
 4. **External Articles and the trust flag** — the trust flag is on the *user* who authored an article. For external Articles the author isn't a user on the platform. So trust-flag logic only governs internal Articles; external Articles route via the per-feed approval state.
-5. **Migration write order** — when seeding Follow rows for existing users during the Phase 2 migration, the migration runs before Phase 4 content backfill. Existing users will briefly have empty Naglasúpan article history but their Follow row already exists, so the next published Article fires normally.
+5. **Backfill suppression mechanism** — Phase 4 content backfill must not generate notifications. Mechanism: the author-settable `published_at` field. Articles published with `published_at` in the past skip notification fan-out (both email and in-app). This is documented behaviour, not a feature flag — it's how backdated publishes work in general.
+6. **Migration write order** — Phase 1's data migration seeds Follow rows from the legacy email flags and runs before Phase 4 content backfill. Existing users will briefly have empty Naglasúpan article history but their Follow row already exists, so the next *new* published Article (Phase 3 onward, `published_at` ≈ now) fires notifications normally.
+7. **House-project flag uniqueness** — `is_house_project` must be settable on exactly one Project. Enforce via DB partial unique constraint (`UNIQUE (is_house_project) WHERE is_house_project = TRUE`) or a save-time guard. Pick at implementation time.
 
 ---
 
@@ -313,8 +330,8 @@ These don't block the spec but are worth surfacing for implementation planning:
 
 The six phases above are independent enough to be planned and shipped in sequence with no big-bang. Each phase is a candidate for its own implementation plan.
 
-- **Phase 1 (Following)** — pure additive, no user-visible change to existing flows until Phase 2.
-- **Phase 2 (Settings migration data + UI)** — builds the per-channel preference store and the management UI. Doesn't flip the outbound send path yet.
+- **Phase 1 (Following + preference data backfill)** — adds Follow + Channel storage, the Follow button UI (no switches yet), and the one-shot data migration that seeds Follow rows for existing users from the legacy email flags. Pure additive; legacy email path unchanged.
+- **Phase 2 (Settings UI)** — adds the preference-management UI (popover on the project page + global "My followed projects" page). No data migration. Doesn't flip the outbound send path yet — that's Phase 3.
 - **Phase 3 (Internal authoring + notification firing)** — adds Article publishing and ties it to the new per-channel notification path. This is where the outbound email path actually switches over. Highest-risk phase for existing-user experience.
 - **Phase 4 (Content backfill)** — content op, no code. Validates no-regression.
 - **Phase 5 (`/news` + carousels)** — additive UI only; no behaviour changes elsewhere.

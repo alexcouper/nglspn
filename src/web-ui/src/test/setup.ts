@@ -1,5 +1,8 @@
 import { afterEach, vi } from "vitest";
 
+// React requires this to be set so act() works without a warning.
+(globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
+
 afterEach(() => {
   localStorage.clear();
   document.cookie.split(";").forEach((c) => {

@@ -36,7 +36,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           const userData = await api.auth.getCurrentUser();
           setUser(userData);
         } catch {
-          api.clearTokens();
+          // APIClient owns the clear-tokens decision (see base.ts): it clears
+          // on a real auth failure and dispatches "auth:logout", but keeps
+          // tokens on transient errors (5xx, network) so the user stays logged
+          // in once connectivity recovers. Don't second-guess it here.
         }
       }
       setIsLoading(false);

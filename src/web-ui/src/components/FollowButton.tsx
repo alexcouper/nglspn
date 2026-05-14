@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { api } from "@/lib/api";
 import { useAuth } from "@/contexts/auth";
+import { FollowPopover } from "@/components/FollowPopover";
 
 interface FollowButtonProps {
   projectSlug: string;
@@ -16,6 +17,7 @@ export function FollowButton({
   const { isAuthenticated } = useAuth();
   const [isFollowed, setIsFollowed] = useState(initialIsFollowed);
   const [isPending, setIsPending] = useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   if (!isAuthenticated) {
     return null;
@@ -23,19 +25,20 @@ export function FollowButton({
 
   const handleClick = async () => {
     if (isPending) return;
-    const next = !isFollowed;
-    // Optimistic toggle.
-    setIsFollowed(next);
+
+    if (isFollowed) {
+      // Toggle popover; the popover handles unfollow.
+      setIsPopoverOpen((open) => !open);
+      return;
+    }
+
+    // Not-yet-followed: instantly follow (optimistic).
+    setIsFollowed(true);
     setIsPending(true);
     try {
-      if (next) {
-        await api.follows.follow(projectSlug);
-      } else {
-        await api.follows.unfollow(projectSlug);
-      }
+      await api.follows.follow(projectSlug);
     } catch {
-      // Revert on failure.
-      setIsFollowed(!next);
+      setIsFollowed(false);
     } finally {
       setIsPending(false);
     }
@@ -47,14 +50,24 @@ export function FollowButton({
     : "text-sm font-medium bg-accent hover:bg-accent-hover text-white px-3.5 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-60";
 
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      disabled={isPending}
-      className={className}
-      aria-pressed={isFollowed}
-    >
-      {label}
-    </button>
+    <div className="relative">
+      <button
+        type="button"
+        onClick={handleClick}
+        disabled={isPending}
+        className={className}
+        aria-pressed={isFollowed}
+        aria-expanded={isPopoverOpen}
+      >
+        {label}
+      </button>
+      {isPopoverOpen && (
+        <FollowPopover
+          projectSlug={projectSlug}
+          onClose={() => setIsPopoverOpen(false)}
+          onUnfollow={() => setIsFollowed(false)}
+        />
+      )}
+    </div>
   );
 }

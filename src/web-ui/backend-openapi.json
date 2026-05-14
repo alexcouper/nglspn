@@ -1299,6 +1299,161 @@
         ]
       }
     },
+    "/api/projects/{slug}/follow/preferences": {
+      "get": {
+        "operationId": "api_routers_follows_get_follow_preferences",
+        "summary": "Get Follow Preferences",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Follows"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/projects/{slug}/follow/channels/{channel_id}": {
+      "patch": {
+        "operationId": "api_routers_follows_patch_follow_channel",
+        "summary": "Patch Follow Channel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "channel_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Channel Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowChannelPreferenceResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Follows"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/FollowChannelPreferencePatch"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/follows": {
+      "get": {
+        "operationId": "api_routers_follows_list_follows",
+        "summary": "List Follows",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FollowResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Follows"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
     "/api/my/projects": {
       "get": {
         "operationId": "api_routers_my_projects_list_my_projects",
@@ -4375,6 +4530,106 @@
           "is_followed"
         ],
         "title": "FollowStateResponse",
+        "type": "object"
+      },
+      "FollowChannelPreferenceResponse": {
+        "properties": {
+          "channel_id": {
+            "format": "uuid",
+            "title": "Channel Id",
+            "type": "string"
+          },
+          "channel_name": {
+            "title": "Channel Name",
+            "type": "string"
+          },
+          "email_enabled": {
+            "title": "Email Enabled",
+            "type": "boolean"
+          },
+          "in_app_enabled": {
+            "title": "In App Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "channel_id",
+          "channel_name",
+          "email_enabled",
+          "in_app_enabled"
+        ],
+        "title": "FollowChannelPreferenceResponse",
+        "type": "object"
+      },
+      "FollowResponse": {
+        "properties": {
+          "project_slug": {
+            "title": "Project Slug",
+            "type": "string"
+          },
+          "project_title": {
+            "title": "Project Title",
+            "type": "string"
+          },
+          "project_hero_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Hero Image Url"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "channels": {
+            "items": {
+              "$ref": "#/components/schemas/FollowChannelPreferenceResponse"
+            },
+            "title": "Channels",
+            "type": "array"
+          }
+        },
+        "required": [
+          "project_slug",
+          "project_title",
+          "created_at",
+          "channels"
+        ],
+        "title": "FollowResponse",
+        "type": "object"
+      },
+      "FollowChannelPreferencePatch": {
+        "properties": {
+          "email_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Enabled"
+          },
+          "in_app_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In App Enabled"
+          }
+        },
+        "title": "FollowChannelPreferencePatch",
         "type": "object"
       },
       "ProjectCreate": {

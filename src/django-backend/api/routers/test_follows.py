@@ -1,5 +1,7 @@
+import json
+
 import pytest
-from hamcrest import assert_that, equal_to, is_
+from hamcrest import assert_that, equal_to, has_length, is_
 
 from apps.follows.models import Channel, Follow, FollowChannelPreference
 from apps.projects.models import ProjectStatus
@@ -83,3 +85,145 @@ class TestProjectResponseIsFollowed:
         Follow.objects.create(user=user, project=project)
         response = client.get(f"/api/projects/{project.slug}", **auth_headers)
         assert_that(response.json()["is_followed"], is_(True))
+
+
+@pytest.mark.django_db
+class TestListFollows:
+    def test_anonymous_returns_401(self, client):
+        response = client.get("/api/follows")
+        assert_that(response.status_code, equal_to(401))
+
+    def test_empty_for_user_with_no_follows(self, client, user, auth_headers):
+        # Make sure no follows: auto-follow signal may run on user fixture if a
+        # house project exists in the test DB, but it does not (fresh DB).
+        Follow.objects.filter(user=user).delete()
+        response = client.get("/api/follows", **auth_headers)
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), equal_to([]))
+
+    def test_returns_follows_with_channels(self, client, user, auth_headers):
+        Follow.objects.filter(user=user).delete()
+        p = ProjectFactory(slug="alpha", title="Alpha", status=ProjectStatus.APPROVED)
+        follow = Follow.objects.create(user=user, project=p)
+        updates = Channel.objects.get(project=p, name="Updates")
+        FollowChannelPreference.objects.create(
+            follow=follow, channel=updates, email_enabled=True, in_app_enabled=True
+        )
+
+        response = client.get("/api/follows", **auth_headers)
+
+        body = response.json()
+        assert_that(body, has_length(1))
+        assert_that(body[0]["project_slug"], equal_to("alpha"))
+        assert_that(body[0]["project_title"], equal_to("Alpha"))
+        assert_that(body[0]["channels"], has_length(1))
+        assert_that(body[0]["channels"][0]["channel_name"], equal_to("Updates"))
+
+
+@pytest.mark.django_db
+class TestGetFollowPreferences:
+    def test_anonymous_returns_401(self, client):
+        p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
+        response = client.get(f"/api/projects/{p.slug}/follow/preferences")
+        assert_that(response.status_code, equal_to(401))
+
+    def test_404_when_not_following(self, client, user, auth_headers):
+        Follow.objects.filter(user=user).delete()
+        p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
+        response = client.get(
+            f"/api/projects/{p.slug}/follow/preferences", **auth_headers
+        )
+        assert_that(response.status_code, equal_to(404))
+
+    def test_200_when_following(self, client, user, auth_headers):
+        Follow.objects.filter(user=user).delete()
+        p = ProjectFactory(slug="alpha", title="Alpha", status=ProjectStatus.APPROVED)
+        follow = Follow.objects.create(user=user, project=p)
+        updates = Channel.objects.get(project=p, name="Updates")
+        FollowChannelPreference.objects.create(
+            follow=follow, channel=updates, email_enabled=True, in_app_enabled=True
+        )
+
+        response = client.get(
+            f"/api/projects/{p.slug}/follow/preferences", **auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        body = response.json()
+        assert_that(body["project_slug"], equal_to("alpha"))
+        assert_that(body["channels"][0]["channel_name"], equal_to("Updates"))
+
+
+@pytest.mark.django_db
+class TestPatchChannelPreference:
+    @staticmethod
+    def _patch(client, slug, channel_id, body, headers):
+        return client.patch(
+            f"/api/projects/{slug}/follow/channels/{channel_id}",
+            data=json.dumps(body),
+            content_type="application/json",
+            **headers,
+        )
+
+    def test_anonymous_returns_401(self, client):
+        p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
+        c = Channel.objects.get(project=p)
+        response = self._patch(client, p.slug, c.id, {"email_enabled": False}, {})
+        assert_that(response.status_code, equal_to(401))
+
+    def test_200_updates_preference(self, client, user, auth_headers):
+        Follow.objects.filter(user=user).delete()
+        p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
+        follow = Follow.objects.create(user=user, project=p)
+        c = Channel.objects.get(project=p, name="Updates")
+        FollowChannelPreference.objects.create(
+            follow=follow, channel=c, email_enabled=True, in_app_enabled=True
+        )
+
+        response = self._patch(
+            client, p.slug, c.id, {"email_enabled": False}, auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        body = response.json()
+        assert_that(body["email_enabled"], is_(False))
+        assert_that(body["channel_name"], equal_to("Updates"))
+
+    def test_400_on_empty_body(self, client, user, auth_headers):
+        Follow.objects.filter(user=user).delete()
+        p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
+        follow = Follow.objects.create(user=user, project=p)
+        c = Channel.objects.get(project=p)
+        FollowChannelPreference.objects.create(
+            follow=follow, channel=c, email_enabled=True, in_app_enabled=True
+        )
+
+        response = self._patch(client, p.slug, c.id, {}, auth_headers)
+
+        assert_that(response.status_code, equal_to(400))
+
+    def test_404_when_not_following(self, client, user, auth_headers):
+        Follow.objects.filter(user=user).delete()
+        p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
+        c = Channel.objects.get(project=p)
+
+        response = self._patch(
+            client, p.slug, c.id, {"email_enabled": False}, auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_404_when_channel_belongs_to_other_project(
+        self, client, user, auth_headers
+    ):
+        Follow.objects.filter(user=user).delete()
+        p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
+        other = ProjectFactory(slug="beta", status=ProjectStatus.APPROVED)
+        Follow.objects.create(user=user, project=p)
+        wrong = Channel.objects.get(project=other, name="Updates")
+
+        response = self._patch(
+            client, p.slug, wrong.id, {"email_enabled": False}, auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(404))

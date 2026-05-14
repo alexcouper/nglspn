@@ -37,7 +37,12 @@ export type {
 export type { Discussion, Reply, DiscussionAuthor } from "./discussions";
 
 // Types - Follows
-export type { FollowState } from "./follows";
+export type {
+  FollowState,
+  FollowChannelPreference,
+  FollowWithPreferences,
+  FollowChannelPreferencePatch,
+} from "./follows";
 
 // Types - Discover
 export type { DiscoverProject, CategoryItem, WinnerProject } from "./discover";

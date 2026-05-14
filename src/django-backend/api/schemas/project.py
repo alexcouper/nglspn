@@ -92,6 +92,7 @@ class ProjectResponse(Schema):
     images: list[ProjectImageResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
     is_community_tipoff: bool = False
+    is_followed: bool = False
 
     @staticmethod
     def resolve_owner(obj: Any) -> Any:

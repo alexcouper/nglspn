@@ -187,13 +187,15 @@ def get_project(
     except ProjectNotFoundError:
         return 404, {"detail": "Project not found"}
 
+    user = _get_user_from_request(request)
+    user_id = user.id if user else None
+    project.is_followed = REPO.follows.is_followed(user_id, project)
+
     if project.status == ProjectStatus.APPROVED:
         return project
 
-    user = _get_user_from_request(request)
     if user and user.is_superuser:
         return project
-    user_id = user.id if user else None
     if REPO.project.user_can_edit(project.id, user_id):
         return project
 

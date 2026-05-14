@@ -1214,6 +1214,91 @@
         ]
       }
     },
+    "/api/projects/{slug}/follow": {
+      "post": {
+        "operationId": "api_routers_follows_follow_project",
+        "summary": "Follow Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowStateResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Follows"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "api_routers_follows_unfollow_project",
+        "summary": "Unfollow Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Follows"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
     "/api/my/projects": {
       "get": {
         "operationId": "api_routers_my_projects_list_my_projects",
@@ -4077,6 +4162,11 @@
             "default": false,
             "title": "Is Community Tipoff",
             "type": "boolean"
+          },
+          "is_followed": {
+            "default": false,
+            "title": "Is Followed",
+            "type": "boolean"
           }
         },
         "required": [
@@ -4260,6 +4350,31 @@
           "body"
         ],
         "title": "DiscussionCreate",
+        "type": "object"
+      },
+      "FollowStateResponse": {
+        "properties": {
+          "is_followed": {
+            "title": "Is Followed",
+            "type": "boolean"
+          },
+          "created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Created At"
+          }
+        },
+        "required": [
+          "is_followed"
+        ],
+        "title": "FollowStateResponse",
         "type": "object"
       },
       "ProjectCreate": {
@@ -4892,6 +5007,11 @@
           "is_community_tipoff": {
             "default": false,
             "title": "Is Community Tipoff",
+            "type": "boolean"
+          },
+          "is_followed": {
+            "default": false,
+            "title": "Is Followed",
             "type": "boolean"
           }
         },

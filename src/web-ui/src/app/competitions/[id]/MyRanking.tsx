@@ -10,7 +10,6 @@ import {
 } from "@/lib/api";
 import { RankingList } from "./RankingList";
 import { SubmitRankingDialog } from "./SubmitRankingDialog";
-import { useVariantPref, type RankingVariant } from "./useVariantPref";
 import type { ReviewState } from "./types";
 
 interface MyRankingProps {
@@ -125,7 +124,6 @@ function RankingActive({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const { variant, setVariant, toggleEnabled } = useVariantPref();
 
   const isCompleted = reviewStatus === "completed";
   const isEnded = reviewStatus === "ended";
@@ -196,19 +194,16 @@ function RankingActive({
             isInProgress={isInProgress}
           />
         </div>
-        <div className="flex items-center gap-3 ml-auto">
-          {isInProgress && (
-            <span
-              className="text-xs text-muted-foreground"
-              aria-live="polite"
-            >
-              {isSaving ? "Saving…" : saveError ? (
-                <span className="text-red-500">{saveError}</span>
-              ) : null}
-            </span>
-          )}
-          {toggleEnabled && <VariantToggle value={variant} onChange={setVariant} />}
-        </div>
+        {isInProgress && (
+          <span
+            className="text-xs text-muted-foreground ml-auto"
+            aria-live="polite"
+          >
+            {isSaving ? "Saving…" : saveError ? (
+              <span className="text-red-500">{saveError}</span>
+            ) : null}
+          </span>
+        )}
       </div>
 
       {isInProgress && (
@@ -221,7 +216,6 @@ function RankingActive({
       <RankingList
         projects={projects}
         readOnly={readOnly}
-        variant={variant}
         onReorder={handleReorder}
       />
 
@@ -300,36 +294,3 @@ function StatusPill({
   return null;
 }
 
-function VariantToggle({
-  value,
-  onChange,
-}: {
-  value: RankingVariant;
-  onChange: (next: RankingVariant) => void;
-}) {
-  return (
-    <div
-      role="group"
-      aria-label="Ranking card layout"
-      className="inline-flex items-center gap-1 text-xs"
-    >
-      <span className="text-muted-foreground" aria-hidden="true">Layout</span>
-      {(["L", "R"] as const).map((v) => (
-        <button
-          key={v}
-          type="button"
-          onClick={() => onChange(v)}
-          aria-pressed={value === v}
-          aria-label={v === "L" ? "Controls on the left" : "Controls on the right"}
-          className={`w-7 h-6 rounded border text-xs font-medium transition-colors ${
-            value === v
-              ? "bg-accent text-white border-accent"
-              : "bg-white text-muted-foreground border-border hover:border-slate-300"
-          }`}
-        >
-          {v}
-        </button>
-      ))}
-    </div>
-  );
-}

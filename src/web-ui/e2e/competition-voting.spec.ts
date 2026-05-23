@@ -46,19 +46,4 @@ test.describe("Competition voting page (assigned reviewer)", () => {
     // 500ms debounce + network round-trip; allow generous headroom for CI
     await expect(page.getByText("Saving…")).toBeVisible({ timeout: 5_000 });
   });
-
-  test("variants toggle is hidden by default and visible with ?variants=on", async ({ page }) => {
-    await page.goto(COMPETITION_PATH);
-    await expect(page.getByText("Layout", { exact: true })).toHaveCount(0);
-
-    await page.goto(`${COMPETITION_PATH}?variants=on`);
-    await expect(page.getByText("Layout", { exact: true })).toBeVisible();
-
-    // Switch to variant R via accessible name (Task 5 added aria-labels)
-    await page.getByRole("button", { name: "Controls on the right" }).click();
-
-    // Variant R uses a different rank-badge (overlayed on image) — assert it.
-    const card = page.getByTestId("ranked-card").first();
-    await expect(card.locator('[data-testid="rank-badge"][data-variant="R"]')).toBeVisible();
-  });
 });

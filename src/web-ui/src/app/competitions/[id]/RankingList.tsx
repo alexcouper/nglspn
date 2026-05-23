@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import {
   DndContext,
@@ -11,8 +10,6 @@ import {
   useSensor,
   useSensors,
   type DragEndEvent,
-  type DraggableAttributes,
-  type DraggableSyntheticListeners,
 } from "@dnd-kit/core";
 import {
   arrayMove,
@@ -29,20 +26,17 @@ import {
 } from "@heroicons/react/24/outline";
 import type { ReviewProject } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
-import type { RankingVariant } from "./useVariantPref";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 
 interface RankingListProps {
   projects: ReviewProject[];
   readOnly: boolean;
-  variant: RankingVariant;
   onReorder: (projects: ReviewProject[]) => void;
 }
 
 export function RankingList({
   projects,
   readOnly,
-  variant,
   onReorder,
 }: RankingListProps) {
   const sensors = useSensors(
@@ -86,7 +80,6 @@ export function RankingList({
       key={project.id}
       project={project}
       rank={index + 1}
-      variant={variant}
       readOnly={readOnly}
       isFirst={index === 0}
       isLast={index === projects.length - 1}
@@ -118,7 +111,6 @@ export function RankingList({
 interface RankingCardProps {
   project: ReviewProject;
   rank: number;
-  variant: RankingVariant;
   readOnly: boolean;
   isFirst: boolean;
   isLast: boolean;
@@ -126,133 +118,90 @@ interface RankingCardProps {
   onMoveDown: () => void;
 }
 
-function RankingCard(props: RankingCardProps) {
-  if (props.readOnly) {
-    return <ReadOnlyCard {...props} />;
-  }
-  return <SortableCard {...props} />;
-}
+function RankingCard({
+  project,
+  rank,
+  readOnly,
+  isFirst,
+  isLast,
+  onMoveUp,
+  onMoveDown,
+}: RankingCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: project.id, disabled: readOnly });
 
-function SortableCard(props: RankingCardProps) {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: props.project.id });
+  const style = readOnly
+    ? undefined
+    : {
+        transform: CSS.Transform.toString(transform),
+        transition,
+        opacity: isDragging ? 0.5 : 1,
+      };
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
+  const containerClass = readOnly
+    ? "bg-muted rounded-xl border border-border overflow-hidden"
+    : "bg-white rounded-xl border border-border hover:border-slate-300 transition-colors overflow-hidden";
 
   return (
     <div
       ref={setNodeRef}
       style={style}
       data-testid="ranked-card"
-      className="bg-white rounded-xl border border-border hover:border-slate-300 transition-colors overflow-hidden"
+      className={containerClass}
     >
-      <CardBody
-        {...props}
-        dragHandleProps={{ attributes, listeners }}
-      />
-    </div>
-  );
-}
-
-function ReadOnlyCard(props: RankingCardProps) {
-  return (
-    <div data-testid="ranked-card" className="bg-muted rounded-xl border border-border overflow-hidden">
-      <CardBody {...props} dragHandleProps={null} muted />
-    </div>
-  );
-}
-
-interface CardBodyProps extends RankingCardProps {
-  dragHandleProps:
-    | { attributes: DraggableAttributes; listeners: DraggableSyntheticListeners }
-    | null;
-  muted?: boolean;
-}
-
-function CardBody(props: CardBodyProps) {
-  return <LayoutLeft {...props} />;
-}
-
-function LayoutLeft({
-  project,
-  rank,
-  isFirst,
-  isLast,
-  onMoveUp,
-  onMoveDown,
-  dragHandleProps,
-  muted = false,
-}: CardBodyProps) {
-  const interactive = dragHandleProps !== null;
-  return (
-    <div className="flex items-stretch gap-3 sm:gap-4 p-3 sm:p-4">
-      {/* Controls column (left) */}
-      <div className="flex flex-col items-center justify-center gap-1 flex-shrink-0">
-        {interactive && (
-          <button
-            {...dragHandleProps.attributes}
-            {...dragHandleProps.listeners}
-            type="button"
-            aria-label={`Drag ${project.title || "project"} to reorder`}
-            className="hidden sm:flex cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-colors touch-none"
+      <div className="flex items-stretch gap-3 sm:gap-4 p-3 sm:p-4">
+        <div className="flex flex-col items-center justify-center gap-1 flex-shrink-0">
+          {!readOnly && (
+            <>
+              <button
+                {...attributes}
+                {...listeners}
+                type="button"
+                aria-label={`Drag ${project.title || "project"} to reorder`}
+                className="hidden sm:flex cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-colors touch-none"
+              >
+                <Bars3Icon className="w-4 h-4" />
+              </button>
+              <div className="flex flex-col">
+                <button
+                  type="button"
+                  onClick={onMoveUp}
+                  disabled={isFirst}
+                  aria-label={`Move ${project.title || "project"} up`}
+                  className="p-2 sm:p-1 text-slate-400 hover:text-slate-700 disabled:text-slate-200 disabled:cursor-not-allowed transition-colors min-w-[44px] sm:min-w-0 min-h-[44px] sm:min-h-0 flex items-center justify-center"
+                >
+                  <ChevronUpIcon className="w-5 h-5 sm:w-4 sm:h-4" />
+                </button>
+                <button
+                  type="button"
+                  onClick={onMoveDown}
+                  disabled={isLast}
+                  aria-label={`Move ${project.title || "project"} down`}
+                  className="p-2 sm:p-1 text-slate-400 hover:text-slate-700 disabled:text-slate-200 disabled:cursor-not-allowed transition-colors min-w-[44px] sm:min-w-0 min-h-[44px] sm:min-h-0 flex items-center justify-center"
+                >
+                  <ChevronDownIcon className="w-5 h-5 sm:w-4 sm:h-4" />
+                </button>
+              </div>
+            </>
+          )}
+          <div
+            data-testid="rank-badge"
+            className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-base font-semibold ${
+              readOnly
+                ? "bg-white border border-border text-muted-foreground"
+                : "bg-accent/10 text-accent"
+            }`}
           >
-            <Bars3Icon className="w-4 h-4" />
-          </button>
-        )}
-        {interactive && (
-          <div className="flex flex-col">
-            <button
-              type="button"
-              onClick={onMoveUp}
-              disabled={isFirst}
-              aria-label={`Move ${project.title || "project"} up`}
-              className="p-2 sm:p-1 text-slate-400 hover:text-slate-700 disabled:text-slate-200 disabled:cursor-not-allowed transition-colors min-w-[44px] sm:min-w-0 min-h-[44px] sm:min-h-0 flex items-center justify-center"
-            >
-              <ChevronUpIcon className="w-5 h-5 sm:w-4 sm:h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onMoveDown}
-              disabled={isLast}
-              aria-label={`Move ${project.title || "project"} down`}
-              className="p-2 sm:p-1 text-slate-400 hover:text-slate-700 disabled:text-slate-200 disabled:cursor-not-allowed transition-colors min-w-[44px] sm:min-w-0 min-h-[44px] sm:min-h-0 flex items-center justify-center"
-            >
-              <ChevronDownIcon className="w-5 h-5 sm:w-4 sm:h-4" />
-            </button>
+            {rank}
           </div>
-        )}
-        <div
-          data-testid="rank-badge"
-          data-variant="L"
-          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-base font-semibold ${
-            muted
-              ? "bg-white border border-border text-muted-foreground"
-              : "bg-accent/10 text-accent"
-          }`}
-        >
-          {rank}
         </div>
+
+        <CardImage project={project} />
+        <CardText project={project} readOnly={readOnly} />
       </div>
-
-      {/* Image */}
-      <CardImage project={project} />
-
-      {/* Text block (links to project) */}
-      <CardText project={project} muted={muted} />
     </div>
   );
 }
-
 
 function CardImage({ project }: { project: ReviewProject }) {
   const imageUrl =
@@ -260,15 +209,17 @@ function CardImage({ project }: { project: ReviewProject }) {
   return (
     <div className="relative w-24 h-24 sm:w-36 sm:h-24 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
       {imageUrl ? (
-        <Image
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
           src={imageUrl}
           alt={project.title}
-          fill
-          className="object-cover"
-          sizes="(min-width: 640px) 144px, 96px"
+          className="absolute inset-0 w-full h-full object-cover"
         />
       ) : (
-        <GradientPlaceholder id={project.id} className="absolute inset-0 w-full h-full" />
+        <GradientPlaceholder
+          id={project.id}
+          className="absolute inset-0 w-full h-full"
+        />
       )}
     </div>
   );
@@ -276,10 +227,10 @@ function CardImage({ project }: { project: ReviewProject }) {
 
 function CardText({
   project,
-  muted = false,
+  readOnly,
 }: {
   project: ReviewProject;
-  muted?: boolean;
+  readOnly: boolean;
 }) {
   return (
     <Link
@@ -288,7 +239,7 @@ function CardText({
     >
       <h3
         className={`font-semibold text-base sm:text-lg truncate transition-colors ${
-          muted
+          readOnly
             ? "text-muted-foreground"
             : "text-foreground group-hover:text-accent"
         }`}
@@ -298,7 +249,7 @@ function CardText({
       {project.tagline && (
         <p
           className={`text-sm mt-0.5 line-clamp-2 ${
-            muted ? "text-muted-foreground/80" : "text-muted-foreground"
+            readOnly ? "text-muted-foreground/80" : "text-muted-foreground"
           }`}
         >
           {project.tagline}

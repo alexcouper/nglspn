@@ -4,6 +4,7 @@ import { Fragment } from "react";
 import Link from "next/link";
 import type { Project } from "@/lib/api";
 import { getAuthorName } from "@/lib/utils";
+import { FollowButton } from "@/components/FollowButton";
 import { TipoffBadge } from "@/components/TipoffBadge";
 
 interface ProjectTitleBannerProps {
@@ -32,9 +33,12 @@ export function ProjectTitleBanner({ project, iconUrl }: ProjectTitleBannerProps
         )}
 
         <div className="flex-1 min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            {project.title || "Untitled Project"}
-          </h1>
+          <div className="flex items-start justify-between gap-3">
+            <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
+              {project.title || "Untitled Project"}
+            </h1>
+            {project.slug && <FollowButton projectSlug={project.slug} />}
+          </div>
           {project.is_community_tipoff && (
             <div className="mt-2">
               <TipoffBadge withTooltip />

@@ -2,7 +2,9 @@ import uuid
 from typing import Any
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 from django.utils.text import slugify
 
 from apps.tags.models import Tag
@@ -86,6 +88,7 @@ class Project(models.Model):
         max_length=7, blank=True, db_index=True
     )  # YYYY-MM format; blank until publish
     is_community_tipoff = models.BooleanField(default=False, db_index=True)
+    is_house_project = models.BooleanField(default=False)
     approved_at = models.DateTimeField(blank=True, null=True)
     published_at = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -118,9 +121,24 @@ class Project(models.Model):
     class Meta:
         db_table = "projects"
         ordering = ["-created_at"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["is_house_project"],
+                condition=Q(is_house_project=True),
+                name="project_house_singleton",
+            ),
+        ]
 
     def __str__(self) -> str:
         return self.title
+
+    def save(self, *args: Any, **kwargs: Any) -> None:
+        if self.is_house_project:
+            conflict = Project.objects.filter(is_house_project=True).exclude(pk=self.pk)
+            if conflict.exists():
+                msg = "Only one Project can have is_house_project=True."
+                raise ValidationError(msg)
+        super().save(*args, **kwargs)
 
     def recompute_community_tipoff(self) -> None:
         # Derived from contributor truth: True iff an OWNER contributor is a

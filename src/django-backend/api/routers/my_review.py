@@ -24,6 +24,7 @@ from apps.projects.models import (
     ProjectStatus,
     ReviewStatus,
 )
+from services import REPO
 
 router = Router()
 
@@ -247,4 +248,5 @@ def get_review_project(
     except Project.DoesNotExist:
         return 404, Error(detail="Project not found")
 
+    project.is_followed = REPO.follows.is_followed(request.auth.id, project)
     return project

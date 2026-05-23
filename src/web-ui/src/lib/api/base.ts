@@ -9,6 +9,7 @@ export class ApiRequestError extends Error {
   constructor(
     message: string,
     public body: Record<string, unknown>,
+    public status: number,
   ) {
     super(message);
   }
@@ -153,7 +154,11 @@ export class APIClient {
     if (!response.ok) {
       const body = await response.json();
       const error = body as ApiError;
-      throw new ApiRequestError(error.detail || "Request failed", body);
+      throw new ApiRequestError(
+        error.detail || "Request failed",
+        body,
+        response.status,
+      );
     }
 
     if (response.status === 204) {

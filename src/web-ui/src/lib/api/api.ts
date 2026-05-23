@@ -3,6 +3,7 @@ import { AuthClient } from "./auth";
 import { CompetitionsClient } from "./competitions";
 import { DiscoverClient } from "./discover";
 import { DiscussionsClient } from "./discussions";
+import { FollowsClient } from "./follows";
 import { ProjectsClient } from "./projects";
 import { MyProjectsClient } from "./my-projects";
 import { MyReviewClient } from "./my-review";
@@ -17,6 +18,7 @@ export class API {
   readonly competitions: CompetitionsClient;
   readonly discover: DiscoverClient;
   readonly discussions: DiscussionsClient;
+  readonly follows: FollowsClient;
   readonly projects: ProjectsClient;
   readonly myProjects: MyProjectsClient;
   readonly myReview: MyReviewClient;
@@ -30,6 +32,7 @@ export class API {
     this.competitions = new CompetitionsClient(this.client);
     this.discover = new DiscoverClient(this.client);
     this.discussions = new DiscussionsClient(this.client);
+    this.follows = new FollowsClient(this.client);
     this.projects = new ProjectsClient(this.client);
     this.myProjects = new MyProjectsClient(this.client);
     this.myReview = new MyReviewClient(this.client);

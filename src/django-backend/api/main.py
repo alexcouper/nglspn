@@ -7,6 +7,7 @@ from api.routers import (
     auth,
     competitions,
     discussions,
+    follows,
     my_projects,
     my_review,
     notifications,
@@ -25,6 +26,8 @@ api = NinjaAPI(
 api.add_router("/auth", auth.router)
 api.add_router("/projects", projects.router)
 api.add_router("/projects", discussions.router)
+api.add_router("/projects", follows.router)
+api.add_router("/follows", follows.collection_router)
 api.add_router("/my/projects", my_projects.router)
 api.add_router("/my/reviews", my_review.router)
 api.add_router("/tags", tags.router)

@@ -9,6 +9,7 @@ export { AuthClient } from "./auth";
 export { CompetitionsClient } from "./competitions";
 export { DiscoverClient } from "./discover";
 export { DiscussionsClient } from "./discussions";
+export { FollowsClient } from "./follows";
 export { ProjectsClient } from "./projects";
 export { MyProjectsClient } from "./my-projects";
 export { MyReviewClient } from "./my-review";
@@ -34,6 +35,14 @@ export type {
 
 // Types - Discussions
 export type { Discussion, Reply, DiscussionAuthor } from "./discussions";
+
+// Types - Follows
+export type {
+  FollowState,
+  FollowChannelPreference,
+  FollowWithPreferences,
+  FollowChannelPreferencePatch,
+} from "./follows";
 
 // Types - Discover
 export type { DiscoverProject, CategoryItem, WinnerProject } from "./discover";

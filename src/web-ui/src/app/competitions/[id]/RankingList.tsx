@@ -153,6 +153,7 @@ function SortableCard(props: RankingCardProps) {
     <div
       ref={setNodeRef}
       style={style}
+      data-testid="ranked-card"
       className="bg-white rounded-xl border border-border hover:border-slate-300 transition-colors overflow-hidden"
     >
       <CardBody
@@ -165,7 +166,7 @@ function SortableCard(props: RankingCardProps) {
 
 function ReadOnlyCard(props: RankingCardProps) {
   return (
-    <div className="bg-muted rounded-xl border border-border overflow-hidden">
+    <div data-testid="ranked-card" className="bg-muted rounded-xl border border-border overflow-hidden">
       <CardBody {...props} dragHandleProps={null} muted />
     </div>
   );
@@ -231,6 +232,8 @@ function LayoutLeft({
           </div>
         )}
         <div
+          data-testid="rank-badge"
+          data-variant="L"
           className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-base font-semibold ${
             muted
               ? "bg-white border border-border text-muted-foreground"

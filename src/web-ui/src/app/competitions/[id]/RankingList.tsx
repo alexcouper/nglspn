@@ -179,7 +179,6 @@ interface CardBodyProps extends RankingCardProps {
 }
 
 function CardBody(props: CardBodyProps) {
-  // Layout note: variant R is added in Task 4. This task only implements L.
   return <LayoutLeft {...props} />;
 }
 
@@ -251,99 +250,6 @@ function LayoutLeft({
   );
 }
 
-function LayoutRight({
-  project,
-  rank,
-  isFirst,
-  isLast,
-  onMoveUp,
-  onMoveDown,
-  dragHandleProps,
-  muted = false,
-}: CardBodyProps) {
-  const interactive = dragHandleProps !== null;
-  return (
-    <div>
-      <div className="flex items-stretch gap-3 sm:gap-4 p-3 sm:p-4">
-        {/* Image with rank overlay */}
-        <div className="relative flex-shrink-0">
-          <CardImage project={project} />
-          <span
-            data-testid="rank-badge"
-            data-variant="R"
-            className={`absolute bottom-1 right-1 inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold shadow-sm ring-2 ring-white/70 ${
-              muted
-                ? "bg-white/95 text-muted-foreground border border-border"
-                : "bg-accent text-white"
-            }`}
-          >
-            {rank}
-          </span>
-        </div>
-
-        {/* Text block */}
-        <CardText project={project} muted={muted} />
-
-        {/* Desktop controls (hidden on mobile) */}
-        {interactive && (
-          <div className="hidden sm:flex flex-col items-center justify-center gap-1 flex-shrink-0">
-            <button
-              {...dragHandleProps.attributes}
-              {...dragHandleProps.listeners}
-              type="button"
-              aria-label={`Drag ${project.title || "project"} to reorder`}
-              className="cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-colors touch-none"
-            >
-              <Bars3Icon className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onMoveUp}
-              disabled={isFirst}
-              aria-label={`Move ${project.title || "project"} up`}
-              className="p-1 text-slate-400 hover:text-slate-700 disabled:text-slate-200 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronUpIcon className="w-4 h-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onMoveDown}
-              disabled={isLast}
-              aria-label={`Move ${project.title || "project"} down`}
-              className="p-1 text-slate-400 hover:text-slate-700 disabled:text-slate-200 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronDownIcon className="w-4 h-4" />
-            </button>
-          </div>
-        )}
-      </div>
-
-      {/* Mobile controls strip — sits below the row, in flow */}
-      {interactive && (
-        <div className="sm:hidden flex justify-end gap-2 px-3 pb-3">
-          <button
-            type="button"
-            onClick={onMoveUp}
-            disabled={isFirst}
-            aria-label={`Move ${project.title || "project"} up`}
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-slate-700 disabled:text-slate-200 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronUpIcon className="w-5 h-5" />
-          </button>
-          <button
-            type="button"
-            onClick={onMoveDown}
-            disabled={isLast}
-            aria-label={`Move ${project.title || "project"} down`}
-            className="min-w-[44px] min-h-[44px] flex items-center justify-center text-slate-400 hover:text-slate-700 disabled:text-slate-200 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronDownIcon className="w-5 h-5" />
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
 
 function CardImage({ project }: { project: ReviewProject }) {
   const imageUrl =

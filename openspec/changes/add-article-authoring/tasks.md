@@ -1,24 +1,24 @@
 ## 1. Backend — Article model and apps/articles app
 
-- [ ] 1.1 Create `apps/articles/` Django app skeleton (`apps.py`, `__init__.py`, `admin.py`, empty `models.py`, registered in settings).
-- [ ] 1.2 Add `Article` model in `apps/articles/models.py` with all fields, FKs (`project`, `channel`, `author`), choices for `source` / `state` / `global_visibility`, and the `is_globally_visible` property.
-- [ ] 1.3 Generate `apps/articles/migrations/0001_initial.py` including: partial unique `(project, slug)` where slug is not null; CHECK constraint on `(source, external_url)`.
-- [ ] 1.4 Add a save-time guard for SQLite for the `(source, external_url)` invariant (CHECK works on Postgres but is awkward on SQLite — confirm during local migration run, add guard if needed).
-- [ ] 1.5 Register `Article` in `apps/articles/admin.py` with read-only metadata, editable `global_visibility`, and an "Open render page" link.
+- [x] 1.1 Create `apps/articles/` Django app skeleton (`apps.py`, `__init__.py`, `admin.py`, empty `models.py`, registered in settings).
+- [x] 1.2 Add `Article` model in `apps/articles/models.py` with all fields, FKs (`project`, `channel`, `author`, `hero_image`), choices for `source` / `state` / `global_visibility` (`auto`, `pending`, `approved`, `demoted`), and the `is_globally_visible` property (true for `auto` or `approved`).
+- [x] 1.3 Generate `apps/articles/migrations/0001_initial.py` including: partial unique `(project, slug)` where slug is not null; CHECK constraint on `(source, external_url)`.
+- [x] 1.4 Add a save-time guard for SQLite for the `(source, external_url)` invariant (CHECK works on Postgres but is awkward on SQLite — confirm during local migration run, add guard if needed).
+- [x] 1.5 Register `Article` in `apps/articles/admin.py` with read-only metadata, editable `global_visibility`, and an "Open render page" link.
 
 ## 2. Backend — User.article_trust
 
-- [ ] 2.1 Add `article_trust = BooleanField(default=True)` to the User model and generate the migration.
-- [ ] 2.2 Surface `article_trust` in `apps/users/admin.py` (or wherever the User admin is registered) as an editable boolean.
-- [ ] 2.3 Add a factory default `article_trust=True` to `UserFactory` if it explicitly enumerates fields.
+- [x] 2.1 Add `article_trust = BooleanField(default=True)` to the User model and generate the migration.
+- [x] 2.2 Surface `article_trust` in `apps/users/admin.py` (or wherever the User admin is registered) as an editable boolean.
+- [x] 2.3 Add a factory default `article_trust=True` to `UserFactory` if it explicitly enumerates fields. _(no-op: UserFactory does not enumerate boolean prefs; the model default applies.)_
 
 ## 3. Backend — Notification generalisation
 
-- [ ] 3.1 Add nullable `article = FK(Article)` to `apps/notifications/models.py:Notification`; make `discussion` nullable.
-- [ ] 3.2 Replace the single `(recipient, discussion)` unique constraint with two partial unique constraints (`discussion`-not-null and `article`-not-null).
-- [ ] 3.3 Add a Postgres CHECK constraint `(discussion_id IS NULL) != (article_id IS NULL)`; add a model `clean()` / save-time guard for SQLite parity.
-- [ ] 3.4 Generate one migration that performs steps 3.1–3.3 atomically (so there is no intermediate inconsistent state).
-- [ ] 3.5 Update `apps/notifications/admin.py` to display the populated FK (discussion or article).
+- [x] 3.1 Add nullable `article = FK(Article)` to `apps/notifications/models.py:Notification`; make `discussion` nullable.
+- [x] 3.2 Replace the single `(recipient, discussion)` unique constraint with two partial unique constraints (`discussion`-not-null and `article`-not-null).
+- [x] 3.3 Add a Postgres CHECK constraint `(discussion_id IS NULL) != (article_id IS NULL)`; add a model `clean()` / save-time guard for SQLite parity.
+- [x] 3.4 Generate one migration that performs steps 3.1–3.3 atomically (so there is no intermediate inconsistent state).
+- [x] 3.5 Update `apps/notifications/admin.py` to display the populated FK (discussion or article).
 
 ## 4. Backend — Articles service layer
 

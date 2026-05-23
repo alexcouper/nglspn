@@ -52,7 +52,7 @@ This applies to all of:
 
 ### Requirement: Article model
 
-The system SHALL provide an `Article` model in a new `apps/articles` Django app. The model SHALL include: `id` (UUID), `project` (FK to Project, `on_delete=CASCADE`, `related_name="articles"`), `channel` (FK to Channel, `on_delete=PROTECT`), `author` (FK to User, nullable), `title` (CharField, max 200), `body` (TextField, markdown), `hero_image` (ImageField), `slug` (SlugField, nullable, unique per project when present), `source` (CharField, choices `internal` / `external`, default `internal`), `external_url` (URLField, nullable), `state` (CharField, choices `draft` / `published`, default `draft`), `published_at` (DateTimeField, nullable), `global_visibility` (CharField, choices `auto` / `pending` / `demoted`, default `auto`), `created_at`, `updated_at`.
+The system SHALL provide an `Article` model in a new `apps/articles` Django app. The model SHALL include: `id` (UUID), `project` (FK to Project, `on_delete=CASCADE`, `related_name="articles"`), `channel` (FK to Channel, `on_delete=PROTECT`), `author` (FK to User, nullable), `title` (CharField, max 200), `body` (TextField, markdown), `hero_image` (FK to `projects.ProjectImage`, nullable, `on_delete=PROTECT`), `slug` (SlugField, nullable, unique per project when present), `source` (CharField, choices `internal` / `external`, default `internal`), `external_url` (URLField, nullable), `state` (CharField, choices `draft` / `published`, default `draft`), `published_at` (DateTimeField, nullable), `global_visibility` (CharField, choices `auto` / `pending` / `approved` / `demoted`, default `auto`), `created_at`, `updated_at`.
 
 A partial unique constraint SHALL enforce uniqueness of `(project, slug)` where `slug IS NOT NULL`. A CHECK constraint (or save-time guard for SQLite) SHALL enforce `(source = 'internal' AND external_url IS NULL) OR (source = 'external' AND external_url IS NOT NULL)`.
 
@@ -146,9 +146,17 @@ Editing `published_at` on an already-published Article SHALL NEVER fire notifica
 
 When an internal Article is published, the system SHALL set `global_visibility = auto` if `author.article_trust = True`, and `global_visibility = pending` if `author.article_trust = False`.
 
-Flipping `author.article_trust` after publish SHALL NOT retroactively change the `global_visibility` of already-published Articles. Admin SHALL be able to set `global_visibility` to any of `auto`, `pending`, `demoted` on any individual Article at any time.
+Flipping `author.article_trust` after publish SHALL NOT retroactively change the `global_visibility` of already-published Articles. Admin SHALL be able to set `global_visibility` to any of `auto`, `pending`, `approved`, `demoted` on any individual Article at any time.
 
-An Article SHALL expose a derived `is_globally_visible` property that returns `True` if and only if `state = published` AND `global_visibility = auto`.
+The four states have these semantics:
+- `auto` — assigned automatically because the author had `article_trust = True` at publish time. No admin action recorded.
+- `pending` — awaiting admin review. Author was untrusted at publish time, or (Phase 6) the article came from an unapproved external feed.
+- `approved` — admin explicitly reviewed the article and approved it for global rendering. Distinct from `auto` so the audit trail records that an admin made the decision.
+- `demoted` — admin pulled the article out of global rendering. Retained locally.
+
+An Article SHALL expose a derived `is_globally_visible` property that returns `True` if and only if `state = published` AND `global_visibility` is one of `auto` or `approved`.
+
+When an admin transitions a `pending` article via the "approve" action, the resulting state SHALL be `approved` (not `auto`) so the audit trail preserves the admin review.
 
 #### Scenario: Trusted author auto-approved
 - **GIVEN** a User U with `article_trust = True`
@@ -162,11 +170,22 @@ An Article SHALL expose a derived `is_globally_visible` property that returns `T
 - **THEN** A's `global_visibility` SHALL be `pending`
 - **AND** A's `is_globally_visible` SHALL be `False`
 
-#### Scenario: Admin can demote a published article
+#### Scenario: Admin approves a pending article
+- **GIVEN** a published Article A with `global_visibility = pending`
+- **WHEN** an admin sets `global_visibility = approved`
+- **THEN** A's `global_visibility` SHALL be `approved` (not `auto`)
+- **AND** A's `is_globally_visible` SHALL be `True`
+
+#### Scenario: Admin can demote an auto-approved article
 - **GIVEN** a published Article A with `global_visibility = auto`
 - **WHEN** an admin sets `global_visibility = demoted`
-- **THEN** `is_globally_visible` SHALL be `False`
+- **THEN** A's `is_globally_visible` SHALL be `False`
 - **AND** the article row SHALL remain in the database
+
+#### Scenario: Admin can demote an explicitly-approved article
+- **GIVEN** a published Article A with `global_visibility = approved`
+- **WHEN** an admin sets `global_visibility = demoted`
+- **THEN** A's `is_globally_visible` SHALL be `False`
 
 #### Scenario: Trust flag flip does not affect existing articles
 - **GIVEN** a User U with `article_trust = True` and one published Article A with `global_visibility = auto`
@@ -207,7 +226,7 @@ The page SHALL return 404 when:
 - the slug does not exist, OR
 - the Article's `state` is `draft` and the caller is not the author and not a `ProjectContributor` with `full_edit = True` on the Article's project.
 
-The page SHALL render normally for Articles whose `global_visibility` is `pending` or `demoted` (local rendering is unaffected by approval state).
+The page SHALL render normally for Articles whose `global_visibility` is `pending` or `demoted` — local rendering is unaffected by approval state. `auto` and `approved` articles also render here (they additionally appear on the global surfaces gated by `is_globally_visible`).
 
 When linked from a Phase 5 carousel, internal article links SHALL open in a new tab.
 

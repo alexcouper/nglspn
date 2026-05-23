@@ -67,6 +67,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     email_opt_in_competition_results = models.BooleanField(default=True)
     email_opt_in_platform_updates = models.BooleanField(default=True)
     opt_in_to_external_promotions = models.BooleanField(default=True)
+    article_trust = models.BooleanField(default=True)
     notification_frequency = models.CharField(
         max_length=20,
         choices=NotificationCadence.choices,

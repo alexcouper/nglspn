@@ -106,16 +106,31 @@ Editing `published_at` after publish (e.g. to fix a typo in the date) **never** 
 
 `User.article_trust = BooleanField(default=True)`. Admin-toggleable.
 
-`Article.global_visibility = CharField(choices=("auto","pending","demoted"), default="auto")`. On publish:
+`Article.global_visibility = CharField(choices=("auto","pending","approved","demoted"), default="auto")`. Four states with distinct semantics:
+
+| State | When set | Globally visible? | Audit signal |
+|---|---|---|---|
+| `auto` | Trusted-author publish (the default path) | Yes | "no admin review needed" |
+| `pending` | Untrusted-author publish, or (Phase 6) external feed not yet approved | No | "awaiting admin" |
+| `approved` | Admin explicitly approved after review | Yes | "admin reviewed + approved" |
+| `demoted` | Admin pulled it back out of global surfaces | No | "admin reviewed + rejected" |
+
+On publish:
 - If `source = internal` and `author.article_trust = True` → `global_visibility = auto`.
 - If `source = internal` and `author.article_trust = False` → `global_visibility = pending`.
 - (External articles in Phase 6 will land in `pending` until the feed itself is approved.)
 
-Helper property `Article.is_globally_visible` returns `True` iff `state = published` AND `global_visibility = auto`. Local rendering (the project-page Latest News carousel, Phase 5) ignores `global_visibility` — anything published renders on its own project page.
+Admin actions:
+- Approve a `pending` article → transition to `approved` (not `auto`). The distinction matters for audit: future-you reading the admin log can tell which articles a person actively approved vs. which sailed through on author trust. A single "auto-approved" state would collapse those two cases and lose that history.
+- Demote any article → `demoted`, regardless of prior state. Local rendering is unaffected.
 
-Admin can flip `global_visibility` to `demoted` at any time, which removes the article from global surfaces but leaves the row intact and local rendering unaffected. Admin can also flip a pending article to `auto` to approve it.
+Helper property `Article.is_globally_visible` returns `True` iff `state = published` AND `global_visibility ∈ {auto, approved}`. Local rendering (the project-page Latest News carousel, Phase 5) ignores `global_visibility` — anything published renders on its own project page.
 
 The trust flag governs **future** publishes by that user. Flipping `article_trust` from `True` to `False` does not retroactively change `global_visibility` on already-published articles. (Admins who want to pull existing articles use the per-article demote.)
+
+**Alternatives considered:**
+- Three-state model (`auto`/`pending`/`demoted`) — collapses "trusted-author auto-approve" with "admin reviewed and approved" into the same state. Loses audit signal: from `auto` alone you can't tell whether the article ever crossed an admin's desk. Rejected.
+- Separate boolean `admin_reviewed_at` timestamp alongside a three-state field — equivalent information but two fields where one enum suffices, and it complicates the `is_globally_visible` derivation. Rejected as more fiddly without changing what the system records.
 
 ### 5. Notification fan-out implementation
 

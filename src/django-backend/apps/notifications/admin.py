@@ -27,7 +27,7 @@ class NotificationAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "recipient",
-        "discussion",
+        "target",
         "email_cadence",
         "email_sent",
         "in_app_read_at",
@@ -40,7 +40,19 @@ class NotificationAdmin(admin.ModelAdmin):
     ordering = ("-created_at",)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Notification]:
-        return super().get_queryset(request).select_related("recipient", "discussion")
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("recipient", "discussion", "article")
+        )
+
+    @admin.display(description="Target")
+    def target(self, obj: Notification) -> str:
+        if obj.discussion_id:
+            return f"discussion: {obj.discussion}"
+        if obj.article_id:
+            return f"article: {obj.article}"
+        return "—"
 
     def get_urls(self) -> list:
         custom_urls = [

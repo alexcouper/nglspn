@@ -1,7 +1,9 @@
 import uuid
 
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
+from django.db.models import Q
 
 
 class NotificationCadence(models.TextChoices):
@@ -21,6 +23,15 @@ class Notification(models.Model):
     discussion = models.ForeignKey(
         "discussions.Discussion",
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="notifications",
+    )
+    article = models.ForeignKey(
+        "articles.Article",
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="notifications",
     )
     email_cadence = models.CharField(
@@ -44,9 +55,43 @@ class Notification(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=["recipient", "discussion"],
+                condition=Q(discussion__isnull=False),
                 name="notifications_recip_disc_uniq",
+            ),
+            models.UniqueConstraint(
+                fields=["recipient", "article"],
+                condition=Q(article__isnull=False),
+                name="notifications_recip_article_uniq",
+            ),
+            # Exactly one of discussion / article SHALL be set.
+            models.CheckConstraint(
+                condition=(
+                    Q(discussion__isnull=False, article__isnull=True)
+                    | Q(discussion__isnull=True, article__isnull=False)
+                ),
+                name="notifications_target_xor",
             ),
         ]
 
     def __str__(self) -> str:
-        return f"Notification for {self.recipient} re: {self.discussion_id}"
+        target = (
+            f"discussion {self.discussion_id}"
+            if self.discussion_id
+            else f"article {self.article_id}"
+        )
+        return f"Notification for {self.recipient} re: {target}"
+
+    def save(self, *args: object, **kwargs: object) -> None:
+        # SQLite parity for the XOR CHECK above.
+        has_discussion = self.discussion_id is not None
+        has_article = self.article_id is not None
+        if has_discussion == has_article:
+            msg = (
+                "Notification MUST point at exactly one of discussion or "
+                "article (got both set)"
+                if has_discussion
+                else "Notification MUST point at exactly one of discussion or "
+                "article (got neither)"
+            )
+            raise ValidationError(msg)
+        super().save(*args, **kwargs)

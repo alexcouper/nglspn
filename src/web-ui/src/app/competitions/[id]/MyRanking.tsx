@@ -1,10 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback } from "react";
 import Link from "next/link";
-import { useAuth } from "@/contexts/auth";
 import { buildLoginPath } from "@/lib/auth-routing";
-import { ApiRequestError } from "@/lib/api/base";
 import {
   api,
   type ReviewCompetitionDetailResponse,
@@ -12,42 +10,48 @@ import {
 } from "@/lib/api";
 import { RankingList } from "./RankingList";
 import { SubmitRankingDialog } from "./SubmitRankingDialog";
+import { useVariantPref, type RankingVariant } from "./useVariantPref";
+import type { ReviewState } from "./types";
 
 interface MyRankingProps {
   competitionId: string;
   competitionName: string;
   returnPath: string;
+  reviewState: ReviewState;
 }
 
-type LoadState =
-  | { kind: "loading" }
-  | { kind: "not-assigned" }
-  | { kind: "error"; message: string }
-  | { kind: "ready"; data: ReviewCompetitionDetailResponse; projects: ReviewProject[] };
+export function MyRanking(props: MyRankingProps) {
+  const { reviewState } = props;
 
-export function MyRanking({
-  competitionId,
-  competitionName,
-  returnPath,
-}: MyRankingProps) {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
-
-  if (authLoading) {
+  if (reviewState.kind === "loading") {
     return <RankingShell><Skeleton /></RankingShell>;
   }
 
-  if (!isAuthenticated) {
+  if (reviewState.kind === "logged-out") {
+    return <CompactLoggedOutCta returnPath={props.returnPath} />;
+  }
+
+  if (reviewState.kind === "not-assigned") {
+    return null;
+  }
+
+  if (reviewState.kind === "error") {
     return (
       <RankingShell>
-        <LoggedOutCta returnPath={returnPath} />
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
+          {reviewState.message}
+        </div>
       </RankingShell>
     );
   }
 
   return (
-    <RankingShell>
-      <RankingLoader competitionId={competitionId} competitionName={competitionName} />
-    </RankingShell>
+    <RankingActive
+      competitionId={props.competitionId}
+      competitionName={props.competitionName}
+      initialData={reviewState.data}
+      initialProjects={reviewState.projects}
+    />
   );
 }
 
@@ -64,14 +68,15 @@ function RankingShell({ children }: { children: React.ReactNode }) {
 
 function Skeleton() {
   return (
-    <div className="space-y-2">
+    <div className="space-y-3">
       {[0, 1, 2].map((i) => (
-        <div key={i} className="bg-muted rounded-xl border border-border p-3.5">
-          <div className="flex items-center gap-3">
-            <div className="skeleton w-7 h-7 rounded-full" />
-            <div className="skeleton w-14 h-14 rounded-lg" />
+        <div key={i} className="bg-muted rounded-xl border border-border p-4">
+          <div className="flex items-center gap-4">
+            <div className="skeleton w-10 h-10 rounded-full" />
+            <div className="skeleton w-24 h-24 rounded-lg" />
             <div className="flex-1">
               <div className="skeleton h-4 w-1/3 mb-2" />
+              <div className="skeleton h-3 w-2/3 mb-2" />
               <div className="skeleton h-3 w-1/2" />
             </div>
           </div>
@@ -81,15 +86,15 @@ function Skeleton() {
   );
 }
 
-function LoggedOutCta({ returnPath }: { returnPath: string }) {
+function CompactLoggedOutCta({ returnPath }: { returnPath: string }) {
   const loginHref = buildLoginPath(returnPath);
   const registerHref = `/register?next=${encodeURIComponent(returnPath)}`;
   return (
-    <div className="text-center py-4">
+    <section className="bg-white rounded-xl border border-border p-5 sm:p-6">
       <p className="text-sm text-muted-foreground mb-4">
         Voting is open. Log in to rank these projects and help pick the winner.
       </p>
-      <div className="flex flex-col sm:flex-row gap-2 justify-center">
+      <div className="flex flex-col sm:flex-row gap-2">
         <Link href={loginHref} className="btn-primary">
           Log in to vote
         </Link>
@@ -97,78 +102,7 @@ function LoggedOutCta({ returnPath }: { returnPath: string }) {
           Create an account
         </Link>
       </div>
-    </div>
-  );
-}
-
-function NotAssigned() {
-  return (
-    <div className="text-center py-4">
-      <p className="text-sm text-muted-foreground">
-        Voting in this competition is open to invited reviewers only.
-      </p>
-    </div>
-  );
-}
-
-function RankingLoader({
-  competitionId,
-  competitionName,
-}: {
-  competitionId: string;
-  competitionName: string;
-}) {
-  const [state, setState] = useState<LoadState>({ kind: "loading" });
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const data = await api.myReview.getCompetition(competitionId);
-        if (cancelled) return;
-        const sorted = [...data.projects].sort((a, b) => {
-          const ra = a.my_ranking ?? null;
-          const rb = b.my_ranking ?? null;
-          if (ra === null && rb === null) return 0;
-          if (ra === null) return 1;
-          if (rb === null) return -1;
-          return ra - rb;
-        });
-        setState({ kind: "ready", data, projects: sorted });
-      } catch (err) {
-        if (cancelled) return;
-        if (err instanceof ApiRequestError && err.status === 404) {
-          setState({ kind: "not-assigned" });
-          return;
-        }
-        setState({
-          kind: "error",
-          message: err instanceof Error ? err.message : "Failed to load ranking",
-        });
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [competitionId]);
-
-  if (state.kind === "loading") return <Skeleton />;
-  if (state.kind === "not-assigned") return <NotAssigned />;
-  if (state.kind === "error") {
-    return (
-      <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm">
-        {state.message}
-      </div>
-    );
-  }
-
-  return (
-    <RankingActive
-      competitionId={competitionId}
-      competitionName={competitionName}
-      initialData={state.data}
-      initialProjects={state.projects}
-    />
+    </section>
   );
 }
 
@@ -191,6 +125,7 @@ function RankingActive({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { variant, setVariant, toggleEnabled } = useVariantPref();
 
   const isCompleted = reviewStatus === "completed";
   const isEnded = reviewStatus === "ended";
@@ -251,25 +186,34 @@ function RankingActive({
   };
 
   return (
-    <>
-      <div className="flex items-center justify-between mb-4">
-        <StatusPill
-          isCompleted={isCompleted}
-          isEnded={isEnded}
-          isInProgress={isInProgress}
-        />
-        {isInProgress && (
-          <span className="text-xs text-muted-foreground" aria-live="polite">
-            {isSaving ? "Saving…" : saveError ? (
-              <span className="text-red-500">{saveError}</span>
-            ) : null}
-          </span>
-        )}
+    <section className="bg-white rounded-xl border border-border p-5 sm:p-6">
+      <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+        <div className="flex items-center gap-3">
+          <h2 className="text-lg font-semibold text-foreground">My Ranking</h2>
+          <StatusPill
+            isCompleted={isCompleted}
+            isEnded={isEnded}
+            isInProgress={isInProgress}
+          />
+        </div>
+        <div className="flex items-center gap-3 ml-auto">
+          {isInProgress && (
+            <span
+              className="text-xs text-muted-foreground"
+              aria-live="polite"
+            >
+              {isSaving ? "Saving…" : saveError ? (
+                <span className="text-red-500">{saveError}</span>
+              ) : null}
+            </span>
+          )}
+          {toggleEnabled && <VariantToggle value={variant} onChange={setVariant} />}
+        </div>
       </div>
 
       {isInProgress && (
         <p className="text-xs text-muted-foreground mb-4">
-          Drag handles or use the up/down buttons to rank projects. Order them
+          Drag the cards or use the up/down buttons to rank projects. Order them
           from most to least worthy of the {competitionName} prize.
         </p>
       )}
@@ -277,7 +221,7 @@ function RankingActive({
       <RankingList
         projects={projects}
         readOnly={readOnly}
-        variant="L"
+        variant={variant}
         onReorder={handleReorder}
       />
 
@@ -319,7 +263,7 @@ function RankingActive({
         onCancel={() => setShowSubmitDialog(false)}
         isSubmitting={isSubmitting}
       />
-    </>
+    </section>
   );
 }
 
@@ -354,4 +298,38 @@ function StatusPill({
     );
   }
   return null;
+}
+
+function VariantToggle({
+  value,
+  onChange,
+}: {
+  value: RankingVariant;
+  onChange: (next: RankingVariant) => void;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label="Ranking card layout"
+      className="inline-flex items-center gap-1 text-xs"
+    >
+      <span className="text-muted-foreground" aria-hidden="true">Layout</span>
+      {(["L", "R"] as const).map((v) => (
+        <button
+          key={v}
+          type="button"
+          onClick={() => onChange(v)}
+          aria-pressed={value === v}
+          aria-label={v === "L" ? "Controls on the left" : "Controls on the right"}
+          className={`w-7 h-6 rounded border text-xs font-medium transition-colors ${
+            value === v
+              ? "bg-accent text-white border-accent"
+              : "bg-white text-muted-foreground border-border hover:border-slate-300"
+          }`}
+        >
+          {v}
+        </button>
+      ))}
+    </div>
+  );
 }

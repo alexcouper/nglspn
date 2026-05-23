@@ -1,16 +1,21 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { TrophyIcon, RocketLaunchIcon } from "@heroicons/react/24/solid";
 import {
+  api,
   type Competition,
   type CompetitionProject,
+  type ReviewProject,
 } from "@/lib/api";
+import { ApiRequestError } from "@/lib/api/base";
+import { useAuth } from "@/contexts/auth";
 import { pickVariant } from "@/lib/utils";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
 import { MyRanking } from "./MyRanking";
+import type { ReviewState } from "./types";
 
 function formatDateRange(startDate: string, endDate: string): string {
   const start = new Date(startDate);
@@ -35,9 +40,59 @@ interface CompetitionRevealProps {
 
 export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps) {
   const [competition] = useState<Competition>(initialCompetition);
+  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  // fetchedState holds only the result of the async fetch (loading | ready | error | not-assigned from 404).
+  // The full ReviewState visible to children is derived below.
+  const [fetchedState, setFetchedState] = useState<ReviewState>({ kind: "loading" });
 
   const isOpen = competition.status === "accepting_applications";
   const isVoting = competition.status === "voting";
+  const returnPath = `/competitions/${competition.slug ?? competition.id}`;
+
+  useEffect(() => {
+    // Only fetch when we're in voting mode and the user is authenticated.
+    if (!isVoting || authLoading || !isAuthenticated) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const data = await api.myReview.getCompetition(competition.id);
+        if (cancelled) return;
+        const sorted = [...data.projects].sort(sortByMyRanking);
+        setFetchedState({ kind: "ready", data, projects: sorted });
+      } catch (err) {
+        if (cancelled) return;
+        if (err instanceof ApiRequestError && err.status === 404) {
+          setFetchedState({ kind: "not-assigned" });
+          return;
+        }
+        setFetchedState({
+          kind: "error",
+          message: err instanceof Error ? err.message : "Failed to load ranking",
+        });
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [competition.id, isVoting, authLoading, isAuthenticated]);
+
+  // Derive the ReviewState that children see from synchronous conditions + async result.
+  const reviewState: ReviewState = !isVoting
+    ? { kind: "not-assigned" }
+    : authLoading
+      ? { kind: "loading" }
+      : !isAuthenticated
+        ? { kind: "logged-out" }
+        : fetchedState;
+
+  const showRankedCards =
+    reviewState.kind === "ready" ||
+    (isVoting && isAuthenticated && reviewState.kind === "loading");
+  const visitorIsRanker =
+    reviewState.kind === "ready" ||
+    (isVoting &&
+      isAuthenticated &&
+      (reviewState.kind === "loading" || reviewState.kind === "error"));
 
   return (
     <div className="space-y-8">
@@ -110,7 +165,9 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         <div className="bg-violet-50 rounded-xl border border-violet-200 p-5 sm:p-6 flex items-center gap-3">
           <span className="w-2 h-2 bg-violet-500 rounded-full pulse-dot flex-shrink-0" />
           <p className="text-violet-800 font-medium text-sm">
-            Voting is in progress. Rank the projects below to help pick the winner.
+            {visitorIsRanker
+              ? "Voting is in progress. Rank the projects below to help pick the winner."
+              : "Voting is in progress. Selected members are ranking the projects."}
           </p>
         </div>
       )}
@@ -120,7 +177,8 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         <MyRanking
           competitionId={competition.id}
           competitionName={competition.name}
-          returnPath={`/competitions/${competition.slug ?? competition.id}`}
+          returnPath={returnPath}
+          reviewState={reviewState}
         />
       )}
 
@@ -144,34 +202,45 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         </div>
       )}
 
-      {/* Projects */}
-      <div>
-        <div className="flex items-baseline gap-2 mb-4">
-          <h2 className="text-lg font-semibold text-foreground">
-            All Projects
-          </h2>
-          <span className="text-sm text-muted-foreground">
-            ({competition.projects.length})
-          </span>
-        </div>
-        {competition.projects.length > 0 ? (
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
-            {competition.projects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                isWinner={project.id === competition.winner?.id}
-              />
-            ))}
+      {/* Projects — suppressed when the ranked-cards surface is rendering. */}
+      {!showRankedCards && (
+        <div>
+          <div className="flex items-baseline gap-2 mb-4">
+            <h2 className="text-lg font-semibold text-foreground">
+              All Projects
+            </h2>
+            <span className="text-sm text-muted-foreground">
+              ({competition.projects.length})
+            </span>
           </div>
-        ) : (
-          <p className="text-muted-foreground text-sm text-center py-8">
-            No projects yet — be the first to submit!
-          </p>
-        )}
-      </div>
+          {competition.projects.length > 0 ? (
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 sm:gap-4">
+              {competition.projects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  isWinner={project.id === competition.winner?.id}
+                />
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm text-center py-8">
+              No projects yet — be the first to submit!
+            </p>
+          )}
+        </div>
+      )}
     </div>
   );
+}
+
+function sortByMyRanking(a: ReviewProject, b: ReviewProject): number {
+  const ra = a.my_ranking ?? null;
+  const rb = b.my_ranking ?? null;
+  if (ra === null && rb === null) return 0;
+  if (ra === null) return 1;
+  if (rb === null) return -1;
+  return ra - rb;
 }
 
 function WinnerCard({ project }: { project: CompetitionProject }) {

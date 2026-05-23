@@ -1,44 +1,75 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "@/lib/api";
+import { ApiRequestError } from "@/lib/api/base";
 import { useAuth } from "@/contexts/auth";
 import { FollowPopover } from "@/components/FollowPopover";
 
 interface FollowButtonProps {
   projectSlug: string;
-  initialIsFollowed: boolean;
 }
 
-export function FollowButton({
-  projectSlug,
-  initialIsFollowed,
-}: FollowButtonProps) {
-  const { isAuthenticated } = useAuth();
-  const [isFollowed, setIsFollowed] = useState(initialIsFollowed);
+type FollowState = "loading" | "not-following" | "following";
+
+export function FollowButton({ projectSlug }: FollowButtonProps) {
+  const { isLoading: isAuthLoading, isAuthenticated } = useAuth();
+  const [state, setState] = useState<FollowState>("loading");
   const [isPending, setIsPending] = useState(false);
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
-  if (!isAuthenticated) {
-    return null;
+  useEffect(() => {
+    if (isAuthLoading || !isAuthenticated) return;
+    let cancelled = false;
+    setState("loading");
+    api.follows
+      .getFollowPreferences(projectSlug)
+      .then(() => {
+        if (!cancelled) setState("following");
+      })
+      .catch((err: unknown) => {
+        if (cancelled) return;
+        if (err instanceof ApiRequestError && err.status === 404) {
+          setState("not-following");
+        } else {
+          // Network/server error: assume not-following so the user can still
+          // try to act; a failed follow click will surface its own error.
+          setState("not-following");
+        }
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectSlug, isAuthLoading, isAuthenticated]);
+
+  if (isAuthLoading) return null;
+  if (!isAuthenticated) return null;
+
+  if (state === "loading") {
+    return (
+      <div
+        aria-hidden="true"
+        className="h-[34px] w-[96px] bg-muted rounded-md animate-pulse"
+      />
+    );
   }
+
+  const isFollowed = state === "following";
 
   const handleClick = async () => {
     if (isPending) return;
 
     if (isFollowed) {
-      // Toggle popover; the popover handles unfollow.
       setIsPopoverOpen((open) => !open);
       return;
     }
 
-    // Not-yet-followed: instantly follow (optimistic).
-    setIsFollowed(true);
+    setState("following");
     setIsPending(true);
     try {
       await api.follows.follow(projectSlug);
     } catch {
-      setIsFollowed(false);
+      setState("not-following");
     } finally {
       setIsPending(false);
     }
@@ -65,7 +96,7 @@ export function FollowButton({
         <FollowPopover
           projectSlug={projectSlug}
           onClose={() => setIsPopoverOpen(false)}
-          onUnfollow={() => setIsFollowed(false)}
+          onUnfollow={() => setState("not-following")}
         />
       )}
     </div>

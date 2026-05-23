@@ -14,6 +14,10 @@ from services.follows.handler_interface import FollowHandlerInterface
 from services.follows.query_interface import ChannelPreferenceState, FollowState
 from services.project.exceptions import ProjectNotFoundError
 
+# Legacy email mirror — bridge between per-channel preferences and the
+# pre-Phase-3 email pipeline. See
+# docs/superpowers/specs/2026-05-13-articles-following-news-design.md
+# ("Phase 2 ↔ Phase 3 cutover"). Removed in Phase 3.
 LEGACY_FLAG_BY_CHANNEL_NAME = {
     "Competition Winners": "email_opt_in_competition_results",
     "Product Updates": "email_opt_in_platform_updates",

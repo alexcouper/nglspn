@@ -277,6 +277,7 @@ function RankingActive({
       <RankingList
         projects={projects}
         readOnly={readOnly}
+        variant="L"
         onReorder={handleReorder}
       />
 

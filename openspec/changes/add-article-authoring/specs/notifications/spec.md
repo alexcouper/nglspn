@@ -51,26 +51,35 @@ The model SHALL have a database index supporting access by `(recipient_id, in_ap
 
 The notifications service layer SHALL expose `create_notifications_for_article(article_id)` on `HANDLERS.notifications`. The handler SHALL:
 
-1. Load the Article. Return early without creating notifications if `article.state != 'published'`.
-2. Return early without creating notifications if `article.published_at` is more than 60 seconds in the past (backdated publish).
-3. For every `Follow` on `article.project`, look up the `ChannelPreference` for `(follow, article.channel)`.
-4. For each follower that is not `article.author` and whose `ChannelPreference.in_app = True`: create a Notification row with `recipient = follow.user`, `article = article`, `email_cadence = follow.user.notification_frequency`. Existing rows (matching the partial unique constraint) SHALL be left alone.
-5. For each follower that is not `article.author`, whose `ChannelPreference.email = True`, and whose `notification_frequency != NEVER`: trigger the existing immediate / hourly / daily email path so the email is sent according to cadence. (For IMMEDIATE this fires now; for HOURLY/DAILY the row is picked up by the existing batch task because it has `email_sent = False`.)
+1. Load the Article. Return early without creating notifications if the article does not exist (log a warning) or if `article.state != 'published'`.
+2. For every `Follow` on `article.project`, look up the `FollowChannelPreference` for `(follow, article.channel)`.
+3. For each follower that is not `article.author`: create a Notification row with `recipient = follow.user`, `article = article`, `email_cadence = follow.user.notification_frequency`. Existing rows (matching the partial unique constraint) SHALL be left alone. The row is created when `in_app_enabled = True` OR `email_enabled = True` — when both are off, no row is created.
+4. The row's `in_app_read_at` SHALL be `NULL` when `in_app_enabled = True` and set to `now()` (pre-read) when `in_app_enabled = False AND email_enabled = True` — this keeps the row out of in-app surfaces while still letting the email-send bookkeeping live on it.
+5. For each newly-created row where `ChannelPreference.email_enabled = True` and `follow.user.notification_frequency != NEVER`: trigger the existing immediate / hourly / daily email path so the email is sent according to cadence. (For IMMEDIATE this fires now; for HOURLY/DAILY the row is picked up by the existing batch task because it has `email_sent = False`.)
+
+Backdated-publish suppression is **not** the responsibility of this method — that decision lives in `HANDLERS.articles.publish`, which only invokes `create_notifications_for_article` for non-backdated publishes. Calling this method directly with a backdated article will fan out notifications. See the corresponding requirement in the `articles` capability for the gating rule.
 
 #### Scenario: Service is accessible via HANDLERS
 - **WHEN** code imports `from services import HANDLERS`
 - **THEN** `HANDLERS.notifications.create_notifications_for_article` is callable
 
-#### Scenario: Backdated publish creates no rows
-- **GIVEN** an Article with `published_at = now() - 7 days` and 100 followers
-- **WHEN** `create_notifications_for_article(article_id)` is invoked
-- **THEN** no Notification rows SHALL be created
-
 #### Scenario: Channel preference drives row creation
-- **GIVEN** an Article in channel C; followers U1 (`in_app = True, email = True`), U2 (`in_app = True, email = False`), U3 (`in_app = False, email = True`)
-- **WHEN** the article is published non-backdated and `create_notifications_for_article` runs
-- **THEN** Notification rows SHALL be created for U1 and U2 (in_app on)
-- **AND** no Notification row SHALL be created for U3
+- **GIVEN** an Article in channel C; followers U1 (`in_app = True, email = True`), U2 (`in_app = True, email = False`), U3 (`in_app = False, email = True`), U4 (`in_app = False, email = False`)
+- **WHEN** `create_notifications_for_article` runs
+- **THEN** Notification rows SHALL be created for U1, U2 and U3
+- **AND** U1's and U2's rows SHALL have `in_app_read_at = NULL` (they surface in-app)
+- **AND** U3's row SHALL have `in_app_read_at` set to the current time (it does not surface in-app)
+- **AND** no Notification row SHALL be created for U4
+
+#### Scenario: Author of the article is not notified
+- **GIVEN** an Article authored by U who also follows their own project with `in_app = True, email = True`
+- **WHEN** `create_notifications_for_article` runs
+- **THEN** no Notification row SHALL be created for U
+
+#### Scenario: Article in draft state is a no-op
+- **GIVEN** an Article with `state = draft` and followers with switches on
+- **WHEN** `create_notifications_for_article` is invoked
+- **THEN** no Notification rows SHALL be created (defensive check; publish handler never invokes this for drafts in normal operation)
 
 ### Requirement: Hourly and daily batch tasks include article notifications
 

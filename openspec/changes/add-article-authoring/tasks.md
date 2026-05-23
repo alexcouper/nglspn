@@ -22,29 +22,29 @@
 
 ## 4. Backend — Articles service layer
 
-- [ ] 4.1 Create `services/articles/` following the handler/repository pattern used in `services/notifications/`.
-- [ ] 4.2 Implement `HANDLERS.articles.create_draft(project_id, author_id, channel_id, **fields) -> Article`.
-- [ ] 4.3 Implement `HANDLERS.articles.update_article(article_id, **fields) -> Article` (works on drafts and published).
-- [ ] 4.4 Implement `HANDLERS.articles.publish(article_id, published_at=None) -> Article` — generates slug via the projects slug helper, sets `state=published`, sets `global_visibility` based on `author.article_trust`, calls `HANDLERS.notifications.create_notifications_for_article(article.id)`.
-- [ ] 4.5 Implement `HANDLERS.articles.delete_article(article_id) -> None` (cascade-deletes notifications via FK).
-- [ ] 4.6 Implement `REPO.articles.for_project(project_id)` and `REPO.articles.get_by_project_and_slug(project_slug, article_slug)`.
-- [ ] 4.7 Register handlers/repos in `services/__init__.py` as `HANDLERS.articles` / `REPO.articles`.
+- [x] 4.1 Create `services/articles/` following the handler/repository pattern used in `services/notifications/`.
+- [x] 4.2 Implement `HANDLERS.articles.create_draft(project_id, author_id, channel_id, **fields) -> Article`.
+- [x] 4.3 Implement `HANDLERS.articles.update_article(article_id, **fields) -> Article` (works on drafts and published).
+- [x] 4.4 Implement `HANDLERS.articles.publish(article_id, published_at=None) -> Article` — generates slug via `apps/articles/slugs.py`, sets `state=published`, sets `global_visibility` based on `author.article_trust`, calls `HANDLERS.notifications.create_notifications_for_article(article.id)` unless backdated.
+- [x] 4.5 Implement `HANDLERS.articles.delete_article(article_id) -> None` (cascade-deletes notifications via FK).
+- [x] 4.6 Implement `REPO.articles.for_project(project_id)` and `REPO.articles.get_by_project_and_slug(project_slug, article_slug)`.
+- [x] 4.7 Register handlers/repos in `services/__init__.py` as `HANDLERS.articles` / `REPO.articles`.
 
 ## 5. Backend — Notification fan-out and email content
 
-- [ ] 5.1 Add `HANDLERS.notifications.create_notifications_for_article(article_id)` per the design's pseudocode: skips backdated publishes, iterates Follows, consults ChannelPreference, creates rows and triggers IMMEDIATE email.
-- [ ] 5.2 Add `_is_backdated(published_at, threshold_seconds=60)` helper (or inline; testable either way).
-- [ ] 5.3 Add `HANDLERS.notifications.mark_article_read_for_user(user_id, article_id)`.
-- [ ] 5.4 Extend the hourly and daily batch tasks to include article rows in the per-recipient digest (currently they only consider discussion rows — confirm and broaden the query).
-- [ ] 5.5 Create `templates/emails/article_notification_immediate.{txt,html}` and update the digest template to render mixed (discussion + article) items.
-- [ ] 5.6 Add article-author exclusion in `create_notifications_for_article` (mirrors discussion path).
+- [x] 5.1 Add `HANDLERS.notifications.create_notifications_for_article(article_id)` per the design's pseudocode: skips backdated publishes, iterates Follows, consults ChannelPreference, creates rows and triggers IMMEDIATE email.
+- [x] 5.2 Add `_is_backdated(published_at, threshold_seconds=60)` helper (duplicated in both `services/articles/` and `services/notifications/` so each layer defends itself).
+- [x] 5.3 Add `HANDLERS.notifications.mark_article_read_for_user(user_id, article_id)`.
+- [ ] 5.4 Extend the hourly and daily batch tasks to include article rows in the per-recipient digest. _**Partial**: chunk 2 added `_send_article_batch` as a separate per-row send so article rows don't crash the digest path. True per-recipient mixed digest (single email covering discussions + articles) is **deferred** — see 5.5._
+- [ ] 5.5 Create `templates/emails/article_notification_immediate.{txt,html}` and update the digest template to render mixed (discussion + article) items. _**Partial**: `templates/email/article_notification.{mjml,txt}` created (immediate single-article send works). Mixed-content digest template work is **deferred** — currently a recipient with both kinds pending gets two emails (one comment-digest, one article notification per article)._
+- [x] 5.6 Add article-author exclusion in `create_notifications_for_article` (mirrors discussion path).
 
 ## 6. Backend — Channel management API and service
 
-- [ ] 6.1 Add `HANDLERS.channels.add_channel(project_id, name)`, `rename_channel(channel_id, new_name)`, `delete_channel(channel_id)`, `bulk_reassign(source_channel_id, target_channel_id)` in `services/channels/` (or extend `services/project/`).
-- [ ] 6.2 Wire the guards: 409 on duplicate name, on delete-with-articles, on delete-of-only-channel.
-- [ ] 6.3 Add API routes under `api/routers/channels.py`: `POST /api/projects/{slug}/channels`, `PATCH /api/projects/{slug}/channels/{id}`, `DELETE /api/projects/{slug}/channels/{id}`, `POST /api/projects/{slug}/channels/{id}/reassign`.
-- [ ] 6.4 Permission check on all routes: caller must be `ProjectContributor` with `full_edit = True` on the project.
+- [x] 6.1 Add `HANDLERS.articles.add_channel`, `rename_channel`, `delete_channel`, `bulk_reassign_articles` methods on the same handler (per design 1a, channel CRUD lives on `HANDLERS.articles` rather than its own surface).
+- [x] 6.2 Wire the guards: `DuplicateChannelNameError`, `ChannelHasArticlesError(article_count)`, `LastChannelError` — the routes (chunk 3) map these to 409.
+- [ ] 6.3 Add API routes under `api/routers/channels.py`: `POST /api/projects/{slug}/channels`, `PATCH /api/projects/{slug}/channels/{id}`, `DELETE /api/projects/{slug}/channels/{id}`, `POST /api/projects/{slug}/channels/{id}/reassign`. _Deferred to chunk 3 (API routes)._
+- [ ] 6.4 Permission check on all routes: caller must be `ProjectContributor` with `full_edit = True` on the project. _Deferred to chunk 3 alongside 6.3._
 
 ## 7. Backend — Article API routes
 

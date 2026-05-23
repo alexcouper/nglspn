@@ -122,7 +122,9 @@ Slug SHALL be generated once on first publish and SHALL NOT be regenerated when 
 
 ### Requirement: Backdated publish suppresses notifications
 
-When publishing an Article with `published_at` more than 60 seconds in the past (relative to server clock), the system SHALL NOT fan out notifications (neither in-app nor email).
+When publishing an Article with `published_at` more than 60 seconds in the past (relative to server clock), the publish handler SHALL NOT fan out notifications (neither in-app nor email).
+
+The 60-second skew window is owned by the publish handler (`HANDLERS.articles.publish`). The notifications service (`HANDLERS.notifications.create_notifications_for_article`) is a pure fan-out primitive and does not re-evaluate the backdate decision — calling it for a backdated article would in fact fan out notifications. The boundary is intentional: a single owner of the gating rule prevents drift and double-checks.
 
 Editing `published_at` on an already-published Article SHALL NEVER fire notifications retroactively.
 

@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from apps.articles.models import Article
     from apps.discussions.models import Discussion
     from apps.emails.models import BroadcastEmail
     from apps.notifications.models import Notification
@@ -47,4 +48,9 @@ class EmailHandlerInterface(ABC):
     @abstractmethod
     def send_discussion_digest_email(
         self, notifications: Sequence[Notification]
+    ) -> None: ...
+
+    @abstractmethod
+    def send_article_notification_email(
+        self, notification: Notification, article: Article
     ) -> None: ...

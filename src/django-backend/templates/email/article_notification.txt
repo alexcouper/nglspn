@@ -1,0 +1,18 @@
+New article on {{ project_title }} - Naglasúpan
+==============================================
+
+Hi {{ recipient_name }},
+
+{{ channel_name }}: {{ article_title }}
+
+{{ body_excerpt }}
+
+Read the article: {{ article_url }}
+
+You're receiving this because you follow {{ project_title }}.
+Manage your preferences: {{ project_url }}
+
+---
+Byggjum, deilum, vöxum saman
+
+(c) {{ current_year }} Naglasúpan.

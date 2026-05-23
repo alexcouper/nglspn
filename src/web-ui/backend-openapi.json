@@ -5027,8 +5027,24 @@
             "title": "Id",
             "type": "string"
           },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
           "title": {
             "title": "Title",
+            "type": "string"
+          },
+          "tagline": {
+            "default": "",
+            "title": "Tagline",
             "type": "string"
           },
           "description": {
@@ -5049,6 +5065,14 @@
               }
             ],
             "title": "Main Image Url"
+          },
+          "main_image_variants": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ImageVariantResponse"
+            },
+            "title": "Main Image Variants",
+            "type": "array"
           },
           "my_ranking": {
             "anyOf": [

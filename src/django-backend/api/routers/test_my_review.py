@@ -7,6 +7,7 @@ from hamcrest import assert_that, contains_inanyorder, equal_to, has_entries, ha
 from api.auth.jwt import create_access_token
 from apps.projects.models import (
     CompetitionReviewer,
+    ImageVariant,
     ProjectRanking,
     ProjectStatus,
     ReviewStatus,
@@ -244,6 +245,48 @@ class TestGetMyReviewCompetition:
 
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json()["my_review_status"], equal_to("completed"))
+
+    def test_includes_tagline_slug_and_image_variants_for_projects(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(
+            title="Cool Project",
+            tagline="Does something useful",
+        )
+        # Image with at least one variant so we can assert the list is wired up
+        image = ProjectImageFactory(
+            project=project,
+            is_main=True,
+            upload_status="uploaded",
+        )
+        ImageVariant.objects.create(
+            image=image,
+            size="medium",
+            storage_key="test/cool-project/medium.webp",
+            width=800,
+            height=600,
+            file_size=12345,
+        )
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        projects = response.json()["projects"]
+        assert_that(projects, has_length(1))
+        assert_that(
+            projects[0],
+            has_entries(
+                tagline="Does something useful",
+                slug=project.slug,
+            ),
+        )
+        variants = projects[0]["main_image_variants"]
+        assert_that(variants, has_length(1))
+        assert_that(variants[0], has_entries(size="medium", width=800, height=600))
 
 
 @pytest.mark.django_db

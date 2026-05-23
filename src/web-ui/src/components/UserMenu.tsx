@@ -62,11 +62,11 @@ export function UserMenu() {
                 Notifications
               </Link>
               <Link
-                href="/profile/followed-projects"
+                href="/profile/following"
                 className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Followed projects
+                Following
               </Link>
               <div className="border-t border-border my-1" />
             </>

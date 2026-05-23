@@ -105,7 +105,7 @@ export default function FollowedProjectsPage() {
       <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            Followed projects
+            Following
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
             Channels and notifications for the projects you follow.

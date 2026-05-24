@@ -4,6 +4,7 @@ Run from src/django-backend/:
     DATABASE_URL="postgres://showcase_user:showcase_pass@localhost:5432/projectshowcase" \
     uv run python manage.py shell < ../../scripts/set_categories.py
 """
+
 from apps.projects.models import Project, ProjectCategory
 
 # 1. Remove all existing categories

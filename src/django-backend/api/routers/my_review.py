@@ -32,6 +32,19 @@ router = Router()
 EXCLUDED_PROJECT_STATUSES = [ProjectStatus.REJECTED, ProjectStatus.ICE_BOX]
 
 
+def _get_main_image(project: Project) -> ProjectImage | None:
+    """Return the main project image, falling back to the first uploaded image.
+
+    Iterates `project.images.all()` rather than filtering, so the prefetch
+    cache (`projects__images` / `projects__images__variants`) is used.
+    """
+    uploaded = [img for img in project.images.all() if img.upload_status == "uploaded"]
+    if not uploaded:
+        return None
+    main = next((img for img in uploaded if img.is_main), None)
+    return main or uploaded[0]
+
+
 @router.get(
     "/competitions",
     response={200: ReviewCompetitionListResponse},
@@ -85,6 +98,7 @@ def get_my_review_competition(
     competition = Competition.objects.prefetch_related(
         "projects",
         "projects__images",
+        "projects__images__variants",
     ).get(id=competition_id)
 
     rankings = {
@@ -95,17 +109,26 @@ def get_my_review_competition(
         )
     }
 
-    projects = [
-        ReviewProjectResponse(
-            id=p.id,
-            title=p.title,
-            description=p.description,
-            website_url=p.website_url,
-            main_image_url=ReviewProjectResponse.resolve_main_image_url(p),
-            my_ranking=rankings.get(p.id),
+    projects = []
+    for p in competition.projects.all():
+        if p.status in EXCLUDED_PROJECT_STATUSES:
+            continue
+        main_image = _get_main_image(p)
+        projects.append(
+            ReviewProjectResponse(
+                id=p.id,
+                slug=p.slug,
+                title=p.title,
+                tagline=p.tagline,
+                description=p.description,
+                website_url=p.website_url,
+                main_image_url=main_image.url if main_image else None,
+                main_image_variants=(
+                    list(main_image.variants.all()) if main_image else []
+                ),
+                my_ranking=rankings.get(p.id),
+            )
         )
-        for p in competition.projects.exclude(status__in=EXCLUDED_PROJECT_STATUSES)
-    ]
 
     return ReviewCompetitionDetailResponse(
         id=competition.id,

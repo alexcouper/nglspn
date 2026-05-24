@@ -7,6 +7,7 @@ from ninja import Schema
 
 from api.schemas.project import (
     ContributorSummary,
+    ImageVariantResponse,
     ProjectImageResponse,
     WonCompetitionInfo,
 )
@@ -40,18 +41,14 @@ class ReviewProjectResponse(Schema):
     """Project within a competition being reviewed, with ranking info."""
 
     id: UUID
+    slug: str | None = None
     title: str
+    tagline: str = ""
     description: str
     website_url: str
     main_image_url: str | None = None
+    main_image_variants: list[ImageVariantResponse] = []
     my_ranking: int | None = None
-
-    @staticmethod
-    def resolve_main_image_url(obj: Any) -> str | None:
-        main_image = obj.images.filter(upload_status="uploaded", is_main=True).first()
-        if not main_image:
-            main_image = obj.images.filter(upload_status="uploaded").first()
-        return main_image.url if main_image else None
 
 
 class ReviewCompetitionDetailResponse(Schema):

@@ -10,7 +10,7 @@ export default function ProjectError({ reset }: { reset: () => void }) {
             We couldn&apos;t load this project. This may be a temporary issue.
           </p>
           <button
-            onClick={() => window.location.reload()}
+            onClick={reset}
             className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90"
           >
             Try again

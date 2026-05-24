@@ -2,34 +2,35 @@
 
 import { Dialog } from "@/components/Dialog";
 
-interface FinishReviewDialogProps {
+interface SubmitRankingDialogProps {
   isOpen: boolean;
   onConfirm: () => void;
   onCancel: () => void;
-  isFinishing?: boolean;
+  isSubmitting?: boolean;
 }
 
-export function FinishReviewDialog({
+export function SubmitRankingDialog({
   isOpen,
   onConfirm,
   onCancel,
-  isFinishing = false,
-}: FinishReviewDialogProps) {
+  isSubmitting = false,
+}: SubmitRankingDialogProps) {
   return (
     <Dialog isOpen={isOpen} onClose={onCancel}>
       <h2 className="text-base font-semibold text-foreground mb-3">
-        Finish review?
+        Submit your ranking?
       </h2>
 
       <p className="text-sm text-muted-foreground mb-5">
-        This will lock your rankings. You won&apos;t be able to make changes.
+        Your ranking will be locked in. You can reopen it later if voting is
+        still open.
       </p>
 
       <div className="flex gap-2 justify-end">
         <button
           type="button"
           onClick={onCancel}
-          disabled={isFinishing}
+          disabled={isSubmitting}
           className="btn-secondary"
         >
           Cancel
@@ -37,10 +38,10 @@ export function FinishReviewDialog({
         <button
           type="button"
           onClick={onConfirm}
-          disabled={isFinishing}
+          disabled={isSubmitting}
           className="btn-primary"
         >
-          {isFinishing ? "Finishing..." : "Finish Review"}
+          {isSubmitting ? "Submitting..." : "Submit Ranking"}
         </button>
       </div>
     </Dialog>

@@ -6,7 +6,6 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
-  TouchSensor,
   useSensor,
   useSensors,
   type DragEndEvent,
@@ -41,9 +40,6 @@ export function RankingList({
 }: RankingListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor),
-    useSensor(TouchSensor, {
-      activationConstraint: { delay: 200, tolerance: 8 },
-    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -196,8 +192,13 @@ function RankingCard({
           </div>
         </div>
 
-        <CardImage project={project} />
-        <CardText project={project} readOnly={readOnly} />
+        <Link
+          href={`/projects/${project.slug ?? project.id}`}
+          className="group flex flex-1 items-stretch gap-3 sm:gap-4 min-w-0"
+        >
+          <CardImage project={project} />
+          <CardText project={project} readOnly={readOnly} />
+        </Link>
       </div>
     </div>
   );
@@ -233,10 +234,7 @@ function CardText({
   readOnly: boolean;
 }) {
   return (
-    <Link
-      href={`/projects/${project.slug ?? project.id}`}
-      className="flex-1 min-w-0 flex flex-col justify-center group"
-    >
+    <div className="flex-1 min-w-0 flex flex-col justify-center">
       <h3
         className={`font-semibold text-base sm:text-lg truncate transition-colors ${
           readOnly
@@ -258,6 +256,6 @@ function CardText({
       <p className="text-xs text-muted-foreground mt-1 truncate">
         {project.website_url}
       </p>
-    </Link>
+    </div>
   );
 }

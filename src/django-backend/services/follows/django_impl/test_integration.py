@@ -16,9 +16,7 @@ from tests.factories import ProjectFactory, UserFactory
 
 
 def _seed_house_with_channels():
-    house = ProjectFactory(
-        slug="naglasupan", title="Naglasúpan", is_house_project=True
-    )
+    house = ProjectFactory(slug="naglasupan", title="Naglasúpan", is_house_project=True)
     cw, _ = Channel.objects.get_or_create(project=house, name="Competition Winners")
     pu, _ = Channel.objects.get_or_create(project=house, name="Product Updates")
     return house, cw, pu
@@ -72,9 +70,7 @@ class TestCrossSystemMirror:
         )
         assert not recipients.filter(pk=user.pk).exists()
         # Other broadcast type still includes them.
-        other = self.user_query.list_opted_in_for_broadcast_type(
-            "competition_results"
-        )
+        other = self.user_query.list_opted_in_for_broadcast_type("competition_results")
         assert other.filter(pk=user.pk).exists()
 
     def test_unfollow_house_excludes_user_from_both_types(self):

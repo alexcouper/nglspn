@@ -41,8 +41,6 @@ interface CompetitionRevealProps {
 export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps) {
   const [competition] = useState<Competition>(initialCompetition);
   const { isAuthenticated, isLoading: authLoading } = useAuth();
-  // fetchedState holds only the result of the async fetch (loading | ready | error | not-assigned from 404).
-  // The full ReviewState visible to children is derived below.
   const [fetchedState, setFetchedState] = useState<ReviewState>({ kind: "loading" });
 
   const isOpen = competition.status === "accepting_applications";
@@ -50,7 +48,6 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
   const returnPath = `/competitions/${competition.slug ?? competition.id}`;
 
   useEffect(() => {
-    // Only fetch when we're in voting mode and the user is authenticated.
     if (!isVoting || authLoading || !isAuthenticated) return;
     let cancelled = false;
     (async () => {
@@ -76,7 +73,6 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
     };
   }, [competition.id, isVoting, authLoading, isAuthenticated]);
 
-  // Derive the ReviewState that children see from synchronous conditions + async result.
   const reviewState: ReviewState = !isVoting
     ? { kind: "not-assigned" }
     : authLoading
@@ -85,14 +81,8 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         ? { kind: "logged-out" }
         : fetchedState;
 
-  const showRankedCards =
-    reviewState.kind === "ready" ||
-    (isVoting && isAuthenticated && reviewState.kind === "loading");
-  const visitorIsRanker =
-    reviewState.kind === "ready" ||
-    (isVoting &&
-      isAuthenticated &&
-      (reviewState.kind === "loading" || reviewState.kind === "error"));
+  const isRankingSurfaceActive =
+    reviewState.kind === "ready" || reviewState.kind === "loading";
 
   return (
     <div className="space-y-8">
@@ -165,7 +155,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         <div className="bg-violet-50 rounded-xl border border-violet-200 p-5 sm:p-6 flex items-center gap-3">
           <span className="w-2 h-2 bg-violet-500 rounded-full pulse-dot flex-shrink-0" />
           <p className="text-violet-800 font-medium text-sm">
-            {visitorIsRanker
+            {isRankingSurfaceActive
               ? "Voting is in progress. Rank the projects below to help pick the winner."
               : "Voting is in progress. Selected members are ranking the projects."}
           </p>
@@ -203,7 +193,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
       )}
 
       {/* Projects — suppressed when the ranked-cards surface is rendering. */}
-      {!showRankedCards && (
+      {!isRankingSurfaceActive && (
         <div>
           <div className="flex items-baseline gap-2 mb-4">
             <h2 className="text-lg font-semibold text-foreground">

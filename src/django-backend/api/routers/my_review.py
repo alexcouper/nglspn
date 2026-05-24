@@ -110,7 +110,9 @@ def get_my_review_competition(
     }
 
     projects = []
-    for p in competition.projects.exclude(status__in=EXCLUDED_PROJECT_STATUSES):
+    for p in competition.projects.all():
+        if p.status in EXCLUDED_PROJECT_STATUSES:
+            continue
         main_image = _get_main_image(p)
         projects.append(
             ReviewProjectResponse(

@@ -13,6 +13,7 @@ from apps.follows.models import FollowChannelPreference
 from apps.notifications.models import Notification, NotificationCadence
 from services.notifications import (
     NotificationGroup,
+    NotificationGroupKind,
     NotificationHeadlineKind,
     NotificationProject,
     NotificationSummary,
@@ -72,6 +73,7 @@ def _build_group(rows: Iterable[Notification], root_id: UUID) -> NotificationGro
             actor_names.append(name)
 
     return NotificationGroup(
+        kind=NotificationGroupKind.DISCUSSION,
         root_discussion_id=root_id,
         project=NotificationProject(
             id=project.id,
@@ -85,6 +87,35 @@ def _build_group(rows: Iterable[Notification], root_id: UUID) -> NotificationGro
         latest_event_at=latest.discussion.created_at,
         unread_count=len(rows),
         latest_comment_id=latest.discussion_id,
+    )
+
+
+def _build_article_group(rows: list[Notification]) -> NotificationGroup:
+    from services import REPO  # noqa: PLC0415
+
+    rows = sorted(
+        rows,
+        key=lambda n: n.article.published_at or n.created_at,
+        reverse=True,
+    )
+    latest = rows[0]
+    article = latest.article
+    project = article.project
+    return NotificationGroup(
+        kind=NotificationGroupKind.ARTICLE,
+        project=NotificationProject(
+            id=project.id,
+            slug=project.slug,
+            title=project.title,
+            image_url=REPO.project.get_project_icon_url(project),
+        ),
+        latest_event_at=article.published_at or latest.created_at,
+        unread_count=len(rows),
+        latest_body_excerpt=_body_excerpt(article.body),
+        article_id=article.id,
+        article_slug=article.slug,
+        article_title=article.title,
+        channel_name=article.channel.name,
     )
 
 
@@ -322,17 +353,28 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
     ) -> list[NotificationGroup]:
         from services import REPO  # noqa: PLC0415
 
-        rows = list(
+        discussion_rows = list(
             REPO.notifications.list_unread_for_user(user_id).prefetch_related(
                 "discussion__project__images__variants"
             )
         )
 
         by_root: defaultdict[UUID, list[Notification]] = defaultdict(list)
-        for r in rows:
+        for r in discussion_rows:
             by_root[_root_id(r)].append(r)
 
         groups = [_build_group(rs, root_id) for root_id, rs in by_root.items()]
+
+        article_rows = list(
+            REPO.notifications.list_unread_articles_for_user(user_id).prefetch_related(
+                "article__project__images__variants"
+            )
+        )
+        by_article: defaultdict[UUID, list[Notification]] = defaultdict(list)
+        for r in article_rows:
+            by_article[r.article_id].append(r)
+        groups.extend(_build_article_group(rs) for rs in by_article.values())
+
         groups.sort(key=lambda g: g.latest_event_at, reverse=True)
         return groups[:limit]
 

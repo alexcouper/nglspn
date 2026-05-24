@@ -11,6 +11,12 @@ export function NotificationsFeed() {
   const { isReady } = useRequireAuth();
   const { groups, refreshGroups, markThreadRead, markAllRead } =
     useNotifications();
+  const discussionGroups = groups.filter(
+    (
+      g
+    ): g is typeof g & { root_discussion_id: string } =>
+      g.kind === "discussion" && typeof g.root_discussion_id === "string"
+  );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
 
@@ -45,7 +51,7 @@ export function NotificationsFeed() {
   };
 
   const handleMarkAll = async () => {
-    if (groups.length === 0) return;
+    if (discussionGroups.length === 0) return;
     setBusy(true);
     try {
       await markAllRead();
@@ -56,7 +62,7 @@ export function NotificationsFeed() {
     }
   };
 
-  if (groups.length === 0) {
+  if (discussionGroups.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-border px-6 py-16 text-center">
         <h2 className="text-lg font-medium text-foreground">
@@ -83,14 +89,14 @@ export function NotificationsFeed() {
         <button
           type="button"
           onClick={handleMarkAll}
-          disabled={busy || groups.length === 0}
+          disabled={busy || discussionGroups.length === 0}
           className="px-3 py-1.5 text-xs font-medium border border-border rounded-md text-foreground hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Mark all as read
         </button>
       </div>
       <div className="bg-white rounded-xl border border-border divide-y divide-slate-100 overflow-hidden">
-        {groups.map((group) => {
+        {discussionGroups.map((group) => {
           const isSelected = selected.has(group.root_discussion_id);
           return (
             <div

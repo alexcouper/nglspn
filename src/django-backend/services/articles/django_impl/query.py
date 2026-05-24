@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from apps.articles.models import Article, ArticleState
+from apps.follows.models import Channel
 from services.articles.query_interface import ArticleQueryInterface
 
 if TYPE_CHECKING:
@@ -42,3 +43,6 @@ class DjangoArticleQuery(ArticleQueryInterface):
         if not include_drafts:
             qs = qs.filter(state=ArticleState.PUBLISHED)
         return qs
+
+    def list_channels_for_project(self, project_id: UUID) -> QuerySet[Channel]:
+        return Channel.objects.filter(project_id=project_id).order_by("name")

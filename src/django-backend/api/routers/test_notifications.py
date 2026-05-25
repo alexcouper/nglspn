@@ -8,6 +8,7 @@ from tests.factories import (
     DiscussionFactory,
     NotificationFactory,
     ProjectFactory,
+    PublishedArticleFactory,
 )
 
 
@@ -72,6 +73,7 @@ class TestGroupsEndpoint:
         assert_that(
             data[0],
             has_entries(
+                kind="discussion",
                 root_discussion_id=str(root.id),
                 unread_count=2,
                 headline_kind="replied",
@@ -159,6 +161,149 @@ class TestMarkThreadReadEndpoint:
             )
         )
         assert_that(unread_recipients, equal_to({other_user.id}))
+
+
+@pytest.mark.django_db
+class TestGroupsEndpointArticleKind:
+    def test_article_group_includes_kind_and_metadata(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        article = PublishedArticleFactory(
+            project=project, title="Spring update", body="Body."
+        )
+        article.slug = "spring-update"
+        article.save(update_fields=["slug"])
+        NotificationFactory(recipient=user, discussion=None, article=article)
+
+        response = client.get("/api/notifications/groups", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        data = response.json()
+        assert_that(data, has_length(1))
+        assert_that(
+            data[0],
+            has_entries(
+                kind="article",
+                article_id=str(article.id),
+                article_slug="spring-update",
+                article_title="Spring update",
+                channel_name=article.channel.name,
+                unread_count=1,
+                root_discussion_id=None,
+            ),
+        )
+
+    def test_mixed_groups_returned(self, client, user, auth_headers) -> None:
+        project_a = ProjectFactory()
+        project_b = ProjectFactory()
+        discussion = DiscussionFactory(project=project_a)
+        article = PublishedArticleFactory(project=project_b, title="News")
+        article.slug = "news"
+        article.save(update_fields=["slug"])
+        NotificationFactory(recipient=user, discussion=discussion)
+        NotificationFactory(recipient=user, discussion=None, article=article)
+
+        response = client.get("/api/notifications/groups", **auth_headers)
+
+        kinds = sorted(g["kind"] for g in response.json())
+        assert_that(kinds, equal_to(["article", "discussion"]))
+
+    def test_summary_counts_both_kinds(self, client, user, auth_headers) -> None:
+        project_a = ProjectFactory()
+        project_b = ProjectFactory()
+        discussion = DiscussionFactory(project=project_a)
+        article = PublishedArticleFactory(project=project_b)
+        NotificationFactory(recipient=user, discussion=discussion)
+        NotificationFactory(recipient=user, discussion=None, article=article)
+
+        response = client.get("/api/notifications/summary", **auth_headers)
+
+        assert_that(
+            response.json(),
+            equal_to({"has_unread": True, "unread_group_count": 2}),
+        )
+
+
+@pytest.mark.django_db
+class TestMarkThreadReadByArticle:
+    def test_marks_article_notification(self, client, user, auth_headers) -> None:
+        project = ProjectFactory()
+        article = PublishedArticleFactory(project=project)
+        NotificationFactory(recipient=user, discussion=None, article=article)
+
+        response = client.post(
+            "/api/notifications/mark-thread-read",
+            data=json.dumps({"article_id": str(article.id)}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), equal_to({"marked": 1}))
+
+    def test_scoped_to_caller(self, client, user, other_user, auth_headers) -> None:
+        from apps.notifications.models import Notification  # noqa: PLC0415
+
+        project = ProjectFactory()
+        article = PublishedArticleFactory(project=project)
+        NotificationFactory(recipient=user, discussion=None, article=article)
+        NotificationFactory(recipient=other_user, discussion=None, article=article)
+
+        client.post(
+            "/api/notifications/mark-thread-read",
+            data=json.dumps({"article_id": str(article.id)}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        unread_recipients = set(
+            Notification.objects.filter(in_app_read_at__isnull=True).values_list(
+                "recipient_id", flat=True
+            )
+        )
+        assert_that(unread_recipients, equal_to({other_user.id}))
+
+    def test_rejects_article_id_with_root_discussion_id(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        article = PublishedArticleFactory(project=project)
+        discussion = DiscussionFactory(project=project)
+
+        response = client.post(
+            "/api/notifications/mark-thread-read",
+            data=json.dumps(
+                {
+                    "article_id": str(article.id),
+                    "root_discussion_id": str(discussion.id),
+                }
+            ),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+
+    def test_rejects_all_three_fields(self, client, user, auth_headers) -> None:
+        project = ProjectFactory()
+        article = PublishedArticleFactory(project=project)
+        discussion = DiscussionFactory(project=project)
+
+        response = client.post(
+            "/api/notifications/mark-thread-read",
+            data=json.dumps(
+                {
+                    "article_id": str(article.id),
+                    "root_discussion_id": str(discussion.id),
+                    "comment_id": str(discussion.id),
+                }
+            ),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
 
 
 @pytest.mark.django_db

@@ -43,17 +43,17 @@
 
 - [x] 6.1 Add `HANDLERS.articles.add_channel`, `rename_channel`, `delete_channel`, `bulk_reassign_articles` methods on the same handler (per design 1a, channel CRUD lives on `HANDLERS.articles` rather than its own surface).
 - [x] 6.2 Wire the guards: `DuplicateChannelNameError`, `ChannelHasArticlesError(article_count)`, `LastChannelError` — the routes (chunk 3) map these to 409.
-- [ ] 6.3 Add API routes under `api/routers/channels.py`: `POST /api/projects/{slug}/channels`, `PATCH /api/projects/{slug}/channels/{id}`, `DELETE /api/projects/{slug}/channels/{id}`, `POST /api/projects/{slug}/channels/{id}/reassign`. _Deferred to chunk 3 (API routes)._
-- [ ] 6.4 Permission check on all routes: caller must be `ProjectContributor` with `full_edit = True` on the project. _Deferred to chunk 3 alongside 6.3._
+- [x] 6.3 Add API routes under `api/routers/channels.py`: `POST /api/projects/{slug}/channels`, `PATCH /api/projects/{slug}/channels/{id}`, `DELETE /api/projects/{slug}/channels/{id}`, `POST /api/projects/{slug}/channels/{id}/reassign`. Added `GET /api/projects/{slug}/channels` to feed the chunk-7 dropdown.
+- [x] 6.4 Permission check on all routes: caller must be `ProjectContributor` with `full_edit = True` on the project. Implemented via `REPO.project.user_can_edit`.
 
 ## 7. Backend — Article API routes
 
-- [ ] 7.1 Add `api/schemas/article.py` with `ArticleCreate`, `ArticleUpdate`, `ArticlePublish`, `ArticleOut`, `ArticleListItem` pydantic schemas.
-- [ ] 7.2 Add `api/routers/articles.py`: `POST /api/projects/{slug}/articles` (create draft), `GET /api/projects/{slug}/articles/{id}` (read for editor — includes drafts for authors/full-edit), `PATCH /api/projects/{slug}/articles/{id}` (update), `POST /api/projects/{slug}/articles/{id}/publish` (publish), `DELETE /api/projects/{slug}/articles/{id}`.
-- [ ] 7.3 Add `GET /api/projects/{slug}/articles/by-slug/{article_slug}` for the render page (public for published, 404 for drafts unless caller is author/full-edit).
-- [ ] 7.4 Permission checks on write paths: `full_edit` contributor. The route body SHALL be (a) parse body, (b) permission check, (c) exactly one `HANDLERS.articles.*` or `REPO.articles.*` call, (d) shape response. No `Article.objects`, `Channel.objects`, or `FollowChannelPreference.objects` references in `api/routers/articles.py` or `api/routers/channels.py`.
-- [ ] 7.5 Update `POST /api/notifications/mark-thread-read` body schema to accept `article_id` as a third alternative; reject 2-or-more or 0 of {root_discussion_id, comment_id, article_id} with 422.
-- [ ] 7.6 Update `GET /api/notifications/groups` response to include `kind` discriminator and article groups (project + channel + title + excerpt + article_id + article_slug).
+- [x] 7.1 Add `api/schemas/article.py` with `ArticleCreate`, `ArticleUpdate`, `ArticlePublish`, `ArticleOut`, `ArticleListItem` pydantic schemas. Channel request/response schemas live here too (`ChannelCreate`, `ChannelRename`, `ChannelReassign`, `ChannelResponse`, `ChannelConflictResponse`, `ChannelReassignResponse`).
+- [x] 7.2 Add `api/routers/articles.py`: `POST /api/projects/{slug}/articles` (create draft), `GET /api/projects/{slug}/articles/{id}` (read for editor — includes drafts for authors/full-edit), `PATCH /api/projects/{slug}/articles/{id}` (update), `POST /api/projects/{slug}/articles/{id}/publish` (publish), `DELETE /api/projects/{slug}/articles/{id}`. Added `GET /api/projects/{slug}/articles` for listing.
+- [x] 7.3 Add `GET /api/projects/{slug}/articles/by-slug/{article_slug}` for the render page (public for published, 404 for drafts unless caller is author/full-edit).
+- [x] 7.4 Permission checks on write paths: `full_edit` contributor via `REPO.project.user_can_edit`. Routes parse body → permission check → service-layer call → shape response; no ORM access in `api/routers/articles.py` or `api/routers/channels.py`.
+- [x] 7.5 Update `POST /api/notifications/mark-thread-read` body schema to accept `article_id` as a third alternative; reject 2-or-more or 0 of {root_discussion_id, comment_id, article_id} with 422.
+- [x] 7.6 Update `GET /api/notifications/groups` response to include `kind` discriminator and article groups (project + channel + title + excerpt + article_id + article_slug). `NotificationGroup` dataclass widened with optional article fields; `count_unread_groups_for_user` now sums distinct discussion roots + distinct article ids.
 
 ## 8. Backend — Send path flip in async-broadcast-send
 
@@ -74,11 +74,11 @@
 
 ## 10. Backend — OpenAPI + tests
 
-- [ ] 10.1 From `src/django-backend/`: `make extract-openapi`.
-- [ ] 10.2 Verify the spec includes the new article + channel + article-id-on-mark-thread-read endpoints.
+- [x] 10.1 From `src/django-backend/`: `make extract-openapi`.
+- [x] 10.2 Verify the spec includes the new article + channel + article-id-on-mark-thread-read endpoints.
 - [ ] 10.3 Add `apps/articles/tests/` covering: model save guards, slug generation + collision suffix, publish state transitions, edit-after-publish, delete, backdated-publish notification suppression, approval flow combinations (trust True / False / admin-demoted).
 - [ ] 10.4 Add `apps/notifications/tests/` covering: nullable FK constraint, partial unique constraints, mixed digest rendering, `mark_article_read_for_user`.
-- [ ] 10.5 Add API tests under `api/routers/test_articles.py` and `api/routers/test_channels.py` covering: 401 / 403 / 404 / 409 / 422 paths and the success paths.
+- [x] 10.5 Add API tests under `api/routers/test_articles.py` and `api/routers/test_channels.py` covering: 401 / 403 / 404 / 409 / 422 paths and the success paths. Also extended `test_notifications.py` with article-kind groups + article-id `mark-thread-read` cases.
 - [ ] 10.6 Update `api/routers/test_users.py` to remove assertions on the dropped fields and add assertions for `article_trust` if surfaced via UserOut (decide based on whether admins / users see it).
 - [ ] 10.7 Run `make lint` + `make test` until green from `src/django-backend/`.
 

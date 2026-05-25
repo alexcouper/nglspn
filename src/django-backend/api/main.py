@@ -4,7 +4,9 @@ from django.http import HttpRequest
 from ninja import NinjaAPI
 
 from api.routers import (
+    articles,
     auth,
+    channels,
     competitions,
     discussions,
     follows,
@@ -27,6 +29,8 @@ api.add_router("/auth", auth.router)
 api.add_router("/projects", projects.router)
 api.add_router("/projects", discussions.router)
 api.add_router("/projects", follows.router)
+api.add_router("/projects", articles.router)
+api.add_router("/projects", channels.router)
 api.add_router("/follows", follows.collection_router)
 api.add_router("/my/projects", my_projects.router)
 api.add_router("/my/reviews", my_review.router)

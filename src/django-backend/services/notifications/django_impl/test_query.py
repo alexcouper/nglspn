@@ -80,7 +80,7 @@ class TestCountUnreadGroupsForUser:
 
         assert_that(query.count_unread_groups_for_user(user.id), equal_to(0))
 
-    def test_count_query_runs_in_one_query_with_distinct(self, query) -> None:
+    def test_count_query_runs_with_distinct(self, query) -> None:
         user = UserFactory()
         project = ProjectFactory()
         root = DiscussionFactory(project=project)
@@ -93,9 +93,11 @@ class TestCountUnreadGroupsForUser:
             result = query.count_unread_groups_for_user(user.id)
 
         assert_that(result, equal_to(1))
-        assert_that(len(ctx.captured_queries), equal_to(1))
-        sql = ctx.captured_queries[0]["sql"].lower()
-        assert "distinct" in sql or "group by" in sql, sql
+        # One query per kind (discussion + article) — bounded N, not N+1.
+        assert_that(len(ctx.captured_queries), equal_to(2))
+        for q in ctx.captured_queries:
+            sql = q["sql"].lower()
+            assert "distinct" in sql or "group by" in sql, sql
 
 
 @pytest.mark.django_db

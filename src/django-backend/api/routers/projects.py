@@ -1,9 +1,9 @@
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from django.http import HttpRequest
 from ninja import Query, Router
 
-from api.auth.jwt import get_user_from_token
+from api.routers._helpers import get_optional_user
 from api.schemas.errors import Error
 from api.schemas.project import (
     CategoryResponse,
@@ -16,9 +16,6 @@ from api.schemas.project import (
 from apps.projects.models import Project, ProjectStatus
 from services import REPO
 from services.project.exceptions import ProjectNotFoundError
-
-if TYPE_CHECKING:
-    from apps.users.models import User
 
 router = Router()
 
@@ -165,14 +162,6 @@ def list_projects(
     }
 
 
-def _get_user_from_request(request: HttpRequest) -> "User | None":
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        token = auth_header[7:]
-        return get_user_from_token(token)
-    return None
-
-
 @router.get(
     "/{identifier}",
     response={200: ProjectResponse, 404: Error},
@@ -187,7 +176,7 @@ def get_project(
     except ProjectNotFoundError:
         return 404, {"detail": "Project not found"}
 
-    user = _get_user_from_request(request)
+    user = get_optional_user(request)
     user_id = user.id if user else None
     project.is_followed = REPO.follows.is_followed(user_id, project)
 

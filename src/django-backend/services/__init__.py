@@ -1,5 +1,11 @@
 from dataclasses import dataclass, field
 
+from services.articles.django_impl import (
+    DjangoArticleHandler,
+    DjangoArticleQuery,
+)
+from services.articles.handler_interface import ArticleHandlerInterface
+from services.articles.query_interface import ArticleQueryInterface
 from services.discussions.django_impl import (
     DjangoDiscussionHandler,
     DjangoDiscussionQuery,
@@ -34,6 +40,7 @@ from services.users.query_interface import UserQueryInterface
 
 @dataclass(frozen=True)
 class HandlerServices:
+    articles: ArticleHandlerInterface = field(default_factory=DjangoArticleHandler)
     discussions: DiscussionHandlerInterface = field(
         default_factory=DjangoDiscussionHandler
     )
@@ -53,6 +60,7 @@ class HandlerServices:
 
 @dataclass(frozen=True)
 class QueryServices:
+    articles: ArticleQueryInterface = field(default_factory=DjangoArticleQuery)
     discussions: DiscussionQueryInterface = field(default_factory=DjangoDiscussionQuery)
     email: EmailQueryInterface = field(default_factory=DjangoEmailQuery)
     follows: FollowQueryInterface = field(default_factory=DjangoFollowQuery)

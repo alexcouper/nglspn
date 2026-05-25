@@ -37,12 +37,22 @@ const NotificationsContext = createContext<NotificationsContextValue | undefined
   undefined
 );
 
+function discussionGroupsOnly(
+  groups: NotificationGroup[]
+): (NotificationGroup & { root_discussion_id: string })[] {
+  return groups.filter(
+    (g): g is NotificationGroup & { root_discussion_id: string } =>
+      g.kind === "discussion" &&
+      typeof g.root_discussion_id === "string"
+  );
+}
+
 function diffActiveRoots(
   prev: Set<string>,
   next: NotificationGroup[]
 ): string[] {
   const newly: string[] = [];
-  for (const g of next) {
+  for (const g of discussionGroupsOnly(next)) {
     if (!prev.has(g.root_discussion_id)) {
       newly.push(g.root_discussion_id);
     }
@@ -65,14 +75,16 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       nextGroups
     );
     const groupsByRoot = new Map<string, NotificationGroup>();
-    for (const g of nextGroups) groupsByRoot.set(g.root_discussion_id, g);
+    for (const g of discussionGroupsOnly(nextGroups)) {
+      groupsByRoot.set(g.root_discussion_id, g);
+    }
     if (newlyActiveRoots.length > 0) {
       for (const listener of listenersRef.current) {
         listener({ newlyActiveRoots, groupsByRoot });
       }
     }
     lastGroupRootsRef.current = new Set(
-      nextGroups.map((g) => g.root_discussion_id)
+      discussionGroupsOnly(nextGroups).map((g) => g.root_discussion_id)
     );
   }, []);
 

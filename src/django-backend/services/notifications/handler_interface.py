@@ -14,6 +14,9 @@ class NotificationHandlerInterface(ABC):
     def create_notifications_for_discussion(self, discussion_id: UUID) -> None: ...
 
     @abstractmethod
+    def create_notifications_for_article(self, article_id: UUID) -> None: ...
+
+    @abstractmethod
     def send_batch_notifications(self, cadence: str) -> None: ...
 
     @abstractmethod
@@ -31,6 +34,9 @@ class NotificationHandlerInterface(ABC):
 
     @abstractmethod
     def mark_thread_read_for_comment(self, user_id: UUID, comment_id: UUID) -> int: ...
+
+    @abstractmethod
+    def mark_article_read_for_user(self, user_id: UUID, article_id: UUID) -> int: ...
 
     @abstractmethod
     def mark_all_read_for_user(self, user_id: UUID) -> int: ...

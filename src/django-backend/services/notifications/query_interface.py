@@ -16,6 +16,11 @@ class NotificationQueryInterface(ABC):
     def list_unread_for_user(self, user_id: UUID) -> QuerySet[Notification]: ...
 
     @abstractmethod
+    def list_unread_articles_for_user(
+        self, user_id: UUID
+    ) -> QuerySet[Notification]: ...
+
+    @abstractmethod
     def count_unread_groups_for_user(self, user_id: UUID) -> int: ...
 
     @abstractmethod

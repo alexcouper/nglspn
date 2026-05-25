@@ -27,7 +27,7 @@ class NotificationAdmin(admin.ModelAdmin):
     list_display = (
         "id",
         "recipient",
-        "discussion",
+        "target",
         "email_cadence",
         "email_sent",
         "in_app_read_at",
@@ -40,7 +40,19 @@ class NotificationAdmin(admin.ModelAdmin):
     ordering = ("-created_at",)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Notification]:
-        return super().get_queryset(request).select_related("recipient", "discussion")
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("recipient", "discussion", "article")
+        )
+
+    @admin.display(description="Target")
+    def target(self, obj: Notification) -> str:
+        if obj.discussion_id:
+            return f"discussion: {obj.discussion}"
+        if obj.article_id:
+            return f"article: {obj.article}"
+        return "—"
 
     def get_urls(self) -> list:
         custom_urls = [
@@ -69,8 +81,11 @@ class NotificationAdmin(admin.ModelAdmin):
         return super().changelist_view(request, extra_context=extra_context)
 
     def preview_digest_list_view(self, request: HttpRequest) -> HttpResponse:
+        # Discussion-only preview — the digest view here renders the
+        # comment-shaped template. Article-row previews will be added
+        # alongside the mixed-content digest work.
         unsent = (
-            Notification.objects.filter(email_sent=False)
+            Notification.objects.filter(email_sent=False, discussion__isnull=False)
             .select_related(
                 "recipient",
                 "discussion",
@@ -121,7 +136,11 @@ class NotificationAdmin(admin.ModelAdmin):
         self, request: HttpRequest, recipient_id: str
     ) -> HttpResponse:
         unsent = (
-            Notification.objects.filter(recipient_id=recipient_id, email_sent=False)
+            Notification.objects.filter(
+                recipient_id=recipient_id,
+                email_sent=False,
+                discussion__isnull=False,
+            )
             .select_related(
                 "recipient",
                 "discussion",

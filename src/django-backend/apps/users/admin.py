@@ -45,6 +45,17 @@ class UserAdmin(BaseUserAdmin):
         ),
         (_("Privacy"), {"fields": ("opt_in_to_external_promotions",)}),
         (
+            _("Articles"),
+            {
+                "fields": ("article_trust",),
+                "description": _(
+                    "When unchecked, this user's published articles render "
+                    "locally on their project page but stay out of global "
+                    "surfaces until an admin approves each one."
+                ),
+            },
+        ),
+        (
             _("Permissions"),
             {
                 "fields": (

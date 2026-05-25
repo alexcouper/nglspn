@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from django.utils import timezone
 
-from apps.articles.models import Article
+from apps.articles.models import Article, ArticleState
 from apps.discussions.models import Discussion
 from apps.follows.models import FollowChannelPreference
 from apps.notifications.models import Notification, NotificationCadence
@@ -184,7 +184,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             logger.warning("Article %s not found for notification", article_id)
             return
 
-        if article.state != "published":
+        if article.state != ArticleState.PUBLISHED:
             return
 
         # Find every Follow on this project with a ChannelPreference for the

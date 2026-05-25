@@ -3,8 +3,12 @@ from uuid import UUID
 from django.http import HttpRequest
 from ninja import Router
 
-from api.auth.jwt import get_user_from_token
 from api.auth.security import auth
+from api.routers._helpers import (
+    get_optional_user,
+    require_full_edit,
+    resolve_visible_project_or_404,
+)
 from api.schemas.article import (
     ArticleCreate,
     ArticleListItem,
@@ -24,16 +28,8 @@ from services.articles.exceptions import (
     ChannelOnWrongProjectError,
     HeroImageOnWrongProjectError,
 )
-from services.project.exceptions import ProjectNotFoundError
 
 router = Router()
-
-
-def _get_optional_user(request: HttpRequest) -> User | None:
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        return get_user_from_token(auth_header[7:])
-    return None
 
 
 def _can_view_draft(article: Article, user: User | None) -> bool:
@@ -44,24 +40,13 @@ def _can_view_draft(article: Article, user: User | None) -> bool:
     return REPO.project.user_can_edit(article.project_id, user.id)
 
 
-def _resolve_project_or_404(
-    slug: str,
-) -> Project | tuple[int, dict[str, str]]:
-    try:
-        return REPO.project.get_by_identifier(slug)
-    except ProjectNotFoundError:
-        return 404, {"detail": "Project not found"}
-
-
-def _require_full_edit(
-    slug: str, user_id: UUID
-) -> Project | tuple[int, dict[str, str]]:
-    resolved = _resolve_project_or_404(slug)
-    if isinstance(resolved, tuple):
-        return resolved
-    if not REPO.project.user_can_edit(resolved.id, user_id):
-        return 403, {"detail": "You don't have edit access to this project"}
-    return resolved
+def _get_article_in_project(
+    project: Project, article_id: UUID
+) -> Article | tuple[int, dict[str, str]]:
+    article = REPO.articles.get_by_id(article_id)
+    if article is None or article.project_id != project.id:
+        return 404, {"detail": "Article not found"}
+    return article
 
 
 @router.post(
@@ -75,7 +60,7 @@ def create_article(
     slug: str,
     payload: ArticleCreate,
 ) -> tuple[int, Article] | tuple[int, dict[str, str]]:
-    project = _require_full_edit(slug, request.auth.id)
+    project = require_full_edit(slug, request.auth.id)
     if isinstance(project, tuple):
         return project
     try:
@@ -103,10 +88,10 @@ def list_articles(
     request: HttpRequest,
     slug: str,
 ) -> list[Article] | tuple[int, dict[str, str]]:
-    project = _resolve_project_or_404(slug)
+    user = get_optional_user(request)
+    project = resolve_visible_project_or_404(slug, user)
     if isinstance(project, tuple):
         return project
-    user = _get_optional_user(request)
     include_drafts = user is not None and REPO.project.user_can_edit(
         project.id, user.id
     )
@@ -123,13 +108,15 @@ def get_article_by_slug(
     slug: str,
     article_slug: str,
 ) -> Article | tuple[int, dict[str, str]]:
+    user = get_optional_user(request)
+    project = resolve_visible_project_or_404(slug, user)
+    if isinstance(project, tuple):
+        return project
     article = REPO.articles.get_by_project_and_slug(slug, article_slug)
-    if article is None:
+    if article is None or article.project_id != project.id:
         return 404, {"detail": "Article not found"}
-    if article.state != ArticleState.PUBLISHED:
-        user = _get_optional_user(request)
-        if not _can_view_draft(article, user):
-            return 404, {"detail": "Article not found"}
+    if article.state != ArticleState.PUBLISHED and not _can_view_draft(article, user):
+        return 404, {"detail": "Article not found"}
     return article
 
 
@@ -144,12 +131,12 @@ def get_article(
     slug: str,
     article_id: UUID,
 ) -> Article | tuple[int, dict[str, str]]:
-    project = _resolve_project_or_404(slug)
+    project = resolve_visible_project_or_404(slug, request.auth)
     if isinstance(project, tuple):
         return project
-    article = REPO.articles.get_by_id(article_id)
-    if article is None or article.project_id != project.id:
-        return 404, {"detail": "Article not found"}
+    article = _get_article_in_project(project, article_id)
+    if isinstance(article, tuple):
+        return article
     if article.state != ArticleState.PUBLISHED and not _can_view_draft(
         article, request.auth
     ):
@@ -169,12 +156,12 @@ def patch_article(
     article_id: UUID,
     payload: ArticleUpdate,
 ) -> Article | tuple[int, dict[str, str]]:
-    project = _require_full_edit(slug, request.auth.id)
+    project = require_full_edit(slug, request.auth.id)
     if isinstance(project, tuple):
         return project
-    existing = REPO.articles.get_by_id(article_id)
-    if existing is None or existing.project_id != project.id:
-        return 404, {"detail": "Article not found"}
+    existing = _get_article_in_project(project, article_id)
+    if isinstance(existing, tuple):
+        return existing
     try:
         article = HANDLERS.articles.update_article(
             article_id,
@@ -205,12 +192,12 @@ def publish_article(
     article_id: UUID,
     payload: ArticlePublish,
 ) -> Article | tuple[int, dict[str, str]]:
-    project = _require_full_edit(slug, request.auth.id)
+    project = require_full_edit(slug, request.auth.id)
     if isinstance(project, tuple):
         return project
-    existing = REPO.articles.get_by_id(article_id)
-    if existing is None or existing.project_id != project.id:
-        return 404, {"detail": "Article not found"}
+    existing = _get_article_in_project(project, article_id)
+    if isinstance(existing, tuple):
+        return existing
     try:
         article = HANDLERS.articles.publish(
             article_id, published_at=payload.published_at
@@ -233,11 +220,11 @@ def delete_article(
     slug: str,
     article_id: UUID,
 ) -> tuple[int, None] | tuple[int, dict[str, str]]:
-    project = _require_full_edit(slug, request.auth.id)
+    project = require_full_edit(slug, request.auth.id)
     if isinstance(project, tuple):
         return project
-    existing = REPO.articles.get_by_id(article_id)
-    if existing is None or existing.project_id != project.id:
-        return 404, {"detail": "Article not found"}
+    existing = _get_article_in_project(project, article_id)
+    if isinstance(existing, tuple):
+        return existing
     HANDLERS.articles.delete_article(article_id)
     return 204, None

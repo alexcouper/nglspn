@@ -4,6 +4,7 @@ import pytest
 from hamcrest import assert_that, equal_to, has_entries, has_length
 
 from apps.articles.models import Article, ArticleState
+from apps.projects.models import ProjectStatus
 from tests.factories import (
     ArticleFactory,
     ChannelFactory,
@@ -129,7 +130,7 @@ class TestCreateArticle:
 @pytest.mark.django_db
 class TestListArticles:
     def test_anonymous_sees_only_published(self, client) -> None:
-        project = ProjectFactory()
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
         PublishedArticleFactory(project=project, title="Pub")
         ArticleFactory(project=project, title="Draft")
 
@@ -153,6 +154,22 @@ class TestListArticles:
         response = client.get("/api/projects/does-not-exist/articles")
         assert_that(response.status_code, equal_to(404))
 
+    def test_pending_project_404s_for_anonymous(self, client) -> None:
+        project = ProjectFactory(status=ProjectStatus.PENDING)
+        PublishedArticleFactory(project=project, title="Pub")
+
+        response = client.get(f"/api/projects/{project.id}/articles")
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_pending_project_404s_for_non_editor(self, client, auth_headers) -> None:
+        project = ProjectFactory(status=ProjectStatus.PENDING)
+        PublishedArticleFactory(project=project, title="Pub")
+
+        response = client.get(f"/api/projects/{project.id}/articles", **auth_headers)
+
+        assert_that(response.status_code, equal_to(404))
+
 
 @pytest.mark.django_db
 class TestGetArticleById:
@@ -163,7 +180,7 @@ class TestGetArticleById:
         assert_that(response.status_code, equal_to(401))
 
     def test_published_visible_to_any_authed_user(self, client, auth_headers) -> None:
-        project = ProjectFactory()
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
         article = PublishedArticleFactory(project=project)
         response = client.get(
             f"/api/projects/{project.id}/articles/{article.id}",
@@ -175,13 +192,24 @@ class TestGetArticleById:
     def test_draft_returns_403_for_non_author_non_full_edit(
         self, client, auth_headers
     ) -> None:
-        project = ProjectFactory()  # creator is a different user
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
         draft = ArticleFactory(project=project)
         response = client.get(
             f"/api/projects/{project.id}/articles/{draft.id}",
             **auth_headers,
         )
         assert_that(response.status_code, equal_to(403))
+
+    def test_pending_project_404s_for_authed_non_editor(
+        self, client, auth_headers
+    ) -> None:
+        project = ProjectFactory(status=ProjectStatus.PENDING)
+        article = PublishedArticleFactory(project=project)
+        response = client.get(
+            f"/api/projects/{project.id}/articles/{article.id}",
+            **auth_headers,
+        )
+        assert_that(response.status_code, equal_to(404))
 
     def test_draft_visible_to_author(self, client, user, auth_headers) -> None:
         project = ProjectFactory(owner=user)
@@ -206,7 +234,7 @@ class TestGetArticleById:
         assert_that(response.status_code, equal_to(404))
 
     def test_unknown_article_returns_404(self, client, auth_headers) -> None:
-        project = ProjectFactory()
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
         fake = "00000000-0000-0000-0000-000000000000"
         response = client.get(
             f"/api/projects/{project.id}/articles/{fake}", **auth_headers
@@ -217,7 +245,7 @@ class TestGetArticleById:
 @pytest.mark.django_db
 class TestGetArticleBySlug:
     def test_published_visible_to_anonymous(self, client) -> None:
-        project = ProjectFactory(slug="my-proj")
+        project = ProjectFactory(slug="my-proj", status=ProjectStatus.APPROVED)
         article = PublishedArticleFactory(project=project, title="X")
         article.slug = "x"
         article.save(update_fields=["slug"])
@@ -228,7 +256,7 @@ class TestGetArticleBySlug:
         assert_that(response.json(), has_entries(id=str(article.id)))
 
     def test_draft_404s_for_anonymous(self, client) -> None:
-        project = ProjectFactory(slug="my-proj")
+        project = ProjectFactory(slug="my-proj", status=ProjectStatus.APPROVED)
         draft = ArticleFactory(project=project)
         draft.slug = "draft-slug"
         draft.save(update_fields=["slug"])
@@ -249,8 +277,18 @@ class TestGetArticleBySlug:
         assert_that(response.status_code, equal_to(200))
 
     def test_unknown_slug_returns_404(self, client) -> None:
-        ProjectFactory(slug="my-proj")
+        ProjectFactory(slug="my-proj", status=ProjectStatus.APPROVED)
         response = client.get("/api/projects/my-proj/articles/by-slug/missing")
+        assert_that(response.status_code, equal_to(404))
+
+    def test_pending_project_404s_for_anonymous(self, client) -> None:
+        project = ProjectFactory(slug="my-proj", status=ProjectStatus.PENDING)
+        article = PublishedArticleFactory(project=project, title="X")
+        article.slug = "x"
+        article.save(update_fields=["slug"])
+
+        response = client.get("/api/projects/my-proj/articles/by-slug/x")
+
         assert_that(response.status_code, equal_to(404))
 
 

@@ -5,6 +5,7 @@ from hamcrest import assert_that, equal_to, has_entries, has_length
 
 from apps.articles.models import Article
 from apps.follows.models import Channel
+from apps.projects.models import ProjectStatus
 from tests.factories import (
     ArticleFactory,
     ChannelFactory,
@@ -33,9 +34,8 @@ def _patch(client, url, payload, headers=None):
 @pytest.mark.django_db
 class TestListChannels:
     def test_anonymous_can_list(self, client) -> None:
-        project = ProjectFactory()
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
         ChannelFactory(project=project, name="News")
-        # Project creation auto-seeds an "Updates" channel.
 
         response = client.get(f"/api/projects/{project.id}/channels")
 
@@ -46,6 +46,32 @@ class TestListChannels:
     def test_unknown_project_returns_404(self, client) -> None:
         response = client.get("/api/projects/does-not-exist/channels")
         assert_that(response.status_code, equal_to(404))
+
+    def test_pending_project_404s_for_anonymous(self, client) -> None:
+        project = ProjectFactory(status=ProjectStatus.PENDING)
+        ChannelFactory(project=project, name="News")
+
+        response = client.get(f"/api/projects/{project.id}/channels")
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_pending_project_404s_for_non_editor(self, client, auth_headers) -> None:
+        project = ProjectFactory(status=ProjectStatus.PENDING)
+        ChannelFactory(project=project, name="News")
+
+        response = client.get(f"/api/projects/{project.id}/channels", **auth_headers)
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_editor_can_list_on_pending_project(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        ChannelFactory(project=project, name="News")
+
+        response = client.get(f"/api/projects/{project.id}/channels", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
 
 
 @pytest.mark.django_db

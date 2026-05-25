@@ -4,7 +4,12 @@ from django.http import HttpRequest
 from ninja import Router
 
 from api.auth.security import auth
-from api.schemas.article import (
+from api.routers._helpers import (
+    get_optional_user,
+    require_full_edit,
+    resolve_visible_project_or_404,
+)
+from api.schemas.channel import (
     ChannelConflictResponse,
     ChannelCreate,
     ChannelReassign,
@@ -14,7 +19,6 @@ from api.schemas.article import (
 )
 from api.schemas.errors import Error
 from apps.follows.models import Channel
-from apps.projects.models import Project
 from services import HANDLERS, REPO
 from services.articles.exceptions import (
     ChannelHasArticlesError,
@@ -23,29 +27,8 @@ from services.articles.exceptions import (
     DuplicateChannelNameError,
     LastChannelError,
 )
-from services.project.exceptions import ProjectNotFoundError
 
 router = Router()
-
-
-def _resolve_project_or_404(
-    slug: str,
-) -> Project | tuple[int, dict[str, str]]:
-    try:
-        return REPO.project.get_by_identifier(slug)
-    except ProjectNotFoundError:
-        return 404, {"detail": "Project not found"}
-
-
-def _require_full_edit(
-    slug: str, user_id: UUID
-) -> Project | tuple[int, dict[str, str]]:
-    resolved = _resolve_project_or_404(slug)
-    if isinstance(resolved, tuple):
-        return resolved
-    if not REPO.project.user_can_edit(resolved.id, user_id):
-        return 403, {"detail": "You don't have edit access to this project"}
-    return resolved
 
 
 @router.get(
@@ -57,7 +40,8 @@ def list_channels(
     request: HttpRequest,
     slug: str,
 ) -> list[Channel] | tuple[int, dict[str, str]]:
-    project = _resolve_project_or_404(slug)
+    user = get_optional_user(request)
+    project = resolve_visible_project_or_404(slug, user)
     if isinstance(project, tuple):
         return project
     return list(REPO.articles.list_channels_for_project(project.id))
@@ -80,7 +64,7 @@ def create_channel(
     slug: str,
     payload: ChannelCreate,
 ) -> tuple[int, Channel] | tuple[int, dict[str, str]]:
-    project = _require_full_edit(slug, request.auth.id)
+    project = require_full_edit(slug, request.auth.id)
     if isinstance(project, tuple):
         return project
     try:
@@ -108,18 +92,10 @@ def rename_channel(
     channel_id: UUID,
     payload: ChannelRename,
 ) -> Channel | tuple[int, dict[str, str]]:
-    project = _require_full_edit(slug, request.auth.id)
+    project = require_full_edit(slug, request.auth.id)
     if isinstance(project, tuple):
         return project
-    existing = next(
-        (
-            c
-            for c in REPO.articles.list_channels_for_project(project.id)
-            if c.id == channel_id
-        ),
-        None,
-    )
-    if existing is None:
+    if REPO.articles.get_channel_in_project(project.id, channel_id) is None:
         return 404, {"detail": "Channel not found"}
     try:
         return HANDLERS.articles.rename_channel(channel_id, payload.name)
@@ -146,18 +122,10 @@ def delete_channel(
     slug: str,
     channel_id: UUID,
 ) -> tuple[int, None] | tuple[int, dict[str, object]]:
-    project = _require_full_edit(slug, request.auth.id)
+    project = require_full_edit(slug, request.auth.id)
     if isinstance(project, tuple):
         return project
-    existing = next(
-        (
-            c
-            for c in REPO.articles.list_channels_for_project(project.id)
-            if c.id == channel_id
-        ),
-        None,
-    )
-    if existing is None:
+    if REPO.articles.get_channel_in_project(project.id, channel_id) is None:
         return 404, {"detail": "Channel not found"}
     try:
         HANDLERS.articles.delete_channel(channel_id)
@@ -194,15 +162,15 @@ def reassign_channel(
     channel_id: UUID,
     payload: ChannelReassign,
 ) -> ChannelReassignResponse | tuple[int, dict[str, str]]:
-    project = _require_full_edit(slug, request.auth.id)
+    project = require_full_edit(slug, request.auth.id)
     if isinstance(project, tuple):
         return project
-    channels_on_project = {
-        c.id: c for c in REPO.articles.list_channels_for_project(project.id)
-    }
-    if channel_id not in channels_on_project:
+    if REPO.articles.get_channel_in_project(project.id, channel_id) is None:
         return 404, {"detail": "Channel not found"}
-    if payload.target_channel_id not in channels_on_project:
+    if (
+        REPO.articles.get_channel_in_project(project.id, payload.target_channel_id)
+        is None
+    ):
         return 422, {"detail": "Target channel must belong to the same project"}
     try:
         reassigned = HANDLERS.articles.bulk_reassign_articles(

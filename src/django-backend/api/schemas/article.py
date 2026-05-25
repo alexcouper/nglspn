@@ -82,32 +82,6 @@ class ArticleOut(Schema):
         return obj.is_globally_visible
 
 
-class ChannelCreate(Schema):
-    name: str
-
-
-class ChannelRename(Schema):
-    name: str
-
-
-class ChannelReassign(Schema):
-    target_channel_id: UUID
-
-
-class ChannelResponse(Schema):
-    id: UUID
-    name: str
-
-
-class ChannelReassignResponse(Schema):
-    reassigned: int
-
-
-class ChannelConflictResponse(Schema):
-    detail: str
-    article_count: int | None = None
-
-
 class ArticleListItem(Schema):
     id: UUID
     title: str

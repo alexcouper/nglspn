@@ -33,3 +33,8 @@ class ArticleQueryInterface(ABC):
 
     @abstractmethod
     def list_channels_for_project(self, project_id: UUID) -> QuerySet[Channel]: ...
+
+    @abstractmethod
+    def get_channel_in_project(
+        self, project_id: UUID, channel_id: UUID
+    ) -> Channel | None: ...

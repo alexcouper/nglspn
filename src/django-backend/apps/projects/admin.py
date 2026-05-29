@@ -141,6 +141,7 @@ class ProjectAdmin(admin.ModelAdmin):
         "creator_link",
         "creator_promo_opt_in",
         "is_community_tipoff",
+        "is_house_project",
         "status",
         "is_featured",
         "category",
@@ -151,6 +152,7 @@ class ProjectAdmin(admin.ModelAdmin):
     list_filter = (
         "status",
         "is_community_tipoff",
+        "is_house_project",
         "is_featured",
         "category",
         "creator__opt_in_to_external_promotions",
@@ -257,7 +259,35 @@ class ProjectAdmin(admin.ModelAdmin):
         "reject_projects",
         "feature_projects",
         "unfeature_projects",
+        "make_house_project",
     ]
+
+    @admin.action(description="Make house project (seed channels + backfill followers)")
+    def make_house_project(
+        self, request: HttpRequest, queryset: QuerySet[Project]
+    ) -> None:
+        if queryset.count() != 1:
+            self.message_user(
+                request,
+                "Select exactly one project to make the house project.",
+                level=messages.ERROR,
+            )
+            return
+
+        from apps.follows.services import anoint_house_project  # noqa: PLC0415
+
+        project = queryset.first()
+        result = anoint_house_project(project)
+        self.message_user(
+            request,
+            (
+                f"'{project.title}' is now the house project. "
+                f"Channels ensured: {result['channels']}; "
+                f"new follows backfilled: {result['follows_created']} "
+                f"(of {result['eligible_users']} eligible users)."
+            ),
+            level=messages.SUCCESS,
+        )
 
     @admin.action(description="Approve selected projects")
     def approve_projects(

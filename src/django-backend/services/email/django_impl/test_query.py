@@ -1,7 +1,7 @@
 import pytest
 
 from services.email.django_impl import DjangoEmailQuery, render_email
-from tests.factories import BroadcastEmailFactory, UserFactory
+from tests.factories import BroadcastEmailFactory, UserFactory, make_broadcast_follower
 
 query = DjangoEmailQuery()
 
@@ -61,29 +61,25 @@ class TestRenderBroadcastEmail:
 
 @pytest.mark.django_db
 class TestResolveBroadcastRecipients:
-    def test_platform_updates_returns_opted_in_users(self):
-        opted_in = UserFactory(email_opt_in_platform_updates=True)
-        UserFactory(email_opt_in_platform_updates=False)
+    def test_platform_updates_returns_email_enabled_followers(self):
+        enabled = make_broadcast_follower("platform_updates", email_enabled=True)
+        disabled = make_broadcast_follower("platform_updates", email_enabled=False)
 
-        broadcast = BroadcastEmailFactory(
-            email_type="platform_updates",
-            created_by=UserFactory(email_opt_in_platform_updates=False),
-        )
-        recipients = query.resolve_broadcast_recipients(broadcast)
+        broadcast = BroadcastEmailFactory(email_type="platform_updates")
+        recipients = set(query.resolve_broadcast_recipients(broadcast))
 
-        assert list(recipients) == [opted_in]
+        assert enabled in recipients
+        assert disabled not in recipients
 
-    def test_competition_results_returns_opted_in_users(self):
-        opted_in = UserFactory(email_opt_in_competition_results=True)
-        UserFactory(email_opt_in_competition_results=False)
+    def test_competition_results_returns_email_enabled_followers(self):
+        enabled = make_broadcast_follower("competition_results", email_enabled=True)
+        disabled = make_broadcast_follower("competition_results", email_enabled=False)
 
-        broadcast = BroadcastEmailFactory(
-            email_type="competition_results",
-            created_by=UserFactory(email_opt_in_competition_results=False),
-        )
-        recipients = query.resolve_broadcast_recipients(broadcast)
+        broadcast = BroadcastEmailFactory(email_type="competition_results")
+        recipients = set(query.resolve_broadcast_recipients(broadcast))
 
-        assert list(recipients) == [opted_in]
+        assert enabled in recipients
+        assert disabled not in recipients
 
     def test_no_type_returns_individual_recipients(self):
         user1 = UserFactory()
@@ -99,32 +95,20 @@ class TestResolveBroadcastRecipients:
         assert set(recipients) == {user1, user2}
 
     def test_inactive_users_excluded_from_platform_updates(self):
-        UserFactory(
-            email_opt_in_platform_updates=True,
-            is_active=False,
-        )
+        inactive = make_broadcast_follower("platform_updates", is_active=False)
 
-        broadcast = BroadcastEmailFactory(
-            email_type="platform_updates",
-            created_by=UserFactory(email_opt_in_platform_updates=False),
-        )
-        recipients = query.resolve_broadcast_recipients(broadcast)
+        broadcast = BroadcastEmailFactory(email_type="platform_updates")
+        recipients = set(query.resolve_broadcast_recipients(broadcast))
 
-        assert recipients.count() == 0
+        assert inactive not in recipients
 
     def test_inactive_users_excluded_from_competition_results(self):
-        UserFactory(
-            email_opt_in_competition_results=True,
-            is_active=False,
-        )
+        inactive = make_broadcast_follower("competition_results", is_active=False)
 
-        broadcast = BroadcastEmailFactory(
-            email_type="competition_results",
-            created_by=UserFactory(email_opt_in_competition_results=False),
-        )
-        recipients = query.resolve_broadcast_recipients(broadcast)
+        broadcast = BroadcastEmailFactory(email_type="competition_results")
+        recipients = set(query.resolve_broadcast_recipients(broadcast))
 
-        assert recipients.count() == 0
+        assert inactive not in recipients
 
     def test_inactive_users_excluded_from_individual_recipients(self):
         inactive = UserFactory(is_active=False)
@@ -150,16 +134,16 @@ class TestResolveBroadcastRecipients:
         assert set(recipients) == {real_user}
 
     def test_system_users_excluded_from_platform_updates(self):
-        UserFactory(is_system_user=True, email_opt_in_platform_updates=True)
-        real_user = UserFactory(email_opt_in_platform_updates=True)
-
-        broadcast = BroadcastEmailFactory(
-            email_type="platform_updates",
-            created_by=UserFactory(email_opt_in_platform_updates=False),
+        system_follower = make_broadcast_follower(
+            "platform_updates", is_system_user=True
         )
-        recipients = query.resolve_broadcast_recipients(broadcast)
+        real_user = make_broadcast_follower("platform_updates")
 
-        assert set(recipients) == {real_user}
+        broadcast = BroadcastEmailFactory(email_type="platform_updates")
+        recipients = set(query.resolve_broadcast_recipients(broadcast))
+
+        assert real_user in recipients
+        assert system_follower not in recipients
 
 
 class TestRenderProjectApprovedEmail:

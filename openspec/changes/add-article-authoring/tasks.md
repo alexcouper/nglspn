@@ -57,11 +57,11 @@
 
 ## 8. Backend — Send path flip in async-broadcast-send
 
-- [ ] 8.1 Rewrite `services/email/django_impl/query.py::resolve_broadcast_recipients` to join Follow + FollowChannelPreference on the house project's "Competition Winners" or "Product Updates" channel (based on broadcast `email_type`).
-- [ ] 8.2 Keep the existing `is_active` and `is_system_user` exclusions; keep `created_by` self-exclusion.
-- [ ] 8.3 Return an empty QuerySet when no house project exists.
-- [ ] 8.4 Update the existing tests under `services/email/django_impl/test_query.py` and `tests/test_broadcast_emails.py` to construct Follow + ChannelPreference rather than setting legacy flags.
-- [ ] 8.5 Add a pre-flip / post-flip parity management command + test: enumerate the recipient set the legacy path would have selected (computed from the snapshot of `email_opt_in_*` values mirrored into preferences by Phase 1) vs. the post-flip path, asserting equality on a representative fixture.
+- [x] 8.1 Rewrite `services/email/django_impl/query.py::resolve_broadcast_recipients` to join Follow + FollowChannelPreference on the house project's "Competition Winners" or "Product Updates" channel (based on broadcast `email_type`). _Implemented in the delegate `DjangoUserQuery.list_opted_in_for_broadcast_type` (the call site `resolve_broadcast_recipients` already routes through it); added `BROADCAST_CHANNEL_BY_EMAIL_TYPE` mapping._
+- [x] 8.2 Keep the existing `is_active` and `is_system_user` exclusions; keep `created_by` self-exclusion. _`is_active`/`is_system_user` exclusions preserved in the new join. (The resolver never self-excluded `created_by` — that has always been an artefact of the send path, untouched here.)_
+- [x] 8.3 Return an empty QuerySet when no house project exists.
+- [x] 8.4 Update the existing tests under `services/email/django_impl/test_query.py` and `tests/test_broadcast_emails.py` to construct Follow + ChannelPreference rather than setting legacy flags. _Also covered the other recipient-dependent suites that used legacy flags: `services/users/django_impl/test_query.py`, `services/email/django_impl/test_handler.py`, `tests/test_inactive_user_emails.py`. Added `make_broadcast_follower` / `ensure_house_project` helpers in `tests/factories.py` (signal-aware: the house auto-follow means non-recipients are email-disabled followers, not non-followers)._
+- [x] 8.5 Add a pre-flip / post-flip parity management command + test: enumerate the recipient set the legacy path would have selected (computed from the snapshot of `email_opt_in_*` values mirrored into preferences by Phase 1) vs. the post-flip path, asserting equality on a representative fixture. _`apps/emails/broadcast_parity.py` + `manage.py check_broadcast_parity` (nonzero exit on diff); tests in `tests/test_broadcast_parity.py`._
 
 ## 9. Backend — Remove legacy fields and mirror
 

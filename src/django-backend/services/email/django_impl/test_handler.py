@@ -12,6 +12,7 @@ from tests.factories import (
     NotificationFactory,
     ProjectFactory,
     UserFactory,
+    make_broadcast_follower,
 )
 
 handler = DjangoEmailHandler()
@@ -204,12 +205,8 @@ class TestSendNewProjectNotification:
 @pytest.mark.django_db
 class TestSendBroadcast:
     def _make_broadcast_with_recipients(self, count=2, **kwargs):
-        admin = UserFactory(
-            is_staff=True,
-            is_superuser=True,
-            email_opt_in_platform_updates=False,
-        )
-        users = [UserFactory(email_opt_in_platform_updates=True) for _ in range(count)]
+        admin = UserFactory(is_staff=True, is_superuser=True)
+        users = [make_broadcast_follower("platform_updates") for _ in range(count)]
         broadcast = BroadcastEmailFactory(
             email_type="platform_updates",
             created_by=admin,

@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.articles.models import Article, ArticleSource, ArticleState
 from apps.discussions.models import Discussion
 from apps.emails.models import BroadcastEmail, BroadcastEmailImage
-from apps.follows.models import Channel
+from apps.follows.models import Channel, Follow, FollowChannelPreference
 from apps.notifications.models import Notification, NotificationCadence
 from apps.projects.models import (
     Competition,
@@ -22,6 +22,7 @@ from apps.projects.models import (
 )
 from apps.tags.models import Tag, TagCategory, TagStatus
 from apps.users.models import EmailVerificationCode, PasswordResetCode
+from services.users.django_impl.query import BROADCAST_CHANNEL_BY_EMAIL_TYPE
 
 User = get_user_model()
 
@@ -138,6 +139,49 @@ class ChannelFactory(factory.django.DjangoModelFactory):
 
     project = factory.SubFactory(ProjectFactory)
     name = factory.Sequence(lambda n: f"Channel {n}")
+
+
+def ensure_house_project() -> Project:
+    """Return the singleton house project, creating it if absent.
+
+    The DB enforces a single is_house_project row, so tests that need several
+    house followers share one project. The creator is made *before* the house
+    exists (so the auto-follow signal does not subscribe them) and has the
+    legacy opt-in flags cleared, keeping them out of broadcast recipient sets.
+    """
+    house = Project.objects.filter(is_house_project=True).first()
+    if house is not None:
+        return house
+    creator = UserFactory(
+        email_opt_in_platform_updates=False,
+        email_opt_in_competition_results=False,
+    )
+    return ProjectFactory(is_house_project=True, owner=creator)
+
+
+def make_broadcast_follower(
+    email_type: str, *, email_enabled: bool = True, **user_kwargs
+):
+    """Create a user following the house project with the given email
+    preference on the channel that governs `email_type` broadcasts.
+
+    Active non-system users auto-follow the house on creation (post_save
+    signal). This sets the follow + channel preference explicitly so the helper
+    also covers inactive/system users, and so `email_enabled=False` overrides
+    the signal's all-on default.
+    """
+    house = ensure_house_project()
+    channel, _ = Channel.objects.get_or_create(
+        project=house, name=BROADCAST_CHANNEL_BY_EMAIL_TYPE[email_type]
+    )
+    user = UserFactory(**user_kwargs)
+    follow, _ = Follow.objects.get_or_create(user=user, project=house)
+    FollowChannelPreference.objects.update_or_create(
+        follow=follow,
+        channel=channel,
+        defaults={"email_enabled": email_enabled, "in_app_enabled": True},
+    )
+    return user
 
 
 class DiscussionFactory(factory.django.DjangoModelFactory):

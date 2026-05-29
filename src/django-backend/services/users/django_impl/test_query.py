@@ -4,7 +4,7 @@ import pytest
 
 from services.users.django_impl import DjangoUserQuery
 from services.users.exceptions import UserNotFoundError
-from tests.factories import UserFactory
+from tests.factories import UserFactory, make_broadcast_follower
 
 query = DjangoUserQuery()
 
@@ -71,31 +71,45 @@ class TestKennitalaExists:
 
 @pytest.mark.django_db
 class TestListOptedInForBroadcastType:
-    def test_returns_opted_in_platform_updates_users(self):
-        opted_in = UserFactory(email_opt_in_platform_updates=True)
-        UserFactory(email_opt_in_platform_updates=False)
+    def test_returns_followers_with_email_enabled_platform_updates(self):
+        follower = make_broadcast_follower("platform_updates", email_enabled=True)
+        make_broadcast_follower("platform_updates", email_enabled=False)
 
         result = query.list_opted_in_for_broadcast_type("platform_updates")
 
-        assert list(result) == [opted_in]
+        assert list(result) == [follower]
 
-    def test_returns_opted_in_competition_results_users(self):
-        opted_in = UserFactory(email_opt_in_competition_results=True)
-        UserFactory(email_opt_in_competition_results=False)
+    def test_returns_followers_with_email_enabled_competition_results(self):
+        follower = make_broadcast_follower("competition_results", email_enabled=True)
+        make_broadcast_follower("competition_results", email_enabled=False)
 
         result = query.list_opted_in_for_broadcast_type("competition_results")
 
-        assert list(result) == [opted_in]
+        assert list(result) == [follower]
 
     def test_returns_empty_for_unknown_type(self):
-        UserFactory()
+        make_broadcast_follower("platform_updates")
 
         result = query.list_opted_in_for_broadcast_type("unknown_type")
 
         assert result.count() == 0
 
+    def test_returns_empty_when_no_house_project(self):
+        UserFactory()
+
+        result = query.list_opted_in_for_broadcast_type("platform_updates")
+
+        assert result.count() == 0
+
     def test_excludes_inactive_users(self):
-        UserFactory(email_opt_in_platform_updates=True, is_active=False)
+        make_broadcast_follower("platform_updates", is_active=False)
+
+        result = query.list_opted_in_for_broadcast_type("platform_updates")
+
+        assert result.count() == 0
+
+    def test_excludes_system_users(self):
+        make_broadcast_follower("platform_updates", is_system_user=True)
 
         result = query.list_opted_in_for_broadcast_type("platform_updates")
 

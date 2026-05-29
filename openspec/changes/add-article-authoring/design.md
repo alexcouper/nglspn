@@ -169,6 +169,8 @@ The existing `async-broadcast-send` pipeline currently resolves recipients by qu
 
 This change ships **in the same migration / release** as dropping the legacy `email_opt_in_*` fields. There is no read-the-legacy-field code path remaining after this change.
 
+**Future (deferred, not in this change):** broadcasts from the house project have always been *immediate* (admin hits send, it goes now), whereas article notifications should ride the user's global cadence. To model this without a hardcoded carve-out, add a channel-level cadence policy field — e.g. `Channel.send_policy ∈ {immediate, global_cadence}` — that is **settable only on the house/meta project's channels**; every non-house channel is forced to `global_cadence`. The "Competition Winners" / "Product Updates" channels would be `immediate`; everything else respects the user's `notification_frequency`. This is the generalised form of the "broadcasts stay instant, articles respect cadence" decision and lands when the mixed-digest work (5.4/5.5) is picked up.
+
 ### 7. Drop legacy fields and remove mirror
 
 Migration sequence inside this change:

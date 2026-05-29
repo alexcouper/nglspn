@@ -23,6 +23,7 @@ from .factories import (
     BroadcastEmailImageFactory,
     ProjectFactory,
     UserFactory,
+    make_broadcast_follower,
 )
 
 
@@ -119,10 +120,10 @@ class TestBroadcastEmailAdminViews:
         assert b"Hello **preview**!" in response.content
 
     def test_send_view_shows_confirmation(self, admin_client):
-        UserFactory(email_opt_in_platform_updates=True)
+        make_broadcast_follower("platform_updates")
         broadcast = BroadcastEmailFactory(
             email_type="platform_updates",
-            created_by=UserFactory(email_opt_in_platform_updates=False),
+            created_by=UserFactory(),
         )
 
         url = reverse(
@@ -135,10 +136,10 @@ class TestBroadcastEmailAdminViews:
         assert b"Confirm" in response.content
 
     def test_send_view_post_enqueues_and_redirects(self, admin_client):
-        UserFactory(email_opt_in_platform_updates=True)
+        make_broadcast_follower("platform_updates")
         broadcast = BroadcastEmailFactory(
             email_type="platform_updates",
-            created_by=UserFactory(email_opt_in_platform_updates=False),
+            created_by=UserFactory(),
         )
 
         url = reverse(
@@ -288,10 +289,10 @@ class TestSendBroadcastEmailTask:
 
     def test_send_view_enqueues_task_and_sets_queued(self, admin_client):
         """5.1 - Send view enqueues task and sets status to queued_for_sending."""
-        UserFactory(email_opt_in_platform_updates=True)
+        make_broadcast_follower("platform_updates")
         broadcast = BroadcastEmailFactory(
             email_type="platform_updates",
-            created_by=UserFactory(email_opt_in_platform_updates=False),
+            created_by=UserFactory(),
         )
 
         url = reverse("admin:emails_broadcastemail_send", args=[broadcast.pk])
@@ -332,7 +333,7 @@ class TestSendBroadcastEmailTask:
         """5.3 - Task transitions queued_for_sending -> sending -> sent."""
 
         broadcast, user = self._create_queued_broadcast()
-        UserFactory(email_opt_in_platform_updates=True)
+        make_broadcast_follower("platform_updates")
 
         send_broadcast_email.call(str(broadcast.pk), str(user.pk))
 

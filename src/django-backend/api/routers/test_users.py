@@ -78,9 +78,8 @@ class TestPublicProfile:
 
         data = response.json()
         assert_that(data, not_(has_key("email")))
-        assert_that(data, not_(has_key("email_opt_in_competition_results")))
-        assert_that(data, not_(has_key("email_opt_in_platform_updates")))
         assert_that(data, not_(has_key("opt_in_to_external_promotions")))
+        assert_that(data, not_(has_key("article_trust")))
 
     def test_get_public_profile_nonexistent_user_returns_404(self, client, db) -> None:
         fake_id = uuid.uuid4()

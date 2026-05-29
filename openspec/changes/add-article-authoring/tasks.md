@@ -76,18 +76,19 @@
 
 - [x] 10.1 From `src/django-backend/`: `make extract-openapi`.
 - [x] 10.2 Verify the spec includes the new article + channel + article-id-on-mark-thread-read endpoints.
-- [ ] 10.3 Add `apps/articles/tests/` covering: model save guards, slug generation + collision suffix, publish state transitions, edit-after-publish, delete, backdated-publish notification suppression, approval flow combinations (trust True / False / admin-demoted).
-- [ ] 10.4 Add `apps/notifications/tests/` covering: nullable FK constraint, partial unique constraints, mixed digest rendering, `mark_article_read_for_user`.
+- [x] 10.3 Add `apps/articles/tests/` covering: model save guards, slug generation + collision suffix, publish state transitions, edit-after-publish, delete, backdated-publish notification suppression, approval flow combinations (trust True / False / admin-demoted). _Model layer: `apps/articles/tests/test_models.py` (source/external_url XOR guard, `(project, slug)` partial unique, `is_globally_visible` truth table) + `apps/articles/tests/test_slugs.py` (slug generation, collision suffix walk, per-project scoping). Publish state transitions / edit-after-publish / delete / backdated suppression / approval combos are covered by `services/articles/django_impl/test_handler.py`._
+- [x] 10.4 Add `apps/notifications/tests/` covering: nullable FK constraint, partial unique constraints, mixed digest rendering, `mark_article_read_for_user`. _Model layer: `apps/notifications/tests/test_models.py` (XOR save guard, both partial unique constraints, cross-recipient/cross-kind independence). `mark_article_read_for_user` covered in `services/notifications/django_impl/test_article_fanout.py:TestMarkArticleReadForUser`. Mixed digest rendering remains **deferred** per 5.4 / 5.5._
 - [x] 10.5 Add API tests under `api/routers/test_articles.py` and `api/routers/test_channels.py` covering: 401 / 403 / 404 / 409 / 422 paths and the success paths. Also extended `test_notifications.py` with article-kind groups + article-id `mark-thread-read` cases.
-- [ ] 10.6 Update `api/routers/test_users.py` to remove assertions on the dropped fields and add assertions for `article_trust` if surfaced via UserOut (decide based on whether admins / users see it).
-- [ ] 10.7 Run `make lint` + `make test` until green from `src/django-backend/`.
+- [x] 10.6 Update `api/routers/test_users.py` to remove assertions on the dropped fields and add assertions for `article_trust` if surfaced via UserOut (decide based on whether admins / users see it). _`article_trust` is **not** surfaced on `UserResponse` (admin-only field), so no positive UserOut assertions added. Removed the stale `email_opt_in_*` no-leak assertions on the public profile (fields gone from the model) and added a matching no-leak assertion for `article_trust`._
+- [x] 10.7 Run `make lint` + `make test` until green from `src/django-backend/`. _870 passed; ruff clean._
 
 ## 11. Frontend — Authoring page
 
 - [ ] 11.1 From `src/web-ui/`: `npm run generate-types` (consumes the regenerated OpenAPI).
 - [ ] 11.2 Add Next.js route `app/projects/[projectSlug]/articles/new/page.tsx` (and `[articleId]/edit/page.tsx`) gated to `full_edit` contributors.
-- [ ] 11.3 Build `<ArticleEditor>` component: markdown body field, side-by-side preview (md+), tabbed preview below md; reuse the existing markdown renderer used for `long_description`.
-- [ ] 11.4 Implement drag-to-insert image upload on the editor (call existing project-image upload endpoint, insert `![](url)` at cursor).
+- [ ] 11.3 Build `<ArticleEditor>` component on MDXEditor (WYSIWYG, markdown-backed — body stored as markdown). Configure the plugin/toolbar set to exactly the agreed GFM subset (tables, strikethrough, task lists, autolinks, images); disable constructs the read page / email renderers don't support. The read page (§10) renders via the existing `react-markdown` renderer, NOT MDXEditor — see design §9 for why there is no shared renderer.
+- [ ] 11.3a Verify markdown-flavor parity: each allowed construct (tables first) renders identically across MDXEditor, the `react-markdown`+`remark-gfm` read page, and the Python `markdown` email path. See the parity risk in design.md.
+- [ ] 11.4 Implement drag-to-insert / paste image upload via MDXEditor's image plugin upload handler (call existing project-image upload endpoint; editor inserts markdown image syntax).
 - [ ] 11.5 Implement separate hero-image uploader (single image, above the body).
 - [ ] 11.6 Implement channel dropdown sourced from `GET /api/projects/{slug}/channels`.
 - [ ] 11.7 Implement "Save draft" and "Publish" actions; "Publish" opens a confirm dialog with an optional `published_at` override (datetime picker, defaults to now).

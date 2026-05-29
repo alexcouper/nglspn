@@ -191,14 +191,31 @@ A new "Channels" section in project settings (`/projects/<slug>/settings/channel
 - **Rename**: in-place; preferences (FK'd to Channel row, not name) follow the rename transparently.
 - **Delete**: rejected by the API if the channel has articles, with a 409 response listing the article count. UI surfaces a "Reassign articles" prompt. v1 keeps the reassignment simple: bulk-set all articles in the channel to a chosen target channel, then delete. (Phase 2's "Updates" channel cannot be deleted if it is the only channel — guard at the API level.)
 
-### 9. Authoring page UX
+### 9. Authoring page UX — WYSIWYG editor, markdown stays the stored contract
+
+The authoring surface is a **WYSIWYG markdown editor** ([MDXEditor](https://mdxeditor.dev/)), chosen for a Medium-like writing feel. The body is stored as **markdown** (`articles.body`, unchanged) — the editor is markdown-backed, so the stored representation does not change. The editor is the means, not the format.
 
 - Route: `/projects/<slug>/articles/new` (Next.js page); `/projects/<slug>/articles/<id>/edit` for an existing draft.
-- Markdown editor with side-by-side preview on ≥ md viewport, tabbed (Edit / Preview) on smaller.
-- Drag-to-insert: dropping an image on the editor uploads it via the existing project-image upload endpoint and inserts a `![](url)` at the cursor.
+- WYSIWYG editing surface (MDXEditor, Lexical-based). The editor *is* the preview — no separate side-by-side/tabbed preview pane. Contributor-gated, so the editor's bundle weight sits only on the authoring route, never on public pages.
+- Drag-to-insert: dropping/pasting an image uploads it via the existing project-image upload endpoint; MDXEditor's image plugin inserts it as markdown image syntax. (Stored body remains `![](url)`-equivalent markdown.)
 - Hero image: a separate uploader above the body (not part of the markdown body).
 - Channel: dropdown of this project's channels.
 - Two primary actions: "Save draft" (any state, no requirements), "Publish" (requires title, body, hero image; opens a confirm dialog with optional `published_at` override).
+
+**Markdown is the renderer-agnostic contract; there is no single shared renderer.** Three surfaces render the same stored markdown with three different engines, and that is by design:
+
+| Surface | Engine | Why not shared |
+|---|---|---|
+| Authoring (this section) | MDXEditor (Lexical, browser) | WYSIWYG feel; contributor-only |
+| Public read page (§10) | `react-markdown` + `remark-gfm` (SSR-able) | Light bundle, server-rendered, SEO; reuses the `long_description` renderer |
+| Email | `markdown.markdown()` → MJML (Python) | Runs server-side in Django; cannot be a React component |
+
+Consistency comes from the shared markdown source plus a **pinned flavor (GFM)**, not from a shared renderer. This requires MDXEditor's output and `react-markdown`'s parsing to agree on the GFM constructs we allow (tables, strikethrough, task lists, autolinks) — see the parity risk below.
+
+**Alternatives considered:**
+- **Source-markdown editor (raw markdown textarea + react-markdown preview pane**, e.g. `@uiw/react-md-editor` with `preview="edit"`). This guarantees author-preview == public-read render exactly (same engine on both), and keeps the read page's renderer as the preview. Rejected because the priority is a Medium-like *writing* feel, which a raw-markdown surface does not deliver. We accept that the author's WYSIWYG view (Lexical) differs subtly from the published page (`react-markdown`); for plain prose + images + GFM tables this drift is judged tolerable.
+- **Use the editor as the renderer everywhere** (read-only MDXEditor on the public read page, to unify author and reader views). Rejected: it ships a heavy, client-only Lexical bundle to anonymous readers, forfeits SSR/RSC static rendering and SEO on the read page, and — critically — still does **not** unify the email path, which is Python-side regardless. It breaks the read page while solving nothing email-side.
+- **Toast UI Editor** — also markdown-backed WYSIWYG with a dedicated read-only Viewer. Rejected: the React wrapper (`@toast-ui/react-editor`) was last published 2023-02 against `react ^17`; betting it on a React 19 / Next 16 / RSC app means hand-wrapping the vanilla core. MDXEditor targets React 19 natively.
 
 ### 10. Article render page
 
@@ -213,6 +230,7 @@ A new "Channels" section in project settings (`/projects/<slug>/settings/channel
 
 - **Notification-storm on first publish after backfill** → mitigated by Phase 4 being a backdated-publish operation; the no-fan-out behaviour at backdate time is now load-bearing and tested.
 - **Send-path flip causes a subscriber to silently stop receiving emails** → mitigated by Phase 1's data migration having seeded preferences from the legacy flags. A regression test against a snapshot of "users who would have received the next broadcast pre-flip" vs. "post-flip" gives confidence at deploy time. (Concretely: a management command that diffs the two recipient sets, run against a prod snapshot just before the cutover.)
+- **Markdown-flavor drift between the three renderers** (MDXEditor authoring, `react-markdown`+`remark-gfm` read page, Python `markdown` email) → consistency rests on all three agreeing on the GFM subset we allow. MDXEditor parses MDX (stricter than CommonMark; raw markdown that looks like JSX can break it), `react-markdown` uses `remark-gfm`, and the Python email path uses `markdown` with `["extra", "smarty"]`. Mitigation: explicitly decide the allowed construct set (at least: tables, strikethrough, task lists, autolinks, images) and verify each construct round-trips identically across all three before relying on it. Tables are the canonical thing to check first — `extra` covers them on the Python side, `remark-gfm` on the web side, and MDXEditor's tablePlugin on authoring. Constructs outside the agreed set should be disabled in the MDXEditor toolbar so authors can't produce body markdown that one of the other two renderers won't handle.
 - **`Notification` constraint change is destructive** → adding the nullable column and the new partial unique constraint is safe; dropping the old `(recipient, discussion)` unique constraint and the NOT NULL on `discussion` must happen in one migration block to avoid an inconsistent intermediate state.
 - **Channel delete with reassignment is a heavyweight UI** → v1 keeps it minimal (bulk reassign to one target channel, then delete). If owners want finer-grained per-article moves they edit articles individually, which is supported by the existing channel-on-article dropdown in the edit page.
 - **Slug collisions across edits** → slug is generated once on first publish and not regenerated on title edit. Editing the title does not change the URL. Documented in the spec scenarios.

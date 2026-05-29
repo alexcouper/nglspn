@@ -9,6 +9,7 @@ import { ProjectPageLayout } from "@/components/ProjectPageLayout";
 import type { SelectedTag } from "@/components/TagSelector";
 import type { ProjectFormData } from "./ProjectDetail";
 import { EditableProjectBanner } from "./EditableProjectBanner";
+import { MyProjectArticles } from "./MyProjectArticles";
 import { pickVariant, getAuthorName } from "@/lib/utils";
 
 interface UploadProgressItem {
@@ -199,6 +200,13 @@ export function EditProjectContent({
             placeholder="Tell us about your project..."
           />
         </div>
+      ),
+    },
+    {
+      id: "articles",
+      label: "Articles",
+      content: (
+        <MyProjectArticles projectSlugOrId={project.slug ?? project.id} />
       ),
     },
     {

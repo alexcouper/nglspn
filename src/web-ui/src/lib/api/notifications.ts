@@ -44,6 +44,16 @@ export class NotificationsClient {
     );
   }
 
+  async markArticleThread(articleId: string): Promise<{ marked: number }> {
+    return this.client.request<{ marked: number }>(
+      "/api/notifications/mark-thread-read",
+      {
+        method: "POST",
+        body: JSON.stringify({ article_id: articleId }),
+      }
+    );
+  }
+
   async markAllRead(): Promise<{ marked: number }> {
     return this.client.request<{ marked: number }>(
       "/api/notifications/mark-all-read",

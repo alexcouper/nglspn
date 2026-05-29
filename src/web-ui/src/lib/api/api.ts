@@ -1,5 +1,7 @@
 import { APIClient } from "./base";
+import { ArticlesClient } from "./articles";
 import { AuthClient } from "./auth";
+import { ChannelsClient } from "./channels";
 import { CompetitionsClient } from "./competitions";
 import { DiscoverClient } from "./discover";
 import { DiscussionsClient } from "./discussions";
@@ -14,7 +16,9 @@ import { TagsClient } from "./tags";
 export class API {
   private client: APIClient;
 
+  readonly articles: ArticlesClient;
   readonly auth: AuthClient;
+  readonly channels: ChannelsClient;
   readonly competitions: CompetitionsClient;
   readonly discover: DiscoverClient;
   readonly discussions: DiscussionsClient;
@@ -28,7 +32,9 @@ export class API {
 
   constructor() {
     this.client = new APIClient();
+    this.articles = new ArticlesClient(this.client);
     this.auth = new AuthClient(this.client);
+    this.channels = new ChannelsClient(this.client);
     this.competitions = new CompetitionsClient(this.client);
     this.discover = new DiscoverClient(this.client);
     this.discussions = new DiscussionsClient(this.client);

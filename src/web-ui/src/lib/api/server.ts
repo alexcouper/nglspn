@@ -1,6 +1,8 @@
 import "server-only";
 
 import type {
+  Article,
+  ArticleListItem,
   CategoryItem,
   Competition,
   CompetitionHighlightsResponse,
@@ -48,6 +50,23 @@ export async function fetchProjects(params?: {
 
 export async function fetchProject(id: string): Promise<Project> {
   return serverFetch<Project>(`/api/projects/${id}`);
+}
+
+export async function fetchArticleBySlug(
+  projectSlug: string,
+  articleSlug: string,
+): Promise<Article> {
+  return serverFetch<Article>(
+    `/api/projects/${projectSlug}/articles/by-slug/${articleSlug}`,
+  );
+}
+
+export async function fetchProjectArticles(
+  projectSlug: string,
+): Promise<ArticleListItem[]> {
+  return serverFetch<ArticleListItem[]>(
+    `/api/projects/${projectSlug}/articles`,
+  );
 }
 
 export async function fetchCompetitions(): Promise<CompetitionOverviewListResponse> {

@@ -13,6 +13,7 @@ import {
 import type { Project } from "@/lib/api";
 import { TagGroup } from "@/components/TagBadge";
 import { InlineDiscussions } from "@/components/InlineDiscussions";
+import { ArticlesList } from "./ArticlesList";
 import { ProjectPageLayout } from "@/components/ProjectPageLayout";
 import { ProjectTitleBanner } from "@/components/ProjectTitleBanner";
 import { CreatorCredit } from "@/components/CreatorCredit";
@@ -216,6 +217,13 @@ export function ProjectDetailContent({ project, projectId }: Props) {
         <article className="markdown">
           <ReactMarkdown>{project.description}</ReactMarkdown>
         </article>
+      ),
+    },
+    {
+      id: "articles",
+      label: "Articles",
+      content: (
+        <ArticlesList projectSlug={project.slug ?? project.id} />
       ),
     },
     {

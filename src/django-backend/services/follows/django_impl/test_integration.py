@@ -1,10 +1,8 @@
-"""Cross-system invariant tests.
+"""Integration: follow + per-channel email preference drive the broadcast set.
 
-These assert that the Phase 2 PATCH and DELETE handlers keep the legacy email
-broadcast pipeline in agreement: the pipeline reads ``email_opt_in_*`` flags;
-the new handlers mirror writes to those flags for the house project's two
-named channels, and clear both flags when the user unfollows the house
-project.
+The async-broadcast-send pipeline resolves recipients from Follow +
+FollowChannelPreference on the house project's named channels. These tests
+exercise the follow / unfollow / patch handlers together with that resolver.
 """
 
 import pytest
@@ -23,41 +21,32 @@ def _seed_house_with_channels():
 
 
 @pytest.mark.django_db
-class TestCrossSystemMirror:
+class TestBroadcastRecipientResolution:
     def setup_method(self):
         self.handler = DjangoFollowHandler()
         self.user_query = DjangoUserQuery()
 
-    def test_patch_off_excludes_user_from_competition_results(self):
-        user = UserFactory(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
+    def test_disabling_channel_email_excludes_from_competition_results(self):
+        user = UserFactory()
         house, cw, _ = _seed_house_with_channels()
         self.handler.follow(user.id, house)
 
-        # Before: user is in the recipient set.
         recipients = self.user_query.list_opted_in_for_broadcast_type(
             "competition_results"
         )
         assert recipients.filter(pk=user.pk).exists()
 
-        # Toggle off via PATCH.
         self.handler.set_channel_preference(
             user.id, "naglasupan", cw.id, email_enabled=False
         )
 
-        # After: user is excluded.
         recipients = self.user_query.list_opted_in_for_broadcast_type(
             "competition_results"
         )
         assert not recipients.filter(pk=user.pk).exists()
 
-    def test_patch_off_excludes_user_from_platform_updates(self):
-        user = UserFactory(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
+    def test_disabling_channel_email_excludes_from_platform_updates(self):
+        user = UserFactory()
         house, _, pu = _seed_house_with_channels()
         self.handler.follow(user.id, house)
 
@@ -65,19 +54,16 @@ class TestCrossSystemMirror:
             user.id, "naglasupan", pu.id, email_enabled=False
         )
 
-        recipients = self.user_query.list_opted_in_for_broadcast_type(
-            "platform_updates"
+        platform = self.user_query.list_opted_in_for_broadcast_type("platform_updates")
+        assert not platform.filter(pk=user.pk).exists()
+        # The other channel still includes them.
+        competition = self.user_query.list_opted_in_for_broadcast_type(
+            "competition_results"
         )
-        assert not recipients.filter(pk=user.pk).exists()
-        # Other broadcast type still includes them.
-        other = self.user_query.list_opted_in_for_broadcast_type("competition_results")
-        assert other.filter(pk=user.pk).exists()
+        assert competition.filter(pk=user.pk).exists()
 
-    def test_unfollow_house_excludes_user_from_both_types(self):
-        user = UserFactory(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
+    def test_unfollow_excludes_from_both_types(self):
+        user = UserFactory()
         house, _, _ = _seed_house_with_channels()
         self.handler.follow(user.id, house)
 

@@ -188,8 +188,6 @@ export default function ProfilePage() {
           </div>
 
           <Settings
-            emailOptInCompetitionResults={user.email_opt_in_competition_results}
-            emailOptInPlatformUpdates={user.email_opt_in_platform_updates}
             optInToExternalPromotions={user.opt_in_to_external_promotions}
             notificationFrequency={user.notification_frequency}
           />

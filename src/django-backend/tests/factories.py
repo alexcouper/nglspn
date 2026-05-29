@@ -146,16 +146,13 @@ def ensure_house_project() -> Project:
 
     The DB enforces a single is_house_project row, so tests that need several
     house followers share one project. The creator is made *before* the house
-    exists (so the auto-follow signal does not subscribe them) and has the
-    legacy opt-in flags cleared, keeping them out of broadcast recipient sets.
+    exists, so the auto-follow signal does not subscribe them — keeping them
+    out of broadcast recipient sets.
     """
     house = Project.objects.filter(is_house_project=True).first()
     if house is not None:
         return house
-    creator = UserFactory(
-        email_opt_in_platform_updates=False,
-        email_opt_in_competition_results=False,
-    )
+    creator = UserFactory()
     return ProjectFactory(is_house_project=True, owner=creator)
 
 

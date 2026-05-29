@@ -36,11 +36,7 @@ class UserAdmin(BaseUserAdmin):
         (
             _("Email preferences"),
             {
-                "fields": (
-                    "notification_frequency",
-                    "email_opt_in_competition_results",
-                    "email_opt_in_platform_updates",
-                ),
+                "fields": ("notification_frequency",),
             },
         ),
         (_("Privacy"), {"fields": ("opt_in_to_external_promotions",)}),

@@ -12,11 +12,7 @@ class FollowHandlerInterface(ABC):
 
     @abstractmethod
     def unfollow(self, user_id: UUID, project: Project) -> None:
-        """Hard-delete the Follow (idempotent — no-op when absent).
-
-        When the targeted project is the house project, this SHALL also
-        clear the legacy ``email_opt_in_*`` flags on the user.
-        """
+        """Hard-delete the Follow (idempotent — no-op when absent)."""
 
     @abstractmethod
     def set_channel_preference(

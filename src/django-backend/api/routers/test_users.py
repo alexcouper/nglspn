@@ -12,42 +12,6 @@ from hamcrest import (
 from tests.factories import UserFactory
 
 
-class TestEmailPreferences:
-    def test_new_user_has_email_preferences_opted_in_by_default(self, db) -> None:
-        user = UserFactory()
-
-        assert_that(user.email_opt_in_competition_results, equal_to(True))
-        assert_that(user.email_opt_in_platform_updates, equal_to(True))
-
-    def test_update_email_preferences_via_api(self, client, user, auth_headers) -> None:
-        response = client.put(
-            "/api/auth/me",
-            data={
-                "email_opt_in_competition_results": False,
-                "email_opt_in_platform_updates": False,
-            },
-            content_type="application/json",
-            **auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(200))
-        user.refresh_from_db()
-        assert_that(user.email_opt_in_competition_results, equal_to(False))
-        assert_that(user.email_opt_in_platform_updates, equal_to(False))
-
-    def test_get_me_returns_email_preferences(self, client, user, auth_headers) -> None:
-        response = client.get("/api/auth/me", **auth_headers)
-
-        assert_that(response.status_code, equal_to(200))
-        assert_that(
-            response.json(),
-            has_entries(
-                email_opt_in_competition_results=True,
-                email_opt_in_platform_updates=True,
-            ),
-        )
-
-
 class TestExternalPromotionPreference:
     def test_new_user_has_external_promotions_opted_in_by_default(self, db) -> None:
         user = UserFactory()

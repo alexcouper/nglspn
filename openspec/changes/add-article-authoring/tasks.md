@@ -65,12 +65,12 @@
 
 ## 9. Backend — Remove legacy fields and mirror
 
-- [ ] 9.1 Delete the mirror code in `services/follows/django_impl/handler.py` (or wherever it lives) that writes back to `email_opt_in_*`.
-- [ ] 9.2 Remove `email_opt_in_competition_results` and `email_opt_in_platform_updates` from `api/schemas/user.py` (both `UserOut` and `UserUpdate`).
-- [ ] 9.3 Generate `apps/users/migrations/000N_drop_email_opt_in_fields` (drop both columns).
-- [ ] 9.4 Update `apps/users/admin.py` to remove the two fields from the form.
-- [ ] 9.5 Update `UserFactory` to remove the two fields.
-- [ ] 9.6 Remove tests that exercise the mirror or the legacy fields directly; update tests that referenced them as recipient signals to use Follow + ChannelPreference (overlaps with 8.4).
+- [x] 9.1 Delete the mirror code in `services/follows/django_impl/handler.py` (or wherever it lives) that writes back to `email_opt_in_*`. _Removed `LEGACY_FLAG_BY_CHANNEL_NAME`, `_mirror_legacy_email_flag`, `_clear_legacy_email_flags` and their call sites; updated `handler_interface.unfollow` docstring._
+- [x] 9.2 Remove `email_opt_in_competition_results` and `email_opt_in_platform_updates` from `api/schemas/user.py` (both `UserOut` and `UserUpdate`). _Actual schemas are `UserResponse` + `UserUpdate`._
+- [x] 9.3 Generate `apps/users/migrations/000N_drop_email_opt_in_fields` (drop both columns). _`0017_drop_email_opt_in_fields`._
+- [x] 9.4 Update `apps/users/admin.py` to remove the two fields from the form.
+- [x] 9.5 Update `UserFactory` to remove the two fields. _Factory never enumerated them; removed the flag kwargs from the `ensure_house_project` test helper that did._
+- [x] 9.6 Remove tests that exercise the mirror or the legacy fields directly; update tests that referenced them as recipient signals to use Follow + ChannelPreference (overlaps with 8.4). _Deleted `TestMirrorLegacyFlag` / `TestUnfollowMirror` (follows test_handler), `apps/follows/tests/test_seed_migration.py` (re-ran the frozen Phase-1 migration against the live model), and the §8 parity tooling; rewrote `services/follows/django_impl/test_integration.py` and removed `TestEmailPreferences` from `api/routers/test_users.py`. Also regenerated `src/web-ui/backend-openapi.json` — web-ui type regen (11.1) still pending._
 
 ## 10. Backend — OpenAPI + tests
 

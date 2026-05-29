@@ -1,7 +1,6 @@
 import pytest
 
 from apps.follows.models import Channel, Follow, FollowChannelPreference
-from apps.users.models import User
 from services.follows.django_impl.handler import DjangoFollowHandler
 from services.follows.exceptions import (
     ChannelNotOnProjectError,
@@ -83,13 +82,6 @@ class TestDjangoFollowHandler:
         assert new_pref.email_enabled is True
 
 
-def _seed_house_project_with_channels():
-    house = ProjectFactory(slug="naglasupan", title="Naglasúpan", is_house_project=True)
-    cw, _ = Channel.objects.get_or_create(project=house, name="Competition Winners")
-    pu, _ = Channel.objects.get_or_create(project=house, name="Product Updates")
-    return house, cw, pu
-
-
 @pytest.mark.django_db
 class TestSetChannelPreference:
     def setup_method(self):
@@ -164,143 +156,3 @@ class TestSetChannelPreference:
             self.handler.set_channel_preference(
                 user.id, "p", channel.id, email_enabled=False
             )
-
-
-@pytest.mark.django_db
-class TestMirrorLegacyFlag:
-    def setup_method(self):
-        self.handler = DjangoFollowHandler()
-
-    def test_mirror_fires_for_competition_winners(self):
-        user = UserFactory(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
-        house, cw, _ = _seed_house_project_with_channels()
-        self.handler.follow(user.id, house)
-
-        self.handler.set_channel_preference(
-            user.id, "naglasupan", cw.id, email_enabled=False
-        )
-
-        user.refresh_from_db()
-        assert user.email_opt_in_competition_results is False
-        assert user.email_opt_in_platform_updates is True
-
-    def test_mirror_fires_for_product_updates(self):
-        user = UserFactory(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
-        house, _, pu = _seed_house_project_with_channels()
-        self.handler.follow(user.id, house)
-
-        self.handler.set_channel_preference(
-            user.id, "naglasupan", pu.id, email_enabled=False
-        )
-
-        user.refresh_from_db()
-        assert user.email_opt_in_platform_updates is False
-        assert user.email_opt_in_competition_results is True
-
-    def test_mirror_does_not_fire_for_updates_channel(self):
-        user = UserFactory(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
-        house, _, _ = _seed_house_project_with_channels()
-        self.handler.follow(user.id, house)
-        updates_channel = Channel.objects.get(project=house, name="Updates")
-
-        self.handler.set_channel_preference(
-            user.id, "naglasupan", updates_channel.id, email_enabled=False
-        )
-
-        user.refresh_from_db()
-        assert user.email_opt_in_competition_results is True
-        assert user.email_opt_in_platform_updates is True
-
-    def test_mirror_does_not_fire_for_non_house_project(self):
-        user = UserFactory(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
-        project = ProjectFactory(slug="p")
-        cw = Channel.objects.create(project=project, name="Competition Winners")
-        self.handler.follow(user.id, project)
-
-        self.handler.set_channel_preference(user.id, "p", cw.id, email_enabled=False)
-
-        user.refresh_from_db()
-        assert user.email_opt_in_competition_results is True
-
-    def test_mirror_does_not_fire_when_only_in_app(self):
-        user = UserFactory(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
-        house, cw, _ = _seed_house_project_with_channels()
-        self.handler.follow(user.id, house)
-
-        self.handler.set_channel_preference(
-            user.id, "naglasupan", cw.id, in_app_enabled=False
-        )
-
-        user.refresh_from_db()
-        assert user.email_opt_in_competition_results is True
-
-
-@pytest.mark.django_db
-class TestUnfollowMirror:
-    def setup_method(self):
-        self.handler = DjangoFollowHandler()
-
-    def test_unfollow_house_clears_legacy_flags(self):
-        user = UserFactory(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
-        house, _, _ = _seed_house_project_with_channels()
-        self.handler.follow(user.id, house)
-
-        self.handler.unfollow(user.id, house)
-
-        user.refresh_from_db()
-        assert user.email_opt_in_competition_results is False
-        assert user.email_opt_in_platform_updates is False
-
-    def test_unfollow_non_house_does_not_touch_legacy_flags(self):
-        user = UserFactory(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
-        project = ProjectFactory(slug="p")
-        self.handler.follow(user.id, project)
-
-        self.handler.unfollow(user.id, project)
-
-        user.refresh_from_db()
-        assert user.email_opt_in_competition_results is True
-        assert user.email_opt_in_platform_updates is True
-
-    def test_unfollow_when_not_following_does_not_touch_legacy(self):
-        user = UserFactory(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
-        house, _, _ = _seed_house_project_with_channels()
-
-        # Pre-condition: auto-follow signal may have followed the user on
-        # UserFactory(). If so, undo to get to a clean "not following" state.
-        Follow.objects.filter(user=user).delete()
-        # Don't reset legacy flags — test should observe they stay True.
-        User.objects.filter(pk=user.pk).update(
-            email_opt_in_competition_results=True,
-            email_opt_in_platform_updates=True,
-        )
-
-        self.handler.unfollow(user.id, house)
-
-        user.refresh_from_db()
-        assert user.email_opt_in_competition_results is True
-        assert user.email_opt_in_platform_updates is True

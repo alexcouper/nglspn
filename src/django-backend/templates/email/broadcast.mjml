@@ -17,6 +17,6 @@
 
 {% block footer_extra %}
         <mj-text align="center" font-size="14px" color="#64748b" padding-top="20px" padding-bottom="0px">
-          <a href="{{ profile_url }}" style="color: #6366f1; text-decoration: underline;">Manage your email preferences</a>
+          <a href="{{ following_url }}" style="color: #6366f1; text-decoration: underline;">Manage your email preferences</a>
         </mj-text>
 {% endblock %}

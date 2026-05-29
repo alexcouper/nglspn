@@ -4084,14 +4084,6 @@
             "title": "Groups",
             "type": "array"
           },
-          "email_opt_in_competition_results": {
-            "title": "Email Opt In Competition Results",
-            "type": "boolean"
-          },
-          "email_opt_in_platform_updates": {
-            "title": "Email Opt In Platform Updates",
-            "type": "boolean"
-          },
           "opt_in_to_external_promotions": {
             "title": "Opt In To External Promotions",
             "type": "boolean"
@@ -4117,8 +4109,6 @@
           "is_verified",
           "created_at",
           "groups",
-          "email_opt_in_competition_results",
-          "email_opt_in_platform_updates",
           "opt_in_to_external_promotions",
           "notification_frequency",
           "pending_onboarding_steps"
@@ -4293,28 +4283,6 @@
               }
             ],
             "title": "Info"
-          },
-          "email_opt_in_competition_results": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email Opt In Competition Results"
-          },
-          "email_opt_in_platform_updates": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email Opt In Platform Updates"
           },
           "opt_in_to_external_promotions": {
             "anyOf": [

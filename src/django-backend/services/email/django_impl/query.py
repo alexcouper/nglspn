@@ -28,7 +28,7 @@ class DjangoEmailQuery(EmailQueryInterface):
             "subject": broadcast.subject,
             "body_html": body_html,
             "body_markdown": broadcast.body_markdown,
-            "profile_url": f"{settings.FRONTEND_URL}/profile",
+            "following_url": f"{settings.FRONTEND_URL}/profile/following",
             "logo_url": EMAIL_LOGO_URL,
             "current_year": timezone.now().year,
         }

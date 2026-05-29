@@ -4,7 +4,7 @@
 {{ body_markdown }}
 
 ---
-Manage your email preferences: {{ profile_url }}
+Manage your email preferences: {{ following_url }}
 
 Byggjum, deilum, vöxum saman
 

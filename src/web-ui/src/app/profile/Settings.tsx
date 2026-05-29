@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { api } from "@/lib/api";
 
 const NOTIFICATION_OPTIONS = [
@@ -11,8 +12,6 @@ const NOTIFICATION_OPTIONS = [
 ] as const;
 
 interface SettingsProps {
-  emailOptInCompetitionResults: boolean;
-  emailOptInPlatformUpdates: boolean;
   optInToExternalPromotions: boolean;
   notificationFrequency: string;
 }
@@ -60,19 +59,15 @@ function Toggle({ label, description, checked, onChange, disabled }: ToggleProps
 }
 
 export function Settings({
-  emailOptInCompetitionResults,
-  emailOptInPlatformUpdates,
   optInToExternalPromotions,
   notificationFrequency,
 }: SettingsProps) {
-  const [competitionResults, setCompetitionResults] = useState(emailOptInCompetitionResults);
-  const [platformUpdates, setPlatformUpdates] = useState(emailOptInPlatformUpdates);
   const [externalPromotions, setExternalPromotions] = useState(optInToExternalPromotions);
   const [frequency, setFrequency] = useState(notificationFrequency);
   const [saving, setSaving] = useState<string | null>(null);
 
   const handleToggle = async (
-    field: "email_opt_in_competition_results" | "email_opt_in_platform_updates" | "opt_in_to_external_promotions",
+    field: "opt_in_to_external_promotions",
     value: boolean,
     setter: (v: boolean) => void
   ) => {
@@ -90,29 +85,15 @@ export function Settings({
 
   return (
     <div className="bg-white rounded-xl border border-border p-5 mt-6">
-      <h2 className="text-sm font-semibold text-foreground mb-1">Settings</h2>
-      <p className="text-xs text-muted-foreground mb-3">Manage your email preferences</p>
-
-      <div className="divide-y divide-border">
-        <Toggle
-          label="Competition results"
-          description="Receive emails about competition outcomes and rankings"
-          checked={competitionResults}
-          onChange={(v) =>
-            handleToggle("email_opt_in_competition_results", v, setCompetitionResults)
-          }
-          disabled={saving === "email_opt_in_competition_results"}
-        />
-        <Toggle
-          label="Platform updates"
-          description="Receive emails about new features and improvements"
-          checked={platformUpdates}
-          onChange={(v) =>
-            handleToggle("email_opt_in_platform_updates", v, setPlatformUpdates)
-          }
-          disabled={saving === "email_opt_in_platform_updates"}
-        />
-      </div>
+      <h2 className="text-sm font-semibold text-foreground mb-1">Email preferences</h2>
+      <p className="text-xs text-muted-foreground mb-3">
+        Choose which project channels email you — including Naglasúpan updates —
+        on the{" "}
+        <Link href="/profile/following" className="text-accent hover:underline">
+          Following
+        </Link>{" "}
+        page.
+      </p>
 
       <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">Notifications</h2>
       <p className="text-xs text-muted-foreground mb-3">

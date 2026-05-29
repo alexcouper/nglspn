@@ -64,8 +64,6 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False)
     is_system_user = models.BooleanField(default=False)
-    email_opt_in_competition_results = models.BooleanField(default=True)
-    email_opt_in_platform_updates = models.BooleanField(default=True)
     opt_in_to_external_promotions = models.BooleanField(default=True)
     article_trust = models.BooleanField(default=True)
     notification_frequency = models.CharField(

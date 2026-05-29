@@ -20,6 +20,7 @@ from apps.projects.models import (
     ProjectCategory,
     ProjectStatus,
 )
+from apps.projects.slugs import assign_unique_slug
 
 User = get_user_model()
 
@@ -266,6 +267,11 @@ class Command(BaseCommand):
                     "submission_month": now.strftime("%Y-%m"),
                 },
             )
+            # Seeded projects skip the publish path that normally assigns a
+            # slug, so do it here — the slug-keyed project pages and follow
+            # flow depend on it.
+            if not project.slug:
+                assign_unique_slug(project)
             projects[project.title] = project
         self.stdout.write(f"  Projects: {len(projects)}")
         return projects

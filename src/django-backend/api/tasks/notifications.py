@@ -15,18 +15,46 @@ def create_discussion_notifications(discussion_id: str) -> None:
     HANDLERS.notifications.create_notifications_for_discussion(UUID(discussion_id))
 
 
+# Per-kind digest tasks. Schedules are wired in the deployment cron / cloud
+# scheduler — wall-clock targets agreed for the first rollout:
+#   - discussion hourly: every hour at :00
+#   - discussion daily : 09:00 UTC
+#   - article hourly   : every hour at :05 (offset from discussion to spread load)
+#   - article daily    : 09:00 UTC
+#   - article weekly   : Monday 09:00 UTC
 @task()
-def send_hourly_notifications() -> None:
+def send_discussion_digest_hourly() -> None:
     from services import HANDLERS  # noqa: PLC0415
 
-    HANDLERS.notifications.send_batch_notifications("hourly")
+    HANDLERS.notifications.send_discussion_digest("hourly")
 
 
 @task()
-def send_daily_notifications() -> None:
+def send_discussion_digest_daily() -> None:
     from services import HANDLERS  # noqa: PLC0415
 
-    HANDLERS.notifications.send_batch_notifications("daily")
+    HANDLERS.notifications.send_discussion_digest("daily")
+
+
+@task()
+def send_article_digest_hourly() -> None:
+    from services import HANDLERS  # noqa: PLC0415
+
+    HANDLERS.notifications.send_article_digest("hourly")
+
+
+@task()
+def send_article_digest_daily() -> None:
+    from services import HANDLERS  # noqa: PLC0415
+
+    HANDLERS.notifications.send_article_digest("daily")
+
+
+@task()
+def send_article_digest_weekly() -> None:
+    from services import HANDLERS  # noqa: PLC0415
+
+    HANDLERS.notifications.send_article_digest("weekly")
 
 
 @task()

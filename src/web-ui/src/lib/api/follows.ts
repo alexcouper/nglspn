@@ -2,11 +2,9 @@ import type { components } from "../api-types";
 import type { APIClient } from "./base";
 
 export type FollowState = components["schemas"]["FollowStateResponse"];
-export type FollowChannelPreference =
-  components["schemas"]["FollowChannelPreferenceResponse"];
+export type ChannelFollowState =
+  components["schemas"]["ChannelFollowStateResponse"];
 export type FollowWithPreferences = components["schemas"]["FollowResponse"];
-export type FollowChannelPreferencePatch =
-  components["schemas"]["FollowChannelPreferencePatch"];
 
 export class FollowsClient {
   constructor(private client: APIClient) {}
@@ -37,17 +35,20 @@ export class FollowsClient {
     );
   }
 
-  async patchFollowChannel(
+  async followChannel(
     slug: string,
-    channelId: string,
-    body: FollowChannelPreferencePatch
-  ): Promise<FollowChannelPreference> {
-    return this.client.request<FollowChannelPreference>(
+    channelId: string
+  ): Promise<ChannelFollowState> {
+    return this.client.request<ChannelFollowState>(
       `/api/projects/${slug}/follow/channels/${channelId}`,
-      {
-        method: "PATCH",
-        body: JSON.stringify(body),
-      }
+      { method: "POST" }
+    );
+  }
+
+  async unfollowChannel(slug: string, channelId: string): Promise<void> {
+    await this.client.request<void>(
+      `/api/projects/${slug}/follow/channels/${channelId}`,
+      { method: "DELETE" }
     );
   }
 }

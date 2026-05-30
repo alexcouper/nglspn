@@ -189,7 +189,8 @@ export default function ProfilePage() {
 
           <Settings
             optInToExternalPromotions={user.opt_in_to_external_promotions}
-            notificationFrequency={user.notification_frequency}
+            discussionEmailFrequency={user.discussion_email_frequency}
+            articleEmailFrequency={user.article_email_frequency}
           />
         </div>
       </section>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
 import type {
-  FollowChannelPreference,
+  ChannelFollowState,
   FollowWithPreferences,
 } from "@/lib/api/follows";
 import { useToasts } from "@/contexts/toasts";
@@ -54,13 +54,10 @@ export function FollowPopover({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  const updateChannel = async (
-    channel: FollowChannelPreference,
-    patch: { email_enabled?: boolean; in_app_enabled?: boolean }
-  ) => {
+  const toggleChannel = async (channel: ChannelFollowState) => {
     if (!follow) return;
+    const next: ChannelFollowState = { ...channel, followed: !channel.followed };
     // Optimistic update.
-    const next = { ...channel, ...patch };
     setFollow({
       ...follow,
       channels: follow.channels.map((c) =>
@@ -68,11 +65,11 @@ export function FollowPopover({
       ),
     });
     try {
-      await api.follows.patchFollowChannel(
-        projectSlug,
-        channel.channel_id,
-        patch
-      );
+      if (next.followed) {
+        await api.follows.followChannel(projectSlug, channel.channel_id);
+      } else {
+        await api.follows.unfollowChannel(projectSlug, channel.channel_id);
+      }
     } catch {
       // Revert.
       setFollow({
@@ -83,7 +80,7 @@ export function FollowPopover({
       });
       showToast({
         kind: "error",
-        title: "Couldn't update notification preference",
+        title: "Couldn't update channel",
         ttlMs: 5_000,
       });
     }
@@ -109,7 +106,7 @@ export function FollowPopover({
       className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-border z-20"
     >
       <div className="px-3 py-2 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-        Notifications
+        Channels
       </div>
       <div className="p-1">
         {loadError && (
@@ -123,36 +120,17 @@ export function FollowPopover({
           </div>
         )}
         {follow?.channels.map((channel) => (
-          <div
+          <label
             key={channel.channel_id}
-            className="px-3 py-2 border-b border-border/50 last:border-0"
+            className="flex items-center gap-2 px-3 py-2 border-b border-border/50 last:border-0 cursor-pointer text-sm"
           >
-            <div className="text-sm font-medium text-foreground mb-1">
-              {channel.channel_name}
-            </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={channel.email_enabled}
-                  onChange={(e) =>
-                    updateChannel(channel, { email_enabled: e.target.checked })
-                  }
-                />
-                Email
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={channel.in_app_enabled}
-                  onChange={(e) =>
-                    updateChannel(channel, { in_app_enabled: e.target.checked })
-                  }
-                />
-                In-app
-              </label>
-            </div>
-          </div>
+            <input
+              type="checkbox"
+              checked={channel.followed}
+              onChange={() => toggleChannel(channel)}
+            />
+            <span className="text-foreground">{channel.channel_name}</span>
+          </label>
         ))}
       </div>
       <div className="px-3 py-2 border-t border-border">

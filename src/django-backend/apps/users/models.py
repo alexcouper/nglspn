@@ -8,7 +8,19 @@ from django.contrib.auth.models import (
 )
 from django.db import models
 
-from apps.notifications.models import NotificationCadence
+
+class DiscussionEmailFrequency(models.TextChoices):
+    IMMEDIATE = "immediate", "Every Time"
+    HOURLY = "hourly", "At most every hour"
+    DAILY = "daily", "At most every day"
+    NEVER = "never", "Never"
+
+
+class ArticleEmailFrequency(models.TextChoices):
+    HOURLY = "hourly", "At most every hour"
+    DAILY = "daily", "At most every day"
+    WEEKLY = "weekly", "At most every week"
+    NEVER = "never", "Never"
 
 
 class UserManager(BaseUserManager["User"]):
@@ -66,10 +78,15 @@ class User(AbstractBaseUser, PermissionsMixin):
     is_system_user = models.BooleanField(default=False)
     opt_in_to_external_promotions = models.BooleanField(default=True)
     article_trust = models.BooleanField(default=True)
-    notification_frequency = models.CharField(
+    discussion_email_frequency = models.CharField(
         max_length=20,
-        choices=NotificationCadence.choices,
-        default=NotificationCadence.HOURLY,
+        choices=DiscussionEmailFrequency.choices,
+        default=DiscussionEmailFrequency.HOURLY,
+    )
+    article_email_frequency = models.CharField(
+        max_length=20,
+        choices=ArticleEmailFrequency.choices,
+        default=ArticleEmailFrequency.HOURLY,
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

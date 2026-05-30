@@ -7,9 +7,14 @@ from django.db.models import Q
 
 
 class NotificationCadence(models.TextChoices):
+    # Union of per-kind cadence values. A Notification row snapshots its
+    # recipient's kind-appropriate User cadence (DiscussionEmailFrequency or
+    # ArticleEmailFrequency); both feed values into this column. `immediate` is
+    # discussion-only; `weekly` is article-only.
     IMMEDIATE = "immediate", "Every Time"
     HOURLY = "hourly", "At most every hour"
     DAILY = "daily", "At most every day"
+    WEEKLY = "weekly", "At most every week"
     NEVER = "never", "Never"
 
 

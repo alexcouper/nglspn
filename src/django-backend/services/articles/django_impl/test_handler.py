@@ -13,8 +13,9 @@ from apps.articles.models import (
     ArticleSource,
     ArticleState,
 )
-from apps.follows.models import Follow, FollowChannelPreference
-from apps.notifications.models import Notification, NotificationCadence
+from apps.follows.models import Follow, FollowedChannel
+from apps.notifications.models import Notification
+from apps.users.models import ArticleEmailFrequency
 from services.articles.django_impl.handler import DjangoArticleHandler
 from services.articles.exceptions import (
     ArticleNotFoundError,
@@ -124,12 +125,7 @@ class TestUpdateArticle:
         channel = ChannelFactory(project=project, name="Updates")
         follower = UserFactory()
         follow = Follow.objects.create(user=follower, project=project)
-        FollowChannelPreference.objects.create(
-            follow=follow,
-            channel=channel,
-            email_enabled=False,
-            in_app_enabled=True,
-        )
+        FollowedChannel.objects.create(follow=follow, channel=channel)
         article = ArticleFactory(project=project, channel=channel)
         handler.publish(article.id)
         # Clear any rows from publish-time fan-out so this test is unambiguous.
@@ -261,12 +257,7 @@ class TestPublish:
         channel = ChannelFactory(project=project, name="Updates")
         follower = UserFactory()
         follow = Follow.objects.create(user=follower, project=project)
-        FollowChannelPreference.objects.create(
-            follow=follow,
-            channel=channel,
-            email_enabled=True,
-            in_app_enabled=True,
-        )
+        FollowedChannel.objects.create(follow=follow, channel=channel)
         article = ArticleFactory(project=project, channel=channel)
 
         self.handler.publish(
@@ -297,12 +288,7 @@ class TestDelete:
         channel = ChannelFactory(project=project, name="Updates")
         follower = UserFactory()
         follow = Follow.objects.create(user=follower, project=project)
-        FollowChannelPreference.objects.create(
-            follow=follow,
-            channel=channel,
-            email_enabled=False,
-            in_app_enabled=True,
-        )
+        FollowedChannel.objects.create(follow=follow, channel=channel)
         article = ArticleFactory(project=project, channel=channel)
         self.handler.publish(article.id)
         assert Notification.objects.filter(article=article).exists()
@@ -394,11 +380,11 @@ class TestTrustFlagAndExistingArticles:
 
     def test_cadence_snapshot_unaffected_here(self):
         """Sanity: publish does not mutate the author's cadence."""
-        author = UserFactory(notification_frequency=NotificationCadence.DAILY)
+        author = UserFactory(article_email_frequency=ArticleEmailFrequency.DAILY)
         project = ProjectFactory(owner=author)
         article = ArticleFactory(project=project, author=author)
 
         self.handler.publish(article.id)
 
         author.refresh_from_db()
-        assert author.notification_frequency == NotificationCadence.DAILY
+        assert author.article_email_frequency == ArticleEmailFrequency.DAILY

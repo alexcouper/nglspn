@@ -493,7 +493,7 @@ class TestUpdateCurrentUser:
 
         assert_that(response.status_code, equal_to(401))
 
-    def test_update_notification_frequency_with_valid_value(
+    def test_update_discussion_email_frequency_with_valid_value(
         self,
         client,
         user,
@@ -501,18 +501,21 @@ class TestUpdateCurrentUser:
     ) -> None:
         response = client.put(
             "/api/auth/me",
-            data=json.dumps({"notification_frequency": "immediate"}),
+            data=json.dumps({"discussion_email_frequency": "immediate"}),
             content_type="application/json",
             **auth_headers,
         )
 
         assert_that(response.status_code, equal_to(200))
-        assert_that(response.json(), has_entries(notification_frequency="immediate"))
+        assert_that(
+            response.json(),
+            has_entries(discussion_email_frequency="immediate"),
+        )
 
         user.refresh_from_db()
-        assert_that(user.notification_frequency, equal_to("immediate"))
+        assert_that(user.discussion_email_frequency, equal_to("immediate"))
 
-    def test_update_notification_frequency_with_invalid_value_returns_422(
+    def test_update_article_email_frequency_with_valid_value(
         self,
         client,
         user,
@@ -520,7 +523,42 @@ class TestUpdateCurrentUser:
     ) -> None:
         response = client.put(
             "/api/auth/me",
-            data=json.dumps({"notification_frequency": "banana"}),
+            data=json.dumps({"article_email_frequency": "weekly"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(article_email_frequency="weekly"))
+
+        user.refresh_from_db()
+        assert_that(user.article_email_frequency, equal_to("weekly"))
+
+    def test_update_discussion_email_frequency_with_invalid_value_returns_422(
+        self,
+        client,
+        user,
+        auth_headers,
+    ) -> None:
+        response = client.put(
+            "/api/auth/me",
+            data=json.dumps({"discussion_email_frequency": "banana"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+
+    def test_article_email_frequency_rejects_immediate(
+        self,
+        client,
+        user,
+        auth_headers,
+    ) -> None:
+        # `immediate` is discussion-only — articles always go through a digest.
+        response = client.put(
+            "/api/auth/me",
+            data=json.dumps({"article_email_frequency": "immediate"}),
             content_type="application/json",
             **auth_headers,
         )
@@ -599,7 +637,7 @@ class TestUpdateCurrentUser:
 
         response = client.put(
             "/api/auth/me",
-            data=json.dumps({"notification_frequency": "immediate"}),
+            data=json.dumps({"discussion_email_frequency": "immediate"}),
             content_type="application/json",
             **auth_headers,
         )

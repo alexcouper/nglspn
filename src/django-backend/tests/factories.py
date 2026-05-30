@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.articles.models import Article, ArticleSource, ArticleState
 from apps.discussions.models import Discussion
 from apps.emails.models import BroadcastEmail, BroadcastEmailImage
-from apps.follows.models import Channel, Follow, FollowChannelPreference
+from apps.follows.models import Channel, Follow, FollowedChannel
 from apps.notifications.models import Notification, NotificationCadence
 from apps.projects.models import (
     Competition,
@@ -156,28 +156,27 @@ def ensure_house_project() -> Project:
     return ProjectFactory(is_house_project=True, owner=creator)
 
 
-def make_broadcast_follower(
-    email_type: str, *, email_enabled: bool = True, **user_kwargs
-):
-    """Create a user following the house project with the given email
-    preference on the channel that governs `email_type` broadcasts.
+def make_followed_channel(user, project, channel) -> FollowedChannel:
+    """Idempotent helper: ensure `user` follows `project` and `channel`."""
+    follow, _ = Follow.objects.get_or_create(user=user, project=project)
+    fc, _ = FollowedChannel.objects.get_or_create(follow=follow, channel=channel)
+    return fc
 
-    Active non-system users auto-follow the house on creation (post_save
-    signal). This sets the follow + channel preference explicitly so the helper
-    also covers inactive/system users, and so `email_enabled=False` overrides
-    the signal's all-on default.
+
+def make_broadcast_follower(email_type: str, **user_kwargs):
+    """Create a user following the house project's broadcast-`email_type` channel.
+
+    The collapsed model: existence of the FollowedChannel row IS the follow.
+    Callers that previously passed `email_enabled=False` should instead delete
+    the row (or set `article_email_frequency='never'` on the user, when the
+    opt-out is global).
     """
     house = ensure_house_project()
     channel, _ = Channel.objects.get_or_create(
         project=house, name=BROADCAST_CHANNEL_BY_EMAIL_TYPE[email_type]
     )
     user = UserFactory(**user_kwargs)
-    follow, _ = Follow.objects.get_or_create(user=user, project=house)
-    FollowChannelPreference.objects.update_or_create(
-        follow=follow,
-        channel=channel,
-        defaults={"email_enabled": email_enabled, "in_app_enabled": True},
-    )
+    make_followed_channel(user, house, channel)
     return user
 
 

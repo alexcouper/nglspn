@@ -11,7 +11,3 @@ class NotFollowingError(FollowError):
 
 class ChannelNotOnProjectError(FollowError):
     """The channel referenced does not belong to the project."""
-
-
-class EmptyPatchError(FollowError):
-    """The PATCH body provided neither email_enabled nor in_app_enabled."""

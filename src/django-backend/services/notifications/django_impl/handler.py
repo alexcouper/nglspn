@@ -9,7 +9,7 @@ from django.utils import timezone
 
 from apps.articles.models import Article, ArticleState
 from apps.discussions.models import Discussion
-from apps.follows.models import FollowChannelPreference
+from apps.follows.models import FollowedChannel
 from apps.notifications.models import Notification, NotificationCadence
 from services.notifications import (
     NotificationGroup,
@@ -162,7 +162,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             notification, created = Notification.objects.get_or_create(
                 recipient=recipient,
                 discussion=discussion,
-                defaults={"email_cadence": recipient.notification_frequency},
+                defaults={"email_cadence": recipient.discussion_email_frequency},
             )
 
             if created and notification.email_cadence == NotificationCadence.IMMEDIATE:
@@ -171,10 +171,11 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
     def create_notifications_for_article(self, article_id: UUID) -> None:
         """Fan out notifications for a published article.
 
-        Gating (e.g. backdated-publish suppression) is the caller's job —
-        HANDLERS.articles.publish owns that decision and only invokes this
-        method when fan-out is wanted. We still defensively check the
-        article exists and is in `published` state.
+        Following a channel means "I want this in my bell"; the per-user
+        article_email_frequency snapshot on the row controls when (or whether)
+        the email digest delivers it. No immediate-email path exists for
+        articles. Backdated-publish suppression stays the caller's job —
+        HANDLERS.articles.publish decides whether to invoke this.
         """
         try:
             article = Article.objects.select_related(
@@ -187,11 +188,8 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
         if article.state != ArticleState.PUBLISHED:
             return
 
-        # Find every Follow on this project with a ChannelPreference for the
-        # article's channel where at least one of the switches is on. Author
-        # is excluded — no self-notification on publish.
-        prefs = (
-            FollowChannelPreference.objects.select_related("follow", "follow__user")
+        followed = (
+            FollowedChannel.objects.select_related("follow", "follow__user")
             .filter(
                 follow__project_id=article.project_id,
                 channel_id=article.channel_id,
@@ -200,52 +198,41 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
         )
 
         author_id = article.author_id
+        is_house_channel = article.channel.project.is_house_project
+        article_published_at_iso = (
+            article.published_at.isoformat() if article.published_at else None
+        )
 
-        for pref in prefs:
-            user = pref.follow.user
+        for fc in followed:
+            user = fc.follow.user
             if author_id is not None and user.pk == author_id:
                 continue
-            if not (pref.email_enabled or pref.in_app_enabled):
-                continue
 
-            # The Notification row carries both in-app state and email-send
-            # bookkeeping. When email is on but in-app is off we still need
-            # the row to drive the digest / immediate-send paths, so we
-            # mark it already-read so it never surfaces in-app.
-            notification, created = Notification.objects.get_or_create(
+            _notification, created = Notification.objects.get_or_create(
                 recipient=user,
                 article=article,
                 defaults={
-                    "email_cadence": user.notification_frequency,
-                    "in_app_read_at": (None if pref.in_app_enabled else timezone.now()),
+                    "email_cadence": user.article_email_frequency,
+                    "in_app_read_at": None,
                 },
             )
             if not created:
                 continue
 
-            if (
-                pref.email_enabled
-                and notification.email_cadence == NotificationCadence.IMMEDIATE
-            ):
-                self._send_article_immediate(notification, article)
-
-    def _send_article_immediate(
-        self, notification: Notification, article: Article
-    ) -> None:
-        from services import HANDLERS  # noqa: PLC0415
-
-        try:
-            HANDLERS.email.send_article_notification_email(
-                notification=notification,
-                article=article,
-            )
-            notification.email_sent = True
-            notification.email_sent_at = timezone.now()
-            notification.save(update_fields=["email_sent", "email_sent_at"])
-        except Exception:
-            logger.exception(
-                "Failed to send immediate article notification %s", notification.id
-            )
+            if is_house_channel:
+                # Single retro-analyzable line per recipient. Includes `never`
+                # cadence — the silent-miss cohort is the most important number
+                # for a ranking-day retro.
+                logger.info(
+                    "event=house_channel_article_enqueued "
+                    "article_id=%s user_id=%s channel_id=%s "
+                    "recipient_frequency=%s article_published_at=%s",
+                    article.id,
+                    user.id,
+                    article.channel_id,
+                    user.article_email_frequency,
+                    article_published_at_iso,
+                )
 
     def _send_immediate(
         self, notification: Notification, discussion: Discussion
@@ -266,11 +253,18 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             )
 
     def send_batch_notifications(self, cadence: str) -> None:
-        # Discussion-row digest path. Article rows are picked up separately —
-        # the existing discussion_digest template renders only comment-shaped
-        # items and the recipient currently gets two digest emails when both
-        # kinds are pending. Unifying into one mixed-content email is a
-        # follow-up (tracked in tasks 5.4 / 5.5 of add-article-authoring).
+        """Legacy entry-point: dispatches to both per-kind digest tasks.
+
+        Retained so the existing tick (`api.tasks.notifications.send_*_notifications`)
+        keeps working without a celery-config flip. Each per-kind helper is
+        also independently callable for tests.
+        """
+        self.send_discussion_digest(cadence)
+        self.send_article_digest(cadence)
+
+    def send_discussion_digest(self, cadence: str) -> None:
+        if cadence == NotificationCadence.NEVER:
+            return
         unsent = (
             Notification.objects.filter(
                 email_cadence=cadence,
@@ -288,7 +282,6 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             .order_by("recipient_id", "created_at")
         )
 
-        # Group by recipient
         by_recipient: defaultdict[UUID, list[Notification]] = defaultdict(list)
         for notification in unsent:
             by_recipient[notification.recipient_id].append(notification)
@@ -308,13 +301,13 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
                     notifications, ["email_sent", "email_sent_at"]
                 )
             except Exception:
-                logger.exception("Failed to send digest to user %s", _recipient_id)
+                logger.exception(
+                    "Failed to send discussion digest to user %s", _recipient_id
+                )
 
-        # Article-row digest path. Until the mixed-content template lands
-        # this fires a separate per-recipient email for article batches.
-        self._send_article_batch(cadence)
-
-    def _send_article_batch(self, cadence: str) -> None:
+    def send_article_digest(self, cadence: str) -> None:
+        if cadence == NotificationCadence.NEVER:
+            return
         unsent = (
             Notification.objects.filter(
                 email_cadence=cadence,
@@ -332,20 +325,27 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             .order_by("recipient_id", "created_at")
         )
 
+        by_recipient: defaultdict[UUID, list[Notification]] = defaultdict(list)
+        for notification in unsent:
+            by_recipient[notification.recipient_id].append(notification)
+
         from services import HANDLERS  # noqa: PLC0415
 
-        for notification in unsent:
+        for _recipient_id, notifications in by_recipient.items():
             try:
-                HANDLERS.email.send_article_notification_email(
-                    notification=notification,
-                    article=notification.article,
+                HANDLERS.email.send_article_digest_email(
+                    notifications=notifications,
                 )
-                notification.email_sent = True
-                notification.email_sent_at = timezone.now()
-                notification.save(update_fields=["email_sent", "email_sent_at"])
+                now = timezone.now()
+                for notification in notifications:
+                    notification.email_sent = True
+                    notification.email_sent_at = now
+                Notification.objects.bulk_update(
+                    notifications, ["email_sent", "email_sent_at"]
+                )
             except Exception:
                 logger.exception(
-                    "Failed to send article digest entry %s", notification.id
+                    "Failed to send article digest to user %s", _recipient_id
                 )
 
     def list_unread_groups_for_user(

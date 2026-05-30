@@ -1,5 +1,6 @@
 import pytest
 
+from apps.users.models import ArticleEmailFrequency
 from services.email.django_impl import DjangoEmailQuery, render_email
 from tests.factories import BroadcastEmailFactory, UserFactory, make_broadcast_follower
 
@@ -61,25 +62,32 @@ class TestRenderBroadcastEmail:
 
 @pytest.mark.django_db
 class TestResolveBroadcastRecipients:
-    def test_platform_updates_returns_email_enabled_followers(self):
-        enabled = make_broadcast_follower("platform_updates", email_enabled=True)
-        disabled = make_broadcast_follower("platform_updates", email_enabled=False)
+    def test_platform_updates_returns_channel_followers(self):
+        # Followed channel = included; never-cadence opts out.
+        included = make_broadcast_follower("platform_updates")
+        excluded_by_cadence = make_broadcast_follower(
+            "platform_updates",
+            article_email_frequency=ArticleEmailFrequency.NEVER,
+        )
 
         broadcast = BroadcastEmailFactory(email_type="platform_updates")
         recipients = set(query.resolve_broadcast_recipients(broadcast))
 
-        assert enabled in recipients
-        assert disabled not in recipients
+        assert included in recipients
+        assert excluded_by_cadence not in recipients
 
-    def test_competition_results_returns_email_enabled_followers(self):
-        enabled = make_broadcast_follower("competition_results", email_enabled=True)
-        disabled = make_broadcast_follower("competition_results", email_enabled=False)
+    def test_competition_results_returns_channel_followers(self):
+        included = make_broadcast_follower("competition_results")
+        excluded_by_cadence = make_broadcast_follower(
+            "competition_results",
+            article_email_frequency=ArticleEmailFrequency.NEVER,
+        )
 
         broadcast = BroadcastEmailFactory(email_type="competition_results")
         recipients = set(query.resolve_broadcast_recipients(broadcast))
 
-        assert enabled in recipients
-        assert disabled not in recipients
+        assert included in recipients
+        assert excluded_by_cadence not in recipients
 
     def test_no_type_returns_individual_recipients(self):
         user1 = UserFactory()

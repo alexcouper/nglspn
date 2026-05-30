@@ -1347,9 +1347,9 @@
       }
     },
     "/api/projects/{slug}/follow/channels/{channel_id}": {
-      "patch": {
-        "operationId": "api_routers_follows_patch_follow_channel",
-        "summary": "Patch Follow Channel",
+      "post": {
+        "operationId": "api_routers_follows_follow_channel",
+        "summary": "Follow Channel",
         "parameters": [
           {
             "in": "path",
@@ -1377,17 +1377,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FollowChannelPreferenceResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/ChannelFollowStateResponse"
                 }
               }
             }
@@ -1406,16 +1396,54 @@
         "tags": [
           "Follows"
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FollowChannelPreferencePatch"
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "api_routers_follows_unfollow_channel",
+        "summary": "Unfollow Channel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "channel_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Channel Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
-          },
-          "required": true
+          }
         },
+        "tags": [
+          "Follows"
+        ],
         "security": [
           {
             "JWTAuth": []
@@ -4088,8 +4116,12 @@
             "title": "Opt In To External Promotions",
             "type": "boolean"
           },
-          "notification_frequency": {
-            "title": "Notification Frequency",
+          "discussion_email_frequency": {
+            "title": "Discussion Email Frequency",
+            "type": "string"
+          },
+          "article_email_frequency": {
+            "title": "Article Email Frequency",
             "type": "string"
           },
           "pending_onboarding_steps": {
@@ -4110,7 +4142,8 @@
           "created_at",
           "groups",
           "opt_in_to_external_promotions",
-          "notification_frequency",
+          "discussion_email_frequency",
+          "article_email_frequency",
           "pending_onboarding_steps"
         ],
         "title": "UserResponse",
@@ -4239,14 +4272,24 @@
         "title": "RefreshRequest",
         "type": "object"
       },
-      "NotificationCadence": {
+      "ArticleEmailFrequency": {
+        "enum": [
+          "hourly",
+          "daily",
+          "weekly",
+          "never"
+        ],
+        "title": "ArticleEmailFrequency",
+        "type": "string"
+      },
+      "DiscussionEmailFrequency": {
         "enum": [
           "immediate",
           "hourly",
           "daily",
           "never"
         ],
-        "title": "NotificationCadence",
+        "title": "DiscussionEmailFrequency",
         "type": "string"
       },
       "UserUpdate": {
@@ -4295,10 +4338,20 @@
             ],
             "title": "Opt In To External Promotions"
           },
-          "notification_frequency": {
+          "discussion_email_frequency": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/NotificationCadence"
+                "$ref": "#/components/schemas/DiscussionEmailFrequency"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "article_email_frequency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArticleEmailFrequency"
               },
               {
                 "type": "null"
@@ -5422,7 +5475,7 @@
         "title": "FollowStateResponse",
         "type": "object"
       },
-      "FollowChannelPreferenceResponse": {
+      "ChannelFollowStateResponse": {
         "properties": {
           "channel_id": {
             "format": "uuid",
@@ -5433,22 +5486,17 @@
             "title": "Channel Name",
             "type": "string"
           },
-          "email_enabled": {
-            "title": "Email Enabled",
-            "type": "boolean"
-          },
-          "in_app_enabled": {
-            "title": "In App Enabled",
+          "followed": {
+            "title": "Followed",
             "type": "boolean"
           }
         },
         "required": [
           "channel_id",
           "channel_name",
-          "email_enabled",
-          "in_app_enabled"
+          "followed"
         ],
-        "title": "FollowChannelPreferenceResponse",
+        "title": "ChannelFollowStateResponse",
         "type": "object"
       },
       "FollowResponse": {
@@ -5479,7 +5527,7 @@
           },
           "channels": {
             "items": {
-              "$ref": "#/components/schemas/FollowChannelPreferenceResponse"
+              "$ref": "#/components/schemas/ChannelFollowStateResponse"
             },
             "title": "Channels",
             "type": "array"
@@ -5492,34 +5540,6 @@
           "channels"
         ],
         "title": "FollowResponse",
-        "type": "object"
-      },
-      "FollowChannelPreferencePatch": {
-        "properties": {
-          "email_enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email Enabled"
-          },
-          "in_app_enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "In App Enabled"
-          }
-        },
-        "title": "FollowChannelPreferencePatch",
         "type": "object"
       },
       "ArticleChannelRef": {

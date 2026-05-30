@@ -3,7 +3,7 @@ from uuid import UUID
 from apps.follows.models import Follow
 from apps.projects.models import Project
 from services.follows.query_interface import (
-    ChannelPreferenceState,
+    ChannelFollowState,
     FollowQueryInterface,
     FollowState,
     FollowWithPreferences,
@@ -20,14 +20,18 @@ def _hero_image_url(project: Project) -> str | None:
 
 
 def _to_follow_with_preferences(follow: Follow) -> FollowWithPreferences:
+    from apps.follows.models import Channel  # noqa: PLC0415
+
+    followed_ids = {fc.channel_id for fc in follow.followed_channels.all()}
     channels = [
-        ChannelPreferenceState(
-            channel_id=pref.channel.id,
-            channel_name=pref.channel.name,
-            email_enabled=pref.email_enabled,
-            in_app_enabled=pref.in_app_enabled,
+        ChannelFollowState(
+            channel_id=channel.id,
+            channel_name=channel.name,
+            followed=channel.id in followed_ids,
         )
-        for pref in follow.preferences.all()
+        for channel in Channel.objects.filter(project=follow.project).order_by(
+            "created_at"
+        )
     ]
     return FollowWithPreferences(
         project_slug=follow.project.slug or "",
@@ -56,7 +60,7 @@ class DjangoFollowQuery(FollowQueryInterface):
         follows = (
             Follow.objects.filter(user_id=user_id)
             .select_related("project")
-            .prefetch_related("preferences__channel")
+            .prefetch_related("followed_channels")
             .order_by("-created_at")
         )
         return [_to_follow_with_preferences(f) for f in follows]
@@ -67,7 +71,7 @@ class DjangoFollowQuery(FollowQueryInterface):
         follow = (
             Follow.objects.filter(user_id=user_id, project__slug=project_slug)
             .select_related("project")
-            .prefetch_related("preferences__channel")
+            .prefetch_related("followed_channels")
             .first()
         )
         if follow is None:

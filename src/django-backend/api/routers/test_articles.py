@@ -455,7 +455,7 @@ class TestDeleteArticle:
 @pytest.mark.django_db
 class TestRouterHasNoOrmAccess:
     """Spec invariant — `api/routers/articles.py` SHALL NOT reference
-    `Article.objects`, `Channel.objects`, or `FollowChannelPreference.objects`
+    `Article.objects`, `Channel.objects`, or `FollowedChannel.objects`
     directly. All DB access goes through HANDLERS / REPO.
     """
 
@@ -465,7 +465,7 @@ class TestRouterHasNoOrmAccess:
         for forbidden in (
             "Article.objects",
             "Channel.objects",
-            "FollowChannelPreference.objects",
+            "FollowedChannel.objects",
         ):
             assert forbidden not in text, (
                 f"{forbidden} must not appear in api/routers/articles.py"

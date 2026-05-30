@@ -117,7 +117,8 @@ class SentEmailType(models.TextChoices):
     NEW_PROJECT_NOTIFICATION = "new_project_notification", "New Project Notification"
     DISCUSSION_NOTIFICATION = "discussion_notification", "Discussion Notification"
     DISCUSSION_DIGEST = "discussion_digest", "Discussion Digest"
-    ARTICLE_NOTIFICATION = "article_notification", "Article Notification"
+    ARTICLE_NOTIFICATION = "article_notification", "Article Notification (legacy)"
+    ARTICLE_DIGEST = "article_digest", "Article Digest"
 
 
 class SentEmail(models.Model):

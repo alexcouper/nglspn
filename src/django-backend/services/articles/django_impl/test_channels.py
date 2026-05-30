@@ -5,7 +5,7 @@ import uuid
 import pytest
 
 from apps.articles.models import Article
-from apps.follows.models import Channel, Follow, FollowChannelPreference
+from apps.follows.models import Channel, Follow, FollowedChannel
 from services.articles.django_impl.handler import DjangoArticleHandler
 from services.articles.exceptions import (
     ChannelHasArticlesError,
@@ -66,25 +66,18 @@ class TestRenameChannel:
         assert result.id == channel.id
         assert result.name == "Launches"
 
-    def test_preserves_follower_preferences(self):
-        """Rename keeps pref FK intact — name is not in the preference."""
+    def test_preserves_follower_row(self):
+        """Rename keeps the row's FK intact — channel name is not on the row."""
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Releases")
         user = UserFactory()
         follow = Follow.objects.create(user=user, project=project)
-        pref = FollowChannelPreference.objects.create(
-            follow=follow,
-            channel=channel,
-            email_enabled=False,
-            in_app_enabled=True,
-        )
+        fc = FollowedChannel.objects.create(follow=follow, channel=channel)
 
         self.handler.rename_channel(channel.id, "Launches")
 
-        pref.refresh_from_db()
-        assert pref.channel_id == channel.id
-        assert pref.email_enabled is False
-        assert pref.in_app_enabled is True
+        fc.refresh_from_db()
+        assert fc.channel_id == channel.id
 
     def test_rename_to_duplicate_name_raises(self):
         project = ProjectFactory()
@@ -146,13 +139,11 @@ class TestDeleteChannel:
         second = ChannelFactory(project=project, name="Releases")
         user = UserFactory()
         follow = Follow.objects.create(user=user, project=project)
-        FollowChannelPreference.objects.create(
-            follow=follow, channel=second, email_enabled=True, in_app_enabled=True
-        )
+        FollowedChannel.objects.create(follow=follow, channel=second)
 
         self.handler.delete_channel(second.id)
 
-        assert not FollowChannelPreference.objects.filter(channel=second).exists()
+        assert not FollowedChannel.objects.filter(channel=second).exists()
 
     def test_unknown_channel_raises(self):
         with pytest.raises(ChannelNotFoundError):

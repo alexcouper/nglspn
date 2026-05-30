@@ -292,7 +292,7 @@ class TestNeverCadenceCreatesRowNoEmail:
     def test_in_app_delivery_works_for_never(self, handler) -> None:
         from apps.projects.models import ProjectStatus  # noqa: PLC0415
 
-        owner = UserFactory(notification_frequency=NotificationCadence.NEVER)
+        owner = UserFactory(discussion_email_frequency=NotificationCadence.NEVER)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
         author = UserFactory()
         discussion = DiscussionFactory(project=project, author=author)

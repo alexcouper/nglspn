@@ -22,7 +22,6 @@ from .query import DjangoEmailQuery
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from apps.articles.models import Article
     from apps.discussions.models import Discussion
     from apps.emails.models import BroadcastEmail
     from apps.notifications.models import Notification
@@ -433,37 +432,45 @@ class DjangoEmailHandler(EmailHandlerInterface):
             html_body=html,
         )
 
-    def send_article_notification_email(
-        self, notification: Notification, article: Article
-    ) -> None:
-        recipient = notification.recipient
-        project = article.project
-        project_slug_or_id = project.slug or project.id
-        article_slug_or_id = article.slug or article.id
+    def send_article_digest_email(self, notifications: Sequence[Notification]) -> None:
+        if not notifications:
+            return
 
-        body_excerpt = (article.body or "").strip()
+        recipient = notifications[0].recipient
         excerpt_max = 500
-        if len(body_excerpt) > excerpt_max:
-            body_excerpt = body_excerpt[:excerpt_max].rstrip() + "…"
+        entries = []
+        for n in notifications:
+            article = n.article
+            project = article.project
+            body_excerpt = (article.body or "").strip()
+            if len(body_excerpt) > excerpt_max:
+                body_excerpt = body_excerpt[:excerpt_max].rstrip() + "…"
+            project_slug_or_id = project.slug or project.id
+            article_slug_or_id = article.slug or article.id
+            entries.append(
+                {
+                    "project_title": project.title,
+                    "channel_name": article.channel.name,
+                    "article_title": article.title,
+                    "body_excerpt": body_excerpt,
+                    "article_url": (
+                        f"{settings.FRONTEND_URL}/projects/{project_slug_or_id}"
+                        f"/articles/{article_slug_or_id}"
+                    ),
+                }
+            )
 
         context = {
             "recipient_name": recipient.first_name or "there",
-            "project_title": project.title,
-            "channel_name": article.channel.name,
-            "article_title": article.title,
-            "body_excerpt": body_excerpt,
-            "project_url": f"{settings.FRONTEND_URL}/projects/{project_slug_or_id}",
-            "article_url": (
-                f"{settings.FRONTEND_URL}/projects/{project_slug_or_id}"
-                f"/articles/{article_slug_or_id}"
-            ),
+            "entries": entries,
+            "site_url": settings.FRONTEND_URL,
             "profile_url": f"{settings.FRONTEND_URL}/profile",
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
             "current_year": timezone.now().year,
         }
-        html, text = render_email("article_notification", context)
+        html, text = render_email("article_digest", context)
 
-        subject = f"New article on {project.title} - Naglasúpan"
+        subject = "New articles - Naglasúpan"
         email = EmailMultiAlternatives(
             subject=subject,
             body=text,
@@ -476,20 +483,18 @@ class DjangoEmailHandler(EmailHandlerInterface):
         except Exception:
             _log_sent_email(
                 recipient=recipient,
-                email_type=SentEmailType.ARTICLE_NOTIFICATION,
+                email_type=SentEmailType.ARTICLE_DIGEST,
                 subject=subject,
                 to_email=recipient.email,
                 success=False,
                 error_message=f"Failed to send to {recipient.email}",
                 html_body=html,
-                project=project,
             )
             raise
         _log_sent_email(
             recipient=recipient,
-            email_type=SentEmailType.ARTICLE_NOTIFICATION,
+            email_type=SentEmailType.ARTICLE_DIGEST,
             subject=subject,
             to_email=recipient.email,
             html_body=html,
-            project=project,
         )

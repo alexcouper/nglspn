@@ -4,16 +4,24 @@ import { useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api";
 
-const NOTIFICATION_OPTIONS = [
+const DISCUSSION_OPTIONS = [
   { value: "immediate", label: "Every time" },
   { value: "hourly", label: "Hourly" },
   { value: "daily", label: "Daily" },
   { value: "never", label: "Never" },
 ] as const;
 
+const ARTICLE_OPTIONS = [
+  { value: "hourly", label: "Hourly" },
+  { value: "daily", label: "Daily" },
+  { value: "weekly", label: "Weekly" },
+  { value: "never", label: "Never" },
+] as const;
+
 interface SettingsProps {
   optInToExternalPromotions: boolean;
-  notificationFrequency: string;
+  discussionEmailFrequency: string;
+  articleEmailFrequency: string;
 }
 
 interface ToggleProps {
@@ -58,12 +66,63 @@ function Toggle({ label, description, checked, onChange, disabled }: ToggleProps
   );
 }
 
+interface CadenceSelectorProps<TValues extends readonly { value: string; label: string }[]> {
+  label: string;
+  description: string;
+  options: TValues;
+  value: string;
+  saving: boolean;
+  onChange: (next: string) => Promise<void>;
+}
+
+function CadenceSelector<T extends readonly { value: string; label: string }[]>({
+  label,
+  description,
+  options,
+  value,
+  saving,
+  onChange,
+}: CadenceSelectorProps<T>) {
+  return (
+    <div className="mt-5">
+      <h3 className="text-sm font-medium text-foreground">{label}</h3>
+      <p className="text-xs text-muted-foreground mt-0.5 mb-2">{description}</p>
+      <div className="flex rounded-lg border border-border overflow-hidden">
+        {options.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            disabled={saving}
+            onClick={() => {
+              if (opt.value === value) return;
+              void onChange(opt.value);
+            }}
+            className={`
+              flex-1 py-2 text-xs font-medium transition-colors
+              ${
+                value === opt.value
+                  ? "bg-accent text-white"
+                  : "bg-white text-muted-foreground hover:bg-muted hover:text-foreground"
+              }
+              ${saving ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
+            `}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export function Settings({
   optInToExternalPromotions,
-  notificationFrequency,
+  discussionEmailFrequency,
+  articleEmailFrequency,
 }: SettingsProps) {
   const [externalPromotions, setExternalPromotions] = useState(optInToExternalPromotions);
-  const [frequency, setFrequency] = useState(notificationFrequency);
+  const [discussionFreq, setDiscussionFreq] = useState(discussionEmailFrequency);
+  const [articleFreq, setArticleFreq] = useState(articleEmailFrequency);
   const [saving, setSaving] = useState<string | null>(null);
 
   const handleToggle = async (
@@ -83,56 +142,65 @@ export function Settings({
     }
   };
 
+  const updateCadence = async (
+    field: "discussion_email_frequency" | "article_email_frequency",
+    next: string,
+    setter: (v: string) => void,
+    previous: string
+  ) => {
+    setter(next);
+    setSaving(field);
+    try {
+      await api.auth.updateCurrentUser({ [field]: next });
+    } catch {
+      setter(previous);
+    } finally {
+      setSaving(null);
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl border border-border p-5 mt-6">
       <h2 className="text-sm font-semibold text-foreground mb-1">Email preferences</h2>
       <p className="text-xs text-muted-foreground mb-3">
-        Choose which project channels email you — including Naglasúpan updates —
-        on the{" "}
+        Choose which project channels email you on the{" "}
         <Link href="/profile/following" className="text-accent hover:underline">
           Following
         </Link>{" "}
-        page.
+        page; control how often emails are sent below.
       </p>
 
-      <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">Notifications</h2>
-      <p className="text-xs text-muted-foreground mb-3">
-        How often you receive discussion notifications
-      </p>
+      <CadenceSelector
+        label="Discussion emails"
+        description="How often to email you when someone comments on a discussion you're in."
+        options={DISCUSSION_OPTIONS}
+        value={discussionFreq}
+        saving={saving === "discussion_email_frequency"}
+        onChange={(next) =>
+          updateCadence(
+            "discussion_email_frequency",
+            next,
+            setDiscussionFreq,
+            discussionFreq
+          )
+        }
+      />
 
-      <div className="flex rounded-lg border border-border overflow-hidden">
-        {NOTIFICATION_OPTIONS.map((opt) => (
-          <button
-            key={opt.value}
-            type="button"
-            disabled={saving === "notification_frequency"}
-            onClick={async () => {
-              if (opt.value === frequency) return;
-              const prev = frequency;
-              setFrequency(opt.value);
-              setSaving("notification_frequency");
-              try {
-                await api.auth.updateCurrentUser({ notification_frequency: opt.value });
-              } catch {
-                setFrequency(prev);
-              } finally {
-                setSaving(null);
-              }
-            }}
-            className={`
-              flex-1 py-2 text-xs font-medium transition-colors
-              ${
-                frequency === opt.value
-                  ? "bg-accent text-white"
-                  : "bg-white text-muted-foreground hover:bg-muted hover:text-foreground"
-              }
-              ${saving === "notification_frequency" ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
-            `}
-          >
-            {opt.label}
-          </button>
-        ))}
-      </div>
+      <CadenceSelector
+        label="Article emails"
+        description="How often to summarise new articles from projects you follow."
+        options={ARTICLE_OPTIONS}
+        value={articleFreq}
+        saving={saving === "article_email_frequency"}
+        onChange={(next) =>
+          updateCadence(
+            "article_email_frequency",
+            next,
+            setArticleFreq,
+            articleFreq
+          )
+        }
+      />
 
       <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">Privacy</h2>
       <p className="text-xs text-muted-foreground mb-3">Manage your privacy preferences</p>

@@ -1,6 +1,6 @@
 import pytest
 
-from apps.follows.models import Channel, Follow, FollowChannelPreference
+from apps.follows.models import Channel, Follow, FollowedChannel
 from services.follows.django_impl.query import DjangoFollowQuery
 from services.follows.query_interface import FollowState
 from tests.factories import ProjectFactory, UserFactory
@@ -34,12 +34,7 @@ def _make_follow(user, project, channel_names):
     follow = Follow.objects.create(user=user, project=project)
     for name in channel_names:
         channel, _ = Channel.objects.get_or_create(project=project, name=name)
-        FollowChannelPreference.objects.create(
-            follow=follow,
-            channel=channel,
-            email_enabled=True,
-            in_app_enabled=True,
-        )
+        FollowedChannel.objects.create(follow=follow, channel=channel)
     return follow
 
 

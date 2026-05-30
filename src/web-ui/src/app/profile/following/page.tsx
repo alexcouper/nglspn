@@ -5,10 +5,7 @@ import Link from "next/link";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
-import type {
-  FollowChannelPreference,
-  FollowWithPreferences,
-} from "@/lib/api/follows";
+import type { FollowWithPreferences } from "@/lib/api/follows";
 import { useToasts } from "@/contexts/toasts";
 
 export default function FollowedProjectsPage() {
@@ -35,54 +32,6 @@ export default function FollowedProjectsPage() {
     };
   }, [authLoading]);
 
-  const handleToggle = async (
-    projectSlug: string,
-    channel: FollowChannelPreference,
-    patch: { email_enabled?: boolean; in_app_enabled?: boolean }
-  ) => {
-    if (!follows) return;
-    // Optimistic update.
-    const next = { ...channel, ...patch };
-    setFollows(
-      follows.map((f) =>
-        f.project_slug !== projectSlug
-          ? f
-          : {
-              ...f,
-              channels: f.channels.map((c) =>
-                c.channel_id === channel.channel_id ? next : c
-              ),
-            }
-      )
-    );
-    try {
-      await api.follows.patchFollowChannel(
-        projectSlug,
-        channel.channel_id,
-        patch
-      );
-    } catch {
-      // Revert.
-      setFollows(
-        follows.map((f) =>
-          f.project_slug !== projectSlug
-            ? f
-            : {
-                ...f,
-                channels: f.channels.map((c) =>
-                  c.channel_id === channel.channel_id ? channel : c
-                ),
-              }
-        )
-      );
-      showToast({
-        kind: "error",
-        title: "Couldn't update notification preference",
-        ttlMs: 5_000,
-      });
-    }
-  };
-
   const handleUnfollow = async (projectSlug: string) => {
     if (!follows) return;
     const previous = follows;
@@ -108,7 +57,8 @@ export default function FollowedProjectsPage() {
             Following
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Channels and notifications for the projects you follow.
+            Projects you follow and their channels. Manage per-channel
+            subscriptions from each project&apos;s page.
           </p>
         </div>
       </section>
@@ -141,9 +91,6 @@ export default function FollowedProjectsPage() {
                 <FollowRow
                   key={follow.project_slug}
                   follow={follow}
-                  onToggle={(channel, patch) =>
-                    handleToggle(follow.project_slug, channel, patch)
-                  }
                   onUnfollow={() => handleUnfollow(follow.project_slug)}
                 />
               ))}
@@ -157,15 +104,12 @@ export default function FollowedProjectsPage() {
 
 interface FollowRowProps {
   follow: FollowWithPreferences;
-  onToggle: (
-    channel: FollowChannelPreference,
-    patch: { email_enabled?: boolean; in_app_enabled?: boolean }
-  ) => void;
   onUnfollow: () => void;
 }
 
-function FollowRow({ follow, onToggle, onUnfollow }: FollowRowProps) {
+function FollowRow({ follow, onUnfollow }: FollowRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const followedCount = follow.channels.filter((c) => c.followed).length;
 
   return (
     <li className="bg-white rounded-xl border border-border overflow-hidden">
@@ -193,7 +137,7 @@ function FollowRow({ follow, onToggle, onUnfollow }: FollowRowProps) {
               {follow.project_title}
             </Link>
             <div className="text-xs text-muted-foreground">
-              {follow.channels.length}{" "}
+              {followedCount} of {follow.channels.length}{" "}
               {follow.channels.length === 1 ? "channel" : "channels"}
             </div>
           </div>
@@ -221,28 +165,15 @@ function FollowRow({ follow, onToggle, onUnfollow }: FollowRowProps) {
               <div className="text-sm text-foreground">
                 {channel.channel_name}
               </div>
-              <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={channel.email_enabled}
-                    onChange={(e) =>
-                      onToggle(channel, { email_enabled: e.target.checked })
-                    }
-                  />
-                  Email
-                </label>
-                <label className="flex items-center gap-1.5 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={channel.in_app_enabled}
-                    onChange={(e) =>
-                      onToggle(channel, { in_app_enabled: e.target.checked })
-                    }
-                  />
-                  In-app
-                </label>
-              </div>
+              <span
+                className={`text-xs px-2 py-0.5 rounded-full border ${
+                  channel.followed
+                    ? "border-accent/30 bg-accent/10 text-accent"
+                    : "border-border bg-muted text-muted-foreground"
+                }`}
+              >
+                {channel.followed ? "Followed" : "Not followed"}
+              </span>
             </div>
           ))}
         </div>

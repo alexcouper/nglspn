@@ -2,7 +2,7 @@ import logging
 
 import pytest
 
-from apps.follows.models import Channel, Follow, FollowChannelPreference
+from apps.follows.models import Channel, Follow, FollowedChannel
 from apps.follows.services import create_house_project_follow
 from tests.factories import ProjectFactory, UserFactory
 
@@ -22,11 +22,7 @@ class TestAutoFollowOnUserCreate:
         house_project = house_project_with_three_channels
         user = UserFactory()
         follow = Follow.objects.get(user=user, project=house_project)
-        prefs = FollowChannelPreference.objects.filter(follow=follow)
-        assert prefs.count() == 3
-        for pref in prefs:
-            assert pref.email_enabled is True
-            assert pref.in_app_enabled is True
+        assert FollowedChannel.objects.filter(follow=follow).count() == 3
 
     def test_system_user_not_auto_followed(self, house_project_with_three_channels):
         user = UserFactory(is_system_user=True)
@@ -45,4 +41,4 @@ class TestAutoFollowOnUserCreate:
         # Re-call the helper directly; should not duplicate rows.
         create_house_project_follow(user)
         assert Follow.objects.filter(user=user).count() == 1
-        assert FollowChannelPreference.objects.filter(follow__user=user).count() == 3
+        assert FollowedChannel.objects.filter(follow__user=user).count() == 3

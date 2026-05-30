@@ -60,9 +60,8 @@ export type { Discussion, Reply, DiscussionAuthor } from "./discussions";
 // Types - Follows
 export type {
   FollowState,
-  FollowChannelPreference,
+  ChannelFollowState,
   FollowWithPreferences,
-  FollowChannelPreferencePatch,
 } from "./follows";
 
 // Types - Discover

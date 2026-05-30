@@ -1,6 +1,6 @@
 import pytest
 
-from apps.follows.models import Follow, FollowChannelPreference
+from apps.follows.models import Follow, FollowedChannel
 from apps.follows.services import anoint_house_project
 from tests.factories import ProjectFactory, UserFactory
 
@@ -14,7 +14,7 @@ def _channel_names(project):
 def _prefs_by_channel(user, project):
     return {
         p.channel.name: p
-        for p in FollowChannelPreference.objects.filter(
+        for p in FollowedChannel.objects.filter(
             follow__user=user, follow__project=project
         )
     }
@@ -42,7 +42,7 @@ class TestAnointHouseProject:
 
         assert _channel_names(project) >= HOUSE_CHANNELS
 
-    def test_backfills_active_users_with_all_on_preferences(self):
+    def test_backfills_active_users_with_followed_channels(self):
         # Created before any house exists, so the auto-follow signal no-ops and
         # the backfill is the only thing that follows them.
         user = UserFactory()
@@ -53,9 +53,6 @@ class TestAnointHouseProject:
         assert Follow.objects.filter(user=user, project=project).exists()
         prefs = _prefs_by_channel(user, project)
         assert set(prefs) == HOUSE_CHANNELS
-        for pref in prefs.values():
-            assert pref.email_enabled is True
-            assert pref.in_app_enabled is True
 
     def test_skips_inactive_and_system_users(self):
         inactive = UserFactory(is_active=False)
@@ -79,6 +76,6 @@ class TestAnointHouseProject:
         assert _channel_names(project) >= HOUSE_CHANNELS
         # No duplicate preference rows.
         for follow in Follow.objects.filter(project=project):
-            assert FollowChannelPreference.objects.filter(follow=follow).count() == len(
+            assert FollowedChannel.objects.filter(follow=follow).count() == len(
                 HOUSE_CHANNELS
             )

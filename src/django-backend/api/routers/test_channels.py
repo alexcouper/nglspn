@@ -340,7 +340,7 @@ class TestRouterHasNoOrmAccess:
         for forbidden in (
             "Article.objects",
             "Channel.objects",
-            "FollowChannelPreference.objects",
+            "FollowedChannel.objects",
         ):
             assert forbidden not in text, (
                 f"{forbidden} must not appear in api/routers/channels.py"

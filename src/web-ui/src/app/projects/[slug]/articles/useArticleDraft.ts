@@ -188,7 +188,7 @@ export function useArticleDraft({ project, articleId }: Options) {
   }, [snapshotForm, persistDraft]);
 
   const publish = useCallback(
-    async (publishedAt: string | null) => {
+    async () => {
       const current = snapshotForm();
       if (!current) return;
       setError("");
@@ -200,7 +200,7 @@ export function useArticleDraft({ project, articleId }: Options) {
       }
       try {
         await api.articles.publish(project.slug ?? project.id, saved.id, {
-          published_at: publishedAt,
+          published_at: null,
         });
         router.push(`/projects/${project.slug ?? project.id}`);
       } catch (err) {

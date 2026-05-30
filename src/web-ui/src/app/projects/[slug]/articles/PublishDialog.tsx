@@ -1,40 +1,14 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import { ArrowPathIcon } from "@heroicons/react/24/outline";
 
 interface Props {
   isPublishing: boolean;
   onClose: () => void;
-  onConfirm: (publishedAt: string | null) => void;
+  onConfirm: () => void;
 }
 
-// Returns the local datetime formatted for an `<input type="datetime-local">`,
-// e.g. "2026-05-29T14:32" — using local clock, not UTC.
-function nowLocalDatetimeInputValue(): string {
-  const now = new Date();
-  const pad = (n: number) => n.toString().padStart(2, "0");
-  return (
-    `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}` +
-    `T${pad(now.getHours())}:${pad(now.getMinutes())}`
-  );
-}
-
-export function PublishDialog({
-  isPublishing,
-  onClose,
-  onConfirm,
-}: Props) {
-  const [overrideDate, setOverrideDate] = useState(false);
-  const [datetime, setDatetime] = useState(nowLocalDatetimeInputValue);
-
-  const isoPublishedAt = useMemo(() => {
-    if (!overrideDate) return null;
-    const parsed = new Date(datetime);
-    if (Number.isNaN(parsed.getTime())) return null;
-    return parsed.toISOString();
-  }, [overrideDate, datetime]);
-
+export function PublishDialog({ isPublishing, onClose, onConfirm }: Props) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4"
@@ -48,28 +22,8 @@ export function PublishDialog({
       >
         <h2 className="text-lg font-semibold text-foreground">Publish article</h2>
         <p className="text-sm text-muted-foreground mt-2">
-          Publishing makes the article visible on the project page and notifies
-          followers (unless backdated).
+          Publishing makes the article visible to everyone on the project page.
         </p>
-
-        <label className="mt-5 flex items-center gap-2 text-sm text-foreground">
-          <input
-            type="checkbox"
-            checked={overrideDate}
-            onChange={(e) => setOverrideDate(e.target.checked)}
-            className="accent-accent"
-          />
-          Set a custom publish date (backdating skips notifications)
-        </label>
-
-        {overrideDate && (
-          <input
-            type="datetime-local"
-            value={datetime}
-            onChange={(e) => setDatetime(e.target.value)}
-            className="mt-3 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm text-foreground focus:outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/12"
-          />
-        )}
 
         <div className="mt-6 flex justify-end gap-2">
           <button
@@ -80,7 +34,7 @@ export function PublishDialog({
             Cancel
           </button>
           <button
-            onClick={() => onConfirm(isoPublishedAt)}
+            onClick={onConfirm}
             disabled={isPublishing}
             className="btn-primary text-sm py-2 px-4"
           >

@@ -3,13 +3,13 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { useNotifications } from "@/contexts/notifications";
-import { buildDeepLink } from "@/lib/notifications";
+import { buildDeepLink, groupKey } from "@/lib/notifications";
 import { NotificationGroupItem } from "./NotificationGroupItem";
 
 const POPOVER_LIMIT = 5;
 
 export function NotificationsBell() {
-  const { summary, groups, refreshGroups } = useNotifications();
+  const { summary, groups, refreshGroups, markArticleRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -95,9 +95,19 @@ export function NotificationsBell() {
             ) : (
               visibleGroups.map((group) => (
                 <Link
-                  key={group.root_discussion_id}
+                  key={groupKey(group) ?? group.latest_event_at}
                   href={buildDeepLink(group)}
-                  onClick={() => setOpen(false)}
+                  onClick={() => {
+                    setOpen(false);
+                    // Clear the row optimistically. If the article still
+                    // exists, the render page will also mark-read on mount
+                    // (idempotent). If the article was deleted between
+                    // fan-out and click-through, the render page 404s and
+                    // this is the only call that clears the stale row.
+                    if (group.kind === "article" && group.article_id) {
+                      void markArticleRead(group.article_id);
+                    }
+                  }}
                   className="flex gap-3 px-4 py-3 hover:bg-slate-50 transition-colors border-b border-slate-50 last:border-0"
                 >
                   <NotificationGroupItem group={group} variant="popover" />

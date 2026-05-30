@@ -97,10 +97,10 @@
 
 The published-at override in `PublishDialog` was always intended for backfilling historic emails as articles; it's not useful to anyone else and adds confusion to the publish flow. Backdating now happens via a Django management command / admin path instead — the backend `POST /articles/{id}/publish` parameter and the "backdated publishes skip notification fan-out" guard (`services/articles/` + `services/notifications/`) **both stay**, so the script path keeps working unchanged.
 
-- [ ] 11C.1 Remove the "Set a custom publish date" checkbox and the `<input type="datetime-local">` from `PublishDialog`. Publish always sends `published_at: null` so the backend stamps `now()`.
-- [ ] 11C.2 Keep a minimal confirm dialog: title + one short sentence noting that followers will receive an email and an in-app notification, plus "Cancel" / "Publish" buttons. (The dialog's role shifts from "set a date" to "confirm an irreversible fan-out".)
-- [ ] 11C.3 Drop the `publishedAt` state and the related form plumbing from `ArticleAuthoringPage.tsx`.
-- [ ] 11C.4 Remove any web-ui tests that asserted on the datetime-local input or backdated-publish flow from the UI. (Backend tests for backdated suppression stay — they exercise the service layer directly.)
+- [x] 11C.1 Remove the "Set a custom publish date" checkbox and the `<input type="datetime-local">` from `PublishDialog`. Publish always sends `published_at: null` so the backend stamps `now()`.
+- [x] 11C.2 Keep a minimal confirm dialog: title + one short reassuring sentence ("Publishing makes the article visible to everyone on the project page."), plus "Cancel" / "Publish" buttons. _Final copy intentionally **does not** name emails / in-app notifications — earlier drafts read as a warning, which is wrong for the routine publish action. The follower fan-out is what publish is for; the dialog just confirms the visibility change._
+- [x] 11C.3 Drop the `publishedAt` state and the related form plumbing from `ArticleAuthoringPage.tsx`. _`useArticleDraft.publish` is now zero-arg and always passes `published_at: null`._
+- [x] 11C.4 Remove any web-ui tests that asserted on the datetime-local input or backdated-publish flow from the UI. _No tests existed for either — nothing to remove._
 
 ## 12. Frontend — Article render page
 
@@ -136,11 +136,11 @@ _Scope amendment: **deferred out of this change.** Every project already auto-cr
 
 ## 14. Frontend — In-app notifications surface updates
 
-- [ ] 14.1 Update `<NotificationGroup>` / popover item rendering to branch on `kind`: article headline + article excerpt + project image.
-- [ ] 14.2 Update click-through: article items navigate to `/projects/{projectSlug}/articles/{articleSlug}` instead of `/projects/{slug}?comment=…`.
-- [ ] 14.3 Update the toaster component to render article-kind toasters with article headline format.
-- [ ] 14.4 Ensure the toaster debounce keys on article id for article items.
-- [ ] 14.5 Handle the article-stale case (article render page returns 404): on the parent feed, still call `mark-thread-read` with the known article id so the stale row clears.
+- [x] 14.1 Update `<NotificationGroup>` / popover item rendering to branch on `kind`: article headline + article excerpt + project image. _`buildHeadline` in `src/lib/notifications.ts` now emits "{Project} published {Article title} in {Channel}" for article groups; `NotificationGroupItem` already renders project image + headline + excerpt and is kind-agnostic. `NotificationsBell` keys popover items via the new `groupKey` helper so both kinds render side-by-side._
+- [x] 14.2 Update click-through: article items navigate to `/projects/{projectSlug}/articles/{articleSlug}` instead of `/projects/{slug}?comment=…`. _`buildDeepLink` branches on `kind === "article"` and returns `/projects/<slug>/articles/<article_slug>` when an article slug is present._
+- [x] 14.3 Update the toaster component to render article-kind toasters with article headline format. _`NotificationToaster` already used `NotificationGroupItem` + `buildHeadline`; with §14.1 in place the same path renders article headlines. The toaster `subscribeDiff` payload was generalised to `{newlyActiveKeys, groupsByKey}` so article groups flow through._
+- [x] 14.4 Ensure the toaster debounce keys on article id for article items. _The unified `groupKey` returns `a:<article_id>` for article groups; the toaster's `lastShownAtRef` map is now keyed on that, so each Article id debounces independently of any discussion root that happens to share an id substring._
+- [x] 14.5 Handle the article-stale case (article render page returns 404): on the parent feed, still call `mark-thread-read` with the known article id so the stale row clears. _Approach: the bell popover, the notifications feed, and the toaster all fire `markArticleRead(article_id)` optimistically on click. If the article still exists, the render page's existing mount-time `markArticleThread` call is a harmless no-op (idempotent — second call returns `marked: 0`). If the article 404s, the optimistic click-through call is the one that clears the stale row. This sidesteps the harder alternative of plumbing notification context into Next.js `notFound()` flow._
 
 ## 15. Frontend — Authoring entry point
 

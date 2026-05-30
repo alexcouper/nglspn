@@ -4,18 +4,21 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useNotifications } from "@/contexts/notifications";
-import { buildDeepLink } from "@/lib/notifications";
+import { buildDeepLink, groupKey } from "@/lib/notifications";
 import { NotificationGroupItem } from "@/components/NotificationGroupItem";
+import type { NotificationGroup } from "@/lib/api";
 
 export function NotificationsFeed() {
   const { isReady } = useRequireAuth();
-  const { groups, refreshGroups, markThreadRead, markAllRead } =
-    useNotifications();
-  const discussionGroups = groups.filter(
-    (
-      g
-    ): g is typeof g & { root_discussion_id: string } =>
-      g.kind === "discussion" && typeof g.root_discussion_id === "string"
+  const {
+    groups,
+    refreshGroups,
+    markThreadRead,
+    markArticleRead,
+    markAllRead,
+  } = useNotifications();
+  const visibleGroups = groups.filter(
+    (g): g is NotificationGroup => groupKey(g) !== null,
   );
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
@@ -27,21 +30,35 @@ export function NotificationsFeed() {
 
   if (!isReady) return null;
 
-  const toggle = (rootId: string) => {
+  const toggle = (key: string) => {
     setSelected((prev) => {
       const next = new Set(prev);
-      if (next.has(rootId)) next.delete(rootId);
-      else next.add(rootId);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
       return next;
     });
+  };
+
+  const markGroup = (group: NotificationGroup): Promise<void> => {
+    if (group.kind === "article" && group.article_id) {
+      return markArticleRead(group.article_id);
+    }
+    if (group.root_discussion_id) {
+      return markThreadRead(group.root_discussion_id);
+    }
+    return Promise.resolve();
   };
 
   const handleMarkSelected = async () => {
     if (selected.size === 0) return;
     setBusy(true);
     try {
+      const byKey = new Map(visibleGroups.map((g) => [groupKey(g)!, g]));
       await Promise.all(
-        Array.from(selected).map((rootId) => markThreadRead(rootId))
+        Array.from(selected)
+          .map((key) => byKey.get(key))
+          .filter((g): g is NotificationGroup => Boolean(g))
+          .map(markGroup),
       );
       setSelected(new Set());
       await refreshGroups();
@@ -51,7 +68,7 @@ export function NotificationsFeed() {
   };
 
   const handleMarkAll = async () => {
-    if (discussionGroups.length === 0) return;
+    if (visibleGroups.length === 0) return;
     setBusy(true);
     try {
       await markAllRead();
@@ -62,7 +79,7 @@ export function NotificationsFeed() {
     }
   };
 
-  if (discussionGroups.length === 0) {
+  if (visibleGroups.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-border px-6 py-16 text-center">
         <h2 className="text-lg font-medium text-foreground">
@@ -89,29 +106,38 @@ export function NotificationsFeed() {
         <button
           type="button"
           onClick={handleMarkAll}
-          disabled={busy || discussionGroups.length === 0}
+          disabled={busy || visibleGroups.length === 0}
           className="px-3 py-1.5 text-xs font-medium border border-border rounded-md text-foreground hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
           Mark all as read
         </button>
       </div>
       <div className="bg-white rounded-xl border border-border divide-y divide-slate-100 overflow-hidden">
-        {discussionGroups.map((group) => {
-          const isSelected = selected.has(group.root_discussion_id);
+        {visibleGroups.map((group) => {
+          const key = groupKey(group)!;
+          const isSelected = selected.has(key);
           return (
             <div
-              key={group.root_discussion_id}
+              key={key}
               className="flex items-start gap-3 px-4 py-3 hover:bg-slate-50 transition-colors"
             >
               <input
                 type="checkbox"
                 checked={isSelected}
-                onChange={() => toggle(group.root_discussion_id)}
+                onChange={() => toggle(key)}
                 className="mt-1.5 h-4 w-4 rounded border-slate-300"
                 aria-label="Select notification"
               />
               <Link
                 href={buildDeepLink(group)}
+                onClick={() => {
+                  // Clear optimistically — handles the article-stale case
+                  // where the render page would 404 and never get to mark
+                  // itself read. Idempotent for the happy path.
+                  if (group.kind === "article" && group.article_id) {
+                    void markArticleRead(group.article_id);
+                  }
+                }}
                 className="flex flex-1 min-w-0 gap-3"
               >
                 <NotificationGroupItem

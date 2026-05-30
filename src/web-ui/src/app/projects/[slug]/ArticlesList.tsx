@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import type { ArticleListItem } from "@/lib/api";
 import { api } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 
 interface Props {
   projectSlug: string;
@@ -93,11 +94,7 @@ export function ArticlesList({ projectSlug }: Props) {
               </div>
               {article.published_at && (
                 <div className="mt-1 text-xs text-muted-foreground">
-                  {new Date(article.published_at).toLocaleDateString("en-US", {
-                    year: "numeric",
-                    month: "long",
-                    day: "numeric",
-                  })}
+                  {formatDate(article.published_at)}
                 </div>
               )}
             </div>

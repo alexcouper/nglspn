@@ -3,10 +3,15 @@
  * match the read-view Prism palette in `article-markdown.css` so authors
  * see the same colours they (and readers) will see on the rendered page.
  *
- * Palette is one-dark-ish on slate-900. Token mapping uses Lezer's tag
- * system rather than language-specific tokens, so colours generalise across
- * the languages we expose in `codeBlockLanguages` (ts / js / python / bash /
- * css / html / json / md / sql).
+ * Colour values come from the `--article-code-*` CSS variables defined in
+ * `article-markdown.css`. CodeMirror's `EditorView.theme` accepts `var()`
+ * strings in its style values, so the variables are resolved by the browser
+ * at render time — change a colour in the CSS file and both surfaces move.
+ *
+ * Token mapping uses Lezer's tag system rather than language-specific
+ * tokens, so colours generalise across the languages we expose in
+ * `codeBlockLanguages` (ts / js / python / bash / css / html / json / md /
+ * sql).
  */
 
 import { HighlightStyle, syntaxHighlighting } from "@codemirror/language";
@@ -14,20 +19,20 @@ import { EditorView } from "@codemirror/view";
 import { tags as t } from "@lezer/highlight";
 
 const COLOURS = {
-  bg: "rgb(15 23 42)", // slate-900
-  fg: "rgb(241 245 249)", // slate-100
-  selection: "rgb(51 65 85)", // slate-700
-  cursor: "rgb(241 245 249)",
-  gutter: "rgb(15 23 42)",
-  gutterFg: "rgb(100 116 139)", // slate-500
-  comment: "rgb(148 163 184)", // slate-400
-  punctuation: "rgb(203 213 225)", // slate-300
-  literal: "rgb(248 113 113)", // red-400 — numbers, booleans, tags
-  string: "rgb(134 239 172)", // green-300
-  operator: "rgb(165 180 252)", // indigo-300
-  keyword: "rgb(196 181 253)", // violet-300
-  fnOrClass: "rgb(253 224 71)", // yellow-300
-  regex: "rgb(252 165 165)", // red-300
+  bg: "var(--article-code-bg)",
+  fg: "var(--article-code-fg)",
+  selection: "var(--article-code-selection)",
+  cursor: "var(--article-code-fg)",
+  gutter: "var(--article-code-bg)",
+  gutterFg: "var(--article-code-gutter-fg)",
+  comment: "var(--article-code-comment)",
+  punctuation: "var(--article-code-punctuation)",
+  literal: "var(--article-code-literal)",
+  string: "var(--article-code-string)",
+  operator: "var(--article-code-operator)",
+  keyword: "var(--article-code-keyword)",
+  fnOrClass: "var(--article-code-fn-or-class)",
+  regex: "var(--article-code-regex)",
 } as const;
 
 const editorTheme = EditorView.theme(

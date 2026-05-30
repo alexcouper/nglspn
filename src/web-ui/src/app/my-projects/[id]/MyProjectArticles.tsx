@@ -5,6 +5,7 @@ import Link from "next/link";
 import { PlusIcon } from "@heroicons/react/24/outline";
 import type { ArticleListItem } from "@/lib/api";
 import { api } from "@/lib/api";
+import { formatDate } from "@/lib/utils";
 
 interface Props {
   projectSlugOrId: string;
@@ -124,14 +125,11 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
                       </span>
                       {article.published_at && (
                         <time dateTime={article.published_at}>
-                          {new Date(article.published_at).toLocaleDateString(
-                            "en-US",
-                            {
-                              year: "numeric",
-                              month: "short",
-                              day: "numeric",
-                            },
-                          )}
+                          {formatDate(article.published_at, {
+                            year: "numeric",
+                            month: "short",
+                            day: "numeric",
+                          })}
                         </time>
                       )}
                     </div>

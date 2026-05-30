@@ -29,48 +29,13 @@ import {
 import "@mdxeditor/editor/style.css";
 import "./article-markdown.css";
 import { useCallback, useRef } from "react";
-import { api } from "@/lib/api";
+import { uploadProjectImage } from "@/lib/uploadProjectImage";
 import { articleCodeMirrorExtensions } from "./article-codemirror-theme";
 
 interface Props {
   projectId: string;
   initialMarkdown: string;
   onChange: (markdown: string) => void;
-}
-
-// Uploads a dropped/pasted image through the existing project-image upload
-// pipeline and returns the public URL MDXEditor inserts into the markdown.
-async function uploadInlineImage(
-  projectId: string,
-  file: File,
-): Promise<string> {
-  const presigned = await api.myProjects.getImageUploadUrl(
-    projectId,
-    file.name,
-    file.type,
-    file.size,
-    false,
-  );
-
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`Upload failed (${xhr.status})`));
-    };
-    xhr.onerror = () => reject(new Error("Upload failed"));
-    xhr.open(presigned.method, presigned.upload_url);
-    Object.entries(presigned.headers).forEach(([k, v]) =>
-      xhr.setRequestHeader(k, v),
-    );
-    xhr.send(file);
-  });
-
-  const completed = await api.myProjects.completeImageUpload(
-    projectId,
-    presigned.image_id,
-  );
-  return completed.url;
 }
 
 export function ArticleEditor({
@@ -83,7 +48,8 @@ export function ArticleEditor({
   const handleImageUpload = useCallback(
     async (file: File) => {
       try {
-        return await uploadInlineImage(projectId, file);
+        const image = await uploadProjectImage(projectId, file);
+        return image.url;
       } catch (err) {
         // MDXEditor swallows thrown errors, so keep the message visible.
         console.error("Image upload failed", err);

@@ -1,6 +1,5 @@
-import { notFound } from "next/navigation";
 import { ArticleAuthoringPage } from "../ArticleAuthoringPage";
-import { fetchProject, ApiNotFoundError } from "@/lib/api/server";
+import { getProjectOr404 } from "@/lib/api/server";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -8,18 +7,11 @@ interface PageProps {
 
 export default async function NewArticlePage({ params }: PageProps) {
   const { slug } = await params;
-
-  let project;
-  try {
-    project = await fetchProject(slug);
-  } catch (err) {
-    if (err instanceof ApiNotFoundError) notFound();
-    throw err;
-  }
+  const project = await getProjectOr404(slug);
 
   return (
     <main className="min-h-screen bg-muted pt-14">
-      <ArticleAuthoringPage project={project} mode="new" />
+      <ArticleAuthoringPage project={project} />
     </main>
   );
 }

@@ -1,7 +1,7 @@
-import { notFound, permanentRedirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ProjectDetailContent } from "./ProjectDetailContent";
-import { fetchProject, ApiNotFoundError } from "@/lib/api/server";
+import { fetchProject, getProjectOr404 } from "@/lib/api/server";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -56,13 +56,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ProjectPage({ params }: PageProps) {
   const { slug } = await params;
 
-  let project;
-  try {
-    project = await fetchProject(slug);
-  } catch (err) {
-    if (err instanceof ApiNotFoundError) notFound();
-    throw err;
-  }
+  const project = await getProjectOr404(slug);
 
   // Canonicalise: if the URL identifier isn't the project's current slug
   // (e.g. accessed by UUID), 301 to the slug URL.

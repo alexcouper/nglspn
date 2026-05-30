@@ -13,7 +13,7 @@ import "../article-markdown.css";
 import { useAuth } from "@/contexts/auth";
 import type { Article, Project } from "@/lib/api";
 import { api } from "@/lib/api";
-import { getAuthorName } from "@/lib/utils";
+import { formatDate, getAuthorName } from "@/lib/utils";
 
 interface Props {
   project: Project;
@@ -75,11 +75,7 @@ export function ArticleRenderContent({ project, article }: Props) {
         <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
           {publishedAt && (
             <time dateTime={publishedAt.toISOString()}>
-              {publishedAt.toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
+              {formatDate(publishedAt)}
             </time>
           )}
           {article.author && !article.author.is_system_user && (

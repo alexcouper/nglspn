@@ -93,6 +93,15 @@
 - [x] 11.6 Implement channel dropdown sourced from `GET /api/projects/{slug}/channels`. _`ChannelDropdown` component + `ChannelsClient.list` API client; channels are fetched on page mount and the first channel is selected by default for new drafts._
 - [x] 11.7 Implement "Save draft" and "Publish" actions; "Publish" opens a confirm dialog with an optional `published_at` override (datetime picker, defaults to now). _Save draft → POST `/articles` (new) or PATCH `/articles/{id}` (edit); after the first save the URL is `router.replace`'d to `/edit/{id}` so subsequent saves PATCH. Publish opens `PublishDialog` with a checkbox "Set a custom publish date" → `<input type="datetime-local">`; on confirm, the form is saved then `POST /articles/{id}/publish` runs with the chosen ISO datetime (or null for "now"). On success the user is sent back to the project page._
 
+## 11C. Frontend — Remove published-at override (scope amendment)
+
+The published-at override in `PublishDialog` was always intended for backfilling historic emails as articles; it's not useful to anyone else and adds confusion to the publish flow. Backdating now happens via a Django management command / admin path instead — the backend `POST /articles/{id}/publish` parameter and the "backdated publishes skip notification fan-out" guard (`services/articles/` + `services/notifications/`) **both stay**, so the script path keeps working unchanged.
+
+- [ ] 11C.1 Remove the "Set a custom publish date" checkbox and the `<input type="datetime-local">` from `PublishDialog`. Publish always sends `published_at: null` so the backend stamps `now()`.
+- [ ] 11C.2 Keep a minimal confirm dialog: title + one short sentence noting that followers will receive an email and an in-app notification, plus "Cancel" / "Publish" buttons. (The dialog's role shifts from "set a date" to "confirm an irreversible fan-out".)
+- [ ] 11C.3 Drop the `publishedAt` state and the related form plumbing from `ArticleAuthoringPage.tsx`.
+- [ ] 11C.4 Remove any web-ui tests that asserted on the datetime-local input or backdated-publish flow from the UI. (Backend tests for backdated suppression stay — they exercise the service layer directly.)
+
 ## 12. Frontend — Article render page
 
 - [x] 12.1 Add Next.js route `app/projects/[projectSlug]/articles/[articleSlug]/page.tsx`. _Edit route from §11.2 moved from `articles/[articleId]/edit/page.tsx` → `articles/edit/[articleId]/page.tsx` to free the `[articleSlug]` segment (Next.js doesn't allow two differently-named dynamic segs under the same parent). New URL shape: render at `/projects/<slug>/articles/<articleSlug>`, edit at `/projects/<slug>/articles/edit/<articleId>`, new at `/projects/<slug>/articles/new`. `ArticleAuthoringPage`'s `router.replace` updated accordingly. `fetchArticleBySlug` added to `lib/api/server.ts`._
@@ -117,11 +126,13 @@ Six pieces of UX feedback collected after §12 + §12.6 landed. Together they sh
 
 ## 13. Frontend — Channel management UI
 
-- [ ] 13.1 Add a "Channels" section in project settings (route or tab — design.md decision: standalone route `/projects/[slug]/settings/channels`).
-- [ ] 13.2 Render the project's channels as a list with rename in-place + delete buttons.
-- [ ] 13.3 "Add channel" form with name validation; show 409 errors inline.
-- [ ] 13.4 Delete flow: when API returns 409 (channel has articles), show a "Reassign articles to…" picker and call the bulk-reassign endpoint, then re-attempt delete.
-- [ ] 13.5 Disable delete on the only remaining channel; show tooltip.
+_Scope amendment: **deferred out of this change.** Every project already auto-creates an "Updates" channel via `apps/projects/signals.py:create_default_channel`, so authors can publish without ever needing to manage channels. The channel CRUD backend from §6 ships as planned (still callable, still tested) — only the management UI is deferred to a future change. The existing channel dropdown in the editor (§11.6) stays in place; with one channel per project it's a single-option dropdown for now, which is fine and avoids re-work when more channels arrive._
+
+- [~] 13.1 ~~Add a "Channels" section in project settings~~ — deferred.
+- [~] 13.2 ~~Render the project's channels as a list with rename in-place + delete buttons~~ — deferred.
+- [~] 13.3 ~~"Add channel" form with name validation~~ — deferred.
+- [~] 13.4 ~~Delete flow with reassignment~~ — deferred.
+- [~] 13.5 ~~Disable delete on the only remaining channel~~ — deferred.
 
 ## 14. Frontend — In-app notifications surface updates
 
@@ -141,7 +152,7 @@ _Scope amendment_: original §15.1 / §15.2 put a "Write article" button on the 
 ## 16. End-to-end verification
 
 - [ ] 16.1 Run `make ci` from project root — fix any lint, type, or test failures.
-- [ ] 16.2 Boot the stack locally (`docker compose up` or the project's run path), log in with the test account from `.env.claude`, and walk through: create a project channel, write a draft, publish at "now" (verify a follower receives both an email and an in-app notification + bell dot), publish backdated (verify no notifications), edit the article, delete the article.
+- [ ] 16.2 Boot the stack locally (`docker compose up` or the project's run path), log in with the test account from `.env.claude`, and walk through: write a draft on an existing project (the auto-created "Updates" channel is the only target), publish at "now" (verify a follower receives both an email and an in-app notification + bell dot, that the toaster fires, and that click-through lands on the article render page and clears the bell), edit the article, delete the article. Backdated publish is verified via the backend test suite + a one-off invocation of the management command — no UI path exists for it any more (see §11C).
 - [ ] 16.3 With Playwright, run the scenario as a regression: it should be a recorded fixture covering create → publish → notification → delete.
 - [ ] 16.4 Verify the Naglasúpan broadcast pipeline post-flip: queue a `platform_updates` BroadcastEmail and observe that recipients match the new Follow-based query (use the parity tool from 8.5).
 - [ ] 16.5 Verify no references to `email_opt_in_competition_results` or `email_opt_in_platform_updates` remain anywhere in the codebase (`rg email_opt_in_` returns nothing).

@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import { ArticleRenderContent } from "./ArticleRenderContent";
 import {
   fetchArticleBySlug,
-  fetchProject,
+  getProjectOr404,
   ApiNotFoundError,
 } from "@/lib/api/server";
 
@@ -37,19 +37,17 @@ export async function generateMetadata({
 export default async function ArticleRenderPage({ params }: PageProps) {
   const { slug, articleSlug } = await params;
 
-  let project, article;
-  try {
-    [project, article] = await Promise.all([
-      fetchProject(slug),
-      // Backend returns 404 for drafts to unauthenticated callers (server fetch
-      // has no auth context). Authenticated callers (author / full_edit) hit
-      // the client-side fetch path inside ArticleRenderContent for drafts.
-      fetchArticleBySlug(slug, articleSlug),
-    ]);
-  } catch (err) {
-    if (err instanceof ApiNotFoundError) notFound();
-    throw err;
-  }
+  // `getProjectOr404` handles the project 404; the article fetch needs its
+  // own try because draft articles return 404 for unauthenticated server
+  // fetches (the client-side path in ArticleRenderContent rehydrates drafts
+  // for the author / full_edit contributors).
+  const [project, article] = await Promise.all([
+    getProjectOr404(slug),
+    fetchArticleBySlug(slug, articleSlug).catch((err) => {
+      if (err instanceof ApiNotFoundError) notFound();
+      throw err;
+    }),
+  ]);
 
   return (
     <main className="min-h-screen bg-muted pt-14">

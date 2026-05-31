@@ -94,6 +94,35 @@ def build_digest_groups(notifications: Sequence[Notification]) -> list[dict]:
     ]
 
 
+ARTICLE_DIGEST_EXCERPT_MAX = 500
+
+
+def build_article_digest_entries(notifications: Sequence[Notification]) -> list[dict]:
+    """Build the per-article context entries for the article digest template."""
+    entries = []
+    for n in notifications:
+        article = n.article
+        project = article.project
+        body_excerpt = (article.body or "").strip()
+        if len(body_excerpt) > ARTICLE_DIGEST_EXCERPT_MAX:
+            body_excerpt = body_excerpt[:ARTICLE_DIGEST_EXCERPT_MAX].rstrip() + "…"
+        project_slug_or_id = project.slug or project.id
+        article_slug_or_id = article.slug or article.id
+        entries.append(
+            {
+                "project_title": project.title,
+                "channel_name": article.channel.name,
+                "article_title": article.title,
+                "body_excerpt": body_excerpt,
+                "article_url": (
+                    f"{settings.FRONTEND_URL}/projects/{project_slug_or_id}"
+                    f"/articles/{article_slug_or_id}"
+                ),
+            }
+        )
+    return entries
+
+
 class DjangoEmailHandler(EmailHandlerInterface):
     def send_verification_email(
         self,
@@ -437,32 +466,10 @@ class DjangoEmailHandler(EmailHandlerInterface):
             return
 
         recipient = notifications[0].recipient
-        excerpt_max = 500
-        entries = []
-        for n in notifications:
-            article = n.article
-            project = article.project
-            body_excerpt = (article.body or "").strip()
-            if len(body_excerpt) > excerpt_max:
-                body_excerpt = body_excerpt[:excerpt_max].rstrip() + "…"
-            project_slug_or_id = project.slug or project.id
-            article_slug_or_id = article.slug or article.id
-            entries.append(
-                {
-                    "project_title": project.title,
-                    "channel_name": article.channel.name,
-                    "article_title": article.title,
-                    "body_excerpt": body_excerpt,
-                    "article_url": (
-                        f"{settings.FRONTEND_URL}/projects/{project_slug_or_id}"
-                        f"/articles/{article_slug_or_id}"
-                    ),
-                }
-            )
 
         context = {
             "recipient_name": recipient.first_name or "there",
-            "entries": entries,
+            "entries": build_article_digest_entries(notifications),
             "site_url": settings.FRONTEND_URL,
             "profile_url": f"{settings.FRONTEND_URL}/profile",
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",

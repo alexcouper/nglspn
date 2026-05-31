@@ -1,6 +1,6 @@
 Hi {{ recipient_name }},
 
-Here's what's been published recently:
+Here are the latest articles from the projects you follow:
 
 {% for entry in entries %}{{ entry.article_title }}
 on {{ entry.project_title }} - {{ entry.channel_name }}
@@ -12,7 +12,4 @@ on {{ entry.project_title }} - {{ entry.channel_name }}
 ---
 
 {% endfor %}
-
-View on Naglasúpan: {{ site_url }}
-
 Change your article email frequency: {{ profile_url }}

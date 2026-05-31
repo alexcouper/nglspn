@@ -22,6 +22,7 @@ from .query import DjangoEmailQuery
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from apps.articles.models import Article
     from apps.discussions.models import Discussion
     from apps.emails.models import BroadcastEmail
     from apps.notifications.models import Notification
@@ -97,6 +98,17 @@ def build_digest_groups(notifications: Sequence[Notification]) -> list[dict]:
 ARTICLE_DIGEST_EXCERPT_MAX = 500
 
 
+def _digest_article_image_url(article: Article) -> str | None:
+    from services import REPO  # noqa: PLC0415
+
+    hero = article.hero_image
+    if hero is not None:
+        variants = list(hero.variants.all())
+        thumb = next((v for v in variants if v.size == "thumb"), None)
+        return thumb.url if thumb else hero.url
+    return REPO.project.get_project_icon_url(article.project)
+
+
 def build_article_digest_entries(notifications: Sequence[Notification]) -> list[dict]:
     """Build the per-article context entries for the article digest template."""
     entries = []
@@ -111,8 +123,12 @@ def build_article_digest_entries(notifications: Sequence[Notification]) -> list[
         entries.append(
             {
                 "project_title": project.title,
+                "project_url": (
+                    f"{settings.FRONTEND_URL}/projects/{project_slug_or_id}"
+                ),
                 "channel_name": article.channel.name,
                 "article_title": article.title,
+                "article_image_url": _digest_article_image_url(article),
                 "body_excerpt": body_excerpt,
                 "article_url": (
                     f"{settings.FRONTEND_URL}/projects/{project_slug_or_id}"

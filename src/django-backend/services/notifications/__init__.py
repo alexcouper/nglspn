@@ -39,6 +39,7 @@ class NotificationGroup:
     article_slug: str | None = None
     article_title: str | None = None
     channel_name: str | None = None
+    article_image_url: str | None = None
 
 
 @dataclass(frozen=True)

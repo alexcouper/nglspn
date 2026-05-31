@@ -49,6 +49,7 @@ class NotificationGroupResponse(Schema):
     article_slug: str | None = None
     article_title: str | None = None
     channel_name: str | None = None
+    article_image_url: str | None = None
 
     @classmethod
     def from_dataclass(cls, group: NotificationGroup) -> "NotificationGroupResponse":
@@ -71,6 +72,7 @@ class NotificationGroupResponse(Schema):
             article_slug=group.article_slug,
             article_title=group.article_title,
             channel_name=group.channel_name,
+            article_image_url=group.article_image_url,
         )
 
 

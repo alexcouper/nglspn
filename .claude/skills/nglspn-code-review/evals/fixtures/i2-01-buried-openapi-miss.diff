@@ -1,0 +1,48 @@
+diff --git a/src/django-backend/apps/articles/models.py b/src/django-backend/apps/articles/models.py
+index aa11bb2..cc33dd4 100644
+--- a/src/django-backend/apps/articles/models.py
++++ b/src/django-backend/apps/articles/models.py
+@@ -120,6 +120,15 @@ class Article(models.Model):
+     def __str__(self) -> str:
+         return self.title or f"Article {self.id}"
+
++    @property
++    def reading_time_minutes(self) -> int:
++        """Estimated reading time, ~200 words per minute, min 1."""
++        word_count = len(self.body.split())
++        return max(1, round(word_count / 200))
++
+diff --git a/src/django-backend/api/schemas/article.py b/src/django-backend/api/schemas/article.py
+index dd55ee6..ff77aa8 100644
+--- a/src/django-backend/api/schemas/article.py
++++ b/src/django-backend/api/schemas/article.py
+@@ -45,6 +45,7 @@ class ArticleOut(Schema):
+     state: str
+     published_at: datetime | None
+     global_visibility: str
++    reading_time_minutes: int
+     is_globally_visible: bool
+     created_at: datetime
+     updated_at: datetime
+@@ -70,6 +71,10 @@ class ArticleOut(Schema):
+         if hero is None:
+             return None
+         return hero.url
+
++    @staticmethod
++    def resolve_reading_time_minutes(obj: Any) -> int:
++        return obj.reading_time_minutes
++
+diff --git a/src/web-ui/src/components/ArticleCard.tsx b/src/web-ui/src/components/ArticleCard.tsx
+index 12ab34c..56cd78e 100644
+--- a/src/web-ui/src/components/ArticleCard.tsx
++++ b/src/web-ui/src/components/ArticleCard.tsx
+@@ -28,6 +28,9 @@ export function ArticleCard({ article }: ArticleCardProps) {
+       <h3 className="text-lg font-semibold">{article.title}</h3>
+       <p className="mt-1 text-sm text-gray-500">
+         {new Date(article.published_at ?? article.created_at).toLocaleDateString("is-IS")}
++        {" · "}
++        {article.reading_time_minutes} mín lestur
+       </p>
+     </article>
+   );

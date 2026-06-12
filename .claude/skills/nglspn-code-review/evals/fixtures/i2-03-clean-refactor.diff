@@ -1,0 +1,51 @@
+diff --git a/src/django-backend/services/articles/django_impl/query.py b/src/django-backend/services/articles/django_impl/query.py
+index 7a8b9c0..1d2e3f4 100644
+--- a/src/django-backend/services/articles/django_impl/query.py
++++ b/src/django-backend/services/articles/django_impl/query.py
+@@ -11,13 +11,16 @@ if TYPE_CHECKING:
+
+     from django.db.models import QuerySet
+
+
++# Relations every Article read needs eagerly loaded to avoid N+1 queries when
++# the ArticleOut schema resolves project / channel / author / hero image.
++_ARTICLE_RELATIONS = ("project", "channel", "author", "hero_image")
++
++
+ class DjangoArticleQuery(ArticleQueryInterface):
+     def get_by_id(self, article_id: UUID) -> Article | None:
+         return (
+-            Article.objects.select_related("project", "channel", "author", "hero_image")
++            Article.objects.select_related(*_ARTICLE_RELATIONS)
+             .filter(pk=article_id)
+             .first()
+         )
+
+     def get_by_project_and_slug(
+         self,
+         project_slug: str,
+         article_slug: str,
+     ) -> Article | None:
+         return (
+-            Article.objects.select_related("project", "channel", "author", "hero_image")
++            Article.objects.select_related(*_ARTICLE_RELATIONS)
+             .filter(project__slug=project_slug, slug=article_slug)
+             .first()
+         )
+
+     def for_project(
+         self,
+         project_id: UUID,
+         *,
+         include_drafts: bool = False,
+     ) -> QuerySet[Article]:
+         qs = (
+-            Article.objects.filter(project_id=project_id)
+-            .select_related("channel", "author", "hero_image")
++            Article.objects.filter(project_id=project_id)
++            .select_related(*_ARTICLE_RELATIONS)
+             .order_by(F("published_at").desc(nulls_first=True), "-created_at")
+         )
+         if not include_drafts:
+             qs = qs.filter(state=ArticleState.PUBLISHED)
+         return qs

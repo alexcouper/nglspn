@@ -298,7 +298,7 @@ function RankingActive({
       <div className="grid gap-6 lg:grid-cols-2">
         <div
           data-testid="ranked-panel"
-          className={activeTab === "ranked" ? "" : "hidden lg:block"}
+          className={`min-w-0 ${activeTab === "ranked" ? "" : "hidden lg:block"}`}
         >
           <h3 className="hidden lg:block text-sm font-medium text-foreground mb-3">
             My ranking ({ranked.length})
@@ -313,7 +313,7 @@ function RankingActive({
 
         <div
           data-testid="pool-panel"
-          className={activeTab === "pool" ? "" : "hidden lg:block"}
+          className={`min-w-0 ${activeTab === "pool" ? "" : "hidden lg:block"}`}
         >
           <h3 className="hidden lg:block text-sm font-medium text-foreground mb-3">
             Unranked ({pool.length})

@@ -159,7 +159,7 @@ function RankingCard({
       className={containerClass}
     >
       <div className="flex items-stretch gap-3 sm:gap-4 p-3 sm:p-4">
-        <div className="flex flex-col items-center justify-center gap-1 flex-shrink-0">
+        <div className="flex flex-col-reverse sm:flex-col items-center justify-center gap-1 flex-shrink-0">
           {!readOnly && (
             <>
               <button
@@ -273,10 +273,10 @@ export function PoolList({ projects, readOnly, onAdd }: PoolListProps) {
                 onClick={() => onAdd(project)}
                 data-testid="add-button"
                 aria-label={`Add ${project.title || "project"} to my ranking`}
-                className="self-center inline-flex items-center gap-1 flex-shrink-0 btn-secondary text-sm px-3 py-2"
+                className="self-center inline-flex items-center justify-center gap-1 flex-shrink-0 btn-secondary text-sm px-3 py-2 min-w-[44px] min-h-[44px] sm:min-h-0"
               >
                 <PlusIcon className="w-4 h-4" />
-                Rank
+                <span className="hidden sm:inline">Rank</span>
               </button>
             )}
           </div>
@@ -290,7 +290,7 @@ function CardImage({ project }: { project: ReviewProject }) {
   const imageUrl =
     pickVariant(project.main_image_variants, "medium") ?? project.main_image_url;
   return (
-    <div className="relative w-24 h-24 sm:w-36 sm:h-24 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
+    <div className="relative w-16 h-16 sm:w-36 sm:h-24 rounded-lg overflow-hidden bg-slate-100 flex-shrink-0">
       {imageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
@@ -318,7 +318,7 @@ function CardText({
   return (
     <div className="flex-1 min-w-0 flex flex-col justify-center">
       <h3
-        className={`font-semibold text-base sm:text-lg truncate transition-colors ${
+        className={`font-semibold text-base sm:text-lg line-clamp-2 sm:truncate transition-colors ${
           readOnly
             ? "text-muted-foreground"
             : "text-foreground group-hover:text-accent"
@@ -335,7 +335,7 @@ function CardText({
           {project.tagline}
         </p>
       )}
-      <p className="text-xs text-muted-foreground mt-1 truncate">
+      <p className="hidden sm:block text-xs text-muted-foreground mt-1 truncate">
         {project.website_url}
       </p>
     </div>

@@ -94,8 +94,8 @@ No tests exist for any ranking component today. `data-testid="ranked-card"` and 
 
 ## 9. Verification
 
-- [ ] 9.1 Run `make ci` from the project root
-- [ ] 9.2 Exercise the reviewer flow end to end against a running instance — rank 2 of 8, submit, reopen, confirm the other 6 are in the pool and not scored
-- [ ] 9.3 Confirm two different test reviewers see different pool orders for the same competition
-- [ ] 9.4 View the admin results page for a competition with mixed full and partial ballots; check the ranked-by column and pairwise grid read correctly
-- [ ] 9.5 Confirm a closed historical competition still renders results and its stored `winner` is untouched
+- [x] 9.1 Run `make ci` from the project root
+- [x] 9.2 Exercise the reviewer flow end to end against a running instance — rank 2 of 8, submit, reopen, confirm the other 6 are in the pool and not scored
+- [x] 9.3 Confirm two different test reviewers see different pool orders for the same competition
+- [x] 9.4 View the admin results page for a competition with mixed full and partial ballots; check the ranked-by column and pairwise grid read correctly
+- [x] 9.5 Confirm a closed historical competition still renders results and its stored `winner` is untouched

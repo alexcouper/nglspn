@@ -16,8 +16,6 @@ read the rest too — the conventions are the same.
 | **Frontend** | `src/web-ui/` | Next.js 16 App Router, React 19, TypeScript (strict), Tailwind 4, vitest + Playwright. Talks to the backend through a typed `APIClient` and **generated** types. |
 | **Infra** | `infra/prod/app/` | Terraform. |
 
-The product is Icelandic: user-facing strings are in Icelandic and the domain
-is `naglasupan.is`.
 
 ## Local setup
 

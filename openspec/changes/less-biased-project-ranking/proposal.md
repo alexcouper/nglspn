@@ -45,7 +45,7 @@ _(none — no existing spec covers voting or ranking)_
 
 ## Impact
 
-- **Django backend**: new tally module (pairwise reduction + Schulze) replacing the inline Borda loop in `apps/projects/admin.py:814-884`; `voting_results.html` template rewritten; `api/routers/my_review.py` gains validation, atomicity and the seeded pool ordering on the detail endpoint.
+- **Django backend**: ranking moves behind the service layer. Ranking is currently the one domain that bypasses it — `api/routers/my_review.py` and `CompetitionAdmin.voting_results_view` both touch `ProjectRanking` directly, and `services/review/` holds only `end_review_period` with no query interface at all. This change adds `ReviewQueryInterface`/`DjangoReviewQuery` (registered as `reviews` on `QueryServices`), a `replace_ballot` handler method, and pure tally functions in `services/review/tally.py`. The router and the admin view become thin; `voting_results.html` is rewritten.
 - **Data model**: none. `ProjectRanking` already stores one row per ranked project, so a partial ballot is simply fewer rows. No migration.
 - **Web UI**: `RankingList.tsx` split into ranked list and pool, new tab shell in `MyRanking.tsx`, `CompetitionReveal.tsx` initial-ordering logic replaced by the server-supplied pool order.
 - **OpenAPI**: the reviewer detail response changes shape (pool ordering) — regenerate `backend-openapi.json` and run `npm run generate-types`, per [CONTRIBUTING.md](../../../CONTRIBUTING.md).

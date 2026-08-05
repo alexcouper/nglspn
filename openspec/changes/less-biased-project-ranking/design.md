@@ -82,15 +82,34 @@ A keyed sort is preferred over `random.Random(seed).shuffle(...)` because it dep
 
 **Alternatives considered:** shuffle per request (rejected — the list would reorder under the reviewer mid-decision, and the component refetches after every autosave); shuffle per client session (rejected — inconsistent across devices, lost on reload); a stored per-reviewer seed column (rejected — a migration for something derivable).
 
-### Tally lives in a pure module, not a service handler
+### Ranking moves behind the service layer
 
-**Decision:** put ballot reduction and Schulze in a pure module under `apps/projects/` that takes plain data (a list of ballots as ordered project-ID sequences, plus the eligible project IDs) and returns plain data. The admin view does the ORM query and passes the result in.
+**Decision:** ballot reads, ballot writes and the tally all go through `services/review/`. No router or admin view touches `ProjectRanking` directly.
 
-The repo's `services/<name>/handler_interface.py` + `django_impl` pattern exists for operations with side effects and ORM access ([`services/review/`](../../../src/django-backend/services/review/)). The tally has neither — it is a deterministic function of its inputs. Keeping it ORM-free means its tests are fast, exhaustive and readable, which matters because the correctness argument for this change lives entirely in that function.
+Ranking is currently the one domain in the backend that bypasses the service layer. Every other domain routes through `HANDLERS`/`REPO` ([`services/__init__.py`](../../../src/django-backend/services/__init__.py)), but `api/routers/my_review.py` queries and writes `ProjectRanking` inline, and the tally sits inside `CompetitionAdmin.voting_results_view`. `services/review/` exists but holds a single method, `end_review_period`, and has no query interface at all — `reviews` appears in `HandlerServices` but not in `QueryServices`.
+
+```
+  admin view ──┐
+  API router ──┼──▶ REPO.reviews / HANDLERS.reviews ──▶ ORM
+  (both thin)  │              │
+               │              └── calls ──▶ services/review/tally.py  (pure)
+```
+
+This change already rewrites the guts of `update_rankings` for atomicity, duplicate rejection and the `ENDED` guard, and replaces the tally wholesale. Moving both behind the service while they are open costs little; doing the reads and leaving the writes inline would leave ranking as the one domain where half the operations are layered and half are not, which is the kind of half-migration that never gets finished.
+
+Requires a new `ReviewQueryInterface` + `DjangoReviewQuery` registered as `reviews` on `QueryServices`, and new methods on the existing `ReviewHandlerInterface`.
+
+### Tally computation stays pure, inside the service package
+
+**Decision:** ballot reduction and the ordering rule live in `services/review/tally.py` as pure functions over plain data — a list of ballots as ordered project-ID sequences, plus the eligible project IDs, in; margins and ranked tiers out. `DjangoReviewQuery` does the ORM work and calls them.
+
+The `handler_interface` + `django_impl` pattern exists for operations with side effects and ORM access. The tally has neither; it is a deterministic function of its inputs, and keeping it ORM-free is what makes its tests fast and exhaustive — which matters because the entire correctness argument for this change lives in those functions.
+
+Placing it inside `services/review/` rather than under `apps/projects/` keeps review-domain logic together and means no caller reaches past `REPO` into a bare module. The purity is about testability, not about escaping the layer.
 
 ### The ordering rule is a callable `Protocol`
 
-**Decision:** define the ordering rule as a `typing.Protocol` over `(margins) -> ranked tiers`, with `schulze_order` as the first conforming implementation. The admin view depends on the protocol, not on `schulze_order` directly.
+**Decision:** define the ordering rule as a `typing.Protocol` over `(margins) -> ranked tiers`, with `schulze_order` as the first conforming implementation. The service depends on the protocol, not on `schulze_order` directly.
 
 ```python
 class OrderingRule(Protocol):
@@ -99,7 +118,7 @@ class OrderingRule(Protocol):
 
 Returning *tiers* — a list of lists — rather than a flat ordering keeps ties a first-class result rather than something each rule signals differently. Copeland ties constantly, Schulze rarely; the consumer should not have to know which rule it is talking to in order to render a shared rank.
 
-This is the first `Protocol` in the backend; the established pattern is `ABC` + `@abstractmethod` in `services/*/handler_interface.py` ([`services/registration/handler_interface.py`](../../../src/django-backend/services/registration/handler_interface.py)). The deviation is deliberate. Those interfaces describe stateful multi-method handlers that are instantiated and registered on `HANDLERS`; structural typing over a single pure function avoids wrapping a function in a class purely to satisfy nominal typing, and needs no registration. If the tally ever grows ORM access or side effects, it should move to the `services/` pattern and this decision should be revisited.
+This is the first `Protocol` in the backend; the established pattern is `ABC` + `@abstractmethod` in `services/*/handler_interface.py` ([`services/registration/handler_interface.py`](../../../src/django-backend/services/registration/handler_interface.py)). The deviation is deliberate and narrow. Those interfaces describe stateful multi-method handlers that are instantiated and registered on `HANDLERS`; structural typing over a single pure function avoids wrapping a function in a class purely to satisfy nominal typing, and needs no registration. The service boundary is still an `ABC` in the house style — the `Protocol` sits strictly below it, inside `tally.py`.
 
 **Alternatives considered:** a plain function reference with no declared interface (rejected — nothing states the contract, and the separability requirement becomes unenforceable); an `ABC` matching house style (rejected — forces a class wrapper and an instantiation ceremony around one function); a registry keyed by rule name (rejected — configurability nobody has asked for; changing the rule is a spec change, not a setting).
 

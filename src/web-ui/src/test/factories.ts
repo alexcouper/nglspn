@@ -37,8 +37,6 @@ export function makeReviewProject(
     tagline: "",
     description: "",
     website_url: "https://example.com",
-    main_image_url: null,
-    main_image_variants: [],
     my_ranking: null,
     ...overrides,
   };

@@ -1,5 +1,5 @@
 APP:=django-backend
-.PHONY: help install dev migrate makemigrations shell test createsuperuser clean extract-openapi lint bootstrap seed seed-prod-copy dev-services dev-services-down
+.PHONY: help install dev migrate makemigrations shell test createsuperuser clean extract-openapi lint bootstrap seed seed-ballots seed-prod-copy dev-services dev-services-down
 
 include ../../scripts/app-common.mk
 
@@ -16,6 +16,7 @@ help:
 	@echo "  extract-openapi Extract OpenAPI specification to openapi.json"
 	@echo "  lint          Run ruff linter and formatter check"
 	@echo "  seed          Populate database with sample users, projects, and competitions"
+	@echo "  seed-ballots  Fill a competition with partial ballots to exercise the results page"
 	@echo "  clean         Clean cache files"
 
 install-deps:
@@ -58,6 +59,9 @@ bootstrap:
 
 seed: bootstrap
 	uv run python scripts/seed_db.py
+
+seed-ballots:
+	uv run python scripts/seed_ballots.py $(ARGS)
 
 seed-prod-copy: bootstrap dev-services
 	$(DEV_S3_ENV) uv run python scripts/seed_prod_copy.py

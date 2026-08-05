@@ -280,20 +280,21 @@ class TestGetMyReviewCompetition:
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json()["my_review_status"], equal_to("completed"))
 
-    def test_includes_tagline_slug_and_image_variants_for_projects(
+    def test_includes_tagline_slug_and_the_sized_image_for_projects(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(
             title="Cool Project",
             tagline="Does something useful",
         )
-        # Image with at least one variant so we can assert the list is wired up
+        # Image with a medium variant so we can assert the ballot picks the
+        # sized URL rather than the original.
         image = ProjectImageFactory(
             project=project,
             is_main=True,
             upload_status="uploaded",
         )
-        ImageVariant.objects.create(
+        medium = ImageVariant.objects.create(
             image=image,
             size="medium",
             storage_key="test/cool-project/medium.webp",
@@ -316,11 +317,9 @@ class TestGetMyReviewCompetition:
             has_entries(
                 tagline="Does something useful",
                 slug=project.slug,
+                in_use_image_url=medium.url,
             ),
         )
-        variants = projects[0]["main_image_variants"]
-        assert_that(variants, has_length(1))
-        assert_that(variants[0], has_entries(size="medium", width=800, height=600))
 
     def test_includes_the_category_name_for_a_categorised_project(
         self, client, user, auth_headers
@@ -407,7 +406,6 @@ class TestGetMyReviewCompetition:
             has_entries(
                 in_use_image_url=None,
                 hero_banner_url=None,
-                main_image_url=None,
             ),
         )
 

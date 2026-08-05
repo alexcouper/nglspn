@@ -13,10 +13,15 @@ from apps.projects.models import (
     ProjectStatus,
     ReviewStatus,
 )
+from services.project.django_impl.query import (
+    resolve_image_by_purpose,
+    variant_url,
+)
 from services.review.query_interface import (
     CompetitionTally,
     ProjectSupport,
     ReviewerProjects,
+    ReviewProjectItem,
     ReviewQueryInterface,
 )
 from services.review.tally import (
@@ -103,16 +108,38 @@ class DjangoReviewQuery(ReviewQueryInterface):
             ).values_list("project_id", "position")
         )
 
-        return ReviewerProjects(
-            ranked=sorted(
-                (p for p in projects if p.id in positions),
-                key=lambda p: positions[p.id],
-            ),
-            pool=sorted(
-                (p for p in projects if p.id not in positions),
-                key=lambda p: _pool_key(user_id, competition_id, p.id),
-            ),
+        ranked = sorted(
+            (p for p in projects if p.id in positions),
+            key=lambda p: positions[p.id],
         )
+        pool = sorted(
+            (p for p in projects if p.id not in positions),
+            key=lambda p: _pool_key(user_id, competition_id, p.id),
+        )
+
+        return ReviewerProjects(
+            ranked=[_ballot_item(p) for p in ranked],
+            pool=[_ballot_item(p) for p in pool],
+        )
+
+
+def _ballot_item(project: Project) -> ReviewProjectItem:
+    """Resolve a project's ballot presentation the way the listing does.
+
+    `resolve_image_by_purpose` does no `upload_status` filtering of its own, so
+    this is only correct on a project loaded by `get_reviewer_projects`, whose
+    prefetch is narrowed to uploaded images.
+    """
+    return ReviewProjectItem(
+        project=project,
+        hero_banner_url=variant_url(
+            resolve_image_by_purpose(project, "hero_banner"), "large"
+        ),
+        in_use_image_url=variant_url(
+            resolve_image_by_purpose(project, "in_use"), "medium"
+        ),
+        category_name=project.category.name if project.category else None,
+    )
 
 
 def _ballots_by_reviewer(

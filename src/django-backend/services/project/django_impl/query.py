@@ -101,7 +101,7 @@ def resolve_image_by_purpose(project: Project, purpose: str) -> "ProjectImage | 
     return images[0] if images else None
 
 
-def _variant_url(image: "ProjectImage | None", size: str) -> str | None:
+def variant_url(image: "ProjectImage | None", size: str) -> str | None:
     if image is None:
         return None
     variants = list(image.variants.all())
@@ -116,9 +116,9 @@ def to_discover_item(project: Project) -> DiscoverProjectItem:
 
     return DiscoverProjectItem(
         project=project,
-        icon_url=_variant_url(icon, "thumb"),
-        hero_banner_url=_variant_url(hero, "large"),
-        in_use_image_url=_variant_url(in_use, "medium"),
+        icon_url=variant_url(icon, "thumb"),
+        hero_banner_url=variant_url(hero, "large"),
+        in_use_image_url=variant_url(in_use, "medium"),
         category_name=project.category.name if project.category else None,
         category_slug=project.category.slug if project.category else None,
         discussion_count=getattr(project, "discussion_count", 0) or 0,
@@ -348,9 +348,9 @@ class DjangoProjectQuery(ProjectQueryInterface):
             results.append(
                 WinnerItem(
                     project=project,
-                    icon_url=_variant_url(icon, "thumb"),
-                    hero_banner_url=_variant_url(hero, "large"),
-                    in_use_image_url=_variant_url(in_use, "medium"),
+                    icon_url=variant_url(icon, "thumb"),
+                    hero_banner_url=variant_url(hero, "large"),
+                    in_use_image_url=variant_url(in_use, "medium"),
                     competition_name=comp.name,
                     competition_slug=comp.slug,
                     competition_submission_deadline=comp.submission_deadline,
@@ -422,4 +422,4 @@ class DjangoProjectQuery(ProjectQueryInterface):
             except Project.DoesNotExist:
                 return None
         icon = resolve_image_by_purpose(project, "icon")
-        return _variant_url(icon, "thumb")
+        return variant_url(icon, "thumb")

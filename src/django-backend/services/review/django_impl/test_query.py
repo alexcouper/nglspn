@@ -1,5 +1,5 @@
 import pytest
-from hamcrest import assert_that, contains_exactly, equal_to, has_length, is_not
+from hamcrest import assert_that, equal_to, has_length, is_not
 
 from apps.projects.models import ProjectStatus, ReviewStatus
 from services.review.django_impl.query import DjangoReviewQuery
@@ -40,13 +40,18 @@ def titles(projects) -> list[str]:
     return [p.title for p in projects]
 
 
-def prefetched_images(project) -> list:
+def ballot_titles(items) -> list[str]:
+    """Titles of a `ReviewerProjects` list, which holds items, not projects."""
+    return [item.project.title for item in items]
+
+
+def prefetched_images(item) -> list:
     """Image ids the ballot query handed back, without hitting the database.
 
     Reads `project.images.all()` so it sees the prefetch cache rather than
-    re-querying — which is exactly what the response builder does.
+    re-querying — which is exactly what the image resolution does.
     """
-    return [image.id for image in project.images.all()]
+    return [image.id for image in item.project.images.all()]
 
 
 def flat_order(tally) -> list:
@@ -160,7 +165,9 @@ class TestGetReviewerProjects:
         result = query.get_reviewer_projects(reviewer.id, competition.id)
 
         assert_that(result.ranked, equal_to([]))
-        assert_that(sorted(titles(result.pool)), equal_to(sorted(titles(projects))))
+        assert_that(
+            sorted(ballot_titles(result.pool)), equal_to(sorted(titles(projects)))
+        )
 
     def test_ranked_projects_come_back_in_saved_position_order(self, query) -> None:
         competition, projects = competition_with_projects(4)
@@ -170,8 +177,10 @@ class TestGetReviewerProjects:
 
         result = query.get_reviewer_projects(reviewer.id, competition.id)
 
-        assert_that(titles(result.ranked), equal_to(titles([first, second, third])))
-        assert_that(titles(result.pool), equal_to([projects[3].title]))
+        assert_that(
+            ballot_titles(result.ranked), equal_to(titles([first, second, third]))
+        )
+        assert_that(ballot_titles(result.pool), equal_to([projects[3].title]))
 
     def test_excludes_rejected_and_iceboxed_projects(self, query) -> None:
         competition, (kept,) = competition_with_projects(1)
@@ -181,7 +190,7 @@ class TestGetReviewerProjects:
 
         result = query.get_reviewer_projects(reviewer.id, competition.id)
 
-        assert_that(titles(result.pool), equal_to([kept.title]))
+        assert_that(ballot_titles(result.pool), equal_to([kept.title]))
 
     def test_hides_images_that_are_still_uploading(self, query) -> None:
         competition, (project,) = competition_with_projects(1)
@@ -201,6 +210,48 @@ class TestGetReviewerProjects:
 
         assert_that(prefetched_images(result.pool[0]), equal_to([uploaded.id]))
 
+    def test_resolves_the_category_and_purpose_images_for_the_ballot(
+        self, query
+    ) -> None:
+        competition, (project,) = competition_with_projects(
+            1, category=ProjectCategoryFactory(name="Conservation")
+        )
+        in_use = ProjectImageFactory(project=project, is_usage=True)
+        hero = ProjectImageFactory(project=project, is_hero=True)
+        reviewer = UserFactory()
+
+        entry = query.get_reviewer_projects(reviewer.id, competition.id).pool[0]
+
+        assert_that(entry.category_name, equal_to("Conservation"))
+        assert_that(entry.in_use_image_url, equal_to(in_use.url))
+        assert_that(entry.hero_banner_url, equal_to(hero.url))
+
+    def test_resolves_no_image_when_the_only_one_is_still_uploading(
+        self, query
+    ) -> None:
+        competition, (project,) = competition_with_projects(1)
+        ProjectImageFactory(project=project, is_main=True, upload_status="pending")
+        reviewer = UserFactory()
+
+        entry = query.get_reviewer_projects(reviewer.id, competition.id).pool[0]
+
+        assert_that(entry.in_use_image_url, equal_to(None))
+        assert_that(entry.hero_banner_url, equal_to(None))
+
+    def test_resolves_the_images_without_a_query_per_project(
+        self, query, django_assert_num_queries
+    ) -> None:
+        competition, projects = competition_with_projects(4)
+        for project in projects:
+            ProjectImageFactory(project=project, is_usage=True)
+        reviewer = UserFactory()
+
+        result = query.get_reviewer_projects(reviewer.id, competition.id)
+
+        with django_assert_num_queries(0):
+            urls = [entry.in_use_image_url for entry in result.pool]
+        assert_that(urls, has_length(len(projects)))
+
     def test_reads_the_category_without_a_query_per_project(
         self, query, django_assert_num_queries
     ) -> None:
@@ -211,7 +262,7 @@ class TestGetReviewerProjects:
 
         result = query.get_reviewer_projects(reviewer.id, competition.id)
         with django_assert_num_queries(0):
-            categories = [p.category.name for p in result.pool]
+            categories = [item.category_name for item in result.pool]
 
         assert_that(categories, has_length(len(projects)))
 
@@ -225,7 +276,9 @@ class TestUnrankedPoolOrdering:
         first_load = query.get_reviewer_projects(reviewer.id, competition.id)
         second_load = query.get_reviewer_projects(reviewer.id, competition.id)
 
-        assert_that(titles(first_load.pool), equal_to(titles(second_load.pool)))
+        assert_that(
+            ballot_titles(first_load.pool), equal_to(ballot_titles(second_load.pool))
+        )
 
     def test_differs_between_reviewers(self, query) -> None:
         competition, _projects = competition_with_projects(8)
@@ -233,7 +286,9 @@ class TestUnrankedPoolOrdering:
         one = query.get_reviewer_projects(UserFactory().id, competition.id)
         other = query.get_reviewer_projects(UserFactory().id, competition.id)
 
-        assert_that(titles(one.pool), is_not(equal_to(titles(other.pool))))
+        assert_that(
+            ballot_titles(one.pool), is_not(equal_to(ballot_titles(other.pool)))
+        )
 
     def test_differs_between_competitions_for_one_reviewer(self, query) -> None:
         projects = [ProjectFactory() for _ in range(8)]
@@ -244,7 +299,10 @@ class TestUnrankedPoolOrdering:
         first_pool = query.get_reviewer_projects(reviewer.id, one.id)
         second_pool = query.get_reviewer_projects(reviewer.id, other.id)
 
-        assert_that(titles(first_pool.pool), is_not(equal_to(titles(second_pool.pool))))
+        assert_that(
+            ballot_titles(first_pool.pool),
+            is_not(equal_to(ballot_titles(second_pool.pool))),
+        )
 
     def test_ignores_creation_order(self, query) -> None:
         competition, projects = competition_with_projects(8)
@@ -252,8 +310,10 @@ class TestUnrankedPoolOrdering:
 
         pool = query.get_reviewer_projects(reviewer.id, competition.id).pool
 
-        assert_that(titles(pool), is_not(equal_to(titles(projects))))
-        assert_that(titles(pool), is_not(equal_to(titles(list(reversed(projects))))))
+        assert_that(ballot_titles(pool), is_not(equal_to(titles(projects))))
+        assert_that(
+            ballot_titles(pool), is_not(equal_to(titles(list(reversed(projects)))))
+        )
 
     def test_does_not_reorder_the_ranked_projects(self, query) -> None:
         competition, projects = competition_with_projects(8)
@@ -262,5 +322,5 @@ class TestUnrankedPoolOrdering:
 
         result = query.get_reviewer_projects(reviewer.id, competition.id)
 
-        assert_that(result.ranked, contains_exactly(*projects))
+        assert_that(ballot_titles(result.ranked), equal_to(titles(projects)))
         assert_that(result.pool, equal_to([]))

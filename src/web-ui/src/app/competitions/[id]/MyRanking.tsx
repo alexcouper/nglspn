@@ -108,6 +108,33 @@ function CompactLoggedOutCta({ returnPath }: { returnPath: string }) {
 
 type RankingTab = "ranked" | "pool";
 
+const TAB_ORDER: RankingTab[] = ["ranked", "pool"];
+const TAB_IDS: Record<RankingTab, string> = {
+  ranked: "ranking-tab-ranked",
+  pool: "ranking-tab-pool",
+};
+const PANEL_IDS: Record<RankingTab, string> = {
+  ranked: "ranking-panel-ranked",
+  pool: "ranking-panel-pool",
+};
+
+/** Where an arrow/Home/End key moves selection, or null if it is not ours. */
+function tabAfterKey(key: string, current: RankingTab): RankingTab | null {
+  const index = TAB_ORDER.indexOf(current);
+  switch (key) {
+    case "ArrowRight":
+      return TAB_ORDER[(index + 1) % TAB_ORDER.length];
+    case "ArrowLeft":
+      return TAB_ORDER[(index - 1 + TAB_ORDER.length) % TAB_ORDER.length];
+    case "Home":
+      return TAB_ORDER[0];
+    case "End":
+      return TAB_ORDER[TAB_ORDER.length - 1];
+    default:
+      return null;
+  }
+}
+
 function RankingActive({
   competitionId,
   competitionName,
@@ -155,14 +182,17 @@ function RankingActive({
   const isInProgress = reviewStatus === "in_progress";
   const readOnly = !isInProgress;
 
+  /** Returns whether the write landed, so submission can refuse to go ahead. */
   const saveNow = useCallback(
-    async (projectIds: string[]) => {
+    async (projectIds: string[]): Promise<boolean> => {
       setIsSaving(true);
       setSaveError(null);
       try {
         await api.myReview.updateRankings(competitionId, projectIds);
+        return true;
       } catch {
         setSaveError("Failed to save rankings");
+        return false;
       } finally {
         setIsSaving(false);
       }
@@ -184,16 +214,34 @@ function RankingActive({
     [saveNow]
   );
 
-  /** Write any debounced change immediately; used before submitting. */
-  const flushPendingSave = useCallback(async () => {
+  /**
+   * Write any debounced change immediately; used before submitting.
+   *
+   * Returns whether the ballot on screen is now the ballot on the server —
+   * `true` when there was nothing pending.
+   */
+  const flushPendingSave = useCallback(async (): Promise<boolean> => {
     if (saveTimeoutRef.current) {
       clearTimeout(saveTimeoutRef.current);
       saveTimeoutRef.current = null;
     }
     const ids = pendingIdsRef.current;
     pendingIdsRef.current = null;
-    if (ids) await saveNow(ids);
+    if (!ids) return true;
+    return saveNow(ids);
   }, [saveNow]);
+
+  const handleTabKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const next = tabAfterKey(event.key, activeTab);
+      if (!next) return;
+      event.preventDefault();
+      setActiveTab(next);
+      // Selection follows focus, so move focus with it.
+      document.getElementById(TAB_IDS[next])?.focus();
+    },
+    [activeTab]
+  );
 
   const handleReorder = useCallback(
     (next: ReviewProject[]) => {
@@ -227,7 +275,15 @@ function RankingActive({
     setIsSubmitting(true);
     setStatusError(null);
     try {
-      await flushPendingSave();
+      // Submitting locks the ballot. Doing that while the last change is only
+      // on screen would lock in an order the reviewer never chose.
+      if (!(await flushPendingSave())) {
+        setStatusError(
+          "Your ranking could not be saved, so it was not submitted. Try again."
+        );
+        setShowSubmitDialog(false);
+        return;
+      }
       await api.myReview.updateStatus(competitionId, "completed");
       setReviewStatus("completed");
       setShowSubmitDialog(false);
@@ -279,14 +335,22 @@ function RankingActive({
         </p>
       )}
 
-      <div className="flex gap-2 mb-4 lg:hidden" role="tablist">
+      <div
+        className="flex gap-2 mb-4 lg:hidden"
+        role="tablist"
+        onKeyDown={handleTabKeyDown}
+      >
         <TabButton
+          id={TAB_IDS.ranked}
+          controls={PANEL_IDS.ranked}
           isActive={activeTab === "ranked"}
           onClick={() => setActiveTab("ranked")}
         >
           My ranking ({ranked.length})
         </TabButton>
         <TabButton
+          id={TAB_IDS.pool}
+          controls={PANEL_IDS.pool}
           isActive={activeTab === "pool"}
           onClick={() => setActiveTab("pool")}
         >
@@ -297,6 +361,9 @@ function RankingActive({
       <div className="grid gap-6 lg:grid-cols-2">
         <div
           data-testid="ranked-panel"
+          id={PANEL_IDS.ranked}
+          role="tabpanel"
+          aria-labelledby={TAB_IDS.ranked}
           className={`min-w-0 ${activeTab === "ranked" ? "" : "hidden lg:block"}`}
         >
           <h3 className="hidden lg:block text-sm font-medium text-foreground mb-3">
@@ -319,6 +386,9 @@ function RankingActive({
         */}
         <div
           data-testid="pool-panel"
+          id={PANEL_IDS.pool}
+          role="tabpanel"
+          aria-labelledby={TAB_IDS.pool}
           className={`min-w-0 lg:border-l lg:border-border lg:pl-6 ${
             activeTab === "pool" ? "" : "hidden lg:block"
           }`}
@@ -373,10 +443,14 @@ function RankingActive({
 }
 
 function TabButton({
+  id,
+  controls,
   isActive,
   onClick,
   children,
 }: {
+  id: string;
+  controls: string;
   isActive: boolean;
   onClick: () => void;
   children: React.ReactNode;
@@ -385,7 +459,11 @@ function TabButton({
     <button
       type="button"
       role="tab"
+      id={id}
+      aria-controls={controls}
       aria-selected={isActive}
+      // Roving tabindex: Tab reaches the tab set once, arrows move within it.
+      tabIndex={isActive ? 0 : -1}
       onClick={onClick}
       className={`flex-1 text-sm px-3 py-2 rounded-lg border transition-colors ${
         isActive

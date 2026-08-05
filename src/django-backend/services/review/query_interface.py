@@ -27,11 +27,26 @@ class CompetitionTally:
 
 
 @dataclass(frozen=True)
+class ReviewProjectItem:
+    """A project as it appears on a ballot, with its images already resolved.
+
+    Resolution happens here rather than in the router because it is only
+    correct against a queryset that filtered `images` to uploaded ones — the
+    rule and the prefetch it depends on belong in the same place.
+    """
+
+    project: Project
+    hero_banner_url: str | None = None
+    in_use_image_url: str | None = None
+    category_name: str | None = None
+
+
+@dataclass(frozen=True)
 class ReviewerProjects:
     """One reviewer's ballot: what they ranked, and what is left to consider."""
 
-    ranked: list[Project] = field(default_factory=list)
-    pool: list[Project] = field(default_factory=list)
+    ranked: list[ReviewProjectItem] = field(default_factory=list)
+    pool: list[ReviewProjectItem] = field(default_factory=list)
 
 
 class ReviewQueryInterface(ABC):

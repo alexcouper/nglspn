@@ -77,6 +77,21 @@ function buttonWithLabel(label: string): HTMLButtonElement {
   return button as HTMLButtonElement;
 }
 
+async function pressKey(element: HTMLElement, key: string) {
+  await act(async () => {
+    element.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true }));
+  });
+}
+
+function tab(name: "ranked" | "pool"): HTMLButtonElement {
+  const label = name === "ranked" ? "My ranking" : "Unranked";
+  const found = [...container.querySelectorAll('[role="tab"]')].find((t) =>
+    (t.textContent ?? "").includes(label),
+  );
+  if (!found) throw new Error(`no ${name} tab rendered`);
+  return found as HTMLButtonElement;
+}
+
 async function click(element: HTMLElement) {
   await act(async () => {
     element.dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -350,5 +365,111 @@ describe("reordering immediately before submitting", () => {
     const savedAt = vi.mocked(api.myReview.updateRankings).mock.invocationCallOrder.at(-1)!;
     const statusAt = vi.mocked(api.myReview.updateStatus).mock.invocationCallOrder[0];
     expect(savedAt).toBeLessThan(statusAt);
+  });
+});
+
+describe("submitting when the ballot cannot be saved", () => {
+  async function reorderThenSubmitWithSaveFailing() {
+    vi.mocked(api.myReview.updateRankings).mockRejectedValue(new Error("network"));
+    const [first, second] = makeReviewProjects(2);
+    await renderRanking([first, second], []);
+
+    await clickButtonWithLabel(`Move ${second.title} up`);
+    await clickButtonWithLabel("Submit Ranking");
+    await confirmSubmitInDialog();
+
+    return { first, second };
+  }
+
+  it("does not mark the review completed", async () => {
+    await reorderThenSubmitWithSaveFailing();
+
+    expect(api.myReview.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it("says the ranking was not saved and so was not submitted", async () => {
+    await reorderThenSubmitWithSaveFailing();
+
+    expect(container.textContent).toContain(
+      "Your ranking could not be saved, so it was not submitted"
+    );
+  });
+
+  it("leaves the ranking editable so the reviewer can retry", async () => {
+    const { second } = await reorderThenSubmitWithSaveFailing();
+
+    expect(buttonWithLabel(`Remove ${second.title}`)).toBeTruthy();
+    expect(buttonWithLabel("Submit Ranking")).toBeTruthy();
+  });
+
+  it("keeps the reordered ballot on screen rather than reverting it", async () => {
+    const { first, second } = await reorderThenSubmitWithSaveFailing();
+
+    expect(titlesIn("ranked")).toEqual([second.title, first.title]);
+  });
+});
+
+describe("the narrow-screen tabs", () => {
+  it("points each tab at the panel it controls", async () => {
+    await renderRanking(makeReviewProjects(1), makeReviewProjects(1));
+
+    for (const name of ["ranked", "pool"] as const) {
+      const controlled = tab(name).getAttribute("aria-controls");
+      expect(controlled).toBe(panel(name).id);
+      expect(panel(name).getAttribute("role")).toBe("tabpanel");
+    }
+  });
+
+  it("labels each panel by its tab", async () => {
+    await renderRanking(makeReviewProjects(1), makeReviewProjects(1));
+
+    for (const name of ["ranked", "pool"] as const) {
+      expect(panel(name).getAttribute("aria-labelledby")).toBe(tab(name).id);
+    }
+  });
+
+  it("keeps only the selected tab in the tab order", async () => {
+    await renderRanking(makeReviewProjects(1), makeReviewProjects(1));
+
+    expect(tab("ranked").tabIndex).toBe(0);
+    expect(tab("pool").tabIndex).toBe(-1);
+  });
+
+  it("moves to the next tab on the right arrow key", async () => {
+    await renderRanking(makeReviewProjects(1), makeReviewProjects(1));
+
+    await pressKey(tab("ranked"), "ArrowRight");
+
+    expect(tab("pool").getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(tab("pool"));
+  });
+
+  it("moves back to the previous tab on the left arrow key", async () => {
+    await renderRanking(makeReviewProjects(1), makeReviewProjects(1));
+    await pressKey(tab("ranked"), "ArrowRight");
+
+    await pressKey(tab("pool"), "ArrowLeft");
+
+    expect(tab("ranked").getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(tab("ranked"));
+  });
+
+  it("wraps from the last tab to the first", async () => {
+    await renderRanking(makeReviewProjects(1), makeReviewProjects(1));
+    await pressKey(tab("ranked"), "ArrowRight");
+
+    await pressKey(tab("pool"), "ArrowRight");
+
+    expect(tab("ranked").getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("jumps to the first and last tabs with Home and End", async () => {
+    await renderRanking(makeReviewProjects(1), makeReviewProjects(1));
+
+    await pressKey(tab("ranked"), "End");
+    expect(tab("pool").getAttribute("aria-selected")).toBe("true");
+
+    await pressKey(tab("pool"), "Home");
+    expect(tab("ranked").getAttribute("aria-selected")).toBe("true");
   });
 });

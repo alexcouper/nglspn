@@ -6424,25 +6424,6 @@
             "title": "Website Url",
             "type": "string"
           },
-          "main_image_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Main Image Url"
-          },
-          "main_image_variants": {
-            "default": [],
-            "items": {
-              "$ref": "#/components/schemas/ImageVariantResponse"
-            },
-            "title": "Main Image Variants",
-            "type": "array"
-          },
           "hero_banner_url": {
             "anyOf": [
               {

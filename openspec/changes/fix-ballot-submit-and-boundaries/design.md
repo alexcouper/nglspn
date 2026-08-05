@@ -70,9 +70,11 @@ A router reaching into another domain's `django_impl` module, for a leading-unde
 
 `get_competition_tally` keeps returning `Project` rows; the admin template reads only `title` and `pk`, and there is no image work to hoist.
 
+**Also done:** `_variant_url` is renamed to `variant_url`. Moving the call into `services/review/django_impl/query.py` fixes the layering but still imports a private symbol across packages — and [`services/follows/django_impl/query.py:12`](../../../src/django-backend/services/follows/django_impl/query.py) already did the same. Three service impls sharing it makes it public API in fact; the name should say so.
+
 **Alternatives considered:**
 
-- *Rename `_variant_url` to `variant_url` and leave the call site* — one character of work, and it does resolve the private-symbol half. But the router still runs image-resolution logic, and the comment in `_project_response` explaining that resolution depends on the *query's* prefetch stays true and stays fragile: the invariant is asserted in one module and enforced in another.
+- *Rename `_variant_url` to `variant_url` and leave the call site* — one character of work, and it does resolve the private-symbol half. But the router would still run image-resolution logic, and the comment in `_project_response` explaining that resolution depends on the *query's* prefetch stays true and stays fragile: the invariant is asserted in one module and enforced in another. Rejected as the *whole* fix; done alongside the move.
 - *Duplicate the two helpers into `services/review/`* — two copies of a fallback chain that must agree with discover forever, for no gain.
 - *Expose them via `REPO.project`* — makes the router's cross-domain call explicit but keeps per-project resolution in the request handler, which is where the N+1 risk lives.
 

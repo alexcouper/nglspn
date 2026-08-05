@@ -7,7 +7,6 @@ from ninja import Schema
 
 from api.schemas.project import (
     ContributorSummary,
-    ImageVariantResponse,
     ProjectImageResponse,
     WonCompetitionInfo,
 )
@@ -46,8 +45,6 @@ class ReviewProjectResponse(Schema):
     tagline: str = ""
     description: str
     website_url: str
-    main_image_url: str | None = None
-    main_image_variants: list[ImageVariantResponse] = []
     # Resolved the same way the listing endpoints resolve them, so the ballot
     # card and the listing card show the same project.
     hero_banner_url: str | None = None

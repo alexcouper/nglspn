@@ -20,50 +20,34 @@ from apps.projects.models import (
     CompetitionReviewer,
     Project,
     ProjectImage,
-    ProjectStatus,
 )
 from services import HANDLERS, REPO
-from services.project.django_impl.query import (
-    _variant_url,
-    resolve_image_by_purpose,
-)
+from services.review.django_impl.query import EXCLUDED_PROJECT_STATUSES
 from services.review.exceptions import (
     DuplicateProjectError,
     ProjectNotInCompetitionError,
     ReviewClosedError,
     ReviewerNotAssignedError,
 )
+from services.review.query_interface import ReviewProjectItem
 
 router = Router()
 
 
-EXCLUDED_PROJECT_STATUSES = [ProjectStatus.REJECTED, ProjectStatus.ICE_BOX]
-
-
-def _project_response(project: Project, position: int | None) -> ReviewProjectResponse:
-    """Build a ballot entry.
-
-    Image resolution is shared with the listing endpoints so a reviewer sees the
-    same picture a visitor does. `resolve_image_by_purpose` does no
-    `upload_status` filtering of its own — the ballot query is what restricts
-    the prefetch to uploaded images.
-    """
-    main_image = resolve_image_by_purpose(project, "main")
-    hero = resolve_image_by_purpose(project, "hero_banner")
-    in_use = resolve_image_by_purpose(project, "in_use")
-
+def _project_response(
+    item: ReviewProjectItem, position: int | None
+) -> ReviewProjectResponse:
+    """Map a ballot entry onto the response. The service resolved the images."""
     return ReviewProjectResponse(
-        id=project.id,
-        slug=project.slug,
-        title=project.title,
-        tagline=project.tagline,
-        description=project.description,
-        website_url=project.website_url,
-        main_image_url=main_image.url if main_image else None,
-        main_image_variants=(list(main_image.variants.all()) if main_image else []),
-        hero_banner_url=_variant_url(hero, "large"),
-        in_use_image_url=_variant_url(in_use, "medium"),
-        category_name=project.category.name if project.category else None,
+        id=item.project.id,
+        slug=item.project.slug,
+        title=item.project.title,
+        tagline=item.project.tagline,
+        description=item.project.description,
+        website_url=item.project.website_url,
+        hero_banner_url=item.hero_banner_url,
+        in_use_image_url=item.in_use_image_url,
+        category_name=item.category_name,
         my_ranking=position,
     )
 
@@ -128,10 +112,10 @@ def get_my_review_competition(
         submission_deadline=competition.submission_deadline,
         my_review_status=assignment.status,
         ranked_projects=[
-            _project_response(project, position)
-            for position, project in enumerate(ballot.ranked, start=1)
+            _project_response(item, position)
+            for position, item in enumerate(ballot.ranked, start=1)
         ],
-        pool_projects=[_project_response(project, None) for project in ballot.pool],
+        pool_projects=[_project_response(item, None) for item in ballot.pool],
     )
 
 

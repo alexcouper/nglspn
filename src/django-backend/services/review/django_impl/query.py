@@ -3,9 +3,12 @@ from collections.abc import Iterable
 from hashlib import sha256
 from uuid import UUID
 
+from django.db.models import Prefetch
+
 from apps.projects.models import (
     CompetitionReviewer,
     Project,
+    ProjectImage,
     ProjectRanking,
     ProjectStatus,
     ReviewStatus,
@@ -79,7 +82,18 @@ class DjangoReviewQuery(ReviewQueryInterface):
         projects = list(
             Project.objects.filter(competitions__id=competition_id)
             .exclude(status__in=EXCLUDED_PROJECT_STATUSES)
-            .prefetch_related("images", "images__variants")
+            .select_related("category")
+            # Filter to uploaded images here rather than in the caller:
+            # `resolve_image_by_purpose` does none of its own filtering and
+            # trusts whatever the prefetch handed it.
+            .prefetch_related(
+                Prefetch(
+                    "images",
+                    queryset=ProjectImage.objects.filter(
+                        upload_status="uploaded"
+                    ).prefetch_related("variants"),
+                ),
+            )
         )
 
         positions = dict(

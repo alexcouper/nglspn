@@ -6,28 +6,28 @@ The backend is additive, so it can deploy on its own. Nothing here needs a coord
 
 `get_reviewer_projects` prefetches `images` unfiltered and relies on `_get_main_image` filtering in Python. `resolve_image_by_purpose` does no such filtering. Spec: [`specs/project-image-purposes/spec.md`](specs/project-image-purposes/spec.md).
 
-- [ ] 1.1 Add a failing test in `src/django-backend/services/review/django_impl/test_query.py`: a project whose only image has `upload_status` other than `uploaded` yields no image on the reviewer's ballot
-- [ ] 1.2 Narrow the `images` prefetch in `services/review/django_impl/query.py` to `ProjectImage.objects.filter(upload_status="uploaded").prefetch_related("variants")`, matching `_base_queryset` in `services/project/django_impl/query.py`
-- [ ] 1.3 Add `.select_related("category")` to the same queryset
-- [ ] 1.4 Add a test asserting the ballot query issues no extra query per project for `category` (use `django_assert_num_queries`)
+- [x] 1.1 Add a failing test in `src/django-backend/services/review/django_impl/test_query.py`: a project whose only image has `upload_status` other than `uploaded` yields no image on the reviewer's ballot
+- [x] 1.2 Narrow the `images` prefetch in `services/review/django_impl/query.py` to `ProjectImage.objects.filter(upload_status="uploaded").prefetch_related("variants")`, matching `_base_queryset` in `services/project/django_impl/query.py`
+- [x] 1.3 Add `.select_related("category")` to the same queryset
+- [x] 1.4 Add a test asserting the ballot query issues no extra query per project for `category` (use `django_assert_num_queries`)
 
 ## 2. Ballot response — category and purpose-resolved images
 
 Spec: [`specs/project-image-purposes/spec.md`](specs/project-image-purposes/spec.md).
 
-- [ ] 2.1 Write failing tests for the ballot endpoint: the response carries `category_name` for a categorised project and `None` for an uncategorised one
-- [ ] 2.2 Write a failing test asserting `in_use_image_url` prefers the `in_use`-purpose image over the main image, and falls back to the main image when no `in_use` image exists
-- [ ] 2.3 Add `category_name`, `in_use_image_url` and `hero_banner_url` to `ReviewProjectResponse` in `api/schemas/my_review.py`, keeping `main_image_url` and `main_image_variants`
-- [ ] 2.4 Rewrite `_project_response` in `api/routers/my_review.py` to populate them via `resolve_image_by_purpose`, and delete the now-unused `_get_main_image`
-- [ ] 2.5 Run `make lint` and `make test` from `src/django-backend/`
+- [x] 2.1 Write failing tests for the ballot endpoint: the response carries `category_name` for a categorised project and `None` for an uncategorised one
+- [x] 2.2 Write a failing test asserting `in_use_image_url` prefers the `in_use`-purpose image over the main image, and falls back to the main image when no `in_use` image exists
+- [x] 2.3 Add `category_name`, `in_use_image_url` and `hero_banner_url` to `ReviewProjectResponse` in `api/schemas/my_review.py`, keeping `main_image_url` and `main_image_variants`
+- [x] 2.4 Rewrite `_project_response` in `api/routers/my_review.py` to populate them via `resolve_image_by_purpose`, and delete the now-unused `_get_main_image`
+- [x] 2.5 Run `make lint` and `make test` from `src/django-backend/`
 
 ## 3. Regenerate the API contract
 
 The repo foot-gun — the frontend cannot see the new fields until both commands have run. See [CONTRIBUTING.md](../../../CONTRIBUTING.md).
 
-- [ ] 3.1 `cd src/django-backend && make extract-openapi`
-- [ ] 3.2 `cd src/web-ui && npm run generate-types`
-- [ ] 3.3 Confirm `ReviewProjectResponse` in `src/web-ui/src/lib/api-types.ts` now carries the three new fields
+- [x] 3.1 `cd src/django-backend && make extract-openapi`
+- [x] 3.2 `cd src/web-ui && npm run generate-types`
+- [x] 3.3 Confirm `ReviewProjectResponse` in `src/web-ui/src/lib/api-types.ts` now carries the three new fields
 
 ## 4. Extract `ProjectTile`
 

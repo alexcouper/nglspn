@@ -6,7 +6,9 @@ from services.review.django_impl.query import DjangoReviewQuery
 from tests.factories import (
     CompetitionFactory,
     CompetitionReviewerFactory,
+    ProjectCategoryFactory,
     ProjectFactory,
+    ProjectImageFactory,
     ProjectRankingFactory,
     UserFactory,
 )
@@ -36,6 +38,15 @@ def cast_ballot(competition, reviewer, projects, status=ReviewStatus.COMPLETED):
 
 def titles(projects) -> list[str]:
     return [p.title for p in projects]
+
+
+def prefetched_images(project) -> list:
+    """Image ids the ballot query handed back, without hitting the database.
+
+    Reads `project.images.all()` so it sees the prefetch cache rather than
+    re-querying — which is exactly what the response builder does.
+    """
+    return [image.id for image in project.images.all()]
 
 
 def flat_order(tally) -> list:
@@ -171,6 +182,38 @@ class TestGetReviewerProjects:
         result = query.get_reviewer_projects(reviewer.id, competition.id)
 
         assert_that(titles(result.pool), equal_to([kept.title]))
+
+    def test_hides_images_that_are_still_uploading(self, query) -> None:
+        competition, (project,) = competition_with_projects(1)
+        ProjectImageFactory(project=project, upload_status="pending", is_main=True)
+        reviewer = UserFactory()
+
+        result = query.get_reviewer_projects(reviewer.id, competition.id)
+
+        assert_that(prefetched_images(result.pool[0]), equal_to([]))
+
+    def test_keeps_uploaded_images(self, query) -> None:
+        competition, (project,) = competition_with_projects(1)
+        uploaded = ProjectImageFactory(project=project, is_main=True)
+        reviewer = UserFactory()
+
+        result = query.get_reviewer_projects(reviewer.id, competition.id)
+
+        assert_that(prefetched_images(result.pool[0]), equal_to([uploaded.id]))
+
+    def test_reads_the_category_without_a_query_per_project(
+        self, query, django_assert_num_queries
+    ) -> None:
+        competition, projects = competition_with_projects(
+            4, category=ProjectCategoryFactory()
+        )
+        reviewer = UserFactory()
+
+        result = query.get_reviewer_projects(reviewer.id, competition.id)
+        with django_assert_num_queries(0):
+            categories = [p.category.name for p in result.pool]
+
+        assert_that(categories, has_length(len(projects)))
 
 
 @pytest.mark.django_db

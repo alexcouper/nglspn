@@ -23,6 +23,10 @@ from apps.projects.models import (
     ProjectStatus,
 )
 from services import HANDLERS, REPO
+from services.project.django_impl.query import (
+    _variant_url,
+    resolve_image_by_purpose,
+)
 from services.review.exceptions import (
     DuplicateProjectError,
     ProjectNotInCompetitionError,
@@ -36,21 +40,18 @@ router = Router()
 EXCLUDED_PROJECT_STATUSES = [ProjectStatus.REJECTED, ProjectStatus.ICE_BOX]
 
 
-def _get_main_image(project: Project) -> ProjectImage | None:
-    """Return the main project image, falling back to the first uploaded image.
-
-    Iterates `project.images.all()` rather than filtering, so the prefetch
-    cache (`projects__images` / `projects__images__variants`) is used.
-    """
-    uploaded = [img for img in project.images.all() if img.upload_status == "uploaded"]
-    if not uploaded:
-        return None
-    main = next((img for img in uploaded if img.is_main), None)
-    return main or uploaded[0]
-
-
 def _project_response(project: Project, position: int | None) -> ReviewProjectResponse:
-    main_image = _get_main_image(project)
+    """Build a ballot entry.
+
+    Image resolution is shared with the listing endpoints so a reviewer sees the
+    same picture a visitor does. `resolve_image_by_purpose` does no
+    `upload_status` filtering of its own — the ballot query is what restricts
+    the prefetch to uploaded images.
+    """
+    main_image = resolve_image_by_purpose(project, "main")
+    hero = resolve_image_by_purpose(project, "hero_banner")
+    in_use = resolve_image_by_purpose(project, "in_use")
+
     return ReviewProjectResponse(
         id=project.id,
         slug=project.slug,
@@ -60,6 +61,9 @@ def _project_response(project: Project, position: int | None) -> ReviewProjectRe
         website_url=project.website_url,
         main_image_url=main_image.url if main_image else None,
         main_image_variants=(list(main_image.variants.all()) if main_image else []),
+        hero_banner_url=_variant_url(hero, "large"),
+        in_use_image_url=_variant_url(in_use, "medium"),
+        category_name=project.category.name if project.category else None,
         my_ranking=position,
     )
 

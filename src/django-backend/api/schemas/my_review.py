@@ -48,6 +48,11 @@ class ReviewProjectResponse(Schema):
     website_url: str
     main_image_url: str | None = None
     main_image_variants: list[ImageVariantResponse] = []
+    # Resolved the same way the listing endpoints resolve them, so the ballot
+    # card and the listing card show the same project.
+    hero_banner_url: str | None = None
+    in_use_image_url: str | None = None
+    category_name: str | None = None
     my_ranking: int | None = None
 
 

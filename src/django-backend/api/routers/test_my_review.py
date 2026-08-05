@@ -22,6 +22,7 @@ from apps.projects.models import (
 from tests.factories import (
     CompetitionFactory,
     CompetitionReviewerFactory,
+    ProjectCategoryFactory,
     ProjectFactory,
     ProjectImageFactory,
     ProjectRankingFactory,
@@ -320,6 +321,95 @@ class TestGetMyReviewCompetition:
         variants = projects[0]["main_image_variants"]
         assert_that(variants, has_length(1))
         assert_that(variants[0], has_entries(size="medium", width=800, height=600))
+
+    def test_includes_the_category_name_for_a_categorised_project(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(category=ProjectCategoryFactory(name="Conservation"))
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            response.json()["pool_projects"][0],
+            has_entries(category_name="Conservation"),
+        )
+
+    def test_category_name_is_null_when_the_project_has_no_category(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = CompetitionFactory(projects=[ProjectFactory(category=None)])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(
+            response.json()["pool_projects"][0], has_entries(category_name=None)
+        )
+
+    def test_prefers_the_in_use_image_over_the_main_image(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, is_main=True, storage_key="main.jpg")
+        in_use = ProjectImageFactory(
+            project=project, is_usage=True, storage_key="in-use.jpg"
+        )
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(
+            response.json()["pool_projects"][0],
+            has_entries(in_use_image_url=in_use.url),
+        )
+
+    def test_falls_back_to_the_main_image_when_no_in_use_image_exists(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        main = ProjectImageFactory(project=project, is_main=True)
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(
+            response.json()["pool_projects"][0],
+            has_entries(in_use_image_url=main.url, hero_banner_url=main.url),
+        )
+
+    def test_never_resolves_an_image_that_is_still_uploading(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, is_main=True, upload_status="pending")
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(
+            response.json()["pool_projects"][0],
+            has_entries(
+                in_use_image_url=None,
+                hero_banner_url=None,
+                main_image_url=None,
+            ),
+        )
 
     def test_avoids_n_plus_one_queries_when_loading_projects_with_images(
         self, client, user, auth_headers, django_assert_max_num_queries

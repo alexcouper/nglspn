@@ -46,4 +46,4 @@ src/lib/api-types.ts
 screenshots/
 playwright-report/
 
-test-results/.last-run.json
+test-results/

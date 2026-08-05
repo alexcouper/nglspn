@@ -85,8 +85,13 @@ swallows the error (see the comment at `ArticleEditor.tsx:54`). A rejected uploa
 author. Removing the dialog removes the last surface that could have shown it.
 
 Wrap `handleImageUpload` so it tracks `uploading` and `error` state in
-`ArticleEditor`, and render a status line between the toolbar and the content:
-"Uploading image…" while in flight, or the error message with a dismiss control.
+`ArticleEditor`, and render a status line: "Uploading image…" while in flight,
+or the error message with a dismiss control.
+
+The strip sits at the top of the editor's bordered box, above the toolbar —
+MDXEditor owns the DOM between its toolbar and its content, so there is no seam
+to render into there. Above the toolbar also keeps it on screen; the content
+area is `min-h-[60vh]`, so a strip below it would often be scrolled out of view.
 
 Because all three upload routes — toolbar button, drag-onto-body, paste — go
 through that one handler, one status line covers all of them. The edit dialog
@@ -107,12 +112,21 @@ have its alt text edited; only the authoring affordance is gone.
 
 ## Testing
 
-- Vitest: `ArticleImageDialog` renders nothing for `inactive`/`new` state, and
-  its Save publishes a payload carrying the original `src` and `title` alongside
-  the edited `altText`. This is the regression that matters — getting it wrong
-  silently blanks the image.
-- Vitest: the upload-status wrapper sets and clears `uploading`, and surfaces the
-  message from a rejected upload.
-- Playwright (`npm run test:e2e`): pick a file from the toolbar button and assert
-  the image lands in the body; open its settings, set alt text, save, and assert
-  the markdown carries the alt.
+`src/app/projects/[slug]/articles/image-insert.test.tsx` (vitest):
+
+- `buildAltTextSavePayload` echoes `src` and `title` back. This is the
+  regression that matters — getting it wrong silently blanks the image.
+- `ImageAltDialog` prefills, saves, and cancels.
+- `useImageUploadStatus` moves through uploading → idle, surfaces a rejected
+  upload's message, and clears on dismiss.
+
+Testing anything built on `components/Dialog.tsx` needs an `HTMLDialogElement`
+polyfill — jsdom ships the element but not `showModal`/`close`. Added to
+`src/test/setup.ts` for all specs, not just this one.
+
+`e2e/article-images.spec.ts` (playwright, needs the app and backend running):
+insert from the toolbar picker, edit alt text and assert `src` survives, and
+assert a rejected upload reaches the status strip. Two constraints shape it —
+projects cap at 10 images so each test deletes the images it uploaded, and
+`/api/auth/login` is rate limited to 5/minute per IP (`api/routers/auth.py:106`)
+so the file logs in once and runs serially.

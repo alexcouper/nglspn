@@ -3,14 +3,22 @@ import { afterEach, vi } from "vitest";
 // React requires this to be set so act() works without a warning.
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
-// jsdom does not implement <dialog>. The Dialog component drives it directly,
-// so give it just enough to open and close.
-if (!HTMLDialogElement.prototype.showModal) {
-  HTMLDialogElement.prototype.showModal = function showModal(this: HTMLDialogElement) {
+// jsdom ships HTMLDialogElement but not its modal methods, so anything built on
+// components/Dialog.tsx throws on mount. Enough of a stand-in to drive the
+// open/close cycle — it does not emulate the top layer or focus trapping.
+if (
+  typeof HTMLDialogElement !== "undefined" &&
+  typeof HTMLDialogElement.prototype.showModal !== "function"
+) {
+  HTMLDialogElement.prototype.show = function show() {
     this.open = true;
   };
-  HTMLDialogElement.prototype.close = function close(this: HTMLDialogElement) {
+  HTMLDialogElement.prototype.showModal = function showModal() {
+    this.open = true;
+  };
+  HTMLDialogElement.prototype.close = function close(returnValue?: string) {
     this.open = false;
+    if (returnValue !== undefined) this.returnValue = returnValue;
     this.dispatchEvent(new Event("close"));
   };
 }

@@ -5,7 +5,6 @@ import {
   ConditionalContents,
   CreateLink,
   InsertCodeBlock,
-  InsertImage,
   InsertTable,
   ChangeCodeMirrorLanguage,
   ListsToggle,
@@ -28,9 +27,12 @@ import {
 } from "@mdxeditor/editor";
 import "@mdxeditor/editor/style.css";
 import "./article-markdown.css";
-import { useCallback, useRef } from "react";
-import { uploadProjectImage } from "@/lib/uploadProjectImage";
+import { useRef } from "react";
 import { articleCodeMirrorExtensions } from "./article-codemirror-theme";
+import { ArticleImageDialog } from "./ArticleImageDialog";
+import { ImageUploadStatusBar } from "./ImageUploadStatusBar";
+import { InsertImageButton } from "./InsertImageButton";
+import { useImageUploadStatus } from "./useImageUploadStatus";
 
 interface Props {
   projectId: string;
@@ -44,23 +46,11 @@ export function ArticleEditor({
   onChange,
 }: Props) {
   const editorRef = useRef<MDXEditorMethods>(null);
-
-  const handleImageUpload = useCallback(
-    async (file: File) => {
-      try {
-        const image = await uploadProjectImage(projectId, file);
-        return image.url;
-      } catch (err) {
-        // MDXEditor swallows thrown errors, so keep the message visible.
-        console.error("Image upload failed", err);
-        throw err;
-      }
-    },
-    [projectId],
-  );
+  const { status, uploadImage, dismissError } = useImageUploadStatus(projectId);
 
   return (
     <div className="rounded-lg border border-border bg-white">
+      <ImageUploadStatusBar status={status} onDismissError={dismissError} />
       <MDXEditor
         ref={editorRef}
         markdown={initialMarkdown}
@@ -73,7 +63,10 @@ export function ArticleEditor({
           thematicBreakPlugin(),
           linkPlugin(),
           linkDialogPlugin(),
-          imagePlugin({ imageUploadHandler: handleImageUpload }),
+          imagePlugin({
+            imageUploadHandler: uploadImage,
+            ImageDialog: ArticleImageDialog,
+          }),
           tablePlugin(),
           codeBlockPlugin({ defaultCodeBlockLanguage: "ts" }),
           codeMirrorPlugin({
@@ -114,7 +107,7 @@ export function ArticleEditor({
                         <ListsToggle options={["bullet", "number"]} />
                         <Separator />
                         <CreateLink />
-                        <InsertImage />
+                        <InsertImageButton />
                         <Separator />
                         <InsertTable />
                         <InsertCodeBlock />

@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
-
 import type { DiscoverProject } from "@/lib/api";
-import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { ProjectTile } from "@/components/ProjectTile";
 import { HorizontalScroll } from "../HorizontalScroll";
 
 interface NewArrivalsSectionProps {
@@ -30,43 +28,16 @@ export function NewArrivalsSection({ projects }: NewArrivalsSectionProps) {
 }
 
 export function ArrivalCard({ project }: { project: DiscoverProject }) {
-  const imageUrl = project.in_use_image_url || project.hero_banner_url;
-
   return (
-    <Link
-      href={`/projects/${project.slug ?? project.id}`}
-      className="flex flex-shrink-0 w-[240px]"
-    >
-      <div className="card card-interactive overflow-hidden flex flex-col w-full">
-        <div className="relative aspect-[4/3]">
-          {imageUrl ? (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={imageUrl}
-                alt={project.title}
-                className="absolute inset-0 w-full h-full object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-[rgba(0,0,0,0.15)] to-transparent" />
-            </>
-          ) : (
-            <GradientPlaceholder id={project.id} className="w-full h-full" />
-          )}
-        </div>
-        <div className="p-3.5 flex-1">
-          {project.category_name && (
-            <span className="text-[10px] font-semibold uppercase tracking-wider text-accent">
-              {project.category_name}
-            </span>
-          )}
-          <h3 className="text-sm font-medium text-foreground mt-0.5 truncate">
-            {project.title}
-          </h3>
-          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
-            {project.tagline}
-          </p>
-        </div>
-      </div>
-    </Link>
+    <div className="flex-shrink-0 w-[240px]">
+      <ProjectTile
+        id={project.id}
+        href={`/projects/${project.slug ?? project.id}`}
+        imageUrl={project.in_use_image_url || project.hero_banner_url || null}
+        title={project.title}
+        tagline={project.tagline}
+        categoryName={project.category_name}
+      />
+    </div>
   );
 }

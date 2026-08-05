@@ -33,32 +33,32 @@ The repo foot-gun — the frontend cannot see the new fields until both commands
 
 Spec: [`specs/project-listing-discover/spec.md`](specs/project-listing-discover/spec.md).
 
-- [ ] 4.1 Create `src/web-ui/src/components/ProjectTile.tsx` taking `id`, `href`, `imageUrl`, `categoryName`, `title`, `tagline`, `dimmed`, with the markup currently inside `ArrivalCard`
-- [ ] 4.2 Clamp the title to 2 lines instead of `truncate`; keep the tagline at 2 lines
-- [ ] 4.3 Implement `dimmed`: drop `card-interactive`, mute the title and tagline
-- [ ] 4.4 Reduce `ArrivalCard` in `src/app/projects/sections/NewArrivalsSection.tsx` to a wrapper that maps `DiscoverProject` onto those props
+- [x] 4.1 Create `src/web-ui/src/components/ProjectTile.tsx` taking `id`, `href`, `imageUrl`, `categoryName`, `title`, `tagline`, `dimmed`, with the markup currently inside `ArrivalCard`
+- [x] 4.2 Clamp the title to 2 lines instead of `truncate`; keep the tagline at 2 lines
+- [x] 4.3 Implement `dimmed`: drop `card-interactive`, mute the title and tagline
+- [x] 4.4 Reduce `ArrivalCard` in `src/app/projects/sections/NewArrivalsSection.tsx` to a wrapper that maps `DiscoverProject` onto those props
 - [ ] 4.5 Check the New Arrivals row visually with a title long enough to wrap — cards must stay equal height and the row must not go ragged
 
 ## 5. Rebuild the ballot cards
 
 Spec: [`specs/project-ranking-ballot/spec.md`](specs/project-ranking-ballot/spec.md).
 
-- [ ] 5.1 Restructure `RankingCard` in `src/app/competitions/[id]/RankingList.tsx` as a flex row: `ProjectTile` in a `flex-1 min-w-0` wrapper, control column beside it
-- [ ] 5.2 Move the rank badge, drag handle (`sm` and up), and up/down arrows into that control column, keeping their current `aria-label`s and 44px mobile touch targets
-- [ ] 5.3 Move the remove button into the same column, below the arrows
-- [ ] 5.4 Drop the entry's `bg-white rounded-xl border` wrapper — `ProjectTile` carries the `card` surface
-- [ ] 5.5 Apply the same structure to the pool card in `PoolList`, with the "Rank" button in the control column
-- [ ] 5.6 Delete `CardImage` and `CardText`, and with them the ballot's `website_url` line
-- [ ] 5.7 Pass `dimmed` when `readOnly`, replacing the `bg-muted` treatment
-- [ ] 5.8 Confirm no button is nested inside the tile's `<Link>`
+- [x] 5.1 Restructure `RankingCard` in `src/app/competitions/[id]/RankingList.tsx` as a flex row: `ProjectTile` in a `flex-1 min-w-0` wrapper, control column beside it
+- [x] 5.2 Move the rank badge, drag handle (`sm` and up), and up/down arrows into that control column, keeping their current `aria-label`s and 44px mobile touch targets
+- [x] 5.3 Move the remove button into the same column, below the arrows
+- [x] 5.4 Drop the entry's `bg-white rounded-xl border` wrapper — `ProjectTile` carries the `card` surface
+- [x] 5.5 Apply the same structure to the pool card in `PoolList`, with the "Rank" button in the control column
+- [x] 5.6 Delete `CardImage` and `CardText`, and with them the ballot's `website_url` line
+- [x] 5.7 Pass `dimmed` when `readOnly`, replacing the `bg-muted` treatment
+- [x] 5.8 Confirm no button is nested inside the tile's `<Link>`
 
 ## 6. Frontend tests
 
-- [ ] 6.1 Extend `src/app/competitions/[id]/MyRanking.test.tsx`: a ranked card renders its full title and tagline text, not a truncated form
-- [ ] 6.2 Assert the category label renders when `category_name` is present and is absent when it is null
-- [ ] 6.3 Assert activating up / down / remove / add does not navigate, and that the card area links to the project page
-- [ ] 6.4 Assert a read-only ballot renders no reorder or remove controls but still shows title and tagline
-- [ ] 6.5 Run `npm run lint` and the web-ui test suite from `src/web-ui/`
+- [x] 6.1 Extend `src/app/competitions/[id]/MyRanking.test.tsx`: a ranked card renders its full title and tagline text, not a truncated form
+- [x] 6.2 Assert the category label renders when `category_name` is present and is absent when it is null
+- [x] 6.3 Assert activating up / down / remove / add does not navigate, and that the card area links to the project page
+- [x] 6.4 Assert a read-only ballot renders no reorder or remove controls but still shows title and tagline
+- [x] 6.5 Run `npm run lint` and the web-ui test suite from `src/web-ui/`
 
 ## 7. Verify in the running app
 

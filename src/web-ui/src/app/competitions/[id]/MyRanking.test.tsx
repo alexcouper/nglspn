@@ -3,7 +3,11 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { createElement } from "react";
 import { api, type ReviewProject } from "@/lib/api";
-import { makeReadyReviewState, makeReviewProjects } from "@/test/factories";
+import {
+  makeReadyReviewState,
+  makeReviewProject,
+  makeReviewProjects,
+} from "@/test/factories";
 import { MyRanking } from "./MyRanking";
 
 const AUTOSAVE_MS = 500;
@@ -45,6 +49,24 @@ function ranksIn(): string[] {
   return [...panel("ranked").querySelectorAll('[data-testid="rank-badge"]')].map(
     (badge) => badge.textContent ?? "",
   );
+}
+
+function cardsIn(name: "ranked" | "pool"): HTMLElement[] {
+  return [
+    ...panel(name).querySelectorAll(
+      name === "ranked" ? '[data-testid="ranked-card"]' : '[data-testid="pool-card"]',
+    ),
+  ] as HTMLElement[];
+}
+
+function firstCardIn(name: "ranked" | "pool"): HTMLElement {
+  const card = cardsIn(name)[0];
+  if (!card) throw new Error(`no ${name} card rendered`);
+  return card;
+}
+
+function taglinesIn(name: "ranked" | "pool"): string[] {
+  return cardsIn(name).map((card) => card.querySelector("p")?.textContent ?? "");
 }
 
 function buttonWithLabel(label: string): HTMLButtonElement {
@@ -192,6 +214,126 @@ describe("submitting an empty ballot", () => {
 
     expect(api.myReview.updateStatus).not.toHaveBeenCalled();
     expect(buttonWithLabel("Submit Ranking")).toBeTruthy();
+  });
+});
+
+describe("how a ballot card presents a project", () => {
+  const puffinTracker = {
+    title: "Puffin Tracker",
+    tagline: "Monitoring Iceland's puffin colonies for conservation",
+    category_name: "Conservation",
+  };
+
+  it("shows the whole title and tagline rather than a truncated form", async () => {
+    const project = makeReviewProject(puffinTracker);
+
+    await renderRanking([project], []);
+
+    expect(titlesIn("ranked")).toEqual([puffinTracker.title]);
+    expect(taglinesIn("ranked")).toEqual([puffinTracker.tagline]);
+  });
+
+  it("gives pool cards the same treatment as ranked cards", async () => {
+    const project = makeReviewProject(puffinTracker);
+
+    await renderRanking([], [project]);
+
+    expect(titlesIn("pool")).toEqual([puffinTracker.title]);
+    expect(taglinesIn("pool")).toEqual([puffinTracker.tagline]);
+  });
+
+  // jsdom reports textContent regardless of CSS clipping, so asserting the text
+  // is present cannot catch a regression here. The class is what does the work.
+  it("clamps the title to two lines instead of truncating it to one", async () => {
+    await renderRanking([makeReviewProject(puffinTracker)], []);
+
+    const title = firstCardIn("ranked").querySelector("h3");
+    expect(title?.className).toContain("line-clamp-2");
+    expect(title?.className).not.toContain("truncate");
+  });
+
+  it("labels the card with the project's category", async () => {
+    await renderRanking([makeReviewProject(puffinTracker)], []);
+
+    expect(firstCardIn("ranked").textContent).toContain("Conservation");
+  });
+
+  it("omits the category label when the project has none", async () => {
+    const uncategorised = makeReviewProject({
+      ...puffinTracker,
+      category_name: null,
+    });
+
+    await renderRanking([uncategorised], []);
+
+    expect(firstCardIn("ranked").querySelector("span")).toBeNull();
+  });
+
+  it("links the card through to the project page", async () => {
+    const project = makeReviewProject({ slug: "puffin-tracker" });
+
+    await renderRanking([project], []);
+
+    const link = firstCardIn("ranked").querySelector("a");
+    expect(link?.getAttribute("href")).toBe("/projects/puffin-tracker");
+  });
+});
+
+describe("ballot controls", () => {
+  it("keeps every control outside the card's link", async () => {
+    const [ranked, unranked] = makeReviewProjects(2);
+    await renderRanking([ranked], [unranked]);
+
+    const controls = [...container.querySelectorAll("button")].filter((button) =>
+      button.closest('[data-testid="ranked-card"], [data-testid="pool-card"]'),
+    );
+
+    expect(controls.length).toBeGreaterThan(0);
+    for (const control of controls) {
+      expect(control.closest("a")).toBeNull();
+    }
+  });
+});
+
+describe("a ballot that can no longer be changed", () => {
+  async function renderSubmittedBallot(projects: ReviewProject[]) {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root.render(
+        createElement(MyRanking, {
+          competitionId: "competition-1",
+          competitionName: "Test Competition",
+          returnPath: "/competitions/test",
+          reviewState: makeReadyReviewState(projects, [], {
+            my_review_status: "completed",
+          }),
+        }),
+      );
+    });
+  }
+
+  it("offers no reorder or remove controls", async () => {
+    const project = makeReviewProject({ title: "Puffin Tracker" });
+
+    await renderSubmittedBallot([project]);
+
+    expect(() => buttonWithLabel(`Move ${project.title} up`)).toThrow();
+    expect(() => buttonWithLabel(`Remove ${project.title}`)).toThrow();
+  });
+
+  it("still shows the title and tagline in full", async () => {
+    const project = makeReviewProject({
+      title: "Puffin Tracker",
+      tagline: "Monitoring Iceland's puffin colonies for conservation",
+    });
+
+    await renderSubmittedBallot([project]);
+
+    expect(titlesIn("ranked")).toEqual([project.title]);
+    expect(taglinesIn("ranked")).toEqual([project.tagline]);
   });
 });
 

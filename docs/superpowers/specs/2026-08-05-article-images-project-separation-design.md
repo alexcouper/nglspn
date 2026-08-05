@@ -186,6 +186,14 @@ Frontend:
 - Inline and hero uploads from the article editor send `source: "article"`;
   the project image manager sends `"project"`.
 
+E2E (`e2e/article-images.spec.ts`, `e2e/article-hero-removal.spec.ts`): both
+specs clean up by finding their uploads in `project.images`, which this change
+makes invisible. They record the `image_id` the backend returns from
+`/images/upload-url` instead. `article-images.spec.ts` also gains a case
+asserting an inserted image never reaches the project's gallery — matched on id,
+not filename, because a pre-fix upload of the same fixture can legitimately
+still be there.
+
 ## Out of scope
 
 Deleting an article leaves its images orphaned in S3 with no UI to reach them.

@@ -4,6 +4,8 @@ from uuid import UUID
 
 from ninja import Schema
 
+from apps.projects.models import ImageSource
+
 from .tag import TagWithCategoryResponse
 from .user import PublicUserProfile
 
@@ -104,7 +106,11 @@ class ProjectResponse(Schema):
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:
-        return list(obj.images.all())
+        # Belt and braces: the project querysets already prefetch through
+        # `project_gallery_images()`, but this schema can be reached with an
+        # unfiltered relation and article images must never reach a gallery.
+        # Filtered in Python so a prefetched relation is not thrown away.
+        return [img for img in obj.images.all() if img.source != ImageSource.ARTICLE]
 
     @staticmethod
     def resolve_tags(obj: Any) -> list[Any]:
@@ -121,6 +127,9 @@ class PresignedUploadRequest(Schema):
     content_type: str
     file_size: int
     is_icon: bool = False
+    # "article" for uploads made from the article editor. Those stay out of the
+    # project's gallery, cover-image picks and image cap.
+    source: str = ImageSource.PROJECT
 
 
 class PresignedUploadResponse(Schema):

@@ -44,6 +44,7 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
   const { uploadFile: uploadHeroFile, isUploading: isHeroUploading } =
     useImageUpload({
       projectId: project.id,
+      source: "article",
       onUploadComplete: draft.handleHeroUpload,
       onError: (err) => draft.setError(err.message),
     });

@@ -21,6 +21,7 @@ from api.schemas.project import (
 )
 from api.tasks.images import generate_image_variants
 from apps.projects.models import (
+    ImageSource,
     Project,
     ProjectImage,
     UploadStatus,
@@ -235,15 +236,22 @@ def get_upload_url(
         max_mb = MAX_FILE_SIZE // (1024 * 1024)
         return 400, {"detail": f"File size must be less than {max_mb}MB"}
 
-    is_icon = payload.is_icon
+    if payload.source not in ImageSource.values:
+        allowed = ", ".join(ImageSource.values)
+        return 400, {"detail": f"Source must be one of: {allowed}"}
 
-    # Check image count limit (icons don't count)
+    is_icon = payload.is_icon
+    is_article = payload.source == ImageSource.ARTICLE
+
+    # Check image count limit. Icons and article uploads don't count — neither
+    # occupies a slot in the project's gallery.
     current_count = (
         project.images.filter(upload_status=UploadStatus.UPLOADED)
         .exclude(is_icon=True)
+        .exclude(source=ImageSource.ARTICLE)
         .count()
     )
-    if not is_icon and current_count >= MAX_IMAGES_PER_PROJECT:
+    if not is_icon and not is_article and current_count >= MAX_IMAGES_PER_PROJECT:
         return 400, {"detail": f"Maximum {MAX_IMAGES_PER_PROJECT} images per project"}
 
     # Generate storage key
@@ -261,6 +269,7 @@ def get_upload_url(
         upload_status=UploadStatus.PENDING,
         display_order=current_count,
         is_icon=is_icon,
+        source=payload.source,
     )
 
     # Generate presigned URL
@@ -308,10 +317,13 @@ def complete_upload(
     image.width = payload.width
     image.height = payload.height
 
-    # If this is the first non-icon image, make it the main image
+    # If this is the first non-icon image, make it the main image. Article
+    # uploads are never promoted — the project's cover image must come from the
+    # project's own images.
     is_icon = image.is_icon
+    is_article = image.source == ImageSource.ARTICLE
     has_main = project.images.filter(is_main=True).exists()
-    if not is_icon and not has_main:
+    if not is_icon and not is_article and not has_main:
         image.is_main = True
 
     image.save()
@@ -391,9 +403,13 @@ def delete_image(
     was_main = image.is_main
     image.delete()
 
-    # If deleted image was main, promote the first remaining image
+    # If deleted image was main, promote the first remaining project image
     if was_main:
-        first_image = project.images.filter(upload_status=UploadStatus.UPLOADED).first()
+        first_image = (
+            project.images.filter(upload_status=UploadStatus.UPLOADED)
+            .exclude(source=ImageSource.ARTICLE)
+            .first()
+        )
         if first_image:
             first_image.is_main = True
             first_image.save()

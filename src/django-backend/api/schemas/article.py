@@ -6,6 +6,7 @@ from ninja import Schema
 
 from services.articles.summary import derive_summary
 
+from .project import ProjectImageResponse
 from .user import PublicUserProfile
 
 
@@ -55,6 +56,10 @@ class ArticleOut(Schema):
     summary_display: str
     hero_image_id: UUID | None
     hero_image_url: str | None
+    # The full image, with variants. The editor needs this: article images are
+    # excluded from `ProjectResponse.images`, so it cannot look the hero up
+    # there when loading an article for editing.
+    hero_image: ProjectImageResponse | None
     slug: str | None
     source: str
     external_url: str | None
@@ -89,6 +94,10 @@ class ArticleOut(Schema):
         if hero is None:
             return None
         return hero.url
+
+    @staticmethod
+    def resolve_hero_image(obj: Any) -> Any:
+        return obj.hero_image
 
     @staticmethod
     def resolve_is_globally_visible(obj: Any) -> bool:

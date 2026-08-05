@@ -208,6 +208,18 @@ class UploadStatus(models.TextChoices):
     FAILED = "failed", "Upload Failed"
 
 
+class ImageSource(models.TextChoices):
+    """Where an image was uploaded from.
+
+    Article uploads live on the project so they can share the storage and
+    variant pipeline, but they describe an article rather than the project, so
+    they stay out of the project's galleries, cover-image picks and image cap.
+    """
+
+    PROJECT = "project", "Project"
+    ARTICLE = "article", "Article"
+
+
 class ProjectImage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
@@ -231,6 +243,13 @@ class ProjectImage(models.Model):
     is_hero = models.BooleanField(default=False)
     is_usage = models.BooleanField(default=False)
     display_order = models.PositiveIntegerField(default=0)
+
+    source = models.CharField(
+        max_length=20,
+        choices=ImageSource.choices,
+        default=ImageSource.PROJECT,
+        db_index=True,
+    )
 
     # Upload status tracking
     upload_status = models.CharField(

@@ -5623,6 +5623,16 @@
             ],
             "title": "Hero Image Url"
           },
+          "hero_image": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectImageResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "slug": {
             "anyOf": [
               {
@@ -5695,6 +5705,7 @@
           "summary_display",
           "hero_image_id",
           "hero_image_url",
+          "hero_image",
           "slug",
           "source",
           "external_url",
@@ -6228,6 +6239,11 @@
             "default": false,
             "title": "Is Icon",
             "type": "boolean"
+          },
+          "source": {
+            "default": "project",
+            "title": "Source",
+            "type": "string"
           }
         },
         "required": [

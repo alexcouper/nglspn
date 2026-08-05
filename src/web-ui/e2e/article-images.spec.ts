@@ -3,7 +3,6 @@ import * as path from "path";
 
 const FIXTURES = path.join(__dirname, "fixtures");
 const INLINE_IMAGE = path.join(FIXTURES, "inline-image.png");
-const INLINE_IMAGE_NAME = "inline-image.png";
 const NOT_AN_IMAGE = path.join(FIXTURES, "not-an-image.txt");
 
 async function login(page: Page) {
@@ -40,37 +39,64 @@ async function openBlankArticleEditor(page: Page): Promise<string> {
   return projectId;
 }
 
-// Projects cap out at 10 images, so a test that uploads has to put its own
-// uploads back or the suite stops working after a few runs. Only images this
-// spec created (matched on filename) are removed.
-async function deleteUploadedFixtures(page: Page, projectId: string) {
+// Article uploads are excluded from `project.images`, so cleanup cannot find
+// them by listing the project. Record the ids the backend hands out instead.
+function trackUploadedImageIds(page: Page): string[] {
+  const ids: string[] = [];
+  page.on("response", async (response) => {
+    if (!response.url().endsWith("/images/upload-url") || !response.ok()) return;
+    const body = await response.json().catch(() => null);
+    if (body?.image_id) ids.push(body.image_id);
+  });
+  return ids;
+}
+
+// Article uploads no longer occupy a project image slot, but leaving them
+// behind still litters storage, so each test puts its own uploads back.
+async function deleteUploadedFixtures(
+  page: Page,
+  projectId: string,
+  imageIds: string[],
+) {
+  const ours = imageIds.splice(0);
+  if (ours.length === 0) return;
+
   await page.evaluate(
-    async ({ projectId, filename }) => {
+    async ({ projectId, imageIds }) => {
       const apiUrl = "http://localhost:8000";
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       };
 
-      const project = await fetch(`${apiUrl}/api/my/projects/${projectId}`, {
-        headers,
-      }).then((r) => r.json());
-
-      const ours = (project.images ?? []).filter(
-        (image: { original_filename: string }) =>
-          image.original_filename === filename,
-      );
-
       await Promise.all(
-        ours.map((image: { id: string }) =>
-          fetch(`${apiUrl}/api/my/projects/${projectId}/images/${image.id}`, {
+        imageIds.map((imageId: string) =>
+          fetch(`${apiUrl}/api/my/projects/${projectId}/images/${imageId}`, {
             method: "DELETE",
             headers,
           }),
         ),
       );
     },
-    { projectId, filename: INLINE_IMAGE_NAME },
+    { projectId, imageIds: ours },
   );
+}
+
+// The gallery an author manages on the owner-facing project page.
+async function galleryImageIds(
+  page: Page,
+  projectId: string,
+): Promise<string[]> {
+  return page.evaluate(async (projectId) => {
+    const project = await fetch(
+      `http://localhost:8000/api/my/projects/${projectId}`,
+      {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      },
+    ).then((r) => r.json());
+    return (project.images ?? []).map((image: { id: string }) => image.id);
+  }, projectId);
 }
 
 function editorBody(page: Page) {
@@ -98,9 +124,11 @@ test.describe.configure({ mode: "serial" });
 
 test.describe("Article inline images", () => {
   let page: Page;
+  let uploadedImageIds: string[];
 
   test.beforeAll(async ({ browser }) => {
     page = await browser.newPage();
+    uploadedImageIds = trackUploadedImageIds(page);
     await login(page);
   });
 
@@ -116,7 +144,7 @@ test.describe("Article inline images", () => {
     await expect(insertedImage(page)).toBeVisible({ timeout: 30_000 });
     await expect(insertedImage(page)).toHaveAttribute("alt", "");
 
-    await deleteUploadedFixtures(page, projectId);
+    await deleteUploadedFixtures(page, projectId, uploadedImageIds);
   });
 
   test("edits alt text without losing the image", async () => {
@@ -140,7 +168,24 @@ test.describe("Article inline images", () => {
     // The save payload has to echo the original src back, or the plugin blanks it.
     await expect(insertedImage(page)).toHaveAttribute("src", srcBeforeEdit!);
 
-    await deleteUploadedFixtures(page, projectId);
+    await deleteUploadedFixtures(page, projectId, uploadedImageIds);
+  });
+
+  test("keeps the inserted image out of the project's own gallery", async () => {
+    const projectId = await openBlankArticleEditor(page);
+    const galleryBefore = await galleryImageIds(page, projectId);
+
+    await imagePicker(page).setInputFiles(INLINE_IMAGE);
+    await expect(insertedImage(page)).toBeVisible({ timeout: 30_000 });
+
+    // Matched on id rather than filename: the migration did not backfill, so a
+    // pre-fix upload of the same fixture can legitimately sit in the gallery.
+    expect(uploadedImageIds).toHaveLength(1);
+    const galleryAfter = await galleryImageIds(page, projectId);
+    expect(galleryAfter).not.toContain(uploadedImageIds[0]);
+    expect(galleryAfter).toEqual(galleryBefore);
+
+    await deleteUploadedFixtures(page, projectId, uploadedImageIds);
   });
 
   test("shows a rejected upload instead of failing silently", async () => {

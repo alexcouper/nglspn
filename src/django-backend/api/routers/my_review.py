@@ -19,9 +19,9 @@ from apps.projects.models import (
     Competition,
     CompetitionReviewer,
     Project,
-    ProjectImage,
 )
 from services import HANDLERS, REPO
+from services.project.django_impl import project_gallery_images
 from services.review.eligibility import EXCLUDED_PROJECT_STATUSES
 from services.review.exceptions import (
     DuplicateProjectError,
@@ -213,12 +213,7 @@ def get_review_project(
                 "tags",
                 "tags__category",
                 "contributors__user",
-                Prefetch(
-                    "images",
-                    queryset=ProjectImage.objects.filter(
-                        upload_status="uploaded"
-                    ).prefetch_related("variants"),
-                ),
+                Prefetch("images", queryset=project_gallery_images()),
                 "won_competitions",
             )
             .exclude(status__in=EXCLUDED_PROJECT_STATUSES)

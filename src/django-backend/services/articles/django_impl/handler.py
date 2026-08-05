@@ -241,9 +241,13 @@ class DjangoArticleHandler(ArticleHandlerInterface):
 
     def _get_article(self, article_id: UUID) -> Article:
         try:
-            return Article.objects.select_related(
-                "project", "channel", "author", "hero_image"
-            ).get(pk=article_id)
+            return (
+                Article.objects.select_related(
+                    "project", "channel", "author", "hero_image"
+                )
+                .prefetch_related("hero_image__variants")
+                .get(pk=article_id)
+            )
         except Article.DoesNotExist as exc:
             raise ArticleNotFoundError from exc
 

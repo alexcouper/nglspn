@@ -73,12 +73,9 @@ export function useArticleDraft({ project, articleId }: Options) {
             channel_id: loaded.channel.id,
             hero_image_id: loaded.hero_image_id,
           });
-          if (loaded.hero_image_id) {
-            const match = project.images.find(
-              (img) => img.id === loaded.hero_image_id,
-            );
-            setHeroImage(match ?? null);
-          }
+          // Comes off the article, not project.images — article uploads are
+          // excluded from the project's gallery, so the hero is not in there.
+          setHeroImage(loaded.hero_image ?? null);
         } else {
           bodyRef.current = "";
           setForm({
@@ -100,7 +97,7 @@ export function useArticleDraft({ project, articleId }: Options) {
     return () => {
       cancelled = true;
     };
-  }, [isEditing, articleId, project.slug, project.id, project.images]);
+  }, [isEditing, articleId, project.slug, project.id]);
 
   const handleBodyChange = useCallback((markdown: string) => {
     bodyRef.current = markdown;

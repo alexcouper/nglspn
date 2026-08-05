@@ -24,7 +24,9 @@ export function useImageUploadStatus(projectId: string) {
     async (file: File) => {
       setStatus({ kind: "uploading" });
       try {
-        const image = await uploadProjectImage(projectId, file);
+        const image = await uploadProjectImage(projectId, file, {
+          source: "article",
+        });
         setStatus({ kind: "idle" });
         return image.url;
       } catch (err) {

@@ -12,7 +12,14 @@ from hamcrest import (
 )
 from moto import mock_aws
 
-from apps.projects.models import ImageVariant, ProjectImage, UploadStatus, VariantSize
+from apps.projects.models import (
+    ImageSource,
+    ImageVariant,
+    ProjectImage,
+    ProjectStatus,
+    UploadStatus,
+    VariantSize,
+)
 from tests.factories import ProjectFactory
 
 # Test bucket configuration
@@ -612,3 +619,182 @@ class TestImageAuthorization:
 
         assert_that(response.status_code, equal_to(404))
         assert_that(ProjectImage.objects.filter(id=image.id).exists(), is_(True))
+
+
+def upload_url_payload(**overrides) -> dict:
+    return {
+        "filename": "screenshot.png",
+        "content_type": "image/png",
+        "file_size": 1024,
+    } | overrides
+
+
+def request_upload_url(client, project, auth_headers, **overrides):
+    return client.post(
+        f"/api/my/projects/{project.id}/images/upload-url",
+        data=json.dumps(upload_url_payload(**overrides)),
+        content_type="application/json",
+        **auth_headers,
+    )
+
+
+def complete_upload(client, project, image, auth_headers, storage):
+    storage.put_object(Bucket=TEST_BUCKET, Key=image.storage_key, Body=b"test")
+    with patch("api.routers.my_projects.generate_image_variants"):
+        return client.post(
+            f"/api/my/projects/{project.id}/images/{image.id}/complete",
+            data=json.dumps({"width": 800, "height": 600}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+
+def make_uploaded_image(project, index: int = 0, **overrides) -> ProjectImage:
+    return ProjectImage.objects.create(
+        project=project,
+        storage_key=f"test/key{index}.png",
+        original_filename=f"image{index}.png",
+        content_type="image/png",
+        file_size=1024,
+        upload_status=UploadStatus.UPLOADED,
+        display_order=index,
+        **overrides,
+    )
+
+
+def gallery_image_ids(response) -> list[str]:
+    return [image["id"] for image in response.json()["images"]]
+
+
+class TestArticleSourcedImages:
+    """Images uploaded from the article editor describe an article, not the
+    project, so they stay out of the project's gallery, cover-image picks and
+    image cap."""
+
+    def test_upload_url_records_the_article_source(
+        self,
+        client,
+        project,
+        auth_headers,
+        mock_storage_service,
+    ) -> None:
+        response = request_upload_url(client, project, auth_headers, source="article")
+
+        assert_that(response.status_code, equal_to(200))
+        image = ProjectImage.objects.get(id=response.json()["image_id"])
+        assert_that(image.source, equal_to(ImageSource.ARTICLE))
+
+    def test_upload_url_defaults_to_the_project_source(
+        self,
+        client,
+        project,
+        auth_headers,
+        mock_storage_service,
+    ) -> None:
+        response = request_upload_url(client, project, auth_headers)
+
+        image = ProjectImage.objects.get(id=response.json()["image_id"])
+        assert_that(image.source, equal_to(ImageSource.PROJECT))
+
+    def test_rejects_an_unknown_source(
+        self,
+        client,
+        project,
+        auth_headers,
+        mock_storage_service,
+    ) -> None:
+        response = request_upload_url(
+            client, project, auth_headers, source="somewhere-else"
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(response.json()["detail"], contains_string("Source"))
+
+    def test_article_images_do_not_count_toward_the_image_cap(
+        self,
+        client,
+        user,
+        auth_headers,
+        mock_storage_service,
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        for i in range(10):
+            make_uploaded_image(project, i, source=ImageSource.ARTICLE)
+
+        response = request_upload_url(client, project, auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+
+    def test_an_article_upload_is_allowed_at_the_image_cap(
+        self,
+        client,
+        user,
+        auth_headers,
+        mock_storage_service,
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        for i in range(10):
+            make_uploaded_image(project, i)
+
+        response = request_upload_url(client, project, auth_headers, source="article")
+
+        assert_that(response.status_code, equal_to(200))
+
+    def test_an_article_image_is_not_promoted_to_main(
+        self,
+        client,
+        project,
+        auth_headers,
+        mock_storage_service,
+    ) -> None:
+        image = ProjectImage.objects.create(
+            project=project,
+            storage_key="test/article.png",
+            original_filename="article.png",
+            content_type="image/png",
+            file_size=1024,
+            upload_status=UploadStatus.PENDING,
+            source=ImageSource.ARTICLE,
+        )
+
+        response = complete_upload(
+            client, project, image, auth_headers, mock_storage_service
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        image.refresh_from_db()
+        assert_that(image.is_main, is_(False))
+
+    def test_deleting_the_main_image_does_not_promote_an_article_image(
+        self,
+        client,
+        project,
+        auth_headers,
+        mock_storage_service,
+    ) -> None:
+        main = make_uploaded_image(project, 0, is_main=True)
+        article_image = make_uploaded_image(project, 1, source=ImageSource.ARTICLE)
+
+        response = client.delete(
+            f"/api/my/projects/{project.id}/images/{main.id}",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(204))
+        article_image.refresh_from_db()
+        assert_that(article_image.is_main, is_(False))
+
+    def test_article_images_are_absent_from_the_project_response(
+        self,
+        client,
+        user,
+        auth_headers,
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.APPROVED)
+        project_image = make_uploaded_image(project, 0)
+        make_uploaded_image(project, 1, source=ImageSource.ARTICLE)
+
+        response = client.get(f"/api/projects/{project.id}")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(gallery_image_ids(response), equal_to([str(project_image.id)]))

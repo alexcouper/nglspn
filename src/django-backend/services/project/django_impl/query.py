@@ -11,11 +11,13 @@ from django.utils import timezone
 from apps.projects.models import (
     Competition,
     ContributorRole,
+    ImageSource,
     Project,
     ProjectCategory,
     ProjectContributor,
     ProjectImage,
     ProjectStatus,
+    UploadStatus,
 )
 from services.project.exceptions import ProjectNotFoundError
 from services.project.query_interface import (
@@ -34,15 +36,24 @@ def _top_level_discussion_count() -> Count:
     return Count("discussions", filter=Q(discussions__parent__isnull=True))
 
 
+def project_gallery_images() -> QuerySet[ProjectImage]:
+    """Images that describe the project itself.
+
+    Excludes article uploads, which live on the project but belong to an
+    article. Use this for every `Prefetch("images", ...)` on a project-facing
+    query so article images never reach a project gallery, card or cover pick.
+    """
+    return (
+        ProjectImage.objects.filter(upload_status=UploadStatus.UPLOADED)
+        .exclude(source=ImageSource.ARTICLE)
+        .prefetch_related("variants")
+    )
+
+
 def _discover_queryset() -> QuerySet[Project]:
     return Project.objects.select_related("creator", "category").prefetch_related(
         "won_competitions",
-        Prefetch(
-            "images",
-            queryset=ProjectImage.objects.filter(
-                upload_status="uploaded"
-            ).prefetch_related("variants"),
-        ),
+        Prefetch("images", queryset=project_gallery_images()),
     )
 
 
@@ -52,12 +63,7 @@ def _base_queryset() -> QuerySet[Project]:
         "tags__category",
         "won_competitions",
         "contributors__user",
-        Prefetch(
-            "images",
-            queryset=ProjectImage.objects.filter(
-                upload_status="uploaded"
-            ).prefetch_related("variants"),
-        ),
+        Prefetch("images", queryset=project_gallery_images()),
     )
 
 
@@ -330,12 +336,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
             .select_related("winner", "winner__category")
             .prefetch_related(
                 "winner__won_competitions",
-                Prefetch(
-                    "winner__images",
-                    queryset=ProjectImage.objects.filter(
-                        upload_status="uploaded"
-                    ).prefetch_related("variants"),
-                ),
+                Prefetch("winner__images", queryset=project_gallery_images()),
             )
             .order_by("-submission_deadline")
         )

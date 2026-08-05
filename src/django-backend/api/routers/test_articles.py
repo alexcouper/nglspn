@@ -4,7 +4,12 @@ import pytest
 from hamcrest import assert_that, equal_to, has_entries, has_length
 
 from apps.articles.models import Article, ArticleState
-from apps.projects.models import ProjectStatus
+from apps.projects.models import (
+    ImageSource,
+    ImageVariant,
+    ProjectStatus,
+    VariantSize,
+)
 from tests.factories import (
     ArticleFactory,
     ChannelFactory,
@@ -587,3 +592,57 @@ class TestRouterHasNoOrmAccess:
             assert forbidden not in text, (
                 f"{forbidden} must not appear in api/routers/articles.py"
             )
+
+
+@pytest.mark.django_db
+class TestArticleHeroImage:
+    """The editor resolves an article's hero from the article response. It
+    cannot use `ProjectResponse.images`, which excludes article uploads."""
+
+    def test_article_response_carries_the_full_hero_image(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        hero = ProjectImageFactory(project=project, source=ImageSource.ARTICLE)
+        ImageVariant.objects.create(
+            image=hero,
+            size=VariantSize.LARGE,
+            storage_key="variants/large.jpg",
+            width=1536,
+            height=864,
+            file_size=2048,
+        )
+        article = ArticleFactory(project=project, hero_image=hero)
+
+        response = client.get(
+            f"/api/projects/{project.id}/articles/{article.id}", **auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        hero_payload = response.json()["hero_image"]
+        assert_that(hero_payload, has_entries(id=str(hero.id)))
+        assert_that(hero_payload["variants"], has_length(1))
+        assert_that(hero_payload["variants"][0], has_entries(size="large"))
+
+    def test_hero_image_is_null_when_the_article_has_none(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project, hero_image=None)
+
+        response = client.get(
+            f"/api/projects/{project.id}/articles/{article.id}", **auth_headers
+        )
+
+        assert_that(response.json()["hero_image"], equal_to(None))
+
+    def test_the_hero_image_stays_out_of_the_project_gallery(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.APPROVED)
+        hero = ProjectImageFactory(project=project, source=ImageSource.ARTICLE)
+        ArticleFactory(project=project, hero_image=hero)
+
+        response = client.get(f"/api/projects/{project.id}")
+
+        assert_that(response.json()["images"], has_length(0))

@@ -273,3 +273,23 @@ describe("useImageUploadStatus", () => {
     unmount();
   });
 });
+
+describe("article image source", () => {
+  it("tags inline body uploads as article-sourced so they stay off the project page", async () => {
+    uploadMock.mockResolvedValue(projectImage("https://cdn/uploaded.png"));
+    const { captured, mounted } = renderUploadStatus("project-1");
+    const { unmount } = await mounted;
+
+    await act(async () => {
+      await captured.uploadImage(imageFile());
+    });
+
+    expect(uploadMock).toHaveBeenCalledWith(
+      "project-1",
+      expect.any(File),
+      expect.objectContaining({ source: "article" }),
+    );
+
+    unmount();
+  });
+});

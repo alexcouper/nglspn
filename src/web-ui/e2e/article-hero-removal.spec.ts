@@ -3,7 +3,6 @@ import * as path from "path";
 
 const FIXTURES = path.join(__dirname, "fixtures");
 const HERO_IMAGE = path.join(FIXTURES, "inline-image.png");
-const HERO_IMAGE_NAME = "inline-image.png";
 
 // /api/auth/login is rate limited to 5/min per IP, so this file logs in once
 // and runs serially.
@@ -66,46 +65,57 @@ async function saveDraft(page: Page) {
   await saved;
 }
 
-// Projects cap out at 10 images, so a test that uploads has to put its own
-// uploads back or the suite stops working after a few runs. Removes the draft
-// this spec created and any image matching its fixture filename.
-async function cleanUp(page: Page, projectId: string, articleId: string) {
+// Hero uploads are article-sourced, so they are excluded from `project.images`
+// and cannot be found by listing the project. Record the ids the backend hands
+// out during the upload instead.
+function trackUploadedImageIds(page: Page): string[] {
+  const ids: string[] = [];
+  page.on("response", async (response) => {
+    if (!response.url().endsWith("/images/upload-url") || !response.ok()) return;
+    const body = await response.json().catch(() => null);
+    if (body?.image_id) ids.push(body.image_id);
+  });
+  return ids;
+}
+
+// Article uploads no longer occupy a project image slot, but leaving them
+// behind still litters storage. Removes the draft this spec created and the
+// images it uploaded.
+async function cleanUp(
+  page: Page,
+  projectId: string,
+  articleId: string,
+  imageIds: string[],
+) {
   await page.evaluate(
-    async ({ projectId, articleId, filename }) => {
+    async ({ projectId, articleId, imageIds }) => {
       const apiUrl = "http://localhost:8000";
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       };
-
-      const project = await fetch(`${apiUrl}/api/my/projects/${projectId}`, {
-        headers,
-      }).then((r) => r.json());
 
       await fetch(
         `${apiUrl}/api/projects/${projectId}/articles/${articleId}`,
         { method: "DELETE", headers },
       );
 
-      const ours = (project.images ?? []).filter(
-        (image: { original_filename: string }) =>
-          image.original_filename === filename,
-      );
       await Promise.all(
-        ours.map((image: { id: string }) =>
-          fetch(`${apiUrl}/api/my/projects/${projectId}/images/${image.id}`, {
+        imageIds.map((imageId: string) =>
+          fetch(`${apiUrl}/api/my/projects/${projectId}/images/${imageId}`, {
             method: "DELETE",
             headers,
           }),
         ),
       );
     },
-    { projectId, articleId, filename: HERO_IMAGE_NAME },
+    { projectId, articleId, imageIds: imageIds.splice(0) },
   );
 }
 
 test("removing a hero image and saving actually removes it", async ({
   page,
 }) => {
+  const uploadedImageIds = trackUploadedImageIds(page);
   await login(page);
   const projectId = await openBlankArticleEditor(page);
 
@@ -127,5 +137,5 @@ test("removing a hero image and saving actually removes it", async ({
   await expect(page.getByRole("button", { name: "Save draft" })).toBeVisible();
   await expect(removeHero(page)).toHaveCount(0);
 
-  await cleanUp(page, projectId, articleId);
+  await cleanUp(page, projectId, articleId, uploadedImageIds);
 });

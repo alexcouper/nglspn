@@ -18,6 +18,7 @@ class DjangoArticleQuery(ArticleQueryInterface):
     def get_by_id(self, article_id: UUID) -> Article | None:
         return (
             Article.objects.select_related("project", "channel", "author", "hero_image")
+            .prefetch_related("hero_image__variants")
             .filter(pk=article_id)
             .first()
         )
@@ -29,6 +30,7 @@ class DjangoArticleQuery(ArticleQueryInterface):
     ) -> Article | None:
         return (
             Article.objects.select_related("project", "channel", "author", "hero_image")
+            .prefetch_related("hero_image__variants")
             .filter(project__slug=project_slug, slug=article_slug)
             .first()
         )

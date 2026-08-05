@@ -3,6 +3,7 @@
 import { useState, useCallback } from "react";
 import { type ProjectImage } from "@/lib/api";
 import {
+  type ImageSource,
   ImageValidationError,
   uploadProjectImage,
 } from "@/lib/uploadProjectImage";
@@ -18,6 +19,7 @@ interface UploadProgress {
 interface UseImageUploadOptions {
   projectId: string;
   isIcon?: boolean;
+  source?: ImageSource;
   onUploadComplete?: (image: ProjectImage) => void;
   onError?: (error: Error) => void;
 }
@@ -25,6 +27,7 @@ interface UseImageUploadOptions {
 export function useImageUpload({
   projectId,
   isIcon = false,
+  source = "project",
   onUploadComplete,
   onError,
 }: UseImageUploadOptions) {
@@ -49,6 +52,7 @@ export function useImageUpload({
       try {
         const completedImage = await uploadProjectImage(projectId, file, {
           isIcon,
+          source,
           onImageId: (id) => {
             imageId = id;
             setUploads((prev) => [
@@ -96,7 +100,15 @@ export function useImageUpload({
         );
       }
     },
-    [projectId, isIcon, onUploadComplete, onError, updateUpload, removeUpload]
+    [
+      projectId,
+      isIcon,
+      source,
+      onUploadComplete,
+      onError,
+      updateUpload,
+      removeUpload,
+    ]
   );
 
   const uploadFiles = useCallback(

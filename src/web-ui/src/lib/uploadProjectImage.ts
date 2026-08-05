@@ -9,10 +9,16 @@ export const ALLOWED_IMAGE_TYPES = [
 
 export const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
+// Where the upload came from. Article uploads live on the project so they share
+// the storage and variant pipeline, but they describe an article, so the backend
+// keeps them out of the project gallery, cover-image picks and image cap.
+export type ImageSource = "project" | "article";
+
 export class ImageValidationError extends Error {}
 
 interface UploadOptions {
   isIcon?: boolean;
+  source?: ImageSource;
   // Fired once the backend allocates the image row but before the S3 PUT —
   // useful for callers that want to track per-upload progress by id.
   onImageId?: (imageId: string) => void;
@@ -44,6 +50,7 @@ export async function uploadProjectImage(
     file.type,
     file.size,
     options.isIcon ?? false,
+    options.source ?? "project",
   );
 
   options.onImageId?.(presigned.image_id);

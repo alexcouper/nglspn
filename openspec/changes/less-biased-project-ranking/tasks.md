@@ -42,17 +42,16 @@ Pure functions over plain data, no ORM, inside the service package. Spec: [`spec
 Spec: [`specs/project-ranking-ballot/spec.md`](specs/project-ranking-ballot/spec.md).
 
 - [ ] 4.1 Rewrite `update_rankings` (`api/routers/my_review.py:143-197`) to validate the payload shape and call `HANDLERS.reviews.replace_ballot`, mapping handler errors to 400
-- [ ] 4.2 Rewrite the reviewer detail endpoint (`api/routers/my_review.py:79-140`) to call `REPO.reviews.get_reviewer_projects` instead of querying `ProjectRanking` and `competition.projects` directly
-- [ ] 4.3 Decide and implement the response shape that lets the client split ranked from pool without re-deriving order — this blocks groups 7 and 8, settle it before starting them
-- [ ] 4.4 Replace the Borda loop in `CompetitionAdmin.voting_results_view` (`apps/projects/admin.py:814-884`) with a call to `REPO.reviews.get_competition_tally`, leaving the view as template plumbing only
-- [ ] 4.5 Build the view context from the service result: rank (flattening tiers so a shared tier shares a rank), first-place count, ranked-by count, mean position among rankers, and the pairwise margin grid
-- [ ] 4.6 Rewrite `templates/admin/projects/competition/voting_results.html` — replace the 1st..Nth position histogram and the prose describing Borda scoring
-- [ ] 4.7 Rewrite `tests/test_voting_results.py` against the new rule — delete the Borda assertions, keep the staff-only and no-completed-voters cases, add partial-ballot and thin-support cases
-- [ ] 4.8 Add a test confirming viewing results leaves `Competition.winner` unset
-- [ ] 4.9 Confirm existing partial-ballot tests (`test_my_review.py:386-418`, `:459-472`, `:474-483`) still pass unchanged
-- [ ] 4.10 Check the detail endpoint's query-count budget test (`test_my_review.py:314`) still holds after the service indirection
-- [ ] 4.11 Grep to confirm no router or admin module imports `ProjectRanking` any more
-- [ ] 4.12 Verify `make lint` and `make test` pass from `src/django-backend/`
+- [ ] 4.2 Rewrite the reviewer detail endpoint (`api/routers/my_review.py:79-140`) to call `REPO.reviews.get_reviewer_projects` instead of querying `ProjectRanking` and `competition.projects` directly, returning ranked and pool projects separately so the client does not re-derive order
+- [ ] 4.3 Replace the Borda loop in `CompetitionAdmin.voting_results_view` (`apps/projects/admin.py:814-884`) with a call to `REPO.reviews.get_competition_tally`, leaving the view as template plumbing only
+- [ ] 4.4 Build the view context from the service result: rank (flattening tiers so a shared tier shares a rank), first-place count, ranked-by count, mean position among rankers, and the pairwise margin grid
+- [ ] 4.5 Rewrite `templates/admin/projects/competition/voting_results.html` — replace the 1st..Nth position histogram and the prose describing Borda scoring
+- [ ] 4.6 Rewrite `tests/test_voting_results.py` against the new rule — delete the Borda assertions, keep the staff-only and no-completed-voters cases, add partial-ballot and thin-support cases
+- [ ] 4.7 Add a test confirming viewing results leaves `Competition.winner` unset
+- [ ] 4.8 Confirm existing partial-ballot tests (`test_my_review.py:386-418`, `:459-472`, `:474-483`) still pass unchanged
+- [ ] 4.9 Check the detail endpoint's query-count budget test (`test_my_review.py:314`) still holds after the service indirection
+- [ ] 4.10 Grep to confirm no router or admin module imports `ProjectRanking` any more
+- [ ] 4.11 Verify `make lint` and `make test` pass from `src/django-backend/`
 
 ## 5. Seeded unranked pool ordering
 

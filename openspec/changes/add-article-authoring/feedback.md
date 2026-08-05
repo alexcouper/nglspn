@@ -1,0 +1,6 @@
+ - If we're going to select large wide images to represent the article, we should have the list of displaying articles be better at rendering those images. Right now it shows it as truncated icon.
+ - The select image dialog that appears from the library is ugly
+ - There should be a preview button on
+ - Should be possible to go to edit from the view page (if you have sufficient rights) rather than having to go to the article listing and click edit
+ - The project page should show articles as the main tab if there are any rather than description
+ - Hero image doesn't get removed - click remove and save and it remains

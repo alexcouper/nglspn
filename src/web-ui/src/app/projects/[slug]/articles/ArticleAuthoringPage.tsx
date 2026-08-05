@@ -9,6 +9,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import type { Project } from "@/lib/api";
 import { PublishDialog } from "./PublishDialog";
+import { ArticleCardPreviewDialog } from "./ArticleCardPreviewDialog";
 import { HeroImageUploader } from "./HeroImageUploader";
 import { ChannelDropdown } from "./ChannelDropdown";
 import { useArticleDraft } from "./useArticleDraft";
@@ -30,6 +31,8 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
 
   const draft = useArticleDraft({ project, articleId });
   const [showPublishDialog, setShowPublishDialog] = useState(false);
+  const [showCardPreview, setShowCardPreview] = useState(false);
+  const [isOpeningPreview, setIsOpeningPreview] = useState(false);
 
   const canEdit = useMemo(() => {
     if (!user) return false;
@@ -88,6 +91,16 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
     await draft.remove();
   };
 
+  // The derived summary lives only in the backend, so the preview has to render
+  // a saved article — otherwise it would show a stale excerpt for unsaved body
+  // text. Save first; if that fails, draft.error already says why.
+  const handlePreviewClick = async () => {
+    setIsOpeningPreview(true);
+    await draft.save();
+    setIsOpeningPreview(false);
+    setShowCardPreview(true);
+  };
+
   return (
     <>
       <div className="sticky top-14 z-30 bg-white border-b border-border">
@@ -113,9 +126,29 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
                 {draft.error}
               </span>
             )}
+            {draft.article && (
+              <button
+                onClick={handlePreviewClick}
+                disabled={
+                  draft.isSaving ||
+                  draft.isPublishing ||
+                  isOpeningPreview ||
+                  draft.needsHeroImage
+                }
+                className="text-sm py-2 px-4 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
+              >
+                {isOpeningPreview ? (
+                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                ) : (
+                  "Preview card"
+                )}
+              </button>
+            )}
             <button
               onClick={draft.save}
-              disabled={draft.isSaving || draft.isPublishing}
+              disabled={
+                draft.isSaving || draft.isPublishing || draft.needsHeroImage
+              }
               className="btn-primary text-sm py-2 px-4"
             >
               {draft.isSaving ? (
@@ -179,6 +212,12 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
           onClear={draft.clearHero}
         />
 
+        {draft.needsHeroImage && (
+          <p className="text-sm text-amber-800" role="alert">
+            Published articles need a hero image — add one before saving.
+          </p>
+        )}
+
         <ArticleEditor
           projectId={project.id}
           initialMarkdown={draft.form.body}
@@ -194,6 +233,15 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
             draft.publish();
           }}
           isPublishing={draft.isPublishing}
+        />
+      )}
+
+      {showCardPreview && draft.article && (
+        <ArticleCardPreviewDialog
+          article={draft.article}
+          projectSlug={project.slug ?? project.id}
+          onClose={() => setShowCardPreview(false)}
+          onSaved={draft.setArticle}
         />
       )}
     </>

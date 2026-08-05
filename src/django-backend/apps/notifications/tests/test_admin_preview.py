@@ -77,7 +77,9 @@ class TestPreviewDigestListView:
         )
 
         assert_that(response.status_code, equal_to(200))
-        assert_that(response.content.decode(), contains_string("<strong>0</strong> unsent"))
+        assert_that(
+            response.content.decode(), contains_string("<strong>0</strong> unsent")
+        )
 
 
 @pytest.mark.django_db

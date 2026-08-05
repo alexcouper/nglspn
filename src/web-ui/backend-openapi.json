@@ -5592,6 +5592,14 @@
             "title": "Body",
             "type": "string"
           },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "summary_display": {
+            "title": "Summary Display",
+            "type": "string"
+          },
           "hero_image_id": {
             "anyOf": [
               {
@@ -5683,6 +5691,8 @@
           "author",
           "title",
           "body",
+          "summary",
+          "summary_display",
           "hero_image_id",
           "hero_image_url",
           "slug",
@@ -5776,6 +5786,10 @@
             "title": "Title",
             "type": "string"
           },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
           "slug": {
             "anyOf": [
               {
@@ -5825,6 +5839,7 @@
         "required": [
           "id",
           "title",
+          "summary",
           "slug",
           "state",
           "published_at",
@@ -5858,6 +5873,17 @@
               }
             ],
             "title": "Body"
+          },
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
           },
           "hero_image_id": {
             "anyOf": [

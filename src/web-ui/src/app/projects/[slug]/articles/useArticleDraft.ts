@@ -236,8 +236,13 @@ export function useArticleDraft({ project, articleId }: Options) {
   return {
     channels,
     article,
+    setArticle,
     form,
     heroImage,
+    // publish() requires a hero image, and the API refuses to clear one on an
+    // already-published article — so surface that in the editor rather than
+    // letting the author discover it via a 422.
+    needsHeroImage: article?.state === "published" && !form?.hero_image_id,
     isLoading,
     error,
     setError,

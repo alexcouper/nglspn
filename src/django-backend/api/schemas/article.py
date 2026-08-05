@@ -4,6 +4,8 @@ from uuid import UUID
 
 from ninja import Schema
 
+from services.articles.summary import derive_summary
+
 from .user import PublicUserProfile
 
 
@@ -17,6 +19,9 @@ class ArticleCreate(Schema):
 class ArticleUpdate(Schema):
     title: str | None = None
     body: str | None = None
+    # "" is meaningful here: it clears the override and returns the article to
+    # the derived fallback.
+    summary: str | None = None
     hero_image_id: UUID | None = None
     channel_id: UUID | None = None
     published_at: datetime | None = None
@@ -44,6 +49,10 @@ class ArticleOut(Schema):
     author: PublicUserProfile | None
     title: str
     body: str
+    # `summary` is the stored override (so the editor knows whether one exists);
+    # `summary_display` is what a listing will actually show.
+    summary: str
+    summary_display: str
     hero_image_id: UUID | None
     hero_image_url: str | None
     slug: str | None
@@ -67,6 +76,10 @@ class ArticleOut(Schema):
         return {"id": channel.id, "name": channel.name}
 
     @staticmethod
+    def resolve_summary_display(obj: Any) -> str:
+        return obj.summary or derive_summary(obj.body)
+
+    @staticmethod
     def resolve_hero_image_id(obj: Any) -> UUID | None:
         return obj.hero_image_id
 
@@ -85,6 +98,7 @@ class ArticleOut(Schema):
 class ArticleListItem(Schema):
     id: UUID
     title: str
+    summary: str
     slug: str | None
     state: str
     published_at: datetime | None
@@ -96,6 +110,13 @@ class ArticleListItem(Schema):
     def resolve_channel(obj: Any) -> dict[str, Any]:
         channel = obj.channel
         return {"id": channel.id, "name": channel.name}
+
+    # REPO.articles.for_project selects whole rows, so obj.body is already
+    # loaded and this costs no extra queries. Do not add .only(...) to that
+    # queryset without including body.
+    @staticmethod
+    def resolve_summary(obj: Any) -> str:
+        return obj.summary or derive_summary(obj.body)
 
     @staticmethod
     def resolve_hero_image_url(obj: Any) -> str | None:

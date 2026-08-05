@@ -1,10 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
+import { ArticleCard } from "@/components/ArticleCard";
 import type { ArticleListItem } from "@/lib/api";
 import { api } from "@/lib/api";
-import { formatDate } from "@/lib/utils";
 
 interface Props {
   projectSlug: string;
@@ -52,9 +51,12 @@ export function ArticlesList({ projectSlug }: Props) {
   }
   if (articles === null) {
     return (
-      <div className="space-y-3">
-        <div className="skeleton h-24 w-full rounded-lg" />
-        <div className="skeleton h-24 w-full rounded-lg" />
+      <div className="space-y-5">
+        <div className="skeleton aspect-[16/9] w-full rounded-lg" />
+        <div className="grid gap-5 sm:grid-cols-2">
+          <div className="skeleton aspect-[16/9] w-full rounded-lg" />
+          <div className="skeleton aspect-[16/9] w-full rounded-lg" />
+        </div>
       </div>
     );
   }
@@ -64,43 +66,28 @@ export function ArticlesList({ projectSlug }: Props) {
     );
   }
 
+  // The empty guard above means `lead` is always defined here.
+  const [lead, ...rest] = articles;
+
   return (
-    <ul className="space-y-3">
-      {articles.map((article) => (
-        <li
-          key={article.id}
-          className="rounded-lg border border-border bg-white hover:border-accent/50 transition-colors"
-        >
-          <Link
-            href={`/projects/${projectSlug}/articles/${article.slug}`}
-            className="flex gap-4 p-4"
-          >
-            {article.hero_image_url ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={article.hero_image_url}
-                alt=""
-                className="w-24 h-24 rounded-md object-cover flex-shrink-0 bg-muted"
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-md bg-muted flex-shrink-0" />
-            )}
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-semibold uppercase tracking-wide text-accent mb-1">
-                {article.channel.name}
-              </div>
-              <div className="text-base font-medium text-foreground line-clamp-2">
-                {article.title}
-              </div>
-              {article.published_at && (
-                <div className="mt-1 text-xs text-muted-foreground">
-                  {formatDate(article.published_at)}
-                </div>
-              )}
-            </div>
-          </Link>
-        </li>
-      ))}
-    </ul>
+    <div className="space-y-5">
+      <ArticleCard
+        article={lead}
+        href={`/projects/${projectSlug}/articles/${lead.slug}`}
+        variant="lead"
+      />
+      {rest.length > 0 && (
+        <div className="grid gap-5 sm:grid-cols-2">
+          {rest.map((article) => (
+            <ArticleCard
+              key={article.id}
+              article={article}
+              href={`/projects/${projectSlug}/articles/${article.slug}`}
+              variant="grid"
+            />
+          ))}
+        </div>
+      )}
+    </div>
   );
 }

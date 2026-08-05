@@ -25,8 +25,13 @@ from services.articles.exceptions import (
     DuplicateChannelNameError,
     HeroImageOnWrongProjectError,
     LastChannelError,
+    PublishedArticleNeedsHeroImageError,
 )
-from services.articles.handler_interface import ArticleHandlerInterface
+from services.articles.handler_interface import (
+    UNSET,
+    ArticleHandlerInterface,
+    UnsetType,
+)
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -89,7 +94,8 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         *,
         title: str | None = None,
         body: str | None = None,
-        hero_image_id: UUID | None = None,
+        summary: str | None = None,
+        hero_image_id: UUID | None | UnsetType = UNSET,
         channel_id: UUID | None = None,
         published_at: datetime | None = None,
     ) -> Article:
@@ -102,9 +108,17 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         if body is not None and body != article.body:
             article.body = body
             update_fields.append("body")
-        if hero_image_id is not None:
+        if summary is not None and summary != article.summary:
+            article.summary = summary
+            update_fields.append("summary")
+        if hero_image_id is not UNSET:
+            # _resolve_hero_image raises for an unknown id, so None here only
+            # ever means "the caller asked to clear it".
             hero_image = self._resolve_hero_image(hero_image_id, article.project_id)
-            if hero_image and hero_image.pk != article.hero_image_id:
+            if hero_image is None and article.state == ArticleState.PUBLISHED:
+                raise PublishedArticleNeedsHeroImageError
+            new_hero_id = hero_image.pk if hero_image else None
+            if new_hero_id != article.hero_image_id:
                 article.hero_image = hero_image
                 update_fields.append("hero_image")
         if channel_id is not None and channel_id != article.channel_id:

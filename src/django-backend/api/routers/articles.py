@@ -22,12 +22,15 @@ from apps.projects.models import Project
 from apps.users.models import User
 from services import HANDLERS, REPO
 from services.articles.exceptions import (
+    ArticleError,
     ArticleNotFoundError,
     ArticleNotPublishableError,
     ChannelNotFoundError,
     ChannelOnWrongProjectError,
     HeroImageOnWrongProjectError,
+    PublishedArticleNeedsHeroImageError,
 )
+from services.articles.handler_interface import UNSET
 
 router = Router()
 
@@ -144,6 +147,21 @@ def get_article(
     return article
 
 
+# Domain errors update_article can raise, and how each surfaces to the client.
+# A mapping rather than a stack of except arms so adding a case does not push
+# the view past ruff's return-statement limit.
+_PATCH_ARTICLE_ERRORS: dict[type[ArticleError], tuple[int, str]] = {
+    ArticleNotFoundError: (404, "Article not found"),
+    ChannelNotFoundError: (404, "Channel not found on this project"),
+    ChannelOnWrongProjectError: (404, "Channel not found on this project"),
+    HeroImageOnWrongProjectError: (422, "Hero image must belong to this project"),
+    PublishedArticleNeedsHeroImageError: (
+        422,
+        "Published articles need a hero image — replace it rather than removing it.",
+    ),
+}
+
+
 @router.patch(
     "/{slug}/articles/{article_id}",
     response={200: ArticleOut, 401: Error, 403: Error, 404: Error, 422: Error},
@@ -162,21 +180,26 @@ def patch_article(
     existing = _get_article_in_project(project, article_id)
     if isinstance(existing, tuple):
         return existing
+    # A PATCH body cannot express "clear the hero" with null alone, because an
+    # omitted optional field deserialises to null too. Only forward the key the
+    # client actually sent; everything else stays UNSET.
+    provided = payload.dict(exclude_unset=True)
     try:
         article = HANDLERS.articles.update_article(
             article_id,
             title=payload.title,
             body=payload.body,
-            hero_image_id=payload.hero_image_id,
+            summary=payload.summary,
+            hero_image_id=provided.get("hero_image_id", UNSET),
             channel_id=payload.channel_id,
             published_at=payload.published_at,
         )
-    except ArticleNotFoundError:
-        return 404, {"detail": "Article not found"}
-    except (ChannelNotFoundError, ChannelOnWrongProjectError):
-        return 404, {"detail": "Channel not found on this project"}
-    except HeroImageOnWrongProjectError:
-        return 422, {"detail": "Hero image must belong to this project"}
+    except ArticleError as exc:
+        mapped = _PATCH_ARTICLE_ERRORS.get(type(exc))
+        if mapped is None:
+            raise
+        status, detail = mapped
+        return status, {"detail": detail}
     return article
 
 

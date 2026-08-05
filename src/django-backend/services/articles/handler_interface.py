@@ -11,6 +11,20 @@ if TYPE_CHECKING:
     from apps.follows.models import Channel
 
 
+class UnsetType:
+    """Distinguishes 'field omitted' from 'field explicitly set to null'.
+
+    PATCH payloads cannot express "clear this" with ``None`` alone, because
+    ``None`` is also what an absent optional field deserialises to.
+    """
+
+    def __repr__(self) -> str:
+        return "UNSET"
+
+
+UNSET = UnsetType()
+
+
 class ArticleHandlerInterface(ABC):
     """Service layer for Article and Channel write operations.
 
@@ -40,7 +54,8 @@ class ArticleHandlerInterface(ABC):
         *,
         title: str | None = None,
         body: str | None = None,
-        hero_image_id: UUID | None = None,
+        summary: str | None = None,
+        hero_image_id: UUID | None | UnsetType = UNSET,
         channel_id: UUID | None = None,
         published_at: datetime | None = None,
     ) -> Article: ...

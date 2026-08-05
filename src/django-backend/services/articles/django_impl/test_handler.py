@@ -23,12 +23,14 @@ from services.articles.exceptions import (
     ChannelNotFoundError,
     ChannelOnWrongProjectError,
     HeroImageOnWrongProjectError,
+    PublishedArticleNeedsHeroImageError,
 )
 from tests.factories import (
     ArticleFactory,
     ChannelFactory,
     ProjectFactory,
     ProjectImageFactory,
+    PublishedArticleFactory,
     UserFactory,
 )
 
@@ -388,3 +390,83 @@ class TestTrustFlagAndExistingArticles:
 
         author.refresh_from_db()
         assert author.article_email_frequency == ArticleEmailFrequency.DAILY
+
+
+@pytest.mark.django_db
+class TestArticleSummary:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_new_article_has_empty_summary(self):
+        project = ProjectFactory()
+        channel = ChannelFactory(project=project)
+
+        article = self.handler.create_draft(
+            project_id=project.id,
+            channel_id=channel.id,
+            author_id=project.creator.id,
+        )
+
+        assert article.summary == ""
+
+    def test_update_sets_summary(self):
+        article = ArticleFactory(body="The body opening.")
+
+        updated = self.handler.update_article(article.id, summary="A hook.")
+
+        assert updated.summary == "A hook."
+
+    def test_empty_string_clears_the_summary(self):
+        article = ArticleFactory(summary="A hook.")
+
+        updated = self.handler.update_article(article.id, summary="")
+
+        assert updated.summary == ""
+
+    def test_omitting_summary_leaves_it_alone(self):
+        article = ArticleFactory(summary="A hook.")
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.summary == "A hook."
+
+
+@pytest.mark.django_db
+class TestUpdateHeroImage:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_omitting_hero_image_id_leaves_the_hero_alone(self):
+        article = ArticleFactory()
+        original_hero_id = article.hero_image_id
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.hero_image_id == original_hero_id
+
+    def test_explicit_none_clears_the_hero_on_a_draft(self):
+        article = ArticleFactory()
+        assert article.hero_image_id is not None
+
+        updated = self.handler.update_article(article.id, hero_image_id=None)
+
+        updated.refresh_from_db()
+        assert updated.hero_image_id is None
+
+    def test_explicit_none_on_a_published_article_is_rejected(self):
+        article = PublishedArticleFactory(slug="a-post")
+        original_hero_id = article.hero_image_id
+
+        with pytest.raises(PublishedArticleNeedsHeroImageError):
+            self.handler.update_article(article.id, hero_image_id=None)
+
+        article.refresh_from_db()
+        assert article.hero_image_id == original_hero_id
+
+    def test_swapping_the_hero_on_a_published_article_is_allowed(self):
+        article = PublishedArticleFactory(slug="a-post")
+        replacement = ProjectImageFactory(project=article.project)
+
+        updated = self.handler.update_article(article.id, hero_image_id=replacement.id)
+
+        assert updated.hero_image_id == replacement.id

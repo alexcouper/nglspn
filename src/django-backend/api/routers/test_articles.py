@@ -345,6 +345,123 @@ class TestPatchArticle:
         )
         assert_that(response.status_code, equal_to(404))
 
+    def test_owner_can_set_and_clear_summary(self, client, user, auth_headers) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project, body="The body opening line.")
+
+        set_response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"summary": "An authored hook."},
+            auth_headers,
+        )
+        assert_that(set_response.status_code, equal_to(200))
+        assert_that(set_response.json()["summary"], equal_to("An authored hook."))
+        assert_that(
+            set_response.json()["summary_display"], equal_to("An authored hook.")
+        )
+
+        clear_response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"summary": ""},
+            auth_headers,
+        )
+        assert_that(clear_response.status_code, equal_to(200))
+        assert_that(clear_response.json()["summary"], equal_to(""))
+        assert_that(
+            clear_response.json()["summary_display"],
+            equal_to("The body opening line."),
+        )
+
+    def test_patch_without_hero_key_keeps_the_hero(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project)
+        original_hero_id = article.hero_image_id
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"title": "Updated"},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        article.refresh_from_db()
+        assert_that(article.hero_image_id, equal_to(original_hero_id))
+
+    def test_explicit_null_hero_clears_it_on_a_draft(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project)
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"title": "Updated", "hero_image_id": None},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["hero_image_id"], equal_to(None))
+        article.refresh_from_db()
+        assert_that(article.hero_image_id, equal_to(None))
+
+    def test_explicit_null_hero_on_a_published_article_returns_422(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = PublishedArticleFactory(project=project, slug="a-post")
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"hero_image_id": None},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+        assert_that(
+            response.json()["detail"],
+            equal_to(
+                "Published articles need a hero image — "
+                "replace it rather than removing it."
+            ),
+        )
+
+
+@pytest.mark.django_db
+class TestArticleListSummary:
+    def test_list_falls_back_to_derived_summary(self, client) -> None:
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        PublishedArticleFactory(
+            project=project,
+            slug="a-post",
+            body="# Heading\n\nDerived from the body.",
+            summary="",
+        )
+
+        response = client.get(f"/api/projects/{project.id}/articles")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()[0]["summary"], equal_to("Derived from the body."))
+
+    def test_list_prefers_the_authored_summary(self, client) -> None:
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        PublishedArticleFactory(
+            project=project,
+            slug="b-post",
+            body="Derived from the body.",
+            summary="Authored.",
+        )
+
+        response = client.get(f"/api/projects/{project.id}/articles")
+
+        assert_that(response.json()[0]["summary"], equal_to("Authored."))
+
 
 @pytest.mark.django_db
 class TestPublishArticle:

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { PlusIcon } from "@heroicons/react/24/outline";
+import { ArticleHeroImage } from "@/components/ArticleHeroImage";
 import type { ArticleListItem } from "@/lib/api";
 import { api } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
@@ -94,16 +95,13 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
                   href={`/projects/${projectSlugOrId}/articles/edit/${article.id}`}
                   className="flex items-center gap-3 px-4 py-3"
                 >
-                  {article.hero_image_url ? (
-                    /* eslint-disable-next-line @next/next/no-img-element */
-                    <img
-                      src={article.hero_image_url}
-                      alt=""
-                      className="w-12 h-12 rounded object-cover flex-shrink-0 bg-muted"
-                    />
-                  ) : (
-                    <div className="w-12 h-12 rounded bg-muted flex-shrink-0" />
-                  )}
+                  <ArticleHeroImage
+                    src={article.hero_image_url}
+                    alt=""
+                    articleId={article.id}
+                    className="w-20 flex-shrink-0 rounded"
+                  />
+
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-base font-medium text-foreground truncate">

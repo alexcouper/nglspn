@@ -44,6 +44,9 @@ class Article(models.Model):
     )
     title = models.CharField(max_length=200, default="", blank=True)
     body = models.TextField(default="", blank=True)
+    # Optional authored standfirst for listing cards. When blank, listings fall
+    # back to services.articles.summary.derive_summary(body).
+    summary = models.CharField(max_length=300, default="", blank=True)
     hero_image = models.ForeignKey(
         "projects.ProjectImage",
         on_delete=models.PROTECT,

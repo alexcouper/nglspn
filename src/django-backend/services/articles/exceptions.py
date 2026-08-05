@@ -25,6 +25,10 @@ class HeroImageOnWrongProjectError(ArticleError):
     """The referenced ProjectImage does not belong to the Article's project."""
 
 
+class PublishedArticleNeedsHeroImageError(ArticleError):
+    """Clearing the hero image was requested on an already-published article."""
+
+
 class DuplicateChannelNameError(ArticleError):
     """A Channel with this name already exists on the project."""
 

@@ -11,6 +11,7 @@ import remarkGfm from "remark-gfm";
 import { articleSanitizeSchema } from "../sanitize-schema";
 import "../article-markdown.css";
 import { useAuth } from "@/contexts/auth";
+import { ArticleHeroImage } from "@/components/ArticleHeroImage";
 import type { Article, Project } from "@/lib/api";
 import { api } from "@/lib/api";
 import { formatDate, getAuthorName } from "@/lib/utils";
@@ -95,14 +96,13 @@ export function ArticleRenderContent({ project, article }: Props) {
         </div>
 
         {article.hero_image_url && (
-          <div className="rounded-lg overflow-hidden bg-muted mt-6">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={article.hero_image_url}
-              alt={article.title}
-              className="w-full h-auto object-cover max-h-96"
-            />
-          </div>
+          <ArticleHeroImage
+            src={article.hero_image_url}
+            alt={article.title}
+            articleId={article.id}
+            priority
+            className="rounded-lg mt-6"
+          />
         )}
 
         <div className="markdown markdown-article mt-8">

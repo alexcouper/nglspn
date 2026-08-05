@@ -24,7 +24,7 @@ The backend already has one image-resolution routine, `resolve_image_by_purpose`
 - Changing ballot mechanics — add, remove, reorder, autosave, submission, pool ordering are all untouched.
 - Changing the two-panel-at-`lg` / tabs-on-mobile shell.
 - Unifying every project card in the app. `CategoryCard`, the Featured hero cards, and `CompetitionReveal` keep their own layouts; they are genuinely different designs, not accidental drift.
-- Reducing the card's vertical footprint (see Risks).
+- Reducing the tile's own proportions. The 4:3 image is kept; the card's footprint is contained by capping its width instead (see Decisions).
 
 ## Decisions
 
@@ -54,6 +54,14 @@ The entry's own `bg-white rounded-xl border` wrapper is dropped; `ProjectTile` a
 
 `CardImage` and `CardText` are deleted rather than adapted — everything they do is now `ProjectTile`'s job.
 
+### The ballot tile is capped at 240px, not stretched to the panel
+
+`TILE_WIDTH_CLASS` is `w-full max-w-[240px] min-w-0` — the same width the listing row gives a card.
+
+This was first built letting the tile fill the panel. Measured in the running app, that produced a 240px-wide image at 4:3 on mobile and a ~300px-tall entry at `lg`, where each panel is half the page: a twelve-project ballot became an unworkable scroll, and comparing two projects meant scrolling between them. Capping the width puts a ballot entry at 265px tall — the same as a listing card — at the cost of whitespace to the right of the control column on wide panels. Scrolling a ballot is the common action; filling the panel is not worth making it worse.
+
+`w-full` with `max-w` rather than a fixed `w-[240px]` so the tile still shrinks on very narrow screens instead of forcing horizontal overflow, since the control column needs 44px of touch target beside it.
+
 ### Read-only is a `dimmed` prop, not a second card
 
 Today read-only entries swap to `bg-muted` with muted text. That becomes `dimmed` on the tile: drop `card-interactive`, mute the text. One code path, one place to change the treatment.
@@ -76,7 +84,9 @@ So the prefetch is narrowed to `upload_status="uploaded"` in the same step. That
 
 ## Risks / Trade-offs
 
-- **A 4:3 image at full panel width makes ballot entries tall.** At `lg` each panel is half the page, so an image lands around 250–330px tall; a twelve-project ballot is a long scroll on desktop and mobile alike. → Accepted deliberately in favour of matching the listing tile exactly. If it proves unworkable in practice the aspect ratio is a one-line change in `ProjectTile`, and the fix would apply to both screens at once — which is the point of sharing the component.
+- **A 4:3 image at full panel width makes ballot entries tall.** Confirmed in the running app and fixed by capping the tile at 240px (see Decisions). Entries are now 265px, matching a listing card.
+
+- **Wide ballot panels carry visible whitespace** to the right of the control column — at `lg` the panel is ~539px for a 240px tile plus controls. → Accepted. The alternative costs scroll length on every ballot, which is the thing reviewers actually do.
 
 - **The listing page changes without having been the complaint.** A 2-line title shifts New Arrivals cards for every visitor. → Contained by `align-items: stretch` keeping heights equal, and by the fact that most titles fit on one line and are unaffected. Verify visually on the listing page, not only on the ballot.
 

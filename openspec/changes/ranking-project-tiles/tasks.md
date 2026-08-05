@@ -37,7 +37,7 @@ Spec: [`specs/project-listing-discover/spec.md`](specs/project-listing-discover/
 - [x] 4.2 Clamp the title to 2 lines instead of `truncate`; keep the tagline at 2 lines
 - [x] 4.3 Implement `dimmed`: drop `card-interactive`, mute the title and tagline
 - [x] 4.4 Reduce `ArrivalCard` in `src/app/projects/sections/NewArrivalsSection.tsx` to a wrapper that maps `DiscoverProject` onto those props
-- [ ] 4.5 Check the New Arrivals row visually with a title long enough to wrap — cards must stay equal height and the row must not go ragged
+- [x] 4.5 Check the New Arrivals row visually with a title long enough to wrap — cards must stay equal height and the row must not go ragged (verified in 7.4)
 
 ## 5. Rebuild the ballot cards
 
@@ -64,14 +64,14 @@ Spec: [`specs/project-ranking-ballot/spec.md`](specs/project-ranking-ballot/spec
 
 Per [CLAUDE.md](../../../CLAUDE.md), using the credentials in `.env.claude`.
 
-**Blocked on test data.** The database behind the running dev server holds four
-competitions, all `closed` with one project each, and `test@example.com` has no
-review assignment — so `/my-reviews` redirects and there is no ballot to open.
-A ballot needs a competition in `voting` status with several projects and the
-test user assigned as a reviewer.
+Verified against the `nglspn-w1` frontend on :3001 and its backend on :8002,
+using "Verification keppni 2026" (voting, 8 projects, `test@example.com`
+assigned). The pair on :3000/:8000 is a different worktree's backend and does
+not carry these changes.
 
-- [ ] 7.1 Log in as the test reviewer and open a competition ballot at mobile width — confirm titles and taglines are no longer cut off
-- [ ] 7.2 Add, reorder and remove a project; confirm autosave and submission still work
-- [ ] 7.3 View a submitted ballot and confirm the dimmed treatment reads as inert
-- [x] 7.4 Open the project listing page and confirm New Arrivals is unharmed — checked at desktop width; cards stay equal height, including one carrying a category label. Not yet seen with a title long enough to wrap (all seeded titles are short domains), which is what 4.5 needs.
+- [x] 7.1 Log in as the test reviewer and open a competition ballot — titles and taglines render in full ("Puffin Tracker" / "Monitoring Iceland's puffin colonies for conservation", uncut). **Not checked at true mobile width**: the browser tooling could not resize the viewport (`outerWidth` changed, the page never reflowed), so this was confirmed at `lg`, where the panel is half the page and the text column is at its narrowest.
+- [x] 7.2 Add, reorder and remove a project; confirm autosave and submission still work — add/reorder/remove all correct, ranks renumber, and the ballot survived a page reload
+- [x] 7.3 View a submitted ballot and confirm the dimmed treatment reads as inert — `opacity-75`, no `card-interactive`, no reorder or remove controls, title and tagline still complete. Reopened afterwards to restore state.
+- [x] 7.4 Open the project listing page and confirm New Arrivals is unharmed — 21 cards, all exactly 288.5px tall. A forced long title clamps to 2 lines with every card still 289px, so the row does not go ragged (covers 4.5).
+- [x] 7.6 Cap the ballot tile at the listing card's 240px — measured 240px in a 539px panel, entries 265px tall, no horizontal overflow
 - [x] 7.5 Run `make ci` from the project root — no root `Makefile` and no `scripts/ci/` exist; CLAUDE.md is stale on both. Ran the equivalents instead: `make lint` + `make test` in `src/django-backend` (903 passed) and `npm run lint` + `npm test` in `src/web-ui` (31 passed).

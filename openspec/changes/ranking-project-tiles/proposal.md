@@ -30,7 +30,11 @@ The listing tile ([`NewArrivalsSection.tsx:32`](../../../src/web-ui/src/app/proj
 **Not changing**
 
 - The two-panel-at-`lg` / tabs-on-mobile ballot layout stays as it is.
-- The 4:3 image aspect is kept rather than shortened, matching the listing tile exactly. The cost is accepted deliberately: at `lg` each ballot panel is half the page, so a tile image lands around 250–330px tall and a twelve-project ballot is a long scroll.
+- The 4:3 image aspect is kept rather than shortened, matching the listing tile exactly.
+
+**Tile width is capped at the listing card's 240px**
+
+Left to fill the panel, a 4:3 image at half-page width made each ballot entry roughly 300px tall and a twelve-project ballot an unworkable scroll. The tile is capped at `240px` instead — the same width the listing row uses — so a ballot entry is the same size as a listing card. Wide panels get whitespace to the right of the control column; that is the intended trade.
 
 ## Capabilities
 

@@ -152,7 +152,7 @@ function RankingCard({
       data-testid="ranked-card"
       className="flex items-start gap-3"
     >
-      <div className="flex-1 min-w-0">
+      <div className={TILE_WIDTH_CLASS}>
         <ProjectCardTile project={project} dimmed={readOnly} />
       </div>
 
@@ -245,7 +245,7 @@ export function PoolList({ projects, readOnly, onAdd }: PoolListProps) {
           data-testid="pool-card"
           className="flex items-start gap-3"
         >
-          <div className="flex-1 min-w-0">
+          <div className={TILE_WIDTH_CLASS}>
             <ProjectCardTile project={project} dimmed={false} />
           </div>
 
@@ -268,6 +268,12 @@ export function PoolList({ projects, readOnly, onAdd }: PoolListProps) {
     </div>
   );
 }
+
+// Capped at the listing card's 240px rather than filling the panel. A 4:3 image
+// stretched to full panel width makes each entry ~300px tall, which turns a
+// twelve-project ballot into a very long scroll. Leaves whitespace to the right
+// on wide panels; that is the intended trade.
+const TILE_WIDTH_CLASS = "w-full max-w-[240px] min-w-0";
 
 const CONTROL_BUTTON_CLASS =
   "p-2 sm:p-1 text-slate-400 hover:text-slate-700 disabled:text-slate-200 disabled:cursor-not-allowed transition-colors min-w-[44px] sm:min-w-0 min-h-[44px] sm:min-h-0 flex items-center justify-center";

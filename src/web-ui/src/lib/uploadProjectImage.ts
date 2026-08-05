@@ -44,6 +44,10 @@ export async function uploadProjectImage(
     throw new ImageValidationError("File size must be less than 10MB");
   }
 
+  // Read before the PUT so a decode failure fails the upload early rather than
+  // leaving a completed row with no dimensions.
+  const dimensions = await readImageDimensions(file);
+
   const presigned = await api.myProjects.getImageUploadUrl(
     projectId,
     file.name,
@@ -81,5 +85,51 @@ export async function uploadProjectImage(
 
   options.onUploadDone?.();
 
-  return api.myProjects.completeImageUpload(projectId, presigned.image_id);
+  return api.myProjects.completeImageUpload(
+    projectId,
+    presigned.image_id,
+    dimensions,
+  );
 }
+
+// Null rather than throwing: an image the browser cannot decode still uploads,
+// and the backend's variant job backfills the dimensions later. Callers that
+// need the shape up front — the hero crop dialog — treat null as uncroppable.
+//
+// createImageBitmap reads the Blob directly. An <img> with a blob: URL would be
+// blocked by the app's Content-Security-Policy, whose img-src allows data: but
+// not blob:, so the fallback path below uses a data URL rather than an object
+// URL.
+async function readImageDimensions(
+  file: File,
+): Promise<{ width: number; height: number } | null> {
+  if (typeof createImageBitmap === "function") {
+    try {
+      const bitmap = await createImageBitmap(file);
+      const size = { width: bitmap.width, height: bitmap.height };
+      bitmap.close();
+      return size;
+    } catch {
+      // Fall through — some formats/browsers refuse here but decode as an <img>.
+    }
+  }
+
+  try {
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = () => reject(new Error("read failed"));
+      reader.readAsDataURL(file);
+    });
+    const image = new Image();
+    await new Promise<void>((resolve, reject) => {
+      image.onload = () => resolve();
+      image.onerror = () => reject(new Error("decode failed"));
+      image.src = dataUrl;
+    });
+    return { width: image.naturalWidth, height: image.naturalHeight };
+  } catch {
+    return null;
+  }
+}
+

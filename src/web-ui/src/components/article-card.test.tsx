@@ -4,6 +4,7 @@ import { createRoot, type Root } from "react-dom/client";
 import type { ArticleListItem } from "@/lib/api";
 import { ArticleHeroImage } from "./ArticleHeroImage";
 import { ArticleCard } from "./ArticleCard";
+import { CroppedImage, type CropRect } from "./CroppedImage";
 
 // ------------------------------------------------------------------ mounting
 
@@ -37,14 +38,83 @@ function articleListItem(
     global_visibility: "auto",
     channel: { id: "channel-1", name: "Releases" },
     hero_image_url: "https://cdn.example/hero.png",
+    card_crop: null,
     ...overrides,
   } as ArticleListItem;
 }
 
+// A 2:1 selection covering the middle-left of the source.
+function crop(overrides: Partial<CropRect> = {}): CropRect {
+  return { x: 0.1, y: 0.25, w: 0.5, h: 0.25, ratio: 2, ...overrides };
+}
+
+function frameOf(container: HTMLElement): HTMLElement {
+  return container.firstElementChild as HTMLElement;
+}
+
 // ---------------------------------------------------------------- the tests
 
+describe("CroppedImage", () => {
+  it("scales and offsets the image so the crop fills the box", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <CroppedImage src="/a.png" alt="" crop={crop()} />,
+    );
+
+    const img = container.querySelector("img")!;
+    // w=0.5 -> the source is twice the box; x=0.1 -> shifted by a fifth of it.
+    expect(img.style.width).toBe("200%");
+    expect(img.style.height).toBe("400%");
+    expect(img.style.left).toBe("-20%");
+    expect(img.style.top).toBe("-100%");
+    expect(frameOf(container).style.aspectRatio).toBe("2");
+
+    cleanup();
+  });
+
+  it("sets max-width inline so a global image reset cannot shift the crop", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <CroppedImage src="/a.png" alt="" crop={crop()} />,
+    );
+
+    expect(container.querySelector("img")!.style.maxWidth).toBe("none");
+
+    cleanup();
+  });
+
+  it("falls back to a 16:9 centre cover when there is no crop", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <CroppedImage src="/a.png" alt="" crop={null} />,
+    );
+
+    const img = container.querySelector("img")!;
+    expect(img.className).toContain("object-cover");
+    expect(img.style.width).toBe("");
+    expect(frameOf(container).style.aspectRatio).toBe(String(16 / 9));
+
+    cleanup();
+  });
+});
+
 describe("ArticleHeroImage", () => {
-  it("crops to 16:9 so a wide upload is not squashed into a square", async () => {
+  it("renders at the stored ratio rather than a fixed shape", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <ArticleHeroImage
+        src="https://cdn.example/hero.png"
+        alt="A screenshot"
+        articleId="article-1"
+        crop={crop({ ratio: 2.8333 })}
+      />,
+    );
+
+    expect(container.querySelector("img")!.getAttribute("src")).toBe(
+      "https://cdn.example/hero.png",
+    );
+    expect(frameOf(container).style.aspectRatio).toBe("2.8333");
+
+    cleanup();
+  });
+
+  it("crops to 16:9 so an uncropped wide upload is not squashed into a square", async () => {
     const { container, unmount: cleanup } = await mount(
       <ArticleHeroImage
         src="https://cdn.example/hero.png"
@@ -54,9 +124,8 @@ describe("ArticleHeroImage", () => {
     );
 
     const img = container.querySelector("img")!;
-    expect(img.getAttribute("src")).toBe("https://cdn.example/hero.png");
     expect(img.className).toContain("object-cover");
-    expect(container.querySelector(".aspect-\\[16\\/9\\]")).not.toBeNull();
+    expect(frameOf(container).style.aspectRatio).toBe(String(16 / 9));
 
     cleanup();
   });
@@ -67,7 +136,17 @@ describe("ArticleHeroImage", () => {
     );
 
     expect(container.querySelector("img")).toBeNull();
-    expect(container.querySelector(".aspect-\\[16\\/9\\]")).not.toBeNull();
+    expect(frameOf(container).style.aspectRatio).toBe(String(16 / 9));
+
+    cleanup();
+  });
+
+  it("keeps the placeholder at the stored ratio so removing an image does not reflow", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <ArticleHeroImage src={null} alt="" articleId="a" crop={crop()} />,
+    );
+
+    expect(frameOf(container).style.aspectRatio).toBe("2");
 
     cleanup();
   });

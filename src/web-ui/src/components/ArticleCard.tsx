@@ -33,6 +33,9 @@ export function ArticleCard({ article, href, variant }: Props) {
           src={article.hero_image_url}
           alt=""
           articleId={article.id}
+          // Always 16:9, resolved server-side from the card override or the
+          // hero framing, so a grid of cards stays uniform.
+          crop={article.card_crop}
           priority={isLead}
         />
         <div className={isLead ? "p-5" : "p-4"}>

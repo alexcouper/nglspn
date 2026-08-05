@@ -16,6 +16,8 @@ from apps.articles.models import (
 from apps.articles.slugs import assign_unique_article_slug
 from apps.follows.models import Channel
 from apps.projects.models import ProjectImage
+from services.articles import crop
+from services.articles.crop import CARD_RATIO
 from services.articles.exceptions import (
     ArticleNotFoundError,
     ArticleNotPublishableError,
@@ -24,6 +26,7 @@ from services.articles.exceptions import (
     ChannelOnWrongProjectError,
     DuplicateChannelNameError,
     HeroImageOnWrongProjectError,
+    InvalidCropError,
     LastChannelError,
     PublishedArticleNeedsHeroImageError,
 )
@@ -72,6 +75,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         title: str = "",
         body: str = "",
         hero_image_id: UUID | None = None,
+        hero_crop: dict[str, float] | None = None,
     ) -> Article:
         channel = self._resolve_channel_on_project(channel_id, project_id)
         hero_image = self._resolve_hero_image(hero_image_id, project_id)
@@ -85,6 +89,10 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             source=ArticleSource.INTERNAL,
             state=ArticleState.DRAFT,
         )
+        # The editor opens its crop dialog on upload, so the first save of a new
+        # article already carries a framing. Without this it would be dropped
+        # and only stick on the second save.
+        article.hero_crop = self._validated_crop(hero_crop, article)
         article.save()
         return article
 
@@ -96,11 +104,14 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         body: str | None = None,
         summary: str | None = None,
         hero_image_id: UUID | None | UnsetType = UNSET,
+        hero_crop: dict[str, float] | None | UnsetType = UNSET,
+        card_crop: dict[str, float] | None | UnsetType = UNSET,
         channel_id: UUID | None = None,
         published_at: datetime | None = None,
     ) -> Article:
         article = self._get_article(article_id)
         update_fields: list[str] = []
+        hero_changed = False
 
         if title is not None and title != article.title:
             article.title = title
@@ -121,6 +132,15 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             if new_hero_id != article.hero_image_id:
                 article.hero_image = hero_image
                 update_fields.append("hero_image")
+                hero_changed = True
+        # Called after the hero is reassigned, so a new image and its crop
+        # arriving together validate against the image the crop was drawn on.
+        update_fields += self._apply_crops(
+            article,
+            hero_crop=hero_crop,
+            card_crop=card_crop,
+            hero_changed=hero_changed,
+        )
         if channel_id is not None and channel_id != article.channel_id:
             channel = self._resolve_channel_on_project(channel_id, article.project_id)
             article.channel = channel
@@ -238,6 +258,68 @@ class DjangoArticleHandler(ArticleHandlerInterface):
     # ------------------------------------------------------------------
     # Helpers
     # ------------------------------------------------------------------
+
+    def _apply_crops(
+        self,
+        article: Article,
+        *,
+        hero_crop: dict[str, float] | None | UnsetType,
+        card_crop: dict[str, float] | None | UnsetType,
+        hero_changed: bool,
+    ) -> list[str]:
+        """Set whichever crops the caller sent, and return the fields touched."""
+        touched: list[str] = []
+
+        if hero_crop is not UNSET:
+            value = self._validated_crop(hero_crop, article)
+            if value != article.hero_crop:
+                article.hero_crop = value
+                touched.append("hero_crop")
+        if card_crop is not UNSET:
+            value = self._validated_crop(card_crop, article, expected_ratio=CARD_RATIO)
+            if value != article.card_crop:
+                article.card_crop = value
+                touched.append("card_crop")
+
+        if not hero_changed:
+            return touched
+
+        # A rectangle drawn on one image means nothing on another, so a hero
+        # that changed or went away takes with it any crop the caller did not
+        # explicitly replace in the same request.
+        if hero_crop is UNSET and article.hero_crop is not None:
+            article.hero_crop = None
+            touched.append("hero_crop")
+        if card_crop is UNSET and article.card_crop is not None:
+            article.card_crop = None
+            touched.append("card_crop")
+        return touched
+
+    def _validated_crop(
+        self,
+        value: dict[str, float] | None,
+        article: Article,
+        *,
+        expected_ratio: float | None = None,
+    ) -> dict[str, float] | None:
+        """Normalise an incoming crop, or raise ``InvalidCropError``."""
+        if value is None:
+            return None
+
+        hero = article.hero_image
+        if hero is None:
+            raise InvalidCropError(crop.NO_HERO_IMAGE)
+
+        rect = crop.parse_crop(value)
+        if rect is None:
+            raise InvalidCropError(crop.MALFORMED)
+        crop.validate_crop(
+            rect,
+            width=hero.width,
+            height=hero.height,
+            expected_ratio=expected_ratio,
+        )
+        return rect.to_dict()
 
     def _get_article(self, article_id: UUID) -> Article:
         try:

@@ -99,6 +99,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
                     src={article.hero_image_url}
                     alt=""
                     articleId={article.id}
+                    crop={article.card_crop}
                     className="w-20 flex-shrink-0 rounded"
                   />
 

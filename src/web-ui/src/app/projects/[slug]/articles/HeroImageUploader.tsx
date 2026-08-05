@@ -1,21 +1,33 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import { PhotoIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowsPointingOutIcon,
+  PhotoIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import type { ProjectImage } from "@/lib/api";
+import { ArticleHeroImage } from "@/components/ArticleHeroImage";
+import type { CropRect } from "@/components/CroppedImage";
 import { pickVariant } from "@/lib/utils";
 
 interface Props {
   heroImage: ProjectImage | null;
+  crop: CropRect | null;
+  articleId: string;
   isUploading: boolean;
   onUpload: (file: File) => void;
+  onAdjustFraming: () => void;
   onClear: () => void;
 }
 
 export function HeroImageUploader({
   heroImage,
+  crop,
+  articleId,
   isUploading,
   onUpload,
+  onAdjustFraming,
   onClear,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -33,20 +45,33 @@ export function HeroImageUploader({
     const src =
       pickVariant(heroImage.variants, "large") ?? heroImage.url;
     return (
-      <div className="relative rounded-lg overflow-hidden border border-border bg-muted">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+      // ArticleHeroImage rather than a bespoke `max-h-80` crop: that framing
+      // shifted with the editor's width and never matched the article page.
+      // Same component, same stored crop, same result on both.
+      <div className="relative rounded-lg overflow-hidden border border-border">
+        <ArticleHeroImage
           src={src}
           alt={heroImage.original_filename}
-          className="w-full max-h-80 object-cover"
+          articleId={articleId}
+          crop={crop}
+          priority
         />
-        <button
-          onClick={onClear}
-          title="Remove hero image"
-          className="absolute top-2 right-2 p-1.5 rounded-full bg-white/90 text-foreground hover:bg-white shadow"
-        >
-          <XMarkIcon className="w-4 h-4" />
-        </button>
+        <div className="absolute top-2 right-2 flex gap-1.5">
+          <button
+            onClick={onAdjustFraming}
+            title="Adjust framing"
+            className="p-1.5 rounded-full bg-white/90 text-foreground hover:bg-white shadow"
+          >
+            <ArrowsPointingOutIcon className="w-4 h-4" />
+          </button>
+          <button
+            onClick={onClear}
+            title="Remove hero image"
+            className="p-1.5 rounded-full bg-white/90 text-foreground hover:bg-white shadow"
+          >
+            <XMarkIcon className="w-4 h-4" />
+          </button>
+        </div>
       </div>
     );
   }

@@ -28,6 +28,7 @@ from services.articles.exceptions import (
     ChannelNotFoundError,
     ChannelOnWrongProjectError,
     HeroImageOnWrongProjectError,
+    InvalidCropError,
     PublishedArticleNeedsHeroImageError,
 )
 from services.articles.handler_interface import UNSET
@@ -74,11 +75,14 @@ def create_article(
             title=payload.title,
             body=payload.body,
             hero_image_id=payload.hero_image_id,
+            hero_crop=payload.hero_crop.dict() if payload.hero_crop else None,
         )
     except (ChannelNotFoundError, ChannelOnWrongProjectError):
         return 404, {"detail": "Channel not found on this project"}
     except HeroImageOnWrongProjectError:
         return 422, {"detail": "Hero image must belong to this project"}
+    except InvalidCropError:
+        return 422, {"detail": "Image framing is not a valid crop of this image"}
     return 201, article
 
 
@@ -155,6 +159,7 @@ _PATCH_ARTICLE_ERRORS: dict[type[ArticleError], tuple[int, str]] = {
     ChannelNotFoundError: (404, "Channel not found on this project"),
     ChannelOnWrongProjectError: (404, "Channel not found on this project"),
     HeroImageOnWrongProjectError: (422, "Hero image must belong to this project"),
+    InvalidCropError: (422, "Image framing is not a valid crop of this image"),
     PublishedArticleNeedsHeroImageError: (
         422,
         "Published articles need a hero image — replace it rather than removing it.",
@@ -191,6 +196,8 @@ def patch_article(
             body=payload.body,
             summary=payload.summary,
             hero_image_id=provided.get("hero_image_id", UNSET),
+            hero_crop=provided.get("hero_crop", UNSET),
+            card_crop=provided.get("card_crop", UNSET),
             channel_id=payload.channel_id,
             published_at=payload.published_at,
         )

@@ -10,12 +10,17 @@ import type {
   ProjectImage,
 } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
+import type { CropRect } from "@/components/CroppedImage";
 
 export interface ArticleFormState {
   title: string;
   body: string;
   channel_id: string;
   hero_image_id: string | null;
+  // The author's framing of the hero, and an optional override for listing
+  // cards. Null on card_crop means "derive it from the hero", not "no crop".
+  hero_crop: CropRect | null;
+  card_crop: CropRect | null;
 }
 
 interface Options {
@@ -72,6 +77,8 @@ export function useArticleDraft({ project, articleId }: Options) {
             body: loaded.body,
             channel_id: loaded.channel.id,
             hero_image_id: loaded.hero_image_id,
+            hero_crop: loaded.hero_crop,
+            card_crop: loaded.card_crop,
           });
           // Comes off the article, not project.images — article uploads are
           // excluded from the project's gallery, so the hero is not in there.
@@ -83,6 +90,8 @@ export function useArticleDraft({ project, articleId }: Options) {
             body: "",
             channel_id: channelList[0]?.id ?? "",
             hero_image_id: null,
+            hero_crop: null,
+            card_crop: null,
           });
         }
         setIsLoading(false);
@@ -116,16 +125,44 @@ export function useArticleDraft({ project, articleId }: Options) {
     return current;
   }, [form]);
 
-  const handleHeroUpload = useCallback((image: ProjectImage) => {
-    setHeroImage(image);
-    setForm((prev) =>
-      prev ? { ...prev, hero_image_id: image.id } : prev,
-    );
+  // Called once the author has framed the upload, not when it lands: an
+  // unframed hero is never committed to the form.
+  const handleHeroUpload = useCallback(
+    (image: ProjectImage, crop: CropRect | null) => {
+      setHeroImage(image);
+      setForm((prev) =>
+        prev
+          ? {
+              ...prev,
+              hero_image_id: image.id,
+              hero_crop: crop,
+              // A rectangle drawn on one image means nothing on another, so a
+              // new hero drops any card override with it.
+              card_crop: null,
+            }
+          : prev,
+      );
+    },
+    [],
+  );
+
+  // Re-framing an existing hero leaves any card override alone — once the
+  // author has set one it stops tracking the hero.
+  const setHeroCrop = useCallback((crop: CropRect) => {
+    setForm((prev) => (prev ? { ...prev, hero_crop: crop } : prev));
+  }, []);
+
+  const setCardCrop = useCallback((crop: CropRect | null) => {
+    setForm((prev) => (prev ? { ...prev, card_crop: crop } : prev));
   }, []);
 
   const clearHero = useCallback(() => {
     setHeroImage(null);
-    setForm((prev) => (prev ? { ...prev, hero_image_id: null } : prev));
+    setForm((prev) =>
+      prev
+        ? { ...prev, hero_image_id: null, hero_crop: null, card_crop: null }
+        : prev,
+    );
   }, []);
 
   const persistDraft = useCallback(
@@ -139,6 +176,7 @@ export function useArticleDraft({ project, articleId }: Options) {
               title: current.title,
               body: current.body,
               hero_image_id: current.hero_image_id ?? null,
+              hero_crop: current.hero_crop,
             },
           );
           setArticle(created);
@@ -156,6 +194,8 @@ export function useArticleDraft({ project, articleId }: Options) {
             body: current.body,
             channel_id: current.channel_id,
             hero_image_id: current.hero_image_id ?? null,
+            hero_crop: current.hero_crop,
+            card_crop: current.card_crop,
           },
         );
         setArticle(updated);
@@ -252,6 +292,8 @@ export function useArticleDraft({ project, articleId }: Options) {
     updateForm,
     snapshotForm,
     handleHeroUpload,
+    setHeroCrop,
+    setCardCrop,
     clearHero,
     save,
     publish,

@@ -53,6 +53,40 @@ const removeHero = (page: Page) => page.getByTitle("Remove hero image");
 const heroFileInput = (page: Page) =>
   page.locator('input[type="file"]').first();
 
+const heroFrame = (page: Page) => page.getByTestId("article-hero");
+
+// Uploading no longer sets the hero directly — the author frames it first.
+async function uploadAndFrameHero(page: Page, file: string) {
+  await heroFileInput(page).setInputFiles(file);
+  await expect(page.getByRole("heading", { name: "Frame the hero image" })).toBeVisible();
+}
+
+async function confirmFraming(page: Page) {
+  await page.getByRole("button", { name: "Use it" }).click();
+  await expect(page.getByRole("heading", { name: "Frame the hero image" })).toHaveCount(0);
+}
+
+async function renderedRatio(page: Page): Promise<number> {
+  const raw = await heroFrame(page)
+    .first()
+    .evaluate((el) => getComputedStyle(el).aspectRatio);
+  // Computed as "34 / 12" or a bare number depending on the engine.
+  const [w, h] = raw.split("/").map((part) => Number(part.trim()));
+  return h ? w / h : w;
+}
+
+// Drags an edge handle of the crop frame by `dy` pixels.
+async function dragCropEdge(page: Page, edge: "top" | "bottom", dy: number) {
+  const handle = page.getByTestId(`crop-handle-${edge}`);
+  const box = (await handle.boundingBox())!;
+  const x = box.x + box.width / 2;
+  const y = box.y + box.height / 2;
+  await page.mouse.move(x, y);
+  await page.mouse.down();
+  await page.mouse.move(x, y + dy, { steps: 10 });
+  await page.mouse.up();
+}
+
 // Waits for the write itself rather than the "Draft saved" message, which
 // clears after 2.5s and would race the second save.
 async function saveDraft(page: Page) {
@@ -120,7 +154,8 @@ test("removing a hero image and saving actually removes it", async ({
   const projectId = await openBlankArticleEditor(page);
 
   await page.fill('input[placeholder="Article title"]', "Hero removal test");
-  await heroFileInput(page).setInputFiles(HERO_IMAGE);
+  await uploadAndFrameHero(page, HERO_IMAGE);
+  await confirmFraming(page);
   await expect(removeHero(page)).toBeVisible();
 
   await saveDraft(page);
@@ -136,6 +171,34 @@ test("removing a hero image and saving actually removes it", async ({
   await page.goto(editUrl);
   await expect(page.getByRole("button", { name: "Save draft" })).toBeVisible();
   await expect(removeHero(page)).toHaveCount(0);
+
+  await cleanUp(page, projectId, articleId, uploadedImageIds);
+});
+
+test("a chosen hero framing survives a save and a reload", async ({ page }) => {
+  const uploadedImageIds = trackUploadedImageIds(page);
+  await login(page);
+  const projectId = await openBlankArticleEditor(page);
+
+  await page.fill('input[placeholder="Article title"]', "Hero framing test");
+  await uploadAndFrameHero(page, HERO_IMAGE);
+
+  // Make the selection meaningfully taller than the 16:9 it opens on, so a
+  // dropped crop shows up as a failed comparison rather than a coincidence.
+  await dragCropEdge(page, "bottom", 90);
+  await confirmFraming(page);
+
+  const chosen = await renderedRatio(page);
+  expect(chosen).toBeLessThan(16 / 9 - 0.05);
+
+  await saveDraft(page);
+  await expect(page).toHaveURL(/\/articles\/edit\/[0-9a-f-]+$/);
+  const editUrl = page.url();
+  const articleId = editUrl.split("/").pop()!;
+
+  await page.goto(editUrl);
+  await expect(removeHero(page)).toBeVisible();
+  expect(await renderedRatio(page)).toBeCloseTo(chosen, 2);
 
   await cleanUp(page, projectId, articleId, uploadedImageIds);
 });

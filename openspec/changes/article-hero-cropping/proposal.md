@@ -47,7 +47,7 @@ concern to stand as its own spec rather than amend a spec that has not landed.
 
 Backend (`src/django-backend/`):
 
-- `apps/projects/models.py` — `Article` gains `hero_crop` and `card_crop`.
+- `apps/articles/models.py` — `Article` gains `hero_crop` and `card_crop`.
 - Migration required.
 - `api/schemas/article.py` — `ArticleOut`, `ArticleUpdate` and `ArticleListItem`
   change shape; `ArticleListItem.card_crop` is resolved server-side.

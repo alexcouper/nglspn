@@ -5623,6 +5623,36 @@
             ],
             "title": "Hero Image Url"
           },
+          "hero_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "card_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "card_crop_display": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "hero_image": {
             "anyOf": [
               {
@@ -5705,6 +5735,9 @@
           "summary_display",
           "hero_image_id",
           "hero_image_url",
+          "hero_crop",
+          "card_crop",
+          "card_crop_display",
           "hero_image",
           "slug",
           "source",
@@ -5750,6 +5783,40 @@
         "title": "ArticleProjectRef",
         "type": "object"
       },
+      "CropRect": {
+        "description": "A crop rectangle normalised 0-1 against the source image.",
+        "properties": {
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          },
+          "w": {
+            "title": "W",
+            "type": "number"
+          },
+          "h": {
+            "title": "H",
+            "type": "number"
+          },
+          "ratio": {
+            "title": "Ratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "w",
+          "h",
+          "ratio"
+        ],
+        "title": "CropRect",
+        "type": "object"
+      },
       "ArticleCreate": {
         "properties": {
           "channel_id": {
@@ -5778,6 +5845,16 @@
               }
             ],
             "title": "Hero Image Id"
+          },
+          "hero_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -5845,6 +5922,16 @@
               }
             ],
             "title": "Hero Image Url"
+          },
+          "card_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -5856,7 +5943,8 @@
           "published_at",
           "global_visibility",
           "channel",
-          "hero_image_url"
+          "hero_image_url",
+          "card_crop"
         ],
         "title": "ArticleListItem",
         "type": "object"
@@ -5907,6 +5995,26 @@
               }
             ],
             "title": "Hero Image Id"
+          },
+          "hero_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "card_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "channel_id": {
             "anyOf": [

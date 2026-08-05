@@ -54,6 +54,15 @@ class Article(models.Model):
         blank=True,
         related_name="hero_for_articles",
     )
+    # Framing for the hero image, as {"x", "y", "w", "h", "ratio"} with x/y/w/h
+    # normalised 0-1 against the source image. `ratio` is the rendered aspect as
+    # a decimal; it is derivable from the rect and the source dimensions, but is
+    # stored so a listing card can reserve its box without being told the
+    # source's pixel size. Null means the pre-cropping default: 16:9, centred.
+    hero_crop = models.JSONField(null=True, blank=True)
+    # Same shape, always 16:9. Null means "derive it from hero_crop" rather than
+    # "no crop" — see services.articles.crop.derive_card_crop.
+    card_crop = models.JSONField(null=True, blank=True)
     slug = models.SlugField(max_length=200, null=True, blank=True)
     source = models.CharField(
         max_length=20,

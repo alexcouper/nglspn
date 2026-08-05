@@ -438,6 +438,311 @@ class TestPatchArticle:
         )
 
 
+SOURCE_WIDTH = 4000
+SOURCE_HEIGHT = 2000
+CARD_RATIO = 16 / 9
+
+
+def _sized_image(project, width=SOURCE_WIDTH, height=SOURCE_HEIGHT):
+    return ProjectImageFactory(
+        project=project,
+        source=ImageSource.ARTICLE,
+        width=width,
+        height=height,
+    )
+
+
+def _crop(x: float, y: float, w: float, h: float) -> dict[str, float]:
+    """A crop whose ratio is consistent with its rectangle on the source above."""
+    ratio = (w * SOURCE_WIDTH) / (h * SOURCE_HEIGHT)
+    return {"x": x, "y": y, "w": w, "h": h, "ratio": ratio}
+
+
+# 3:1 on a 4000x2000 source.
+HERO_CROP = _crop(x=0.2, y=0.3, w=0.6, h=0.4)
+# 16:9 on the same source, framed somewhere else entirely.
+CARD_CROP = _crop(x=0.1, y=0.2, w=0.4, h=0.45)
+
+
+@pytest.mark.django_db
+class TestArticleCrops:
+    def test_a_new_article_keeps_the_framing_chosen_on_upload(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        channel = ChannelFactory(project=project, name="Updates")
+        image = _sized_image(project)
+
+        response = _post(
+            client,
+            f"/api/projects/{project.id}/articles",
+            {
+                "channel_id": str(channel.id),
+                "title": "Framed on the first save",
+                "hero_image_id": str(image.id),
+                "hero_crop": HERO_CROP,
+            },
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(201))
+        assert_that(response.json()["hero_crop"], has_entries(ratio=3.0))
+
+    def test_a_new_article_rejects_a_crop_with_no_hero_image(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        channel = ChannelFactory(project=project, name="Updates")
+
+        response = _post(
+            client,
+            f"/api/projects/{project.id}/articles",
+            {"channel_id": str(channel.id), "hero_crop": HERO_CROP},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+
+    def test_setting_a_hero_crop_round_trips(self, client, user, auth_headers) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project, hero_image=_sized_image(project))
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"hero_crop": HERO_CROP},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["hero_crop"], has_entries(x=0.2, w=0.6, ratio=3.0))
+        article.refresh_from_db()
+        assert_that(article.hero_crop, has_entries(x=0.2, ratio=3.0))
+
+    def test_omitting_the_key_keeps_the_hero_crop(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(
+            project=project,
+            hero_image=_sized_image(project),
+            hero_crop=HERO_CROP,
+        )
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"title": "Updated"},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        article.refresh_from_db()
+        assert_that(article.hero_crop, has_entries(ratio=3.0))
+
+    def test_explicit_null_clears_the_hero_crop(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(
+            project=project,
+            hero_image=_sized_image(project),
+            hero_crop=HERO_CROP,
+        )
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"hero_crop": None},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["hero_crop"], equal_to(None))
+        article.refresh_from_db()
+        assert_that(article.hero_crop, equal_to(None))
+
+    def test_clearing_the_hero_image_clears_both_crops(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(
+            project=project,
+            hero_image=_sized_image(project),
+            hero_crop=HERO_CROP,
+            card_crop=CARD_CROP,
+        )
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"hero_image_id": None},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        article.refresh_from_db()
+        assert_that(article.hero_crop, equal_to(None))
+        assert_that(article.card_crop, equal_to(None))
+
+    def test_replacing_the_hero_image_drops_a_stale_crop(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(
+            project=project,
+            hero_image=_sized_image(project),
+            hero_crop=HERO_CROP,
+        )
+        replacement = _sized_image(project)
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"hero_image_id": str(replacement.id)},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        article.refresh_from_db()
+        assert_that(article.hero_crop, equal_to(None))
+
+    def test_a_card_override_survives_a_hero_reframe(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(
+            project=project,
+            hero_image=_sized_image(project),
+            hero_crop=HERO_CROP,
+            card_crop=CARD_CROP,
+        )
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"hero_crop": _crop(x=0.0, y=0.0, w=0.5, h=0.5)},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        article.refresh_from_db()
+        assert_that(article.card_crop, has_entries(x=0.1, y=0.2, w=0.4))
+
+    def test_an_out_of_bounds_crop_returns_422(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project, hero_image=_sized_image(project))
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"hero_crop": _crop(x=0.6, y=0.3, w=0.6, h=0.4)},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+        article.refresh_from_db()
+        assert_that(article.hero_crop, equal_to(None))
+
+    def test_a_card_crop_at_the_wrong_ratio_returns_422(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project, hero_image=_sized_image(project))
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"card_crop": _crop(x=0.1, y=0.2, w=0.6, h=0.4)},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+
+    def test_card_crop_display_falls_back_to_the_derived_rect(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(
+            project=project,
+            hero_image=_sized_image(project),
+            hero_crop=HERO_CROP,
+        )
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"title": "Updated"},
+            auth_headers,
+        )
+
+        body = response.json()
+        assert_that(body["card_crop"], equal_to(None))
+        assert_that(body["card_crop_display"], has_entries(ratio=round(CARD_RATIO, 6)))
+
+
+@pytest.mark.django_db
+class TestArticleListCardCrop:
+    def test_list_derives_the_card_crop_from_the_hero(self, client) -> None:
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        PublishedArticleFactory(
+            project=project,
+            slug="derived-post",
+            hero_image=_sized_image(project),
+            hero_crop=HERO_CROP,
+        )
+
+        response = client.get(f"/api/projects/{project.id}/articles")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            response.json()[0]["card_crop"],
+            has_entries(ratio=round(CARD_RATIO, 6), x=0.2),
+        )
+
+    def test_list_prefers_the_card_override(self, client) -> None:
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        PublishedArticleFactory(
+            project=project,
+            slug="override-post",
+            hero_image=_sized_image(project),
+            hero_crop=HERO_CROP,
+            card_crop=CARD_CROP,
+        )
+
+        response = client.get(f"/api/projects/{project.id}/articles")
+
+        assert_that(response.json()[0]["card_crop"], has_entries(x=0.1, y=0.2, w=0.4))
+
+    def test_list_card_crop_is_null_without_a_hero_crop(self, client) -> None:
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        PublishedArticleFactory(
+            project=project,
+            slug="uncropped-post",
+            hero_image=_sized_image(project),
+        )
+
+        response = client.get(f"/api/projects/{project.id}/articles")
+
+        assert_that(response.json()[0]["card_crop"], equal_to(None))
+
+    def test_list_card_crop_is_null_without_source_dimensions(self, client) -> None:
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        undimensioned = ProjectImageFactory(project=project, source=ImageSource.ARTICLE)
+        PublishedArticleFactory(
+            project=project,
+            slug="dimensionless-post",
+            hero_image=undimensioned,
+            hero_crop=HERO_CROP,
+        )
+
+        response = client.get(f"/api/projects/{project.id}/articles")
+
+        assert_that(response.json()[0]["card_crop"], equal_to(None))
+
+
 @pytest.mark.django_db
 class TestArticleListSummary:
     def test_list_falls_back_to_derived_summary(self, client) -> None:

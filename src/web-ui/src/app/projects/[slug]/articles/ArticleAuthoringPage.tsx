@@ -7,7 +7,11 @@ import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/auth";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useImageUpload } from "@/hooks/useImageUpload";
-import type { Project } from "@/lib/api";
+import { api } from "@/lib/api";
+import type { Project, ProjectImage } from "@/lib/api";
+import { ImageCropDialog } from "@/components/ImageCropDialog";
+import type { CropRect } from "@/components/CroppedImage";
+import { pickVariant } from "@/lib/utils";
 import { PublishDialog } from "./PublishDialog";
 import { ArticleCardPreviewDialog } from "./ArticleCardPreviewDialog";
 import { HeroImageUploader } from "./HeroImageUploader";
@@ -33,6 +37,10 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showCardPreview, setShowCardPreview] = useState(false);
   const [isOpeningPreview, setIsOpeningPreview] = useState(false);
+  // A hero that has been uploaded but not yet framed. It is deliberately not in
+  // the draft form: cancelling the crop dialog must leave the article as it was.
+  const [pendingHero, setPendingHero] = useState<ProjectImage | null>(null);
+  const [isAdjustingFraming, setIsAdjustingFraming] = useState(false);
 
   const canEdit = useMemo(() => {
     if (!user) return false;
@@ -45,9 +53,44 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
     useImageUpload({
       projectId: project.id,
       source: "article",
-      onUploadComplete: draft.handleHeroUpload,
+      // Frame it before it becomes the hero. An image with no recorded
+      // dimensions cannot be cropped, so it skips the dialog and lands
+      // uncropped — the 16:9 centre fallback, which is what it would get anyway.
+      onUploadComplete: (image) => {
+        if (image.width && image.height) {
+          setPendingHero(image);
+        } else {
+          draft.handleHeroUpload(image, null);
+        }
+      },
       onError: (err) => draft.setError(err.message),
     });
+
+  // The image the crop dialog is working on: a fresh upload, or the current
+  // hero when the author asked to re-frame it.
+  const croppingImage = pendingHero ?? (isAdjustingFraming ? draft.heroImage : null);
+
+  const handleCropConfirm = (crop: CropRect) => {
+    if (pendingHero) {
+      draft.handleHeroUpload(pendingHero, crop);
+      setPendingHero(null);
+    } else {
+      draft.setHeroCrop(crop);
+    }
+    setIsAdjustingFraming(false);
+  };
+
+  const handleCropCancel = () => {
+    // A cancelled first upload never becomes the hero, so the file it left
+    // behind is deleted. Best-effort: article images are excluded from the
+    // project gallery, so a failure leaves an invisible orphan rather than a
+    // visible one.
+    if (pendingHero) {
+      api.myProjects.deleteImage(project.id, pendingHero.id).catch(() => {});
+      setPendingHero(null);
+    }
+    setIsAdjustingFraming(false);
+  };
 
   const isEditing = !!articleId;
   const mode = isEditing ? "Edit article" : "New article";
@@ -208,8 +251,11 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
 
         <HeroImageUploader
           heroImage={draft.heroImage}
+          crop={draft.form.hero_crop}
+          articleId={draft.article?.id ?? "new"}
           isUploading={isHeroUploading}
           onUpload={uploadHeroFile}
+          onAdjustFraming={() => setIsAdjustingFraming(true)}
           onClear={draft.clearHero}
         />
 
@@ -234,6 +280,19 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
             draft.publish();
           }}
           isPublishing={draft.isPublishing}
+        />
+      )}
+
+      {croppingImage && croppingImage.width && croppingImage.height && (
+        <ImageCropDialog
+          isOpen
+          src={pickVariant(croppingImage.variants, "large") ?? croppingImage.url}
+          naturalWidth={croppingImage.width}
+          naturalHeight={croppingImage.height}
+          initial={pendingHero ? null : draft.form.hero_crop}
+          title="Frame the hero image"
+          onConfirm={handleCropConfirm}
+          onCancel={handleCropCancel}
         />
       )}
 

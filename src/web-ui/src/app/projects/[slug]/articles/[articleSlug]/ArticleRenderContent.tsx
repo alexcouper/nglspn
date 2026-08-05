@@ -100,6 +100,9 @@ export function ArticleRenderContent({ project, article }: Props) {
             src={article.hero_image_url}
             alt={article.title}
             articleId={article.id}
+            // The framing the author chose, frozen with the article. Same
+            // component and same crop as the editor's preview.
+            crop={article.hero_crop}
             priority
             className="rounded-lg mt-6"
           />

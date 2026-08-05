@@ -29,6 +29,10 @@ class PublishedArticleNeedsHeroImageError(ArticleError):
     """Clearing the hero image was requested on an already-published article."""
 
 
+class InvalidCropError(ArticleError):
+    """A crop rectangle is out of bounds, or its ratio does not match its rect."""
+
+
 class DuplicateChannelNameError(ArticleError):
     """A Channel with this name already exists on the project."""
 

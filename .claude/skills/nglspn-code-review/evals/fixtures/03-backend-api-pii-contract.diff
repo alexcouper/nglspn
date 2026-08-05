@@ -1,0 +1,61 @@
+diff --git a/src/django-backend/api/schemas/user.py b/src/django-backend/api/schemas/user.py
+index 3c4d5e6..7a8b9c0 100644
+--- a/src/django-backend/api/schemas/user.py
++++ b/src/django-backend/api/schemas/user.py
+@@ -10,6 +10,15 @@ class UserOut(Schema):
+     id: UUID
+     name: str
+     email: str
+
+
++class PublicProfileOut(Schema):
++    id: UUID
++    name: str
++    email: str
++    kennitala: str
++    bio: str | None = None
++    project_count: int
++
++
+ class UserUpdate(Schema):
+     name: str | None = None
+     bio: str | None = None
+diff --git a/src/django-backend/api/routers/users.py b/src/django-backend/api/routers/users.py
+index 4d5e6f7..8b9c0d1 100644
+--- a/src/django-backend/api/routers/users.py
++++ b/src/django-backend/api/routers/users.py
+@@ -1,12 +1,14 @@
+ from uuid import UUID
+
+ from django.http import HttpRequest
+ from ninja import Router
+
+ from api.auth.security import auth
+-from api.schemas.user import UserOut, UserUpdate
++from api.schemas.user import PublicProfileOut, UserOut, UserUpdate
+ from api.schemas.errors import Error
+ from apps.users.models import User
+ from services import HANDLERS, REPO
+
+ router = Router()
+
+
+@@ -28,3 +30,21 @@ def update_me(request: HttpRequest, payload: UserUpdate) -> User:
+     return HANDLERS.users.update_profile(request.auth.id, payload)
++
++
++@router.get(
++    "/{user_id}/profile",
++    response={200: PublicProfileOut, 404: Error},
++    tags=["Users"],
++)
++def get_public_profile(request: HttpRequest, user_id: UUID):
++    user = User.objects.get(id=user_id)
++    return 200, {
++        "id": user.id,
++        "name": user.name,
++        "email": user.email,
++        "kennitala": user.kennitala,
++        "bio": user.bio,
++        "project_count": user.projects.count(),
++    }

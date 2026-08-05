@@ -31,8 +31,9 @@ from services.project.handler_interface import ProjectHandlerInterface
 from services.project.query_interface import ProjectQueryInterface
 from services.registration.django_impl import DjangoRegistrationHandler
 from services.registration.handler_interface import RegistrationHandlerInterface
-from services.review.django_impl import DjangoReviewHandler
+from services.review.django_impl import DjangoReviewHandler, DjangoReviewQuery
 from services.review.handler_interface import ReviewHandlerInterface
+from services.review.query_interface import ReviewQueryInterface
 from services.users.django_impl import DjangoUserHandler, DjangoUserQuery
 from services.users.handler_interface import UserHandlerInterface
 from services.users.query_interface import UserQueryInterface
@@ -68,6 +69,7 @@ class QueryServices:
         default_factory=DjangoNotificationQuery
     )
     project: ProjectQueryInterface = field(default_factory=DjangoProjectQuery)
+    reviews: ReviewQueryInterface = field(default_factory=DjangoReviewQuery)
     users: UserQueryInterface = field(default_factory=DjangoUserQuery)
 
 

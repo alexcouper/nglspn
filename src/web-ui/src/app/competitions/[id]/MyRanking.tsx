@@ -8,7 +8,7 @@ import {
   type ReviewCompetitionDetailResponse,
   type ReviewProject,
 } from "@/lib/api";
-import { RankingList } from "./RankingList";
+import { PoolList, RankingList } from "./RankingList";
 import { SubmitRankingDialog } from "./SubmitRankingDialog";
 import type { ReviewState } from "./types";
 
@@ -49,7 +49,8 @@ export function MyRanking(props: MyRankingProps) {
       competitionId={props.competitionId}
       competitionName={props.competitionName}
       initialData={reviewState.data}
-      initialProjects={reviewState.projects}
+      initialRanked={reviewState.ranked}
+      initialPool={reviewState.pool}
     />
   );
 }
@@ -105,25 +106,43 @@ function CompactLoggedOutCta({ returnPath }: { returnPath: string }) {
   );
 }
 
+type RankingTab = "ranked" | "pool";
+
 function RankingActive({
   competitionId,
   competitionName,
   initialData,
-  initialProjects,
+  initialRanked,
+  initialPool,
 }: {
   competitionId: string;
   competitionName: string;
   initialData: ReviewCompetitionDetailResponse;
-  initialProjects: ReviewProject[];
+  initialRanked: ReviewProject[];
+  initialPool: ReviewProject[];
 }) {
   const [reviewStatus, setReviewStatus] = useState(initialData.my_review_status);
-  const [projects, setProjects] = useState(initialProjects);
+  const [ranked, setRanked] = useState(initialRanked);
+  const [pool, setPool] = useState(initialPool);
+  const [activeTab, setActiveTab] = useState<RankingTab>("ranked");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingIdsRef = useRef<string[] | null>(null);
+
+  // The server's pool order for this reviewer. Kept so a removed project drops
+  // back into the same place it would occupy on a fresh load.
+  const poolOrderRef = useRef(
+    new Map(
+      [...initialPool, ...initialRanked].map((project, index) => [
+        project.id,
+        index,
+      ])
+    )
+  );
 
   useEffect(() => {
     return () => {
@@ -136,39 +155,79 @@ function RankingActive({
   const isInProgress = reviewStatus === "in_progress";
   const readOnly = !isInProgress;
 
-  const persistOrder = useCallback(
-    (next: ReviewProject[]) => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(async () => {
-        setIsSaving(true);
-        setSaveError(null);
-        try {
-          await api.myReview.updateRankings(
-            competitionId,
-            next.map((p) => p.id)
-          );
-        } catch {
-          setSaveError("Failed to save rankings");
-        } finally {
-          setIsSaving(false);
-        }
-      }, 500);
+  const saveNow = useCallback(
+    async (projectIds: string[]) => {
+      setIsSaving(true);
+      setSaveError(null);
+      try {
+        await api.myReview.updateRankings(competitionId, projectIds);
+      } catch {
+        setSaveError("Failed to save rankings");
+      } finally {
+        setIsSaving(false);
+      }
     },
     [competitionId]
   );
 
+  const persistOrder = useCallback(
+    (next: ReviewProject[]) => {
+      pendingIdsRef.current = next.map((p) => p.id);
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        saveTimeoutRef.current = null;
+        const ids = pendingIdsRef.current;
+        pendingIdsRef.current = null;
+        if (ids) void saveNow(ids);
+      }, 500);
+    },
+    [saveNow]
+  );
+
+  /** Write any debounced change immediately; used before submitting. */
+  const flushPendingSave = useCallback(async () => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    const ids = pendingIdsRef.current;
+    pendingIdsRef.current = null;
+    if (ids) await saveNow(ids);
+  }, [saveNow]);
+
   const handleReorder = useCallback(
     (next: ReviewProject[]) => {
-      setProjects(next);
+      setRanked(next);
       persistOrder(next);
     },
     [persistOrder]
+  );
+
+  const handleAdd = useCallback(
+    (project: ReviewProject) => {
+      const next = [...ranked, project];
+      setRanked(next);
+      setPool(pool.filter((p) => p.id !== project.id));
+      persistOrder(next);
+    },
+    [ranked, pool, persistOrder]
+  );
+
+  const handleRemove = useCallback(
+    (project: ReviewProject) => {
+      const next = ranked.filter((p) => p.id !== project.id);
+      setRanked(next);
+      setPool(insertIntoPool(pool, project, poolOrderRef.current));
+      persistOrder(next);
+    },
+    [ranked, pool, persistOrder]
   );
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setStatusError(null);
     try {
+      await flushPendingSave();
       await api.myReview.updateStatus(competitionId, "completed");
       setReviewStatus("completed");
       setShowSubmitDialog(false);
@@ -214,16 +273,54 @@ function RankingActive({
 
       {isInProgress && (
         <p className="text-xs text-muted-foreground mb-4">
-          Drag the cards or use the up/down buttons to rank projects. Order them
-          from most to least worthy of the {competitionName} prize.
+          Rank only the projects you have an opinion about, best first. Add the
+          ones you want to back for the {competitionName} prize and leave the
+          rest unranked — an unranked project is not counted against you or
+          against it.
         </p>
       )}
 
-      <RankingList
-        projects={projects}
-        readOnly={readOnly}
-        onReorder={handleReorder}
-      />
+      <div className="flex gap-2 mb-4 lg:hidden" role="tablist">
+        <TabButton
+          isActive={activeTab === "ranked"}
+          onClick={() => setActiveTab("ranked")}
+        >
+          My ranking ({ranked.length})
+        </TabButton>
+        <TabButton
+          isActive={activeTab === "pool"}
+          onClick={() => setActiveTab("pool")}
+        >
+          Unranked ({pool.length})
+        </TabButton>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div
+          data-testid="ranked-panel"
+          className={activeTab === "ranked" ? "" : "hidden lg:block"}
+        >
+          <h3 className="hidden lg:block text-sm font-medium text-foreground mb-3">
+            My ranking ({ranked.length})
+          </h3>
+          <RankingList
+            projects={ranked}
+            readOnly={readOnly}
+            onReorder={handleReorder}
+            onRemove={readOnly ? undefined : handleRemove}
+          />
+        </div>
+
+        <div
+          data-testid="pool-panel"
+          className={activeTab === "pool" ? "" : "hidden lg:block"}
+        >
+          <h3 className="hidden lg:block text-sm font-medium text-foreground mb-3">
+            Unranked ({pool.length})
+          </h3>
+          <PoolList projects={pool} readOnly={readOnly} onAdd={handleAdd} />
+        </div>
+      </div>
 
       {statusError && (
         <p className="mt-3 text-sm text-red-600">{statusError}</p>
@@ -234,7 +331,6 @@ function RankingActive({
           <button
             type="button"
             onClick={() => setShowSubmitDialog(true)}
-            disabled={projects.length === 0}
             className="w-full btn-primary py-3"
           >
             Submit Ranking
@@ -259,12 +355,56 @@ function RankingActive({
 
       <SubmitRankingDialog
         isOpen={showSubmitDialog}
+        rankedCount={ranked.length}
         onConfirm={handleSubmit}
         onCancel={() => setShowSubmitDialog(false)}
         isSubmitting={isSubmitting}
       />
     </section>
   );
+}
+
+function TabButton({
+  isActive,
+  onClick,
+  children,
+}: {
+  isActive: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      aria-selected={isActive}
+      onClick={onClick}
+      className={`flex-1 text-sm px-3 py-2 rounded-lg border transition-colors ${
+        isActive
+          ? "bg-accent/10 border-accent/30 text-accent font-medium"
+          : "bg-white border-border text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Put a removed project back where a fresh page load would show it, using the
+ * server's pool order. Projects that arrived already ranked have no server pool
+ * position, so they go last until the next load.
+ */
+function insertIntoPool(
+  pool: ReviewProject[],
+  project: ReviewProject,
+  order: Map<string, number>
+): ReviewProject[] {
+  const positionOf = (id: string) => order.get(id) ?? Number.MAX_SAFE_INTEGER;
+  const target = positionOf(project.id);
+  const index = pool.findIndex((p) => positionOf(p.id) > target);
+  if (index === -1) return [...pool, project];
+  return [...pool.slice(0, index), project, ...pool.slice(index)];
 }
 
 function StatusPill({

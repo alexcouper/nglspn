@@ -20,11 +20,15 @@ from apps.projects.models import (
     CompetitionReviewer,
     Project,
     ProjectImage,
-    ProjectRanking,
     ProjectStatus,
-    ReviewStatus,
 )
-from services import REPO
+from services import HANDLERS, REPO
+from services.review.exceptions import (
+    DuplicateProjectError,
+    ProjectNotInCompetitionError,
+    ReviewClosedError,
+    ReviewerNotAssignedError,
+)
 
 router = Router()
 
@@ -43,6 +47,21 @@ def _get_main_image(project: Project) -> ProjectImage | None:
         return None
     main = next((img for img in uploaded if img.is_main), None)
     return main or uploaded[0]
+
+
+def _project_response(project: Project, position: int | None) -> ReviewProjectResponse:
+    main_image = _get_main_image(project)
+    return ReviewProjectResponse(
+        id=project.id,
+        slug=project.slug,
+        title=project.title,
+        tagline=project.tagline,
+        description=project.description,
+        website_url=project.website_url,
+        main_image_url=main_image.url if main_image else None,
+        main_image_variants=(list(main_image.variants.all()) if main_image else []),
+        my_ranking=position,
+    )
 
 
 @router.get(
@@ -95,40 +114,8 @@ def get_my_review_competition(
     if not assignment:
         return 404, Error(detail="Competition not found")
 
-    competition = Competition.objects.prefetch_related(
-        "projects",
-        "projects__images",
-        "projects__images__variants",
-    ).get(id=competition_id)
-
-    rankings = {
-        r.project_id: r.position
-        for r in ProjectRanking.objects.filter(
-            reviewer=request.auth,
-            competition=competition,
-        )
-    }
-
-    projects = []
-    for p in competition.projects.all():
-        if p.status in EXCLUDED_PROJECT_STATUSES:
-            continue
-        main_image = _get_main_image(p)
-        projects.append(
-            ReviewProjectResponse(
-                id=p.id,
-                slug=p.slug,
-                title=p.title,
-                tagline=p.tagline,
-                description=p.description,
-                website_url=p.website_url,
-                main_image_url=main_image.url if main_image else None,
-                main_image_variants=(
-                    list(main_image.variants.all()) if main_image else []
-                ),
-                my_ranking=rankings.get(p.id),
-            )
-        )
+    competition = Competition.objects.get(id=competition_id)
+    ballot = REPO.reviews.get_reviewer_projects(request.auth.id, competition.id)
 
     return ReviewCompetitionDetailResponse(
         id=competition.id,
@@ -136,7 +123,11 @@ def get_my_review_competition(
         start_date=competition.start_date,
         submission_deadline=competition.submission_deadline,
         my_review_status=assignment.status,
-        projects=projects,
+        ranked_projects=[
+            _project_response(project, position)
+            for position, project in enumerate(ballot.ranked, start=1)
+        ],
+        pool_projects=[_project_response(project, None) for project in ballot.pool],
     )
 
 
@@ -151,48 +142,25 @@ def update_rankings(
     competition_id: str,
     payload: RankingUpdateRequest,
 ) -> SuccessResponse | tuple[int, Error]:
-    """Update rankings for projects in a competition."""
-    assignment = CompetitionReviewer.objects.filter(
-        user=request.auth,
-        competition_id=competition_id,
-    ).first()
+    """Replace the reviewer's ballot for a competition.
 
-    if not assignment:
+    The payload is the ballot in full: projects left out are unranked, and an
+    empty list is a valid abstention.
+    """
+    try:
+        HANDLERS.reviews.replace_ballot(
+            request.auth.id, competition_id, payload.project_ids
+        )
+    except ReviewerNotAssignedError:
         return 404, Error(detail="Competition not found")
-
-    if assignment.status == ReviewStatus.COMPLETED:
-        return 400, Error(detail="Cannot update rankings for a completed review")
-
-    competition_project_ids = set(
-        Competition.objects.filter(id=competition_id)
-        .exclude(projects__status__in=EXCLUDED_PROJECT_STATUSES)
-        .values_list("projects__id", flat=True)
-    )
-    submitted_project_ids = set(payload.project_ids)
-
-    invalid_ids = submitted_project_ids - competition_project_ids
-    if invalid_ids:
+    except ReviewClosedError:
+        return 400, Error(detail="Cannot update rankings for a closed review")
+    except DuplicateProjectError:
+        return 400, Error(detail="The same project was ranked more than once")
+    except ProjectNotInCompetitionError:
         return 400, Error(
             detail="One or more projects do not belong to this competition"
         )
-
-    # Delete existing rankings and create new ones
-    ProjectRanking.objects.filter(
-        reviewer=request.auth,
-        competition_id=competition_id,
-    ).delete()
-
-    ProjectRanking.objects.bulk_create(
-        [
-            ProjectRanking(
-                reviewer=request.auth,
-                competition_id=competition_id,
-                project_id=project_id,
-                position=position,
-            )
-            for position, project_id in enumerate(payload.project_ids, start=1)
-        ]
-    )
 
     return SuccessResponse()
 

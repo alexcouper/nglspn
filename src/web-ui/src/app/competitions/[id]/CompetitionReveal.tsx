@@ -3,12 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { TrophyIcon, RocketLaunchIcon } from "@heroicons/react/24/solid";
-import {
-  api,
-  type Competition,
-  type CompetitionProject,
-  type ReviewProject,
-} from "@/lib/api";
+import { api, type Competition, type CompetitionProject } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
 import { useAuth } from "@/contexts/auth";
 import { pickVariant } from "@/lib/utils";
@@ -54,8 +49,12 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
       try {
         const data = await api.myReview.getCompetition(competition.id);
         if (cancelled) return;
-        const sorted = [...data.projects].sort(sortByMyRanking);
-        setFetchedState({ kind: "ready", data, projects: sorted });
+        setFetchedState({
+          kind: "ready",
+          data,
+          ranked: data.ranked_projects,
+          pool: data.pool_projects,
+        });
       } catch (err) {
         if (cancelled) return;
         if (err instanceof ApiRequestError && err.status === 404) {
@@ -222,15 +221,6 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
       )}
     </div>
   );
-}
-
-function sortByMyRanking(a: ReviewProject, b: ReviewProject): number {
-  const ra = a.my_ranking ?? null;
-  const rb = b.my_ranking ?? null;
-  if (ra === null && rb === null) return 0;
-  if (ra === null) return 1;
-  if (rb === null) return -1;
-  return ra - rb;
 }
 
 function WinnerCard({ project }: { project: CompetitionProject }) {

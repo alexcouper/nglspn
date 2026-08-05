@@ -52,14 +52,20 @@ class ReviewProjectResponse(Schema):
 
 
 class ReviewCompetitionDetailResponse(Schema):
-    """Competition detail with projects and reviewer's rankings."""
+    """Competition detail split into the reviewer's ballot and what is left.
+
+    `ranked_projects` is in the reviewer's saved order; `pool_projects` is in an
+    order stable for this reviewer and uncorrelated with any other reviewer's.
+    The client renders both as given rather than deriving an order of its own.
+    """
 
     id: UUID
     name: str
     start_date: date
     submission_deadline: date
     my_review_status: ReviewStatusEnum
-    projects: list[ReviewProjectResponse]
+    ranked_projects: list[ReviewProjectResponse]
+    pool_projects: list[ReviewProjectResponse]
 
 
 class RankingUpdateRequest(Schema):

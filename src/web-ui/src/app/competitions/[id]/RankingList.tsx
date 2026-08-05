@@ -22,6 +22,8 @@ import {
   Bars3Icon,
   ChevronUpIcon,
   ChevronDownIcon,
+  PlusIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import type { ReviewProject } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
@@ -31,12 +33,15 @@ interface RankingListProps {
   projects: ReviewProject[];
   readOnly: boolean;
   onReorder: (projects: ReviewProject[]) => void;
+  onRemove?: (project: ReviewProject) => void;
 }
 
+/** The reviewer's ballot: ordered, draggable, and removable. */
 export function RankingList({
   projects,
   readOnly,
   onReorder,
+  onRemove,
 }: RankingListProps) {
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -63,9 +68,14 @@ export function RankingList({
 
   if (projects.length === 0) {
     return (
-      <div className="bg-white rounded-xl border border-border p-6 text-center">
+      <div
+        data-testid="ranked-empty"
+        className="bg-white rounded-xl border border-dashed border-border p-6 text-center"
+      >
         <p className="text-muted-foreground text-sm">
-          No projects in this competition.
+          {readOnly
+            ? "You ranked no projects."
+            : "Nothing ranked yet. Add the projects you want to back."}
         </p>
       </div>
     );
@@ -81,6 +91,7 @@ export function RankingList({
       isLast={index === projects.length - 1}
       onMoveUp={() => moveBy(index, -1)}
       onMoveDown={() => moveBy(index, 1)}
+      onRemove={onRemove ? () => onRemove(project) : undefined}
     />
   ));
 
@@ -112,6 +123,7 @@ interface RankingCardProps {
   isLast: boolean;
   onMoveUp: () => void;
   onMoveDown: () => void;
+  onRemove?: () => void;
 }
 
 function RankingCard({
@@ -122,6 +134,7 @@ function RankingCard({
   isLast,
   onMoveUp,
   onMoveDown,
+  onRemove,
 }: RankingCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: project.id, disabled: readOnly });
@@ -199,7 +212,76 @@ function RankingCard({
           <CardImage project={project} />
           <CardText project={project} readOnly={readOnly} />
         </Link>
+
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            data-testid="remove-button"
+            aria-label={`Remove ${project.title || "project"} from my ranking`}
+            className="self-start p-2 text-slate-400 hover:text-red-600 transition-colors min-w-[44px] sm:min-w-0 min-h-[44px] sm:min-h-0 flex items-center justify-center"
+          >
+            <XMarkIcon className="w-5 h-5 sm:w-4 sm:h-4" />
+          </button>
+        )}
       </div>
+    </div>
+  );
+}
+
+interface PoolListProps {
+  projects: ReviewProject[];
+  readOnly: boolean;
+  onAdd: (project: ReviewProject) => void;
+}
+
+/** Projects the reviewer has not ranked. Order comes from the server. */
+export function PoolList({ projects, readOnly, onAdd }: PoolListProps) {
+  if (projects.length === 0) {
+    return (
+      <div
+        data-testid="pool-empty"
+        className="bg-white rounded-xl border border-dashed border-border p-6 text-center"
+      >
+        <p className="text-muted-foreground text-sm">
+          Every project is in your ranking.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {projects.map((project) => (
+        <div
+          key={project.id}
+          data-testid="pool-card"
+          className="bg-white rounded-xl border border-border overflow-hidden"
+        >
+          <div className="flex items-stretch gap-3 sm:gap-4 p-3 sm:p-4">
+            <Link
+              href={`/projects/${project.slug ?? project.id}`}
+              className="group flex flex-1 items-stretch gap-3 sm:gap-4 min-w-0"
+            >
+              <CardImage project={project} />
+              <CardText project={project} readOnly={false} />
+            </Link>
+
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => onAdd(project)}
+                data-testid="add-button"
+                aria-label={`Add ${project.title || "project"} to my ranking`}
+                className="self-center inline-flex items-center gap-1 flex-shrink-0 btn-secondary text-sm px-3 py-2"
+              >
+                <PlusIcon className="w-4 h-4" />
+                Rank
+              </button>
+            )}
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

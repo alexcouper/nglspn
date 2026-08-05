@@ -8,5 +8,8 @@ export type ReviewState =
   | {
       kind: "ready";
       data: ReviewCompetitionDetailResponse;
-      projects: ReviewProject[];
+      // Both orders come from the server: `ranked` in saved position order,
+      // `pool` in this reviewer's stable order. Never re-derived here.
+      ranked: ReviewProject[];
+      pool: ReviewProject[];
     };

@@ -10,6 +10,7 @@ export type ReviewProject = components["schemas"]["ReviewProjectResponse"];
 export type ReviewProjectDetail =
   components["schemas"]["ReviewProjectDetailResponse"];
 export type ReviewStatus = components["schemas"]["ReviewStatusEnum"];
+export type SuccessResponse = components["schemas"]["SuccessResponse"];
 
 export class MyReviewClient {
   constructor(private client: APIClient) {}
@@ -37,8 +38,8 @@ export class MyReviewClient {
   async updateRankings(
     competitionId: string,
     projectIds: string[]
-  ): Promise<ReviewCompetitionDetailResponse> {
-    return this.client.request<ReviewCompetitionDetailResponse>(
+  ): Promise<SuccessResponse> {
+    return this.client.request<SuccessResponse>(
       `/api/my/reviews/competitions/${competitionId}/rankings`,
       {
         method: "PUT",

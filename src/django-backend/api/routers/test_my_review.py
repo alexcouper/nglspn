@@ -2,7 +2,14 @@ import json
 import uuid
 
 import pytest
-from hamcrest import assert_that, contains_inanyorder, equal_to, has_entries, has_length
+from hamcrest import (
+    assert_that,
+    contains_exactly,
+    contains_inanyorder,
+    equal_to,
+    has_entries,
+    has_length,
+)
 
 from api.auth.jwt import create_access_token
 from apps.projects.models import (
@@ -153,7 +160,7 @@ class TestGetMyReviewCompetition:
         assert_that(response.status_code, equal_to(404))
         assert_that(response.json(), has_entries(detail="Competition not found"))
 
-    def test_returns_competition_with_projects_when_assigned(
+    def test_unranked_competition_puts_every_project_in_the_pool(
         self, client, user, auth_headers
     ) -> None:
         project1 = ProjectFactory(title="Project A")
@@ -168,9 +175,10 @@ class TestGetMyReviewCompetition:
         assert_that(response.status_code, equal_to(200))
         data = response.json()
         assert_that(data["name"], equal_to(competition.name))
-        assert_that(data["projects"], has_length(2))
+        assert_that(data["ranked_projects"], equal_to([]))
+        assert_that(data["pool_projects"], has_length(2))
 
-    def test_includes_my_rankings_for_projects(
+    def test_splits_ranked_projects_from_the_pool(
         self, client, user, auth_headers
     ) -> None:
         project1 = ProjectFactory(title="Project A")
@@ -188,13 +196,37 @@ class TestGetMyReviewCompetition:
         )
 
         assert_that(response.status_code, equal_to(200))
-        projects = response.json()["projects"]
+        data = response.json()
 
-        project1_data = next(p for p in projects if p["id"] == str(project1.id))
-        project2_data = next(p for p in projects if p["id"] == str(project2.id))
+        assert_that(
+            data["ranked_projects"],
+            contains_exactly(has_entries(id=str(project1.id), my_ranking=1)),
+        )
+        assert_that(
+            data["pool_projects"],
+            contains_exactly(has_entries(id=str(project2.id), my_ranking=None)),
+        )
 
-        assert_that(project1_data["my_ranking"], equal_to(1))
-        assert_that(project2_data["my_ranking"], equal_to(None))
+    def test_ranked_projects_are_returned_in_saved_position_order(
+        self, client, user, auth_headers
+    ) -> None:
+        first, second = ProjectFactory(title="First"), ProjectFactory(title="Second")
+        competition = CompetitionFactory(projects=[first, second])
+        CompetitionReviewerFactory(user=user, competition=competition)
+        ProjectRankingFactory(
+            reviewer=user, competition=competition, project=second, position=2
+        )
+        ProjectRankingFactory(
+            reviewer=user, competition=competition, project=first, position=1
+        )
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        ranked = response.json()["ranked_projects"]
+        assert_that([p["title"] for p in ranked], equal_to(["First", "Second"]))
+        assert_that([p["my_ranking"] for p in ranked], equal_to([1, 2]))
 
     def test_does_not_show_other_reviewers_rankings(self, client, db) -> None:
         reviewer1 = UserFactory()
@@ -219,10 +251,11 @@ class TestGetMyReviewCompetition:
         )
 
         assert_that(response.status_code, equal_to(200))
-        projects = response.json()["projects"]
+        data = response.json()
 
         # Reviewer1 should not see reviewer2's ranking
-        assert_that(projects[0]["my_ranking"], equal_to(None))
+        assert_that(data["ranked_projects"], equal_to([]))
+        assert_that(data["pool_projects"][0]["my_ranking"], equal_to(None))
 
     def test_returns_401_when_not_authenticated(self, client) -> None:
         competition = CompetitionFactory()
@@ -275,7 +308,7 @@ class TestGetMyReviewCompetition:
         )
 
         assert_that(response.status_code, equal_to(200))
-        projects = response.json()["projects"]
+        projects = response.json()["pool_projects"]
         assert_that(projects, has_length(1))
         assert_that(
             projects[0],
@@ -311,16 +344,17 @@ class TestGetMyReviewCompetition:
                 file_size=1234,
             )
 
-        # Budget covers auth, assignment, competition + 3 prefetches, rankings,
-        # and a small allowance for middleware. N+1 over 3 projects would add
-        # at least 6 more queries (images + variants per project).
+        # Budget covers auth, assignment, competition, the service's projects
+        # query + 2 prefetches, rankings, and a small allowance for middleware.
+        # N+1 over 3 projects would add at least 6 more queries (images +
+        # variants per project).
         with django_assert_max_num_queries(10):
             response = client.get(
                 f"/api/my/reviews/competitions/{competition.id}", **auth_headers
             )
 
         assert_that(response.status_code, equal_to(200))
-        assert_that(response.json()["projects"], has_length(3))
+        assert_that(response.json()["pool_projects"], has_length(3))
 
 
 @pytest.mark.django_db
@@ -380,7 +414,73 @@ class TestUpdateRankings:
         assert_that(response.status_code, equal_to(400))
         assert_that(
             response.json()["detail"],
-            equal_to("Cannot update rankings for a completed review"),
+            equal_to("Cannot update rankings for a closed review"),
+        )
+
+    def test_returns_400_when_review_has_ended(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(
+            user=user, competition=competition, status=ReviewStatus.ENDED
+        )
+
+        response = client.put(
+            f"/api/my/reviews/competitions/{competition.id}/rankings",
+            data=json.dumps({"project_ids": [str(project.id)]}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(
+            response.json()["detail"],
+            equal_to("Cannot update rankings for a closed review"),
+        )
+
+    def test_returns_400_when_a_project_is_listed_twice(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.put(
+            f"/api/my/reviews/competitions/{competition.id}/rankings",
+            data=json.dumps({"project_ids": [str(project.id), str(project.id)]}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(
+            response.json()["detail"],
+            equal_to("The same project was ranked more than once"),
+        )
+        assert_that(ProjectRanking.objects.filter(reviewer=user).count(), equal_to(0))
+
+    def test_empty_payload_clears_the_ballot(self, client, user, auth_headers) -> None:
+        project = ProjectFactory()
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+        ProjectRankingFactory(
+            reviewer=user, competition=competition, project=project, position=1
+        )
+
+        response = client.put(
+            f"/api/my/reviews/competitions/{competition.id}/rankings",
+            data=json.dumps({"project_ids": []}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            ProjectRanking.objects.filter(
+                reviewer=user, competition=competition
+            ).count(),
+            equal_to(0),
         )
 
     def test_successfully_creates_rankings(self, client, user, auth_headers) -> None:
@@ -749,7 +849,7 @@ class TestMyReviewProjectExclusions:
         )
 
         assert_that(response.status_code, equal_to(200))
-        projects = response.json()["projects"]
+        projects = response.json()["pool_projects"]
         assert_that(projects, has_length(1))
         assert_that(projects[0]["title"], equal_to("Approved"))
 
@@ -766,7 +866,7 @@ class TestMyReviewProjectExclusions:
         )
 
         assert_that(response.status_code, equal_to(200))
-        projects = response.json()["projects"]
+        projects = response.json()["pool_projects"]
         assert_that(projects, has_length(1))
         assert_that(projects[0]["title"], equal_to("Pending"))
 

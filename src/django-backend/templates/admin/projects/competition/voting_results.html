@@ -13,8 +13,8 @@
       <strong>{{ competition.get_status_display }}</strong>
     </div>
     <div>
-      <span style="opacity: 0.6; font-size: 12px; text-transform: uppercase;">Completed Voters</span><br>
-      <strong>{{ total_voters }}</strong>
+      <span style="opacity: 0.6; font-size: 12px; text-transform: uppercase;">Counted Ballots</span><br>
+      <strong>{{ counted_ballots }}</strong>
     </div>
     <div>
       <span style="opacity: 0.6; font-size: 12px; text-transform: uppercase;">Projects</span><br>
@@ -26,27 +26,25 @@
     </div>
   </div>
 
-  {% if total_voters == 0 %}
-  <p style="opacity: 0.6; margin-top: 20px;">No completed reviews yet. Results will appear once reviewers finish their rankings.</p>
-  {% endif %}
+  {% if counted_ballots == 0 %}
+  <p style="opacity: 0.6; margin-top: 20px;">No counted ballots yet. Results will appear once reviewers finish their rankings.</p>
+  {% else %}
 
-  {% if results %}
   <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
     <thead>
       <tr style="border-bottom: 2px solid var(--hairline-color);">
         <th style="text-align: center; padding: 8px 12px; width: 50px;">Rank</th>
         <th style="text-align: left; padding: 8px 12px;">Project</th>
-        <th style="text-align: center; padding: 8px 12px; width: 80px;">Score</th>
-        {% for header in position_headers %}
-        <th style="text-align: center; padding: 8px 12px; width: 60px; font-size: 12px;">{{ header }}</th>
-        {% endfor %}
+        <th style="text-align: center; padding: 8px 12px; width: 90px;">1st place</th>
+        <th style="text-align: center; padding: 8px 12px; width: 90px;">Ranked by</th>
+        <th style="text-align: center; padding: 8px 12px; width: 110px;">Mean position</th>
       </tr>
     </thead>
     <tbody>
       {% for row in results %}
-      <tr style="border-bottom: 1px solid var(--hairline-color);{% if row.rank == 1 and total_voters > 0 %} background: rgba(202, 138, 4, 0.1);{% endif %}">
+      <tr style="border-bottom: 1px solid var(--hairline-color);{% if row.rank == 1 %} background: rgba(202, 138, 4, 0.1);{% endif %}">
         <td style="padding: 8px 12px; text-align: center; font-weight: bold; font-size: 18px;">
-          {% if row.rank == 1 and total_voters > 0 %}
+          {% if row.rank == 1 %}
             <span style="color: #ca8a04;">{{ row.rank }}</span>
           {% else %}
             {{ row.rank }}
@@ -55,10 +53,48 @@
         <td style="padding: 8px 12px;">
           <a href="{% url 'admin:projects_project_change' row.project.pk %}">{{ row.project.title }}</a>
         </td>
-        <td style="padding: 8px 12px; text-align: center; font-weight: bold;">{{ row.total_score }}</td>
-        {% for count in row.position_list %}
-        <td style="padding: 8px 12px; text-align: center; font-size: 13px;">
-          {% if count > 0 %}{{ count }}{% else %}<span style="opacity: 0.3;">0</span>{% endif %}
+        <td style="padding: 8px 12px; text-align: center;">{{ row.first_place_count }}</td>
+        <td style="padding: 8px 12px; text-align: center;">
+          {{ row.ranked_by_count }} / {{ counted_ballots }}
+        </td>
+        <td style="padding: 8px 12px; text-align: center;">
+          {% if row.mean_position %}{{ row.mean_position|floatformat:1 }}{% else %}<span style="opacity: 0.3;">&mdash;</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <p style="opacity: 0.6; font-size: 12px; margin-top: 12px;">
+    Order is computed by the Schulze method over the pairwise margins below. A reviewer's
+    ranked project counts as preferred over everything they ranked lower and everything they
+    left unranked; two unranked projects count for nothing. Only completed reviews are counted,
+    and a low "ranked by" count means the placement rests on few opinions.
+  </p>
+
+  <h3 style="margin-top: 28px;">Pairwise margins</h3>
+  <p style="opacity: 0.6; font-size: 12px;">
+    Row minus column: a positive number is how many more ballots preferred the row project.
+    Columns are labelled by rank; hover for the project name.
+  </p>
+  <table style="border-collapse: collapse; margin-top: 8px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--hairline-color);">
+        <th style="text-align: left; padding: 6px 10px;"></th>
+        {% for header in grid_headers %}
+        <th style="text-align: center; padding: 6px 10px; font-size: 12px;" title="{{ header.title }}">{{ header.rank }}</th>
+        {% endfor %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in results %}
+      <tr style="border-bottom: 1px solid var(--hairline-color);">
+        <th style="text-align: left; padding: 6px 10px; font-weight: normal; font-size: 13px;">
+          {{ row.rank }}. {{ row.project.title }}
+        </th>
+        {% for margin in row.margins %}
+        <td style="padding: 6px 10px; text-align: center; font-size: 13px;{% if margin > 0 %} color: #16a34a;{% elif margin < 0 %} opacity: 0.5;{% endif %}">
+          {% if margin is None %}<span style="opacity: 0.2;">&mdash;</span>{% else %}{{ margin }}{% endif %}
         </td>
         {% endfor %}
       </tr>
@@ -66,10 +102,6 @@
     </tbody>
   </table>
 
-  <p style="opacity: 0.6; font-size: 12px; margin-top: 12px;">
-    Scoring: {{ total_projects }} projects &mdash; 1st place = {{ total_projects }} pts, 2nd = {{ total_projects|add:"-1" }} pts, &hellip;, last = 1 pt.
-    Only completed reviews are counted.
-  </p>
   {% endif %}
 
   <div style="margin-top: 24px;">

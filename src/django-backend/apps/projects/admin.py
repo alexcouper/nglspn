@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import logging
-from collections import defaultdict
 from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
@@ -17,7 +16,7 @@ from django.utils.safestring import mark_safe
 from api.tasks import email as email_tasks
 from apps.emails.models import SentEmail, SentEmailType
 from apps.users.models import User
-from services import HANDLERS
+from services import HANDLERS, REPO
 from services.email import EMAIL_LOGO_URL
 from services.email.django_impl import render_email
 
@@ -32,11 +31,12 @@ from .models import (
     ProjectRanking,
     ProjectStatus,
     ProjectView,
-    ReviewStatus,
 )
 
 if TYPE_CHECKING:
     from django.utils.safestring import SafeString
+
+    from services.review.query_interface import CompetitionTally
 
 logger = logging.getLogger(__name__)
 
@@ -813,67 +813,15 @@ class CompetitionAdmin(admin.ModelAdmin):
 
     def voting_results_view(self, request: HttpRequest, pk: str) -> HttpResponse:
         competition = get_object_or_404(Competition, pk=pk)
-
-        completed_reviewer_ids = CompetitionReviewer.objects.filter(
-            competition=competition,
-            status=ReviewStatus.COMPLETED,
-        ).values_list("user_id", flat=True)
-
-        total_voters = len(completed_reviewer_ids)
-
-        projects = competition.projects.exclude(
-            status__in=[ProjectStatus.REJECTED, ProjectStatus.ICE_BOX],
-        )
-        total_projects = projects.count()
-
-        project_data: dict[Any, dict] = {}
-        for project in projects:
-            project_data[project.id] = {
-                "project": project,
-                "total_score": 0,
-                "position_counts": defaultdict(int),
-            }
-
-        rankings = ProjectRanking.objects.filter(
-            competition=competition,
-            reviewer_id__in=completed_reviewer_ids,
-        ).select_related("project")
-
-        for ranking in rankings:
-            pid = ranking.project_id
-            if pid not in project_data:
-                continue
-            score = total_projects - ranking.position + 1
-            project_data[pid]["total_score"] += score
-            project_data[pid]["position_counts"][ranking.position] += 1
-
-        results = sorted(
-            project_data.values(),
-            key=lambda x: (
-                -x["total_score"],
-                -x["position_counts"].get(1, 0),
-            ),
-        )
-
-        rank = 1
-        for i, row in enumerate(results):
-            if i > 0 and row["total_score"] < results[i - 1]["total_score"]:
-                rank = i + 1
-            row["rank"] = rank
-
-        positions = list(range(1, total_projects + 1))
-        position_headers = [_ordinal(p) for p in positions]
-        for row in results:
-            row["position_list"] = [row["position_counts"].get(p, 0) for p in positions]
+        tally = REPO.reviews.get_competition_tally(competition.pk)
 
         context = {
             **self.admin_site.each_context(request),
             "competition": competition,
-            "results": results,
-            "positions": positions,
-            "position_headers": position_headers,
-            "total_voters": total_voters,
-            "total_projects": total_projects,
+            "counted_ballots": tally.counted_ballots,
+            "total_projects": len(tally.projects),
+            "results": _tally_rows(tally),
+            "grid_headers": _grid_headers(tally),
             "opts": self.model._meta,  # noqa: SLF001
             "title": f"Voting Results: {competition.name}",
         }
@@ -884,13 +832,45 @@ class CompetitionAdmin(admin.ModelAdmin):
         )
 
 
-_TEEN_RANGE = range(11, 14)
-_ORDINAL_SUFFIXES = {1: "st", 2: "nd", 3: "rd"}
+def _ranks_by_project(tally: CompetitionTally) -> dict[Any, int]:
+    """Flatten tiers to a rank per project; a shared tier shares a rank."""
+    ranks: dict[Any, int] = {}
+    rank = 1
+    for tier in tally.tiers:
+        for project_id in tier:
+            ranks[project_id] = rank
+        rank += len(tier)
+    return ranks
 
 
-def _ordinal(n: int) -> str:
-    suffix = "th" if n % 100 in _TEEN_RANGE else _ORDINAL_SUFFIXES.get(n % 10, "th")
-    return f"{n}{suffix}"
+def _tally_rows(tally: CompetitionTally) -> list[dict[str, Any]]:
+    ranks = _ranks_by_project(tally)
+    ordered_ids = [project_id for tier in tally.tiers for project_id in tier]
+
+    return [
+        {
+            "project": tally.projects[project_id],
+            "rank": ranks[project_id],
+            "first_place_count": tally.support[project_id].first_place_count,
+            "ranked_by_count": tally.support[project_id].ranked_by_count,
+            "mean_position": tally.support[project_id].mean_position,
+            "margins": [
+                None if other_id == project_id else tally.margins[project_id][other_id]
+                for other_id in ordered_ids
+            ],
+        }
+        for project_id in ordered_ids
+    ]
+
+
+def _grid_headers(tally: CompetitionTally) -> list[dict[str, Any]]:
+    """Column labels for the pairwise grid: rank number, project title on hover."""
+    ranks = _ranks_by_project(tally)
+    return [
+        {"rank": ranks[project_id], "title": tally.projects[project_id].title}
+        for tier in tally.tiers
+        for project_id in tier
+    ]
 
 
 @admin.register(CompetitionReviewer)

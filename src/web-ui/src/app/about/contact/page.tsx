@@ -1,4 +1,4 @@
-import { SITE_EMAIL } from "@/lib/constants";
+import { SITE_DISCORD_URL, SITE_EMAIL } from "@/lib/constants";
 
 export default function ContactPage() {
   return (
@@ -11,12 +11,12 @@ export default function ContactPage() {
           <div className="flex items-center gap-3">
             <span className="text-sm text-muted-foreground w-16">Discord</span>
             <a
-              href="https://discord.gg/D47bQjaQ"
+              href={SITE_DISCORD_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="text-sm text-accent hover:text-accent-hover transition-colors"
             >
-              discord.gg/D47bQjaQ
+              {SITE_DISCORD_URL.replace(/^https:\/\//, "")}
             </a>
           </div>
           <div className="flex items-center gap-3">

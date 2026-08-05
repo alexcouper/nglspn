@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { SITE_DISCORD_URL } from "@/lib/constants";
 
 export function Footer() {
   return (
@@ -19,7 +20,7 @@ export function Footer() {
               Privacy
             </Link>
             <a
-              href="https://discord.gg/D47bQjaQ"
+              href={SITE_DISCORD_URL}
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"

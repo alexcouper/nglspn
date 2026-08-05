@@ -273,10 +273,9 @@ function RankingActive({
 
       {isInProgress && (
         <p className="text-xs text-muted-foreground mb-4">
-          Rank only the projects you have an opinion about, best first. Add the
+          Rank your favourite projects, best first. Add the
           ones you want to back for the {competitionName} prize and leave the
-          rest unranked — an unranked project is not counted against you or
-          against it.
+          rest unranked.
         </p>
       )}
 

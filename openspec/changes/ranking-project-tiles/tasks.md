@@ -62,10 +62,16 @@ Spec: [`specs/project-ranking-ballot/spec.md`](specs/project-ranking-ballot/spec
 
 ## 7. Verify in the running app
 
-Per [CLAUDE.md](../../../CLAUDE.md), using Playwright and the credentials in `.env.claude`.
+Per [CLAUDE.md](../../../CLAUDE.md), using the credentials in `.env.claude`.
+
+**Blocked on test data.** The database behind the running dev server holds four
+competitions, all `closed` with one project each, and `test@example.com` has no
+review assignment — so `/my-reviews` redirects and there is no ballot to open.
+A ballot needs a competition in `voting` status with several projects and the
+test user assigned as a reviewer.
 
 - [ ] 7.1 Log in as the test reviewer and open a competition ballot at mobile width — confirm titles and taglines are no longer cut off
 - [ ] 7.2 Add, reorder and remove a project; confirm autosave and submission still work
 - [ ] 7.3 View a submitted ballot and confirm the dimmed treatment reads as inert
-- [ ] 7.4 Open the project listing page and confirm New Arrivals is unharmed
-- [ ] 7.5 Run `make ci` from the project root
+- [x] 7.4 Open the project listing page and confirm New Arrivals is unharmed — checked at desktop width; cards stay equal height, including one carrying a category label. Not yet seen with a title long enough to wrap (all seeded titles are short domains), which is what 4.5 needs.
+- [x] 7.5 Run `make ci` from the project root — no root `Makefile` and no `scripts/ci/` exist; CLAUDE.md is stale on both. Ran the equivalents instead: `make lint` + `make test` in `src/django-backend` (903 passed) and `npm run lint` + `npm test` in `src/web-ui` (31 passed).

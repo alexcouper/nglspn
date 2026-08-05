@@ -310,9 +310,18 @@ function RankingActive({
           />
         </div>
 
+        {/*
+          The divider only exists at `lg`, where the panels sit side by side.
+          It hangs off the pool panel rather than the grid: grid items stretch,
+          so the border runs the full row height even when the unranked list is
+          much shorter than the ballot. `lg:pl-6` matches the grid gap so the
+          rule ends up centred between the two columns.
+        */}
         <div
           data-testid="pool-panel"
-          className={`min-w-0 ${activeTab === "pool" ? "" : "hidden lg:block"}`}
+          className={`min-w-0 lg:border-l lg:border-border lg:pl-6 ${
+            activeTab === "pool" ? "" : "hidden lg:block"
+          }`}
         >
           <h3 className="hidden lg:block text-sm font-medium text-foreground mb-3">
             Unranked ({pool.length})

@@ -30,9 +30,39 @@ A reviewer is being asked to judge these projects against one another, so the ba
 - **WHEN** a project on the ballot has no image resolvable for the card
 - **THEN** a gradient placeholder is rendered in the image area
 
-### Requirement: Ranking controls sit beside the project card
+### Requirement: The ballot is laid out for comparison, not for browsing
 
-The rank number and the controls that act on a ranked entry — reorder up, reorder down, drag to reorder, and remove — SHALL be presented in a column beside the project card rather than inside it. The pool card's add action SHALL occupy the same position. The card itself SHALL remain a single link to the project's page, so that no control is nested inside that link.
+A reviewer ranks by comparing projects against one another, so the ballot SHALL favour showing as much of it at once as the screen allows. On wide screens each entry SHALL be laid out horizontally — image beside text — so that a ballot of a dozen projects can be scanned without the reviewer losing their place. On narrow screens, where a horizontal entry cannot show the title and tagline without clipping them, each entry SHALL stack vertically instead.
+
+Whichever layout applies, the requirement that the title and tagline are shown in full still holds. Compactness SHALL NOT be bought by clipping text.
+
+#### Scenario: Reviewer opens a ballot on a wide screen
+- **WHEN** a reviewer views a ballot of several projects on a wide screen
+- **THEN** each entry is laid out horizontally
+- **AND** more entries are visible at once than if each entry were stacked
+
+#### Scenario: Reviewer opens the same ballot on a narrow screen
+- **WHEN** the same reviewer views that ballot on a narrow screen
+- **THEN** each entry stacks vertically so the title and tagline keep the full width of the card
+
+#### Scenario: The entry's height is set by its content
+- **WHEN** a ballot entry is laid out horizontally
+- **THEN** the height of the entry is determined by the project card, not by the ranking controls beside it
+
+### Requirement: A ranked entry is numbered on its leading edge
+
+The rank number SHALL be positioned before the project card in reading order, so that a reviewer scanning the ranked list reads the sequence down its leading edge rather than past each entry's content.
+
+#### Scenario: Reviewer scans their ranked list
+- **WHEN** a reviewer views a ballot with several ranked projects
+- **THEN** each entry's rank number appears before that entry's card
+- **AND** the numbers read in order down the leading edge of the list
+
+### Requirement: Ranking controls are placed by purpose, never inside the card's link
+
+The controls that act on a ballot entry SHALL be placed according to what each one does: the rank number before the card, the reorder controls after it, and the remove action in the card's own top corner. The pool card's add action SHALL occupy the position the reorder controls take.
+
+No control SHALL be a descendant of the card's link, whatever its visual position. A control drawn over the card SHALL still sit outside that link in the document, so that the card remains a single link to the project's page and keyboard users are not trapped on it.
 
 #### Scenario: Reviewer opens a project from their ballot
 - **WHEN** a reviewer activates the card area of a ranked or pool entry
@@ -44,7 +74,12 @@ The rank number and the controls that act on a ranked entry — reorder up, reor
 
 #### Scenario: Rank number is visible alongside the card
 - **WHEN** a reviewer views a ranked entry
-- **THEN** its current rank number is shown in the control column beside the card
+- **THEN** its current rank number is shown beside the card
+
+#### Scenario: A control drawn over the card
+- **WHEN** a control is positioned over the project card, such as the remove action in its corner
+- **THEN** that control is still not a descendant of the card's link
+- **AND** activating it acts on the ballot without navigating to the project
 
 ### Requirement: A closed ballot is visibly inert
 

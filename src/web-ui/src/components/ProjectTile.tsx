@@ -14,6 +14,14 @@ interface ProjectTileProps {
   categoryName?: string | null;
   /** Read-only surface: no hover affordance, muted text. */
   dimmed?: boolean;
+  /**
+   * `"tile"` stacks image over text at every width — the listing card.
+   *
+   * `"row-when-wide"` stacks below `sm` and lays out side by side above it.
+   * Ranking is a comparison task: as rows the whole ballot fits one screen,
+   * while on a phone there is no room for a row that does not clip the text.
+   */
+  layout?: "tile" | "row-when-wide";
 }
 
 /**
@@ -31,15 +39,21 @@ export function ProjectTile({
   tagline,
   categoryName,
   dimmed = false,
+  layout = "tile",
 }: ProjectTileProps) {
+  const asRow = layout === "row-when-wide";
   return (
     <Link href={href} className="flex w-full h-full">
       <div
         className={`card overflow-hidden flex flex-col w-full ${
-          dimmed ? "opacity-75" : "card-interactive"
-        }`}
+          asRow ? "sm:flex-row sm:items-stretch" : ""
+        } ${dimmed ? "opacity-75" : "card-interactive"}`}
       >
-        <div className="relative aspect-[4/3]">
+        <div
+          className={`relative aspect-[4/3] ${
+            asRow ? "sm:aspect-auto sm:w-[140px] sm:flex-none sm:min-h-[100px]" : ""
+          }`}
+        >
           {imageUrl ? (
             <>
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -54,7 +68,11 @@ export function ProjectTile({
             <GradientPlaceholder id={id} className="w-full h-full" />
           )}
         </div>
-        <div className="p-3.5 flex-1">
+        <div
+          className={`p-3.5 flex-1 min-w-0 ${
+            asRow ? "sm:flex sm:flex-col sm:justify-center" : ""
+          }`}
+        >
           {categoryName && (
             <span
               className={`text-[10px] font-semibold uppercase tracking-wider ${

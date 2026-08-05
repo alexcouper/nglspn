@@ -152,33 +152,40 @@ function RankingCard({
       data-testid="ranked-card"
       className="flex items-start gap-3"
     >
-      <div className={TILE_WIDTH_CLASS}>
-        <ProjectCardTile project={project} dimmed={readOnly} />
+      <div
+        data-testid="rank-badge"
+        className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-base font-semibold flex-shrink-0 sm:self-center ${
+          readOnly
+            ? "bg-white border border-border text-muted-foreground"
+            : "bg-accent/10 text-accent"
+        }`}
+      >
+        {rank}
       </div>
 
-      <ControlColumn>
-        <div
-          data-testid="rank-badge"
-          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-base font-semibold ${
-            readOnly
-              ? "bg-white border border-border text-muted-foreground"
-              : "bg-accent/10 text-accent"
-          }`}
-        >
-          {rank}
-        </div>
+      <div className={`${TILE_WIDTH_CLASS} relative`}>
+        <ProjectCardTile project={project} dimmed={readOnly} />
+        {/*
+          Sits over the card's corner but is a sibling of its <Link>, never a
+          descendant — a button inside an anchor is invalid and traps keyboard
+          users on the link.
+        */}
+        {onRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            data-testid="remove-button"
+            aria-label={`Remove ${project.title || "project"} from my ranking`}
+            className="absolute top-1.5 right-1.5 z-10 flex items-center justify-center p-2 sm:p-1.5 rounded-full bg-white/85 backdrop-blur-sm shadow-sm text-slate-500 hover:text-red-600 hover:bg-white transition-colors"
+          >
+            <XMarkIcon className="w-4 h-4" />
+          </button>
+        )}
+      </div>
 
-        {!readOnly && (
-          <>
-            <button
-              {...attributes}
-              {...listeners}
-              type="button"
-              aria-label={`Drag ${project.title || "project"} to reorder`}
-              className="hidden sm:flex cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-colors touch-none"
-            >
-              <Bars3Icon className="w-4 h-4" />
-            </button>
+      <ControlCluster>
+        <div className="flex flex-col items-center">
+          {!readOnly && (
             <button
               type="button"
               onClick={onMoveUp}
@@ -188,6 +195,19 @@ function RankingCard({
             >
               <ChevronUpIcon className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
+          )}
+          {!readOnly && (
+            <button
+              {...attributes}
+              {...listeners}
+              type="button"
+              aria-label={`Drag ${project.title || "project"} to reorder`}
+              className="hidden sm:flex cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-colors touch-none"
+            >
+              <Bars3Icon className="w-4 h-4" />
+            </button>
+          )}
+          {!readOnly && (
             <button
               type="button"
               onClick={onMoveDown}
@@ -197,21 +217,9 @@ function RankingCard({
             >
               <ChevronDownIcon className="w-5 h-5 sm:w-4 sm:h-4" />
             </button>
-          </>
-        )}
-
-        {onRemove && (
-          <button
-            type="button"
-            onClick={onRemove}
-            data-testid="remove-button"
-            aria-label={`Remove ${project.title || "project"} from my ranking`}
-            className={`${CONTROL_BUTTON_CLASS} hover:text-red-600`}
-          >
-            <XMarkIcon className="w-5 h-5 sm:w-4 sm:h-4" />
-          </button>
-        )}
-      </ControlColumn>
+          )}
+        </div>
+      </ControlCluster>
     </div>
   );
 }
@@ -250,7 +258,7 @@ export function PoolList({ projects, readOnly, onAdd }: PoolListProps) {
           </div>
 
           {!readOnly && (
-            <ControlColumn>
+            <ControlCluster>
               <button
                 type="button"
                 onClick={() => onAdd(project)}
@@ -261,7 +269,7 @@ export function PoolList({ projects, readOnly, onAdd }: PoolListProps) {
                 <PlusIcon className="w-4 h-4" />
                 <span className="hidden sm:inline">Rank</span>
               </button>
-            </ControlColumn>
+            </ControlCluster>
           )}
         </div>
       ))}
@@ -269,19 +277,29 @@ export function PoolList({ projects, readOnly, onAdd }: PoolListProps) {
   );
 }
 
-// Capped at the listing card's 240px rather than filling the panel. A 4:3 image
-// stretched to full panel width makes each entry ~300px tall, which turns a
-// twelve-project ballot into a very long scroll. Leaves whitespace to the right
-// on wide panels; that is the intended trade.
-const TILE_WIDTH_CLASS = "w-full max-w-[240px] min-w-0";
+// Below `sm` the card is a tile, capped at the listing card's 240px — a 4:3
+// image stretched wider makes each entry ~300px tall. From `sm` it becomes a
+// row and wants the whole panel, so the cap lifts.
+const TILE_WIDTH_CLASS = "w-full max-w-[240px] sm:max-w-none min-w-0";
 
 const CONTROL_BUTTON_CLASS =
   "p-2 sm:p-1 text-slate-400 hover:text-slate-700 disabled:text-slate-200 disabled:cursor-not-allowed transition-colors min-w-[44px] sm:min-w-0 min-h-[44px] sm:min-h-0 flex items-center justify-center";
 
-/** Ballot controls, stacked beside the card rather than nested inside its link. */
-function ControlColumn({ children }: { children: React.ReactNode }) {
+/**
+ * Ballot controls, beside the card rather than nested inside its link.
+ *
+ * Just the reorder controls:
+ *
+ *     ^
+ *     =
+ *     v
+ *
+ * Remove lives in the card's own top corner, so this stays shorter than the
+ * ~102px row and the card — not the controls — sets the entry height.
+ */
+function ControlCluster({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex flex-col items-center gap-1 flex-shrink-0 pt-1">
+    <div className="flex items-center gap-0.5 flex-shrink-0 pt-1 sm:pt-0 sm:self-center">
       {children}
     </div>
   );
@@ -304,6 +322,7 @@ function ProjectCardTile({
       tagline={project.tagline}
       categoryName={project.category_name}
       dimmed={dimmed}
+      layout="row-when-wide"
     />
   );
 }

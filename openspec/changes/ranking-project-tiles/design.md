@@ -54,13 +54,31 @@ The entry's own `bg-white rounded-xl border` wrapper is dropped; `ProjectTile` a
 
 `CardImage` and `CardText` are deleted rather than adapted — everything they do is now `ProjectTile`'s job.
 
-### The ballot tile is capped at 240px, not stretched to the panel
+### The ballot card is a tile on narrow screens and a row on wide ones
 
-`TILE_WIDTH_CLASS` is `w-full max-w-[240px] min-w-0` — the same width the listing row gives a card.
+`ProjectTile` takes `layout`. The listing uses the default `"tile"`; the ballot passes `"row-when-wide"`, which stacks below `sm` and lays image beside text above it.
 
-This was first built letting the tile fill the panel. Measured in the running app, that produced a 240px-wide image at 4:3 on mobile and a ~300px-tall entry at `lg`, where each panel is half the page: a twelve-project ballot became an unworkable scroll, and comparing two projects meant scrolling between them. Capping the width puts a ballot entry at 265px tall — the same as a listing card — at the cost of whitespace to the right of the control column on wide panels. Scrolling a ballot is the common action; filling the panel is not worth making it worse.
+Browsing and ranking are different tasks. A tile is a browsing card — it wins attention for one project at a time. Ranking is comparison, and what helps most is seeing the whole ballot at once. Measured at `lg`: as tiles a six-project ballot was 1590px and you could hold three in view; as rows it is 476px and the whole thing fits one screen.
 
-`w-full` with `max-w` rather than a fixed `w-[240px]` so the tile still shrinks on very narrow screens instead of forcing horizontal overflow, since the control column needs 44px of touch target beside it.
+Rows were the original layout and they failed, but not because rows are wrong — the title carried `sm:truncate` and a 144px image sat inside a half-page panel. With the truncation gone and the image at 140px, the row's text column measures 241px at `lg`, within a pixel of the listing card's 240px. So the ballot row is exactly as forgiving as the listing tile, which is the promise the spec makes.
+
+Below `sm` there is no width for a row that does not clip, so it stays a tile, capped at `max-w-[240px]` — a 4:3 image stretched wider makes each entry ~300px tall. The cap lifts at `sm` where the row wants the panel. `w-full` with `max-w` rather than a fixed `w-[240px]` so the tile shrinks on very narrow screens instead of forcing horizontal overflow.
+
+### Controls are split three ways, because a row has no room for a stack of five
+
+At ~102px a row is shorter than a vertical stack of five 44px controls. Left as one column, the controls — not the card — would set the entry height, undoing the compaction. They are split by what each one is for:
+
+- **Rank number** — before the card. A ranked list is scanned by number; with the badge trailing, the sequence ran down the far right edge past the content. Leading with it means 1‑2‑3‑4 reads down the left, as an ordered list should.
+- **Reorder** (`^` / `=` / `v`) — a narrow column after the card. Measured 24px wide and 72px tall against a 102px row, so the card governs the height.
+- **Remove** — the card's own top-right corner.
+
+Together these took the control gutter from 144px to 24px, which moved the text column from 241px to 694px at the width measured. Taglines that previously wrapped to two lines now fit on one.
+
+### The remove button overlays the card without being inside its link
+
+`ProjectTile` renders a `<Link>`, and a `<button>` inside an `<a>` is invalid HTML that traps keyboard users on the link. So the remove button is positioned `absolute` over the card's corner while remaining a **DOM sibling** of the anchor — the tile's wrapper carries `relative`, and the button follows the tile rather than nesting in it. Visually in the card, structurally beside it.
+
+It carries `bg-white/85 backdrop-blur-sm` because the corner sits over the image in tile layout and over white in row layout; a bare icon would disappear against one or the other.
 
 ### Read-only is a `dimmed` prop, not a second card
 
@@ -84,9 +102,11 @@ So the prefetch is narrowed to `upload_status="uploaded"` in the same step. That
 
 ## Risks / Trade-offs
 
-- **A 4:3 image at full panel width makes ballot entries tall.** Confirmed in the running app and fixed by capping the tile at 240px (see Decisions). Entries are now 265px, matching a listing card.
+- **A 4:3 image at full panel width makes ballot entries tall.** Confirmed in the running app and resolved by the row layout (see Decisions). Entries went 300px → 265px (width cap) → 102px (rows).
 
-- **Wide ballot panels carry visible whitespace** to the right of the control column — at `lg` the panel is ~539px for a 240px tile plus controls. → Accepted. The alternative costs scroll length on every ballot, which is the thing reviewers actually do.
+- **The row's 241px text column is no more forgiving than the listing card's 240px.** A tagline too long for two lines still clamps. → Accepted, and deliberate: the spec's promise is that the ballot shows *as much as the listing does*, not more. Both surfaces clamp at the same width, so neither can drift ahead of the other.
+
+- **`ProjectTile` now has two layouts, so a change to one can regress the other.** → The breakpoint behaviour is pure CSS on one component rather than two components to keep in sync, and the listing keeps the default so its markup is unchanged.
 
 - **The listing page changes without having been the complaint.** A 2-line title shifts New Arrivals cards for every visitor. → Contained by `align-items: stretch` keeping heights equal, and by the fact that most titles fit on one line and are unaffected. Verify visually on the listing page, not only on the ballot.
 

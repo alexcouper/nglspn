@@ -32,9 +32,13 @@ The listing tile ([`NewArrivalsSection.tsx:32`](../../../src/web-ui/src/app/proj
 - The two-panel-at-`lg` / tabs-on-mobile ballot layout stays as it is.
 - The 4:3 image aspect is kept rather than shortened, matching the listing tile exactly.
 
-**Tile width is capped at the listing card's 240px**
+**The ballot card is a tile on narrow screens and a row on wide ones**
 
-Left to fill the panel, a 4:3 image at half-page width made each ballot entry roughly 300px tall and a twelve-project ballot an unworkable scroll. The tile is capped at `240px` instead — the same width the listing row uses — so a ballot entry is the same size as a listing card. Wide panels get whitespace to the right of the control column; that is the intended trade.
+`ProjectTile` takes a `layout` prop. The listing keeps the tile at every width; the ballot stacks below `sm` and lays out side by side above it.
+
+Ranking is a comparison task, and the thing that helps most is seeing the whole ballot at once. Tiles made a six-project ballot 1590px of scroll; as rows it is 476px, one screen. The row's text column measures 241px at `lg` — within a pixel of the listing card's 240px — so it clips no sooner than the listing does. Below `sm` there is no width for a row that does not clip, so it stays a tile, capped at 240px.
+
+The controls split by purpose for the same reason — five stacked 44px controls are taller than a 102px row, so one column would set the entry height and undo the compaction. The rank number leads the entry, so the list is scanned by number down its left edge; reorder (`^` / `=` / `v`) follows the card in a 24px column; remove sits in the card's own top corner, drawn over the card but kept a DOM sibling of its link. Together this took the control gutter from 144px to 24px and the text column from 241px to 694px.
 
 ## Capabilities
 

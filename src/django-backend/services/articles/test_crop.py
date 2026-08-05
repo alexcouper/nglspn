@@ -36,14 +36,6 @@ def assert_ratio(rect: CropRect, source: tuple[int, int], expected: float) -> No
     assert (rect.w * width) / (rect.h * height) == pytest.approx(expected)
 
 
-def assert_inside_image(rect: CropRect) -> None:
-    epsilon = 1e-9
-    assert rect.x >= -epsilon
-    assert rect.y >= -epsilon
-    assert rect.x + rect.w <= 1 + epsilon
-    assert rect.y + rect.h <= 1 + epsilon
-
-
 class TestDeriveCardCrop:
     def test_preserves_the_hero_centre(self) -> None:
         hero = rect_for(SQUARE, x=0.1, y=0.4, w=0.6, h=0.2)
@@ -62,44 +54,35 @@ class TestDeriveCardCrop:
         assert_ratio(derived, SQUARE, CARD_RATIO)
         assert derived.ratio == pytest.approx(CARD_RATIO)
 
-    def test_clamps_at_the_top_edge(self) -> None:
+    def test_keeps_the_centre_at_the_top_edge_rather_than_sliding(self) -> None:
         hero = rect_for(SQUARE, x=0.2, y=0.0, w=0.6, h=0.1)
 
         derived = derive_card_crop(hero, *SQUARE)
 
         assert derived is not None
-        assert derived.y == 0.0
-        assert_inside_image(derived)
+        assert centre_of(derived) == pytest.approx(centre_of(hero))
+        assert derived.y < 0
 
-    def test_clamps_at_the_bottom_edge(self) -> None:
-        hero = rect_for(SQUARE, x=0.2, y=0.9, w=0.6, h=0.1)
-
-        derived = derive_card_crop(hero, *SQUARE)
-
-        assert derived is not None
-        assert derived.y + derived.h == pytest.approx(1.0)
-        assert_inside_image(derived)
-
-    def test_shrinks_width_when_the_source_is_too_short(self) -> None:
-        # A 4000x2000 source is wider than 16:9, so a full-width selection needs
-        # more height for 16:9 than the image has. The width has to give instead.
+    def test_always_keeps_the_hero_width(self) -> None:
         hero = rect_for(WIDE, x=0.0, y=0.3, w=1.0, h=0.25)
 
         derived = derive_card_crop(hero, *WIDE)
 
         assert derived is not None
-        assert derived.h == pytest.approx(1.0)
-        assert derived.w < hero.w
+        assert derived.w == pytest.approx(hero.w)
         assert_ratio(derived, WIDE, CARD_RATIO)
-        assert_inside_image(derived)
 
-    def test_keeps_the_hero_width_when_the_source_has_room(self) -> None:
-        hero = rect_for(TALL, x=0.1, y=0.3, w=0.5, h=0.3)
+    def test_overhangs_rather_than_shrinking_on_a_short_source(self) -> None:
+        # A 4000x2000 source is wider than 16:9, so a full-width selection needs
+        # more height for 16:9 than the image has. It overhangs, and the surround
+        # renders as the shared background colour.
+        hero = rect_for(WIDE, x=0.0, y=0.3, w=1.0, h=0.25)
 
-        derived = derive_card_crop(hero, *TALL)
+        derived = derive_card_crop(hero, *WIDE)
 
         assert derived is not None
-        assert derived.w == pytest.approx(hero.w)
+        assert derived.h > 1
+        assert derived.y < 0
 
     @pytest.mark.parametrize(
         ("width", "height"),
@@ -160,17 +143,22 @@ class TestValidateCrop:
         with pytest.raises(InvalidCropError, match="greater than zero"):
             validate_crop(crop(0.1, 0.2, 0.0, 0.3, ratio=2.0))
 
-    def test_rejects_negative_origin(self) -> None:
-        with pytest.raises(InvalidCropError, match="negative"):
-            validate_crop(crop(-0.1, 0.2, 0.6, 0.3, ratio=2.0))
+    def test_accepts_a_crop_that_overhangs_the_image(self) -> None:
+        # Zoomed out until the box is wider than the image: legal, and the
+        # surround renders as the shared background colour.
+        validate_crop(rect_for(SQUARE, -0.25, -0.1, 1.5, 0.84375))
 
-    def test_rejects_overhang_on_the_right(self) -> None:
-        with pytest.raises(InvalidCropError, match="right edge"):
-            validate_crop(crop(0.6, 0.2, 0.6, 0.3, ratio=2.0))
+    def test_rejects_a_crop_entirely_off_the_left(self) -> None:
+        with pytest.raises(InvalidCropError, match="does not overlap"):
+            validate_crop(crop(-0.8, 0.2, 0.6, 0.3, ratio=2.0))
 
-    def test_rejects_overhang_at_the_bottom(self) -> None:
-        with pytest.raises(InvalidCropError, match="bottom edge"):
-            validate_crop(crop(0.1, 0.8, 0.6, 0.3, ratio=2.0))
+    def test_rejects_a_crop_entirely_below_the_image(self) -> None:
+        with pytest.raises(InvalidCropError, match="does not overlap"):
+            validate_crop(crop(0.1, 1.2, 0.6, 0.3, ratio=2.0))
+
+    def test_rejects_an_absurdly_large_crop(self) -> None:
+        with pytest.raises(InvalidCropError, match="six times"):
+            validate_crop(crop(-3.0, -1.5, 7.0, 3.5, ratio=2.0))
 
     def test_rejects_a_ratio_wider_than_four_to_one(self) -> None:
         with pytest.raises(InvalidCropError, match="between 1:1 and 4:1"):

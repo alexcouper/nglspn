@@ -3,17 +3,16 @@
 ### Requirement: Author selects the hero framing on upload
 
 After a hero image finishes uploading, the system SHALL present a crop dialog
-before the image is accepted as the article's hero. The dialog SHALL show a
-selection frame fixed to the full width of the dialog content, standing in for the
-article column, with the source image pannable and zoomable beneath it. The author
-SHALL be able to change the height of the selection frame, and the resulting
-aspect ratio SHALL be displayed while they do so.
+before the image is accepted as the article's hero. The dialog SHALL show the
+whole source image with the crop region drawn over it as a dashed box, a live
+preview of the result, and the resulting aspect ratio. The author SHALL be able
+to pan the image, zoom it, and change the height of the box.
 
 #### Scenario: Crop dialog opens after upload
 
 - **WHEN** an author uploads a hero image and the upload succeeds
-- **THEN** the crop dialog opens with the largest selection the source allows at
-  16:9, centred
+- **THEN** the crop dialog opens on a centred 16:9 selection zoomed just enough
+  to cover the box with no background showing
 
 #### Scenario: Author confirms a selection
 
@@ -30,6 +29,59 @@ aspect ratio SHALL be displayed while they do so.
 
 - **WHEN** the author opens the crop dialog on an existing hero and cancels
 - **THEN** the previously stored selection is left unchanged
+
+### Requirement: Zoom scales the image, not the box
+
+The crop box SHALL keep a fixed size on screen while zooming scales the source
+image beneath it, so that zooming in narrows what the crop covers. The zoom
+control SHALL use a logarithmic scale, because a linear one crushes the useful
+range into the low end of the track.
+
+#### Scenario: Zooming in narrows the focus
+
+- **WHEN** the author increases the zoom
+- **THEN** the crop box is unchanged on screen and the stored crop covers less
+  of the source image
+
+#### Scenario: Zooming preserves the centre
+
+- **WHEN** the author zooms in or out
+- **THEN** the centre of the crop is unchanged, so the subject does not drift
+  out of frame
+
+### Requirement: A crop may extend beyond the image
+
+The system SHALL allow the crop box to be positioned or zoomed so that it
+extends past the edges of the source image, in both free-shape and fixed-shape
+modes. The area of the crop that falls outside the image SHALL be filled with a
+single shared background colour, currently white. The cropper SHALL show that
+same colour behind the box, so the stage and the preview agree.
+
+The system SHALL still reject a crop that does not overlap the source image at
+all, or that is more than six times its size.
+
+#### Scenario: Zooming out past the image edge
+
+- **WHEN** the author zooms out until the box is wider than the image
+- **THEN** the crop is accepted and the surround renders as the background
+  colour in the cropper, the preview and the saved result
+
+#### Scenario: A crop that misses the image entirely
+
+- **WHEN** a crop is submitted whose rectangle lies wholly outside the image
+- **THEN** the API responds 422 and the article is unchanged
+
+### Requirement: The crop picker is reusable
+
+The crop picker SHALL be a component independent of articles, taking a source
+image and a crop rectangle and emitting a crop rectangle, with the dialog
+around it a thin wrapper. A consumer that needs cropping outside an article
+SHALL be able to use it without adopting a modal.
+
+#### Scenario: Hosted somewhere other than a dialog
+
+- **WHEN** a consumer renders the crop picker directly
+- **THEN** it works without a dialog, and reports crop changes to its owner
 
 ### Requirement: Hero aspect ratio is bounded
 
@@ -93,10 +145,11 @@ when one exists.
 ### Requirement: Card crop is derived from the hero selection by default
 
 The system SHALL derive the card crop from the hero crop whenever an article has
-a hero selection but no explicit card selection: the same centre point, grown or
-shrunk vertically to reach 16:9, clamped to the bounds of the source image. The
-derivation SHALL be performed server-side and delivered already resolved, so the
-frontend has no second implementation to drift from.
+a hero selection but no explicit card selection: the same centre point and
+width, with the height solved for 16:9 and left unclamped, so the card frames
+the same subject even where that means overhanging the image. The derivation
+SHALL be performed server-side and delivered already resolved, so the frontend
+has no second implementation to drift from.
 
 #### Scenario: Derived card follows a re-framed hero
 
@@ -107,8 +160,8 @@ frontend has no second implementation to drift from.
 
 - **WHEN** the hero selection sits against the top edge of the image and growing
   it vertically would exceed the image
-- **THEN** the derived 16:9 rectangle is clamped inside the image bounds rather
-  than overflowing
+- **THEN** the derived 16:9 rectangle keeps the hero's centre and overhangs the
+  image rather than sliding to fit, so the card frames the same subject
 
 ### Requirement: Author can override the card crop
 
@@ -154,14 +207,14 @@ be required.
 
 ### Requirement: Crop values are validated on write
 
-The system SHALL reject a crop whose rectangle falls outside the normalised 0–1
-range, whose width or height is zero or negative, or whose aspect ratio is
-outside the permitted bounds. A card crop SHALL be rejected if its ratio is not
-16:9.
+The system SHALL reject a crop whose width or height is zero or negative, or
+whose aspect ratio is outside the permitted bounds. A card crop SHALL be
+rejected if its ratio is not 16:9. Overlap and size limits are covered by the
+requirement above.
 
-#### Scenario: Rectangle outside the image
+#### Scenario: Zero-width rectangle
 
-- **WHEN** a crop is submitted with `x + w` greater than 1
+- **WHEN** a crop is submitted with a width of zero
 - **THEN** the API responds 422 and the article is unchanged
 
 #### Scenario: Card crop at the wrong ratio

@@ -25,19 +25,20 @@
 
 ## 4. Rendering primitive
 
-- [x] 4.1 Write `src/web-ui/src/components/CroppedImage.tsx` — `aspect-ratio` box, absolutely positioned image scaled by percentage, `maxWidth: "none"` inline, `crop == null` falling back to `aspect-[16/9]` + `object-cover`
+- [x] 4.1 Write `src/web-ui/src/components/CroppedImage.tsx` — `aspect-ratio` box, absolutely positioned image scaled by percentage, `maxWidth: "none"` inline, shared `CROP_BACKGROUND` where the crop overruns the image, `crop == null` falling back to 16:9 + `object-cover`
 - [x] 4.2 Rework `ArticleHeroImage` to take a `crop` prop and delegate to `CroppedImage`, keeping the `GradientPlaceholder` path for a missing source
 - [x] 4.3 Component tests: a crop produces the expected computed width/left/top and `max-width: none`; a null crop renders the 16:9 centre path; a missing source still renders the placeholder
 
 ## 5. Crop dialog
 
-- [x] 5.1 Write `src/web-ui/src/components/ImageCropDialog.tsx` on `components/Dialog.tsx` — fixed-width frame, top/bottom height handles, pointer-event pan, zoom slider and wheel, state in normalised source coordinates
-- [x] 5.2 Clamp panning and zoom so the frame is always fully covered
-- [x] 5.3 Clamp the ratio at 4:1 and 1:1 at the handles, and show the live reduced ratio readout
-- [x] 5.4 Show the non-blocking resolution warning under 768 source pixels wide
-- [x] 5.5 Support `lockRatio` (hides handles, fixes height) for the 16:9 card cropper
-- [x] 5.6 Go full-screen under the `sm` breakpoint
-- [x] 5.7 Component tests: dragging changes the rect, the ratio readout matches the selection, handles stop at both clamps, `lockRatio` hides the handles, cancel emits nothing
+- [x] 5.1 Write `src/web-ui/src/components/ImageCropper.tsx` — article-agnostic, controlled, whole image on a stage with a dashed crop box over it, pointer-event pan, top/bottom edge handles, state in normalised source coordinates
+- [x] 5.2 Zoom scales the image while the box holds its on-screen size, on a logarithmic slider; zoom and resize both preserve the crop's centre
+- [x] 5.3 Allow the box past the image edges, painting `CROP_BACKGROUND` behind it so the stage matches the result
+- [x] 5.4 Render a live `CroppedImage` preview of the working crop
+- [x] 5.5 Clamp the ratio at 4:1 and 1:1 at the handles, and show a ratio readout that names small whole-number pairs
+- [x] 5.6 Show the non-blocking resolution warning under 768 source pixels wide; support `lockRatio` (removes handles, fixes shape)
+- [x] 5.7 Reduce `ImageCropDialog` to a thin `components/Dialog.tsx` wrapper, full-screen under `sm`, with only the stage scrolling
+- [x] 5.8 Component tests: zoom narrows the focus and holds the box size, the box may leave the image, centre is preserved, dragging pans, handles stop at both clamps, `lockRatio` hides the handles
 
 ## 6. Editor wiring
 

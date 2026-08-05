@@ -30,9 +30,11 @@ MAX_RATIO = 4.0
 # float round-tripping through JSON.
 _RATIO_TOLERANCE = 0.01
 
-# Geometry gets a far tighter slop than the ratio does: a rect overhanging the
-# image by 1% is a bug, not rounding.
-_BOUNDS_EPSILON = 1e-6
+# A crop may extend past the edge of its source — the author can zoom out until
+# the box is bigger than the image, and the surround renders as the shared
+# background colour. So the only real bounds are that the crop still overlaps
+# the image somewhere, and that it is not absurdly larger than it.
+MAX_EXTENT = 6.0
 
 # Stored coordinates are rounded so that re-deriving the same crop twice gives a
 # byte-identical value and does not show up as a spurious change.
@@ -40,9 +42,8 @@ _PRECISION = 6
 
 # Rejection reasons, named so the raise sites stay one line each.
 ZERO_SIZE = "crop width and height must be greater than zero"
-NEGATIVE_ORIGIN = "crop origin must not be negative"
-RIGHT_OVERHANG = "crop extends past the right edge of the image"
-BOTTOM_OVERHANG = "crop extends past the bottom edge of the image"
+TOO_LARGE = "crop is more than six times the size of the image"
+NO_OVERLAP = "crop does not overlap the image at all"
 RATIO_OUT_OF_RANGE = "crop ratio must be between 1:1 and 4:1"
 MALFORMED = "crop must carry x, y, w, h and ratio"
 NO_HERO_IMAGE = "cannot set a crop on an article with no hero image"
@@ -96,7 +97,11 @@ def validate_crop(
     height: int | None = None,
     expected_ratio: float | None = None,
 ) -> None:
-    """Raise ``InvalidCropError`` if ``crop`` could not have come from a real image.
+    """Raise ``InvalidCropError`` if ``crop`` could not have come from the cropper.
+
+    A crop is allowed to run past the edges of its source — that is how a
+    fixed-shape crop shows a whole image with background at the sides — so this
+    checks that it overlaps the image at all rather than that it sits inside it.
 
     ``width``/``height`` are the source's pixel dimensions. They are nullable on
     ``ProjectImage``, and when absent the rect-versus-ratio consistency check is
@@ -104,12 +109,10 @@ def validate_crop(
     """
     if crop.w <= 0 or crop.h <= 0:
         raise InvalidCropError(ZERO_SIZE)
-    if crop.x < 0 or crop.y < 0:
-        raise InvalidCropError(NEGATIVE_ORIGIN)
-    if crop.x + crop.w > 1 + _BOUNDS_EPSILON:
-        raise InvalidCropError(RIGHT_OVERHANG)
-    if crop.y + crop.h > 1 + _BOUNDS_EPSILON:
-        raise InvalidCropError(BOTTOM_OVERHANG)
+    if crop.w > MAX_EXTENT or crop.h > MAX_EXTENT:
+        raise InvalidCropError(TOO_LARGE)
+    if crop.x >= 1 or crop.y >= 1 or crop.x + crop.w <= 0 or crop.y + crop.h <= 0:
+        raise InvalidCropError(NO_OVERLAP)
 
     if expected_ratio is not None:
         if not _close(crop.ratio, expected_ratio):
@@ -133,7 +136,12 @@ def derive_card_crop(
     width: int | None,
     height: int | None,
 ) -> CropRect | None:
-    """The 16:9 rect sharing ``hero``'s centre, clamped inside the image.
+    """The 16:9 rect sharing ``hero``'s centre and width.
+
+    Not clamped into the image. Sliding it to fit would move the card away from
+    the subject the author framed; letting it overhang shows the same subject
+    with background at the top and bottom, which is the honest answer and the
+    one the cropper would have given.
 
     Returns ``None`` when the source has no recorded dimensions — normalised
     coordinates cannot be converted to an aspect without them, and those images
@@ -142,21 +150,18 @@ def derive_card_crop(
     if not width or not height:
         return None
 
-    # Keep the hero's width and solve for the height that lands on 16:9. On a
-    # source wider than 16:9 that height can exceed the image, so cap it at the
-    # full height and let the width give instead.
     w = hero.w
     h = w * width / (CARD_RATIO * height)
-    if h > 1:
-        h = 1.0
-        w = CARD_RATIO * h * height / width
-
     centre_x = hero.x + hero.w / 2
     centre_y = hero.y + hero.h / 2
-    x = _clamp(centre_x - w / 2, 0.0, 1.0 - w)
-    y = _clamp(centre_y - h / 2, 0.0, 1.0 - h)
 
-    return CropRect(x=x, y=y, w=w, h=h, ratio=CARD_RATIO)
+    return CropRect(
+        x=centre_x - w / 2,
+        y=centre_y - h / 2,
+        w=w,
+        h=h,
+        ratio=CARD_RATIO,
+    )
 
 
 def resolve_card_crop(
@@ -180,7 +185,3 @@ def resolve_card_crop(
 
 def _close(a: float, b: float) -> bool:
     return abs(a - b) <= _RATIO_TOLERANCE * max(abs(b), 1.0)
-
-
-def _clamp(value: float, low: float, high: float) -> float:
-    return max(low, min(high, value))

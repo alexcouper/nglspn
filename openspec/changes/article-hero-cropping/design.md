@@ -25,6 +25,8 @@ The pieces this builds on already exist:
 
 - One hero rendering path shared by the editor and the article page, so what the
   author frames cannot diverge from what a reader sees.
+- A crop picker that is reusable outside articles, and that shows the author
+  their whole image rather than only the part that survives.
 - Author-chosen hero aspect ratio, frozen with the article and honoured at every
   viewport.
 - Uniform 16:9 listing cards, framed automatically from the hero and overridable.
@@ -51,8 +53,14 @@ card_crop = models.JSONField(null=True, blank=True)
 ```
 
 Shape: `{"x": float, "y": float, "w": float, "h": float, "ratio": float}`, with
-`x/y/w/h` normalised 0–1 against the *source* image and `ratio` the rendered
-aspect as a decimal (`34/12 → 2.8333`).
+`x/y/w/h` normalised against the *source* image and `ratio` the rendered aspect
+as a decimal (`34/12 → 2.8333`).
+
+Values outside 0–1 are legal and meaningful: the author can zoom out until the
+crop box is larger than the image, and what the box takes from beyond the edge
+renders as a shared background colour (white). The only geometric constraints
+are that the crop still overlaps the image somewhere and is no more than six
+times its size.
 
 `ratio` is derivable from `w·W : h·H`, but it is stored anyway for two reasons:
 `ArticleListItem` carries only a hero URL, not the source pixel dimensions, so a
@@ -93,42 +101,64 @@ image absolutely positioned and scaled by percentage:
 `maxWidth: "none"` is load-bearing: a global `img { max-width: 100% }` reset
 would silently cap the scaled image and shift the crop.
 
-`crop == null` falls through to the current path — `aspect-[16/9]` with
-`object-cover` — which is why pre-existing articles need no backfill.
+The same arithmetic covers a crop that runs past the image: `w > 1` makes the
+image narrower than its box and a negative `x` pushes it inwards, leaving
+`CROP_BACKGROUND` showing at the edges. No special case.
+
+`crop == null` falls through to the current path — 16:9 with `object-cover` —
+which is why pre-existing articles need no backfill.
 
 `ArticleHeroImage` becomes a thin wrapper over this that takes `crop`, and
 `ArticleCard` uses it with the resolved card crop. `HeroImageUploader`'s preview
 switches to `ArticleHeroImage`, which is the whole of the a≠b fix.
 
-### `ImageCropDialog`
+### `ImageCropper`, and a dialog around it
 
-New `src/web-ui/src/components/ImageCropDialog.tsx`, on the house
-`components/Dialog.tsx` (the native `<dialog>` route).
+New `src/web-ui/src/components/ImageCropper.tsx`. It knows nothing about
+articles — it takes an image and a rectangle and hands back a rectangle — so the
+next surface that needs cropping drops it into a panel or a page rather than
+inheriting a modal. `ImageCropDialog` is a thin wrapper that supplies the house
+`components/Dialog.tsx` and the confirm/cancel buttons.
 
 ```
-ImageCropDialog({ src, naturalWidth, naturalHeight, initial, lockRatio?, onConfirm, onCancel })
+ImageCropper({ src, naturalWidth, naturalHeight, value, onChange,
+               lockRatio?, minRatio?, maxRatio?, minSourceWidth?, previewLabel? })
 ```
+
+The model is *whole image, box on top* rather than *box only*:
+
+- The stage shows the entire image. A dashed box is drawn over it at the crop,
+  with a light scrim outside — light on purpose, since the point of showing the
+  whole image is that the author can see what they are leaving out.
+- The box keeps a fixed size on screen. **Zoom scales the image beneath it**, so
+  zooming in narrows the focus. Zoom is exactly `1 / crop.w`, and the slider's
+  track is logarithmic — on a linear 0.25–8 track, 1× sits at 10% and the whole
+  useful range is crushed against the left end.
+- Zooming out below 1 leaves the box larger than the image. That is allowed:
+  the surround is `CROP_BACKGROUND`, and the stage paints the same colour
+  behind the box so it matches what the result will be.
+- Dragging pans; dragging the box's top or bottom edge changes its shape, about
+  the box's centre. Zoom and resize both preserve the crop's centre, so the
+  subject does not drift out of frame while adjusting.
+- A live preview renders `CroppedImage` with the working crop, so the author
+  sees the actual output rather than inferring it.
+- The ratio readout searches denominators for the smallest whole-number pair
+  that matches. Reducing the rounded pixel counts instead gives 1125:633 for a
+  16:9 box on a 4000×2000 source, which tells the author nothing.
+- Under `minSourceWidth` (768) source pixels across the box, an inline warning
+  appears. It never blocks — the author may know the image is decorative.
+
+`lockRatio: 16/9` removes the edge handles and fixes the shape, leaving zoom and
+pan. That is the entire difference between the hero cropper and the card
+cropper, so there is one component rather than two that drift. A fixed-shape
+crop is exactly where zooming out past the image edge earns its keep: a portrait
+photo in a 16:9 card is better shown whole with bands than cropped to a sliver.
 
 State is held in the same normalised source coordinates that get stored, so
 confirming is a pass-through with no conversion step to get wrong.
 
-- The selection frame is fixed to the dialog's content width and stands in for
-  the article column. Its height is set by top/bottom drag handles.
-- The image pans by dragging and zooms by slider or wheel, clamped so the frame
-  is always fully covered.
-- A live readout reduces `w·W : h·H` to a small integer pair by gcd on the
-  rounded pixel values.
-- Ratio clamps at 4:1 and 1:1; the handles stop there rather than allowing an
-  invalid value that gets rejected on save.
-- Under 768 source pixels wide, an inline warning appears. It does not block —
-  the author may know the image is decorative.
-
-`lockRatio: 16/9` hides the handles and fixes the height. That is the entire
-difference between the hero cropper and the card cropper, so there is one
-component rather than two that drift.
-
-On small viewports the dialog goes full-screen; a crop frame inside a padded
-modal on a 375px screen is unusable otherwise.
+On small viewports the dialog goes full-screen, and the stage is the only part
+that scrolls so the buttons stay reachable however tall the box gets.
 
 ### Upload flow
 
@@ -178,9 +208,11 @@ def derive_card_crop(hero: CropRect, width: int, height: int) -> CropRect | None
     """The 16:9 rect sharing the hero's centre, clamped inside the image."""
 ```
 
-Normalised height for 16:9 is `h = w · W · 9 / (16 · H)`. If that exceeds 1 the
-source is too tall to contain the rect at that width, so `w` shrinks instead.
-`y` keeps the hero's centre and is then clamped into `[0, 1 − h]`.
+Normalised height for 16:9 is `h = w · W · 9 / (16 · H)`, and `x`/`y` keep the
+hero's centre. Nothing is clamped: sliding the rect to fit would move the card
+away from the subject the author framed, whereas letting it overhang shows the
+same subject with background top and bottom — the honest answer, and the one the
+cropper itself would have given.
 
 Returns `None` when the image has no recorded `width`/`height` — nullable on
 `ProjectImage` — and the renderer falls back to CSS centre-cropping, which is
@@ -192,11 +224,13 @@ that disagrees with itself between the preview dialog and the live listing.
 
 ### Validation
 
-On write: `0 ≤ x`, `0 ≤ y`, `w > 0`, `h > 0`, `x + w ≤ 1`, `y + h ≤ 1`, and
-`1 ≤ ratio ≤ 4`. A card crop must be 16:9 within tolerance. Where the source
-records pixel dimensions, `ratio` is checked against `w·W / (h·H)` within 1% —
-enough to catch a client computing it wrongly, loose enough to survive float
-round-tripping. Failures are 422.
+Because a crop may legally run past the image, the geometric checks are about
+overlap rather than containment: `w > 0`, `h > 0`, `w ≤ 6`, `h ≤ 6`, and the
+rect must intersect the image at all. Free-shape crops need `1 ≤ ratio ≤ 4`; a
+card crop must be 16:9 within tolerance. Where the source records pixel
+dimensions, `ratio` is checked against `w·W / (h·H)` within 1% — enough to catch
+a client computing it wrongly, loose enough to survive float round-tripping.
+Failures are 422.
 
 ## Risks / Trade-offs
 

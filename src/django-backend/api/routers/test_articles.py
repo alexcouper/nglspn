@@ -629,7 +629,26 @@ class TestArticleCrops:
         article.refresh_from_db()
         assert_that(article.card_crop, has_entries(x=0.1, y=0.2, w=0.4))
 
-    def test_an_out_of_bounds_crop_returns_422(
+    def test_a_crop_overhanging_the_image_is_accepted(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project, hero_image=_sized_image(project))
+
+        # Zoomed out until the box is wider than the image. The surround renders
+        # as the shared background colour rather than being refused.
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"hero_crop": _crop(x=-0.25, y=0.1, w=1.5, h=0.75)},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        article.refresh_from_db()
+        assert_that(article.hero_crop, has_entries(x=-0.25, w=1.5))
+
+    def test_a_crop_that_misses_the_image_entirely_returns_422(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
@@ -638,7 +657,7 @@ class TestArticleCrops:
         response = _patch(
             client,
             f"/api/projects/{project.id}/articles/{article.id}",
-            {"hero_crop": _crop(x=0.6, y=0.3, w=0.6, h=0.4)},
+            {"hero_crop": _crop(x=1.4, y=0.3, w=0.6, h=0.4)},
             auth_headers,
         )
 

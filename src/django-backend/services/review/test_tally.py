@@ -9,6 +9,7 @@ from services.review.tally import (
     ProjectId,
     reduce_ballots_to_margins,
     schulze_order,
+    support_signals,
 )
 
 
@@ -160,3 +161,25 @@ class TestSchulzeOrder:
         margins = reduce_ballots_to_margins([[rejected, A, B]], [A, B])
 
         assert_that(schulze_order(margins), equal_to([[A], [B]]))
+
+
+class TestSupportSignals:
+    def test_counts_first_places_and_rankers(self) -> None:
+        support = support_signals([[A, B], [B, A], [A]], ALL_FOUR)
+
+        assert_that(support[A].first_place_count, equal_to(2))
+        assert_that(support[A].ranked_by_count, equal_to(3))
+        assert_that(support[B].first_place_count, equal_to(1))
+
+    def test_mean_position_covers_only_the_ballots_that_ranked_it(self) -> None:
+        support = support_signals([[A, B], [B, A], [A]], ALL_FOUR)
+
+        # A sits at 1, 2 and 1 -> 4/3; B at 2 and 1 -> 3/2.
+        assert_that(support[A].mean_position, equal_to(4 / 3))
+        assert_that(support[B].mean_position, equal_to(3 / 2))
+
+    def test_a_project_nobody_ranked_has_no_mean_position(self) -> None:
+        support = support_signals([[A]], ALL_FOUR)
+
+        assert_that(support[D].ranked_by_count, equal_to(0))
+        assert_that(support[D].mean_position, equal_to(None))

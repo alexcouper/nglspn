@@ -1,5 +1,3 @@
-from collections import defaultdict
-from collections.abc import Iterable
 from hashlib import sha256
 from uuid import UUID
 
@@ -19,17 +17,16 @@ from services.project.django_impl.query import (
 )
 from services.review.query_interface import (
     CompetitionTally,
-    ProjectSupport,
     ReviewerProjects,
     ReviewProjectItem,
     ReviewQueryInterface,
 )
 from services.review.tally import (
-    Ballot,
     OrderingRule,
     ProjectId,
     reduce_ballots_to_margins,
     schulze_order,
+    support_signals,
 )
 
 EXCLUDED_PROJECT_STATUSES = [ProjectStatus.REJECTED, ProjectStatus.ICE_BOX]
@@ -77,7 +74,7 @@ class DjangoReviewQuery(ReviewQueryInterface):
             counted_ballots=len(counted_reviewer_ids),
             projects={p.id: p for p in projects},
             tiers=self._ordering_rule(margins),
-            support=_support_signals(ballots.values(), eligible_ids),
+            support=support_signals(ballots.values(), eligible_ids),
             margins=margins,
         )
 
@@ -167,37 +164,3 @@ def _ballots_by_reviewer(
             ballots[reviewer_id].append(project_id)
 
     return ballots
-
-
-def _support_signals(
-    ballots: Iterable[Ballot], eligible_ids: list[ProjectId]
-) -> dict[ProjectId, ProjectSupport]:
-    """First-place count, ranked-by count and mean position among rankers.
-
-    Positions are the reviewer's own contiguous ordering, so a project ranked
-    second on a two-project ballot has position 2 regardless of how many
-    projects the reviewer skipped.
-    """
-    first_place: dict[ProjectId, int] = defaultdict(int)
-    ranked_by: dict[ProjectId, int] = defaultdict(int)
-    position_total: dict[ProjectId, int] = defaultdict(int)
-
-    for ballot in ballots:
-        for position, project_id in enumerate(ballot, start=1):
-            ranked_by[project_id] += 1
-            position_total[project_id] += position
-            if position == 1:
-                first_place[project_id] += 1
-
-    return {
-        project_id: ProjectSupport(
-            first_place_count=first_place[project_id],
-            ranked_by_count=ranked_by[project_id],
-            mean_position=(
-                position_total[project_id] / ranked_by[project_id]
-                if ranked_by[project_id]
-                else None
-            ),
-        )
-        for project_id in eligible_ids
-    }

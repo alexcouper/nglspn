@@ -3,16 +3,7 @@ from dataclasses import dataclass, field
 from uuid import UUID
 
 from apps.projects.models import Project
-from services.review.tally import MarginMatrix, ProjectId
-
-
-@dataclass(frozen=True)
-class ProjectSupport:
-    """Raw signals behind one project's placement, for an admin to weigh."""
-
-    first_place_count: int = 0
-    ranked_by_count: int = 0
-    mean_position: float | None = None
+from services.review.tally import MarginMatrix, ProjectId, ProjectSupport
 
 
 @dataclass(frozen=True)

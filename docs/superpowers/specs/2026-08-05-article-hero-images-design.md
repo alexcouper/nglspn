@@ -1,7 +1,9 @@
 # Article Hero Images — Design
 
 Date: 2026-08-05
-Status: design (pre-implementation)
+Status: superseded (2026-08-06) by the `article-listing-image` capability —
+articles no longer have a hero image, and none is required to publish. Kept as
+a record of what was decided at the time.
 
 ## Summary
 

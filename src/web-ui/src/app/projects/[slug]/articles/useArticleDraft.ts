@@ -101,6 +101,10 @@ export function useArticleDraft({ project, articleId }: Options) {
             body: "",
           });
           if (cancelled) return;
+          // /new and /edit are different routes, so the replace unmounts this
+          // page. Without this the untouched-draft sweep below would delete
+          // the draft we are navigating to.
+          latestRef.current.leaving = true;
           router.replace(`/projects/${projectRef}/articles/edit/${loaded.id}`);
         }
         if (cancelled) return;

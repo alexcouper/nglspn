@@ -48,8 +48,8 @@
 
 - [x] 6.1 Rename `ArticleHeroImage` → `ArticleListingImage`, drop the `GradientPlaceholder` branch (`GradientPlaceholder` itself stays — nine other surfaces use it)
 - [x] 6.2 Give `ArticleCard` an imageless layout: no image element, headline clamp `2 → 4` (grid) and `3 → 4` (lead), summary clamp `3 → 5` (grid) and `2 → 4` (lead)
-- [ ] 6.3 Decide the imageless **lead** treatment against the real rendering so it does not read as a broken card — rule, tint, larger headline or a combination. Screenshot before and after
-- [ ] 6.4 Confirm a mixed grid keeps equal row heights
+- [x] 6.3 Decide the imageless **lead** treatment against the real rendering so it does not read as a broken card — rule, tint, larger headline or a combination. Screenshot before and after
+- [x] 6.4 Confirm a mixed grid keeps equal row heights
 - [x] 6.5 Remove the hero from `ArticleRenderContent.tsx`
 - [x] 6.6 Update `MyProjectArticles.tsx` and `ArticlesList.tsx` for the renamed fields
 - [x] 6.7 Extend `article-card.test.tsx`: an imageless card renders no image element and the wider clamps; an imaged card is unchanged
@@ -88,14 +88,14 @@
 
 ## 11. Spec reconciliation
 
-- [ ] 11.1 Correct `openspec/changes/add-article-authoring/specs/articles/spec.md` — lines 55, 94, 101, 107–108, 204, 206, 225 and 257 assert hero-is-required or hero-renders-above-body. That change is still in progress, so it must not archive those statements into `openspec/specs/`
-- [ ] 11.2 Check `docs/` for anything asserting a mandatory hero image
+- [x] 11.1 Correct `openspec/changes/add-article-authoring/specs/articles/spec.md` — lines 55, 94, 101, 107–108, 204, 206, 225 and 257 assert hero-is-required or hero-renders-above-body. That change is still in progress, so it must not archive those statements into `openspec/specs/`
+- [x] 11.2 Check `docs/` for anything asserting a mandatory hero image
 
 ## 12. Verification
 
 - [x] 12.1 `npm run lint` and the vitest suite from `src/web-ui/`
-- [ ] 12.2 Rewrite or delete `e2e/article-hero-removal.spec.ts`; update `e2e/article-images.spec.ts` for the linked-upload flow
-- [ ] 12.3 E2E: create an article, insert two body images, save, confirm the card auto-adopts the earlier one; open the wizard, pick the second, frame it, save, reload and confirm it persisted; remove it and confirm it stays removed across a save. Run serially and clean up uploads — login is rate limited to 5/min per IP and projects cap at 10 images
-- [ ] 12.4 E2E or manual: publish an article with no image at all and confirm it renders as a text-only card in both variants
-- [ ] 12.5 Manually check the wizard on an emulated 375px viewport
+- [x] 12.2 Rewrite or delete `e2e/article-hero-removal.spec.ts`; update `e2e/article-images.spec.ts` for the linked-upload flow
+- [x] 12.3 E2E: create an article, insert two body images, save, confirm the card auto-adopts the earlier one; open the wizard, pick the second, frame it, save, reload and confirm it persisted; remove it and confirm it stays removed across a save. Run serially and clean up uploads — login is rate limited to 5/min per IP and projects cap at 10 images
+- [x] 12.4 E2E or manual: publish an article with no image at all and confirm it renders as a text-only card in both variants
+- [x] 12.5 Manually check the wizard on an emulated 375px viewport
 - [ ] 12.6 Run the repo's checks: `make lint` + `make test` in `src/django-backend/`, `npm run lint` + vitest in `src/web-ui/` (there is no working root `make ci` target)

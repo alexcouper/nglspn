@@ -52,12 +52,12 @@ This applies to all of:
 
 ### Requirement: Article model
 
-The system SHALL provide an `Article` model in a new `apps/articles` Django app. The model SHALL include: `id` (UUID), `project` (FK to Project, `on_delete=CASCADE`, `related_name="articles"`), `channel` (FK to Channel, `on_delete=PROTECT`), `author` (FK to User, nullable), `title` (CharField, max 200), `body` (TextField, markdown), `hero_image` (FK to `projects.ProjectImage`, nullable, `on_delete=PROTECT`), `slug` (SlugField, nullable, unique per project when present), `source` (CharField, choices `internal` / `external`, default `internal`), `external_url` (URLField, nullable), `state` (CharField, choices `draft` / `published`, default `draft`), `published_at` (DateTimeField, nullable), `global_visibility` (CharField, choices `auto` / `pending` / `approved` / `demoted`, default `auto`), `created_at`, `updated_at`.
+The system SHALL provide an `Article` model in a new `apps/articles` Django app. The model SHALL include: `id` (UUID), `project` (FK to Project, `on_delete=CASCADE`, `related_name="articles"`), `channel` (FK to Channel, `on_delete=PROTECT`), `author` (FK to User, nullable), `title` (CharField, max 200), `body` (TextField, markdown), `listing_image` (FK to `projects.ProjectImage`, nullable, `on_delete=SET_NULL`), `listing_crop` (JSONField, nullable), `listing_image_mode` (CharField, choices `auto` / `chosen` / `none`, default `auto`), `slug` (SlugField, nullable, unique per project when present), `source` (CharField, choices `internal` / `external`, default `internal`), `external_url` (URLField, nullable), `state` (CharField, choices `draft` / `published`, default `draft`), `published_at` (DateTimeField, nullable), `global_visibility` (CharField, choices `auto` / `pending` / `approved` / `demoted`, default `auto`), `created_at`, `updated_at`.
 
 A partial unique constraint SHALL enforce uniqueness of `(project, slug)` where `slug IS NOT NULL`. A CHECK constraint (or save-time guard for SQLite) SHALL enforce `(source = 'internal' AND external_url IS NULL) OR (source = 'external' AND external_url IS NOT NULL)`.
 
-#### Scenario: Draft article allows empty title, body, hero image
-- **WHEN** an Article is created with `state = draft` and no `title`, `body`, or `hero_image`
+#### Scenario: Draft article allows empty title, body, listing image
+- **WHEN** an Article is created with `state = draft` and no `title`, `body`, or `listing_image`
 - **THEN** the save SHALL succeed
 
 #### Scenario: Internal article cannot carry an external_url
@@ -91,24 +91,24 @@ The User model SHALL include a non-null `article_trust` BooleanField with `defau
 
 The system SHALL provide a publish endpoint that transitions an internal Article from `state = draft` to `state = published`, sets `published_at` (default `now()`, optionally an author-supplied past datetime), and generates `slug` from `title` using the same Icelandic-aware transliteration helper used for Project slugs.
 
-The publish action SHALL be rejected with HTTP 422 when any of `title`, `body`, or `hero_image` is empty.
+The publish action SHALL be rejected with HTTP 422 when either of `title` or `body` is empty. An article needs no image — see the `article-listing-image` capability.
 
 Slug generation SHALL ensure uniqueness within the project, appending a numeric suffix on collision.
 
 Slug SHALL be generated once on first publish and SHALL NOT be regenerated when the title is edited later.
 
 #### Scenario: Successful publish from draft
-- **GIVEN** a draft Article with non-empty `title`, `body`, and `hero_image`
+- **GIVEN** a draft Article with non-empty `title` and `body`
 - **WHEN** an authorised contributor publishes it
 - **THEN** `state` SHALL be `published`
 - **AND** `published_at` SHALL be set
 - **AND** `slug` SHALL be assigned
 
-#### Scenario: Publish without hero image is rejected
-- **GIVEN** a draft Article with `title` and `body` set but no `hero_image`
-- **WHEN** an authorised contributor attempts to publish it
-- **THEN** the system SHALL return HTTP 422
-- **AND** the Article SHALL remain `state = draft`
+#### Scenario: Publish without an image is allowed
+- **GIVEN** a draft Article with `title` and `body` set but no `listing_image`
+- **WHEN** an authorised contributor publishes it
+- **THEN** the system SHALL return HTTP 200
+- **AND** the Article SHALL be `state = published`
 
 #### Scenario: Slug stable across title edits
 - **GIVEN** a published Article in project P with `title = "Hello world"` and `slug = "hello-world"`
@@ -201,9 +201,9 @@ The system SHALL provide a "Write article" entry point on the project page that 
 The system SHALL provide an authoring page at `/projects/<project-slug>/articles/new` (Next.js route) and `/projects/<project-slug>/articles/<id>/edit` for an existing draft. The authoring page SHALL provide:
 - A markdown editor with side-by-side preview on viewports `≥ md` and tabbed (Edit / Preview) below that.
 - Drag-to-insert image upload: dropping an image file on the editor SHALL upload it via the existing project-image upload endpoint and insert a `![](url)` reference at the cursor.
-- A hero-image uploader above the body (separate from inline body images).
+- A **Listing settings** tab holding the summary, the listing-image control and a preview of the article's card.
 - A channel dropdown listing this project's channels.
-- A "Save draft" button (no field requirements) and a "Publish" button (requires title, body, hero image; opens a confirm dialog with optional `published_at` override).
+- A "Save draft" button (no field requirements) and a "Publish" button (requires title and body; opens a confirm dialog with optional `published_at` override).
 
 #### Scenario: Write article button hidden for non-contributors
 - **GIVEN** an authenticated user with no `ProjectContributor` row on project P
@@ -222,7 +222,7 @@ The system SHALL provide an authoring page at `/projects/<project-slug>/articles
 
 ### Requirement: Article render page
 
-The system SHALL serve a render page at `/projects/<project-slug>/articles/<article-slug>` that displays the Article's hero image, title, optional byline, and the markdown-rendered body. The page SHALL reuse the project-page header so the Article is unambiguously part of its project.
+The system SHALL serve a render page at `/projects/<project-slug>/articles/<article-slug>` that displays the Article's title, optional byline, and the markdown-rendered body. It SHALL NOT display an image band above the body — an author who wants one inserts it into the body. The page SHALL reuse the project-page header so the Article is unambiguously part of its project.
 
 The page SHALL return 404 when:
 - the slug does not exist, OR
@@ -254,7 +254,7 @@ When linked from a Phase 5 carousel, internal article links SHALL open in a new 
 
 ### Requirement: Edit and delete after publish
 
-A `ProjectContributor` with `full_edit = True` SHALL be able to edit `title`, `body`, `hero_image`, `channel`, and `published_at` on a published Article. Editing SHALL NOT alter `slug` or `global_visibility`. Editing SHALL NOT fire notifications.
+A `ProjectContributor` with `full_edit = True` SHALL be able to edit `title`, `body`, the listing image and its framing, `channel`, and `published_at` on a published Article. Editing SHALL NOT alter `slug` or `global_visibility`. Editing SHALL NOT fire notifications.
 
 A `ProjectContributor` with `full_edit = True` SHALL be able to hard-delete a published Article. Deletion SHALL cascade-delete any related Notification rows that point at the Article.
 

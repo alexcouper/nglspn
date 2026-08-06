@@ -21,8 +21,12 @@ async function login(page: Page) {
 }
 
 // Walks from the project list to a blank article editor, so the test doesn't
-// hard-code a project slug. Returns the project id, for cleanup.
-async function openBlankArticleEditor(page: Page): Promise<string> {
+// hard-code a project slug. /new creates the draft immediately — an upload
+// cannot name an article that does not exist yet — and swaps the URL, so this
+// returns both ids.
+async function openBlankArticleEditor(
+  page: Page,
+): Promise<{ projectId: string; articleId: string }> {
   await page.goto("/my-projects");
   await page.locator('a[href^="/my-projects/"]').last().click();
   await expect(page).toHaveURL(/\/my-projects\/[0-9a-f-]+$/);
@@ -34,9 +38,10 @@ async function openBlankArticleEditor(page: Page): Promise<string> {
     .first()
     .getAttribute("href");
   await page.goto(newArticleHref!);
+  await expect(page).toHaveURL(/\/articles\/edit\/[0-9a-f-]+$/);
   await expect(editorBody(page)).toBeVisible();
 
-  return projectId;
+  return { projectId, articleId: page.url().split("/").pop()! };
 }
 
 // Article uploads are excluded from `project.images`, so cleanup cannot find
@@ -51,18 +56,17 @@ function trackUploadedImageIds(page: Page): string[] {
   return ids;
 }
 
-// Article uploads no longer occupy a project image slot, but leaving them
-// behind still litters storage, so each test puts its own uploads back.
-async function deleteUploadedFixtures(
+// Deleting the draft cascades its linked images, but the ids are tracked and
+// deleted too so a failure part-way through still cleans up. Every test now
+// leaves a draft behind, because opening the editor creates one.
+async function cleanUp(
   page: Page,
   projectId: string,
+  articleId: string,
   imageIds: string[],
 ) {
-  const ours = imageIds.splice(0);
-  if (ours.length === 0) return;
-
   await page.evaluate(
-    async ({ projectId, imageIds }) => {
+    async ({ projectId, articleId, imageIds }) => {
       const apiUrl = "http://localhost:8000";
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
@@ -76,8 +80,34 @@ async function deleteUploadedFixtures(
           }),
         ),
       );
+      await fetch(`${apiUrl}/api/projects/${projectId}/articles/${articleId}`, {
+        method: "DELETE",
+        headers,
+      });
     },
-    { projectId, imageIds: ours },
+    { projectId, articleId, imageIds: imageIds.splice(0) },
+  );
+}
+
+// The images linked to an article — the listing-image wizard's selection list.
+async function articleImageIds(
+  page: Page,
+  projectId: string,
+  articleId: string,
+): Promise<string[]> {
+  return page.evaluate(
+    async ({ projectId, articleId }) => {
+      const article = await fetch(
+        `http://localhost:8000/api/projects/${projectId}/articles/${articleId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+          },
+        },
+      ).then((r) => r.json());
+      return (article.images ?? []).map((image: { id: string }) => image.id);
+    },
+    { projectId, articleId },
   );
 }
 
@@ -137,18 +167,32 @@ test.describe("Article inline images", () => {
   });
 
   test("inserts an image straight from the file picker", async () => {
-    const projectId = await openBlankArticleEditor(page);
+    const { projectId, articleId } = await openBlankArticleEditor(page);
 
     await imagePicker(page).setInputFiles(INLINE_IMAGE);
 
     await expect(insertedImage(page)).toBeVisible({ timeout: 30_000 });
     await expect(insertedImage(page)).toHaveAttribute("alt", "");
 
-    await deleteUploadedFixtures(page, projectId, uploadedImageIds);
+    await cleanUp(page, projectId, articleId, uploadedImageIds);
+  });
+
+  test("links the inserted image to the article it was uploaded for", async () => {
+    const { projectId, articleId } = await openBlankArticleEditor(page);
+
+    await imagePicker(page).setInputFiles(INLINE_IMAGE);
+    await expect(insertedImage(page)).toBeVisible({ timeout: 30_000 });
+
+    // The link is what makes the image offerable in the listing-image wizard,
+    // and what keeps it out of the project gallery.
+    const linked = await articleImageIds(page, projectId, articleId);
+    expect(linked).toEqual([uploadedImageIds[0]]);
+
+    await cleanUp(page, projectId, articleId, uploadedImageIds);
   });
 
   test("edits alt text without losing the image", async () => {
-    const projectId = await openBlankArticleEditor(page);
+    const { projectId, articleId } = await openBlankArticleEditor(page);
     await imagePicker(page).setInputFiles(INLINE_IMAGE);
     await expect(insertedImage(page)).toBeVisible({ timeout: 30_000 });
     const srcBeforeEdit = await insertedImage(page).getAttribute("src");
@@ -168,33 +212,35 @@ test.describe("Article inline images", () => {
     // The save payload has to echo the original src back, or the plugin blanks it.
     await expect(insertedImage(page)).toHaveAttribute("src", srcBeforeEdit!);
 
-    await deleteUploadedFixtures(page, projectId, uploadedImageIds);
+    await cleanUp(page, projectId, articleId, uploadedImageIds);
   });
 
   test("keeps the inserted image out of the project's own gallery", async () => {
-    const projectId = await openBlankArticleEditor(page);
+    const { projectId, articleId } = await openBlankArticleEditor(page);
     const galleryBefore = await galleryImageIds(page, projectId);
 
     await imagePicker(page).setInputFiles(INLINE_IMAGE);
     await expect(insertedImage(page)).toBeVisible({ timeout: 30_000 });
 
-    // Matched on id rather than filename: the migration did not backfill, so a
-    // pre-fix upload of the same fixture can legitimately sit in the gallery.
+    // Matched on id rather than filename: a pre-existing upload of the same
+    // fixture can legitimately sit in the gallery.
     expect(uploadedImageIds).toHaveLength(1);
     const galleryAfter = await galleryImageIds(page, projectId);
     expect(galleryAfter).not.toContain(uploadedImageIds[0]);
     expect(galleryAfter).toEqual(galleryBefore);
 
-    await deleteUploadedFixtures(page, projectId, uploadedImageIds);
+    await cleanUp(page, projectId, articleId, uploadedImageIds);
   });
 
   test("shows a rejected upload instead of failing silently", async () => {
-    await openBlankArticleEditor(page);
+    const { projectId, articleId } = await openBlankArticleEditor(page);
 
     // Rejected client-side by uploadProjectImage, so nothing reaches storage.
     await imagePicker(page).setInputFiles(NOT_AN_IMAGE);
 
     await expect(uploadAlert(page)).toBeVisible();
     await expect(uploadAlert(page)).toContainText("Invalid file type");
+
+    await cleanUp(page, projectId, articleId, uploadedImageIds);
   });
 });

@@ -55,7 +55,7 @@ from services.storage import storage_service
 PROD_API_BASE = "https://api.naglasupan.is/api"
 PROD_CDN_BASE = "https://cdn.naglasupan.is"
 
-# Fake users to own the projects (owner names aren't shown on listing cards)
+# Fake users to own the projects (creator names aren't shown on listing cards)
 USERS = [
     {
         "email": "prodcopy-a@example.com",
@@ -223,7 +223,7 @@ def create_projects(
     by_prod_id: dict[str, Project] = {}
 
     for i, pd in enumerate(project_data):
-        owner = users[i % len(users)]
+        creator = users[i % len(users)]
 
         cat_slug = project_category.get(pd["id"])
         category = categories_by_slug.get(cat_slug) if cat_slug else None
@@ -244,7 +244,7 @@ def create_projects(
                 status=ProjectStatus.APPROVED,
                 submission_month=created_at.strftime("%Y-%m"),
                 category=category,
-                owner=owner,
+                creator=creator,
                 approved_by=admin,
                 approved_at=created_at,
                 published_at=created_at,

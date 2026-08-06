@@ -8,7 +8,7 @@ import {
   type ReviewCompetitionDetailResponse,
   type ReviewProject,
 } from "@/lib/api";
-import { RankingList } from "./RankingList";
+import { PoolList, RankingList } from "./RankingList";
 import { SubmitRankingDialog } from "./SubmitRankingDialog";
 import type { ReviewState } from "./types";
 
@@ -49,7 +49,8 @@ export function MyRanking(props: MyRankingProps) {
       competitionId={props.competitionId}
       competitionName={props.competitionName}
       initialData={reviewState.data}
-      initialProjects={reviewState.projects}
+      initialRanked={reviewState.ranked}
+      initialPool={reviewState.pool}
     />
   );
 }
@@ -105,25 +106,70 @@ function CompactLoggedOutCta({ returnPath }: { returnPath: string }) {
   );
 }
 
+type RankingTab = "ranked" | "pool";
+
+const TAB_ORDER: RankingTab[] = ["ranked", "pool"];
+const TAB_IDS: Record<RankingTab, string> = {
+  ranked: "ranking-tab-ranked",
+  pool: "ranking-tab-pool",
+};
+const PANEL_IDS: Record<RankingTab, string> = {
+  ranked: "ranking-panel-ranked",
+  pool: "ranking-panel-pool",
+};
+
+/** Where an arrow/Home/End key moves selection, or null if it is not ours. */
+function tabAfterKey(key: string, current: RankingTab): RankingTab | null {
+  const index = TAB_ORDER.indexOf(current);
+  switch (key) {
+    case "ArrowRight":
+      return TAB_ORDER[(index + 1) % TAB_ORDER.length];
+    case "ArrowLeft":
+      return TAB_ORDER[(index - 1 + TAB_ORDER.length) % TAB_ORDER.length];
+    case "Home":
+      return TAB_ORDER[0];
+    case "End":
+      return TAB_ORDER[TAB_ORDER.length - 1];
+    default:
+      return null;
+  }
+}
+
 function RankingActive({
   competitionId,
   competitionName,
   initialData,
-  initialProjects,
+  initialRanked,
+  initialPool,
 }: {
   competitionId: string;
   competitionName: string;
   initialData: ReviewCompetitionDetailResponse;
-  initialProjects: ReviewProject[];
+  initialRanked: ReviewProject[];
+  initialPool: ReviewProject[];
 }) {
   const [reviewStatus, setReviewStatus] = useState(initialData.my_review_status);
-  const [projects, setProjects] = useState(initialProjects);
+  const [ranked, setRanked] = useState(initialRanked);
+  const [pool, setPool] = useState(initialPool);
+  const [activeTab, setActiveTab] = useState<RankingTab>("ranked");
   const [isSaving, setIsSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [statusError, setStatusError] = useState<string | null>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingIdsRef = useRef<string[] | null>(null);
+
+  // The server's pool order for this reviewer. Kept so a removed project drops
+  // back into the same place it would occupy on a fresh load.
+  const poolOrderRef = useRef(
+    new Map(
+      [...initialPool, ...initialRanked].map((project, index) => [
+        project.id,
+        index,
+      ])
+    )
+  );
 
   useEffect(() => {
     return () => {
@@ -136,39 +182,116 @@ function RankingActive({
   const isInProgress = reviewStatus === "in_progress";
   const readOnly = !isInProgress;
 
-  const persistOrder = useCallback(
-    (next: ReviewProject[]) => {
-      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-      saveTimeoutRef.current = setTimeout(async () => {
-        setIsSaving(true);
-        setSaveError(null);
-        try {
-          await api.myReview.updateRankings(
-            competitionId,
-            next.map((p) => p.id)
-          );
-        } catch {
-          setSaveError("Failed to save rankings");
-        } finally {
-          setIsSaving(false);
-        }
-      }, 500);
+  /**
+   * Returns whether the write landed, so submission can refuse to go ahead.
+   *
+   * The ballot stays pending until it lands: a write that failed is still an
+   * unsaved change, and clearing it would let submission lock in the order the
+   * server happens to be holding.
+   */
+  const saveNow = useCallback(
+    async (projectIds: string[]): Promise<boolean> => {
+      setIsSaving(true);
+      setSaveError(null);
+      try {
+        await api.myReview.updateRankings(competitionId, projectIds);
+        // A newer edit may have arrived mid-flight; that one is still pending
+        // and this write does not cover it.
+        if (pendingIdsRef.current === projectIds) pendingIdsRef.current = null;
+        return true;
+      } catch {
+        setSaveError("Failed to save rankings");
+        return false;
+      } finally {
+        setIsSaving(false);
+      }
     },
     [competitionId]
   );
 
+  const persistOrder = useCallback(
+    (next: ReviewProject[]) => {
+      pendingIdsRef.current = next.map((p) => p.id);
+      if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = setTimeout(() => {
+        saveTimeoutRef.current = null;
+        const ids = pendingIdsRef.current;
+        if (ids) void saveNow(ids);
+      }, 500);
+    },
+    [saveNow]
+  );
+
+  /**
+   * Write any outstanding change immediately; used before submitting.
+   *
+   * Returns whether the ballot on screen is now the ballot on the server —
+   * `true` when there is nothing outstanding. An earlier autosave that failed
+   * is outstanding, so this retries it rather than waving submission through.
+   */
+  const flushPendingSave = useCallback(async (): Promise<boolean> => {
+    if (saveTimeoutRef.current) {
+      clearTimeout(saveTimeoutRef.current);
+      saveTimeoutRef.current = null;
+    }
+    const ids = pendingIdsRef.current;
+    if (!ids) return true;
+    return saveNow(ids);
+  }, [saveNow]);
+
+  const handleTabKeyDown = useCallback(
+    (event: React.KeyboardEvent<HTMLDivElement>) => {
+      const next = tabAfterKey(event.key, activeTab);
+      if (!next) return;
+      event.preventDefault();
+      setActiveTab(next);
+      // Selection follows focus, so move focus with it.
+      document.getElementById(TAB_IDS[next])?.focus();
+    },
+    [activeTab]
+  );
+
   const handleReorder = useCallback(
     (next: ReviewProject[]) => {
-      setProjects(next);
+      setRanked(next);
       persistOrder(next);
     },
     [persistOrder]
+  );
+
+  const handleAdd = useCallback(
+    (project: ReviewProject) => {
+      const next = [...ranked, project];
+      setRanked(next);
+      setPool(pool.filter((p) => p.id !== project.id));
+      persistOrder(next);
+    },
+    [ranked, pool, persistOrder]
+  );
+
+  const handleRemove = useCallback(
+    (project: ReviewProject) => {
+      const next = ranked.filter((p) => p.id !== project.id);
+      setRanked(next);
+      setPool(insertIntoPool(pool, project, poolOrderRef.current));
+      persistOrder(next);
+    },
+    [ranked, pool, persistOrder]
   );
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     setStatusError(null);
     try {
+      // Submitting locks the ballot. Doing that while the last change is only
+      // on screen would lock in an order the reviewer never chose.
+      if (!(await flushPendingSave())) {
+        setStatusError(
+          "Your ranking could not be saved, so it was not submitted. Try again."
+        );
+        setShowSubmitDialog(false);
+        return;
+      }
       await api.myReview.updateStatus(competitionId, "completed");
       setReviewStatus("completed");
       setShowSubmitDialog(false);
@@ -214,16 +337,76 @@ function RankingActive({
 
       {isInProgress && (
         <p className="text-xs text-muted-foreground mb-4">
-          Drag the cards or use the up/down buttons to rank projects. Order them
-          from most to least worthy of the {competitionName} prize.
+          Rank your favourite projects, best first. Add the
+          ones you want to back for the {competitionName} prize and leave the
+          rest unranked.
         </p>
       )}
 
-      <RankingList
-        projects={projects}
-        readOnly={readOnly}
-        onReorder={handleReorder}
-      />
+      <div
+        className="flex gap-2 mb-4 lg:hidden"
+        role="tablist"
+        onKeyDown={handleTabKeyDown}
+      >
+        <TabButton
+          id={TAB_IDS.ranked}
+          controls={PANEL_IDS.ranked}
+          isActive={activeTab === "ranked"}
+          onClick={() => setActiveTab("ranked")}
+        >
+          My ranking ({ranked.length})
+        </TabButton>
+        <TabButton
+          id={TAB_IDS.pool}
+          controls={PANEL_IDS.pool}
+          isActive={activeTab === "pool"}
+          onClick={() => setActiveTab("pool")}
+        >
+          Unranked ({pool.length})
+        </TabButton>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        <div
+          data-testid="ranked-panel"
+          id={PANEL_IDS.ranked}
+          role="tabpanel"
+          aria-labelledby={TAB_IDS.ranked}
+          className={`min-w-0 ${activeTab === "ranked" ? "" : "hidden lg:block"}`}
+        >
+          <h3 className="hidden lg:block text-sm font-medium text-foreground mb-3">
+            My ranking ({ranked.length})
+          </h3>
+          <RankingList
+            projects={ranked}
+            readOnly={readOnly}
+            onReorder={handleReorder}
+            onRemove={readOnly ? undefined : handleRemove}
+          />
+        </div>
+
+        {/*
+          The divider only exists at `lg`, where the panels sit side by side.
+          It hangs off the pool panel rather than the grid: grid items stretch,
+          so the border runs the full row height even when the unranked list is
+          much shorter than the ballot. `lg:pl-6` matches the grid gap so the
+          rule ends up centred between the two columns.
+        */}
+        <div
+          data-testid="pool-panel"
+          id={PANEL_IDS.pool}
+          role="tabpanel"
+          aria-labelledby={TAB_IDS.pool}
+          className={`min-w-0 lg:border-l lg:border-border lg:pl-6 ${
+            activeTab === "pool" ? "" : "hidden lg:block"
+          }`}
+        >
+          <h3 className="hidden lg:block text-sm font-medium text-foreground mb-3">
+            Unranked ({pool.length})
+          </h3>
+          <PoolList projects={pool} readOnly={readOnly} onAdd={handleAdd} />
+        </div>
+      </div>
 
       {statusError && (
         <p className="mt-3 text-sm text-red-600">{statusError}</p>
@@ -234,7 +417,6 @@ function RankingActive({
           <button
             type="button"
             onClick={() => setShowSubmitDialog(true)}
-            disabled={projects.length === 0}
             className="w-full btn-primary py-3"
           >
             Submit Ranking
@@ -259,12 +441,64 @@ function RankingActive({
 
       <SubmitRankingDialog
         isOpen={showSubmitDialog}
+        rankedCount={ranked.length}
         onConfirm={handleSubmit}
         onCancel={() => setShowSubmitDialog(false)}
         isSubmitting={isSubmitting}
       />
     </section>
   );
+}
+
+function TabButton({
+  id,
+  controls,
+  isActive,
+  onClick,
+  children,
+}: {
+  id: string;
+  controls: string;
+  isActive: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      role="tab"
+      id={id}
+      aria-controls={controls}
+      aria-selected={isActive}
+      // Roving tabindex: Tab reaches the tab set once, arrows move within it.
+      tabIndex={isActive ? 0 : -1}
+      onClick={onClick}
+      className={`flex-1 text-sm px-3 py-2 rounded-lg border transition-colors ${
+        isActive
+          ? "bg-accent/10 border-accent/30 text-accent font-medium"
+          : "bg-white border-border text-muted-foreground hover:text-foreground"
+      }`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/**
+ * Put a removed project back where a fresh page load would show it, using the
+ * server's pool order. Projects that arrived already ranked have no server pool
+ * position, so they go last until the next load.
+ */
+function insertIntoPool(
+  pool: ReviewProject[],
+  project: ReviewProject,
+  order: Map<string, number>
+): ReviewProject[] {
+  const positionOf = (id: string) => order.get(id) ?? Number.MAX_SAFE_INTEGER;
+  const target = positionOf(project.id);
+  const index = pool.findIndex((p) => positionOf(p.id) > target);
+  if (index === -1) return [...pool, project];
+  return [...pool.slice(0, index), project, ...pool.slice(index)];
 }
 
 function StatusPill({

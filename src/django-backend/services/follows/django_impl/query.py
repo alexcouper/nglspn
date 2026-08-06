@@ -9,14 +9,14 @@ from services.follows.query_interface import (
     FollowWithPreferences,
 )
 from services.project.django_impl.query import (
-    _variant_url,
     resolve_image_by_purpose,
+    variant_url,
 )
 
 
 def _hero_image_url(project: Project) -> str | None:
     hero = resolve_image_by_purpose(project, "hero_banner")
-    return _variant_url(hero, "large")
+    return variant_url(hero, "large")
 
 
 def _to_follow_with_preferences(follow: Follow) -> FollowWithPreferences:

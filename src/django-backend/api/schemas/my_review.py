@@ -7,7 +7,6 @@ from ninja import Schema
 
 from api.schemas.project import (
     ContributorSummary,
-    ImageVariantResponse,
     ProjectImageResponse,
     WonCompetitionInfo,
 )
@@ -46,20 +45,29 @@ class ReviewProjectResponse(Schema):
     tagline: str = ""
     description: str
     website_url: str
-    main_image_url: str | None = None
-    main_image_variants: list[ImageVariantResponse] = []
+    # Resolved the same way the listing endpoints resolve them, so the ballot
+    # card and the listing card show the same project.
+    hero_banner_url: str | None = None
+    in_use_image_url: str | None = None
+    category_name: str | None = None
     my_ranking: int | None = None
 
 
 class ReviewCompetitionDetailResponse(Schema):
-    """Competition detail with projects and reviewer's rankings."""
+    """Competition detail split into the reviewer's ballot and what is left.
+
+    `ranked_projects` is in the reviewer's saved order; `pool_projects` is in an
+    order stable for this reviewer and uncorrelated with any other reviewer's.
+    The client renders both as given rather than deriving an order of its own.
+    """
 
     id: UUID
     name: str
     start_date: date
     submission_deadline: date
     my_review_status: ReviewStatusEnum
-    projects: list[ReviewProjectResponse]
+    ranked_projects: list[ReviewProjectResponse]
+    pool_projects: list[ReviewProjectResponse]
 
 
 class RankingUpdateRequest(Schema):

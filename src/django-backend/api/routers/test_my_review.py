@@ -2,7 +2,14 @@ import json
 import uuid
 
 import pytest
-from hamcrest import assert_that, contains_inanyorder, equal_to, has_entries, has_length
+from hamcrest import (
+    assert_that,
+    contains_exactly,
+    contains_inanyorder,
+    equal_to,
+    has_entries,
+    has_length,
+)
 
 from api.auth.jwt import create_access_token
 from apps.projects.models import (
@@ -15,6 +22,7 @@ from apps.projects.models import (
 from tests.factories import (
     CompetitionFactory,
     CompetitionReviewerFactory,
+    ProjectCategoryFactory,
     ProjectFactory,
     ProjectImageFactory,
     ProjectRankingFactory,
@@ -153,7 +161,7 @@ class TestGetMyReviewCompetition:
         assert_that(response.status_code, equal_to(404))
         assert_that(response.json(), has_entries(detail="Competition not found"))
 
-    def test_returns_competition_with_projects_when_assigned(
+    def test_unranked_competition_puts_every_project_in_the_pool(
         self, client, user, auth_headers
     ) -> None:
         project1 = ProjectFactory(title="Project A")
@@ -168,9 +176,10 @@ class TestGetMyReviewCompetition:
         assert_that(response.status_code, equal_to(200))
         data = response.json()
         assert_that(data["name"], equal_to(competition.name))
-        assert_that(data["projects"], has_length(2))
+        assert_that(data["ranked_projects"], equal_to([]))
+        assert_that(data["pool_projects"], has_length(2))
 
-    def test_includes_my_rankings_for_projects(
+    def test_splits_ranked_projects_from_the_pool(
         self, client, user, auth_headers
     ) -> None:
         project1 = ProjectFactory(title="Project A")
@@ -188,13 +197,37 @@ class TestGetMyReviewCompetition:
         )
 
         assert_that(response.status_code, equal_to(200))
-        projects = response.json()["projects"]
+        data = response.json()
 
-        project1_data = next(p for p in projects if p["id"] == str(project1.id))
-        project2_data = next(p for p in projects if p["id"] == str(project2.id))
+        assert_that(
+            data["ranked_projects"],
+            contains_exactly(has_entries(id=str(project1.id), my_ranking=1)),
+        )
+        assert_that(
+            data["pool_projects"],
+            contains_exactly(has_entries(id=str(project2.id), my_ranking=None)),
+        )
 
-        assert_that(project1_data["my_ranking"], equal_to(1))
-        assert_that(project2_data["my_ranking"], equal_to(None))
+    def test_ranked_projects_are_returned_in_saved_position_order(
+        self, client, user, auth_headers
+    ) -> None:
+        first, second = ProjectFactory(title="First"), ProjectFactory(title="Second")
+        competition = CompetitionFactory(projects=[first, second])
+        CompetitionReviewerFactory(user=user, competition=competition)
+        ProjectRankingFactory(
+            reviewer=user, competition=competition, project=second, position=2
+        )
+        ProjectRankingFactory(
+            reviewer=user, competition=competition, project=first, position=1
+        )
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        ranked = response.json()["ranked_projects"]
+        assert_that([p["title"] for p in ranked], equal_to(["First", "Second"]))
+        assert_that([p["my_ranking"] for p in ranked], equal_to([1, 2]))
 
     def test_does_not_show_other_reviewers_rankings(self, client, db) -> None:
         reviewer1 = UserFactory()
@@ -219,10 +252,11 @@ class TestGetMyReviewCompetition:
         )
 
         assert_that(response.status_code, equal_to(200))
-        projects = response.json()["projects"]
+        data = response.json()
 
         # Reviewer1 should not see reviewer2's ranking
-        assert_that(projects[0]["my_ranking"], equal_to(None))
+        assert_that(data["ranked_projects"], equal_to([]))
+        assert_that(data["pool_projects"][0]["my_ranking"], equal_to(None))
 
     def test_returns_401_when_not_authenticated(self, client) -> None:
         competition = CompetitionFactory()
@@ -246,20 +280,21 @@ class TestGetMyReviewCompetition:
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json()["my_review_status"], equal_to("completed"))
 
-    def test_includes_tagline_slug_and_image_variants_for_projects(
+    def test_includes_tagline_slug_and_the_sized_image_for_projects(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(
             title="Cool Project",
             tagline="Does something useful",
         )
-        # Image with at least one variant so we can assert the list is wired up
+        # Image with a medium variant so we can assert the ballot picks the
+        # sized URL rather than the original.
         image = ProjectImageFactory(
             project=project,
             is_main=True,
             upload_status="uploaded",
         )
-        ImageVariant.objects.create(
+        medium = ImageVariant.objects.create(
             image=image,
             size="medium",
             storage_key="test/cool-project/medium.webp",
@@ -275,18 +310,104 @@ class TestGetMyReviewCompetition:
         )
 
         assert_that(response.status_code, equal_to(200))
-        projects = response.json()["projects"]
+        projects = response.json()["pool_projects"]
         assert_that(projects, has_length(1))
         assert_that(
             projects[0],
             has_entries(
                 tagline="Does something useful",
                 slug=project.slug,
+                in_use_image_url=medium.url,
             ),
         )
-        variants = projects[0]["main_image_variants"]
-        assert_that(variants, has_length(1))
-        assert_that(variants[0], has_entries(size="medium", width=800, height=600))
+
+    def test_includes_the_category_name_for_a_categorised_project(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(category=ProjectCategoryFactory(name="Conservation"))
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            response.json()["pool_projects"][0],
+            has_entries(category_name="Conservation"),
+        )
+
+    def test_category_name_is_null_when_the_project_has_no_category(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = CompetitionFactory(projects=[ProjectFactory(category=None)])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(
+            response.json()["pool_projects"][0], has_entries(category_name=None)
+        )
+
+    def test_prefers_the_in_use_image_over_the_main_image(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, is_main=True, storage_key="main.jpg")
+        in_use = ProjectImageFactory(
+            project=project, is_usage=True, storage_key="in-use.jpg"
+        )
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(
+            response.json()["pool_projects"][0],
+            has_entries(in_use_image_url=in_use.url),
+        )
+
+    def test_falls_back_to_the_main_image_when_no_in_use_image_exists(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        main = ProjectImageFactory(project=project, is_main=True)
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(
+            response.json()["pool_projects"][0],
+            has_entries(in_use_image_url=main.url, hero_banner_url=main.url),
+        )
+
+    def test_never_resolves_an_image_that_is_still_uploading(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, is_main=True, upload_status="pending")
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(
+            response.json()["pool_projects"][0],
+            has_entries(
+                in_use_image_url=None,
+                hero_banner_url=None,
+            ),
+        )
 
     def test_avoids_n_plus_one_queries_when_loading_projects_with_images(
         self, client, user, auth_headers, django_assert_max_num_queries
@@ -311,16 +432,17 @@ class TestGetMyReviewCompetition:
                 file_size=1234,
             )
 
-        # Budget covers auth, assignment, competition + 3 prefetches, rankings,
-        # and a small allowance for middleware. N+1 over 3 projects would add
-        # at least 6 more queries (images + variants per project).
+        # Budget covers auth, assignment, competition, the service's projects
+        # query + 2 prefetches, rankings, and a small allowance for middleware.
+        # N+1 over 3 projects would add at least 6 more queries (images +
+        # variants per project).
         with django_assert_max_num_queries(10):
             response = client.get(
                 f"/api/my/reviews/competitions/{competition.id}", **auth_headers
             )
 
         assert_that(response.status_code, equal_to(200))
-        assert_that(response.json()["projects"], has_length(3))
+        assert_that(response.json()["pool_projects"], has_length(3))
 
 
 @pytest.mark.django_db
@@ -380,7 +502,73 @@ class TestUpdateRankings:
         assert_that(response.status_code, equal_to(400))
         assert_that(
             response.json()["detail"],
-            equal_to("Cannot update rankings for a completed review"),
+            equal_to("Cannot update rankings for a closed review"),
+        )
+
+    def test_returns_400_when_review_has_ended(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(
+            user=user, competition=competition, status=ReviewStatus.ENDED
+        )
+
+        response = client.put(
+            f"/api/my/reviews/competitions/{competition.id}/rankings",
+            data=json.dumps({"project_ids": [str(project.id)]}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(
+            response.json()["detail"],
+            equal_to("Cannot update rankings for a closed review"),
+        )
+
+    def test_returns_400_when_a_project_is_listed_twice(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+
+        response = client.put(
+            f"/api/my/reviews/competitions/{competition.id}/rankings",
+            data=json.dumps({"project_ids": [str(project.id), str(project.id)]}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(
+            response.json()["detail"],
+            equal_to("The same project was ranked more than once"),
+        )
+        assert_that(ProjectRanking.objects.filter(reviewer=user).count(), equal_to(0))
+
+    def test_empty_payload_clears_the_ballot(self, client, user, auth_headers) -> None:
+        project = ProjectFactory()
+        competition = CompetitionFactory(projects=[project])
+        CompetitionReviewerFactory(user=user, competition=competition)
+        ProjectRankingFactory(
+            reviewer=user, competition=competition, project=project, position=1
+        )
+
+        response = client.put(
+            f"/api/my/reviews/competitions/{competition.id}/rankings",
+            data=json.dumps({"project_ids": []}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            ProjectRanking.objects.filter(
+                reviewer=user, competition=competition
+            ).count(),
+            equal_to(0),
         )
 
     def test_successfully_creates_rankings(self, client, user, auth_headers) -> None:
@@ -749,7 +937,7 @@ class TestMyReviewProjectExclusions:
         )
 
         assert_that(response.status_code, equal_to(200))
-        projects = response.json()["projects"]
+        projects = response.json()["pool_projects"]
         assert_that(projects, has_length(1))
         assert_that(projects[0]["title"], equal_to("Approved"))
 
@@ -766,7 +954,7 @@ class TestMyReviewProjectExclusions:
         )
 
         assert_that(response.status_code, equal_to(200))
-        projects = response.json()["projects"]
+        projects = response.json()["pool_projects"]
         assert_that(projects, has_length(1))
         assert_that(projects[0]["title"], equal_to("Pending"))
 

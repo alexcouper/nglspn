@@ -3258,7 +3258,7 @@
             }
           }
         },
-        "description": "Update rankings for projects in a competition.",
+        "description": "Replace the reviewer's ballot for a competition.\n\nThe payload is the ballot in full: projects left out are unranked, and an\nempty list is a valid abstention.",
         "tags": [
           "My Review"
         ],
@@ -6337,7 +6337,7 @@
         "type": "string"
       },
       "ReviewCompetitionDetailResponse": {
-        "description": "Competition detail with projects and reviewer's rankings.",
+        "description": "Competition detail split into the reviewer's ballot and what is left.\n\n`ranked_projects` is in the reviewer's saved order; `pool_projects` is in an\norder stable for this reviewer and uncorrelated with any other reviewer's.\nThe client renders both as given rather than deriving an order of its own.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -6361,11 +6361,18 @@
           "my_review_status": {
             "$ref": "#/components/schemas/ReviewStatusEnum"
           },
-          "projects": {
+          "ranked_projects": {
             "items": {
               "$ref": "#/components/schemas/ReviewProjectResponse"
             },
-            "title": "Projects",
+            "title": "Ranked Projects",
+            "type": "array"
+          },
+          "pool_projects": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewProjectResponse"
+            },
+            "title": "Pool Projects",
             "type": "array"
           }
         },
@@ -6375,7 +6382,8 @@
           "start_date",
           "submission_deadline",
           "my_review_status",
-          "projects"
+          "ranked_projects",
+          "pool_projects"
         ],
         "title": "ReviewCompetitionDetailResponse",
         "type": "object"
@@ -6416,7 +6424,7 @@
             "title": "Website Url",
             "type": "string"
           },
-          "main_image_url": {
+          "hero_banner_url": {
             "anyOf": [
               {
                 "type": "string"
@@ -6425,15 +6433,29 @@
                 "type": "null"
               }
             ],
-            "title": "Main Image Url"
+            "title": "Hero Banner Url"
           },
-          "main_image_variants": {
-            "default": [],
-            "items": {
-              "$ref": "#/components/schemas/ImageVariantResponse"
-            },
-            "title": "Main Image Variants",
-            "type": "array"
+          "in_use_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "In Use Image Url"
+          },
+          "category_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Name"
           },
           "my_ranking": {
             "anyOf": [

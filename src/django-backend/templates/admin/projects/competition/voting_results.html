@@ -13,8 +13,8 @@
       <strong>{{ competition.get_status_display }}</strong>
     </div>
     <div>
-      <span style="opacity: 0.6; font-size: 12px; text-transform: uppercase;">Completed Voters</span><br>
-      <strong>{{ total_voters }}</strong>
+      <span style="opacity: 0.6; font-size: 12px; text-transform: uppercase;">Counted Ballots</span><br>
+      <strong>{{ counted_ballots }}</strong>
     </div>
     <div>
       <span style="opacity: 0.6; font-size: 12px; text-transform: uppercase;">Projects</span><br>
@@ -26,39 +26,82 @@
     </div>
   </div>
 
-  {% if total_voters == 0 %}
-  <p style="opacity: 0.6; margin-top: 20px;">No completed reviews yet. Results will appear once reviewers finish their rankings.</p>
-  {% endif %}
+  {% if counted_ballots == 0 %}
+  <p style="opacity: 0.6; margin-top: 20px;">No counted ballots yet. Results will appear once reviewers finish their rankings.</p>
+  {% else %}
 
-  {% if results %}
   <table style="width: 100%; border-collapse: collapse; margin-top: 20px;">
     <thead>
       <tr style="border-bottom: 2px solid var(--hairline-color);">
         <th style="text-align: center; padding: 8px 12px; width: 50px;">Rank</th>
         <th style="text-align: left; padding: 8px 12px;">Project</th>
-        <th style="text-align: center; padding: 8px 12px; width: 80px;">Score</th>
-        {% for header in position_headers %}
-        <th style="text-align: center; padding: 8px 12px; width: 60px; font-size: 12px;">{{ header }}</th>
+        <th style="text-align: center; padding: 8px 12px; width: 90px;">1st place</th>
+        <th style="text-align: center; padding: 8px 12px; width: 90px;">Ranked by</th>
+        <th style="text-align: center; padding: 8px 12px; width: 110px;">Mean position</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for row in results %}
+      <tr style="border-bottom: 1px solid var(--hairline-color);{% if row.rank == 1 %} background: rgba(202, 138, 4, 0.1);{% endif %}">
+        <td style="padding: 8px 12px; text-align: center; font-weight: bold; font-size: 18px;">
+          {% if row.rank == 1 %}
+            <span style="color: #ca8a04;">{{ row.rank }}</span>
+          {% else %}
+            {{ row.rank }}
+          {% endif %}{% if row.tie_break %}<span style="font-size: 12px; font-weight: normal; opacity: 0.7;" title="Placed by tie-break">&nbsp;*</span>{% endif %}
+        </td>
+        <td style="padding: 8px 12px;">
+          <a href="{% url 'admin:projects_project_change' row.project.pk %}">{{ row.project.title }}</a>
+        </td>
+        <td style="padding: 8px 12px; text-align: center;">{{ row.first_place_count }}</td>
+        <td style="padding: 8px 12px; text-align: center;">
+          {{ row.ranked_by_count }} / {{ counted_ballots }}
+        </td>
+        <td style="padding: 8px 12px; text-align: center;">
+          {% if row.mean_position %}{{ row.mean_position|floatformat:1 }}{% else %}<span style="opacity: 0.3;">&mdash;</span>{% endif %}
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+
+  <div style="margin-top: 10px;">
+    {% for row in results %}{% if row.tie_break %}
+    <p style="opacity: 0.7; font-size: 12px; margin: 2px 0;">
+      * <strong>{{ row.rank }}. {{ row.project.title }}</strong> &mdash; separated from
+      {{ row.tie_break_with }} by {{ row.tie_break.rung }}.
+    </p>
+    {% endif %}{% endfor %}
+  </div>
+
+  <p style="opacity: 0.6; font-size: 12px; margin-top: 12px;">
+    Only completed reviews are counted, and a low "ranked by" count means the
+    placement rests on few opinions. The method is explained in full below.
+  </p>
+
+  <h3 style="margin-top: 28px;">Pairwise margins</h3>
+  <p style="opacity: 0.6; font-size: 12px;">
+    Row minus column: a positive number is how many more ballots preferred the row project.
+    Columns are labelled by rank; hover for the project name.
+  </p>
+  <table style="border-collapse: collapse; margin-top: 8px;">
+    <thead>
+      <tr style="border-bottom: 2px solid var(--hairline-color);">
+        <th style="text-align: left; padding: 6px 10px;"></th>
+        {% for header in grid_headers %}
+        <th style="text-align: center; padding: 6px 10px; font-size: 12px;" title="{{ header.title }}">{{ header.rank }}</th>
         {% endfor %}
       </tr>
     </thead>
     <tbody>
       {% for row in results %}
-      <tr style="border-bottom: 1px solid var(--hairline-color);{% if row.rank == 1 and total_voters > 0 %} background: rgba(202, 138, 4, 0.1);{% endif %}">
-        <td style="padding: 8px 12px; text-align: center; font-weight: bold; font-size: 18px;">
-          {% if row.rank == 1 and total_voters > 0 %}
-            <span style="color: #ca8a04;">{{ row.rank }}</span>
-          {% else %}
-            {{ row.rank }}
-          {% endif %}
-        </td>
-        <td style="padding: 8px 12px;">
-          <a href="{% url 'admin:projects_project_change' row.project.pk %}">{{ row.project.title }}</a>
-        </td>
-        <td style="padding: 8px 12px; text-align: center; font-weight: bold;">{{ row.total_score }}</td>
-        {% for count in row.position_list %}
-        <td style="padding: 8px 12px; text-align: center; font-size: 13px;">
-          {% if count > 0 %}{{ count }}{% else %}<span style="opacity: 0.3;">0</span>{% endif %}
+      <tr style="border-bottom: 1px solid var(--hairline-color);">
+        <th style="text-align: left; padding: 6px 10px; font-weight: normal; font-size: 13px;">
+          {{ row.rank }}. {{ row.project.title }}
+        </th>
+        {% for margin in row.margins %}
+        <td style="padding: 6px 10px; text-align: center; font-size: 13px;{% if margin > 0 %} color: #16a34a;{% elif margin < 0 %} opacity: 0.5;{% endif %}">
+          {% if margin is None %}<span style="opacity: 0.2;">&mdash;</span>{% else %}{{ margin }}{% endif %}
         </td>
         {% endfor %}
       </tr>
@@ -66,10 +109,79 @@
     </tbody>
   </table>
 
-  <p style="opacity: 0.6; font-size: 12px; margin-top: 12px;">
-    Scoring: {{ total_projects }} projects &mdash; 1st place = {{ total_projects }} pts, 2nd = {{ total_projects|add:"-1" }} pts, &hellip;, last = 1 pt.
-    Only completed reviews are counted.
-  </p>
+  <h3 style="margin-top: 32px;">How this order is worked out</h3>
+
+  <h4 style="margin-bottom: 4px;">Step 1 &mdash; the order before any tie-break</h4>
+  <div style="font-size: 13px; max-width: 900px; line-height: 1.5;">
+    <p><strong>Every ballot becomes a set of one-to-one comparisons.</strong>
+    A project a reviewer ranked counts as preferred over every project they placed
+    below it, and over every project they left unranked. Two projects a reviewer
+    left unranked count for nothing against each other &mdash; leaving a project out
+    says &ldquo;no opinion&rdquo;, not &ldquo;last place&rdquo;.</p>
+
+    <p><strong>Those comparisons are added up per pair.</strong> The margin is the
+    number of ballots preferring X over Y minus the number preferring Y over X. A
+    margin of +3 means three more reviewers put X above Y than put Y above X. That
+    is the grid above.</p>
+
+    <p><strong>Projects are ordered by strongest chain of victories.</strong> X is
+    placed above Y when the strongest chain running from X to Y is stronger than the
+    strongest chain running back. A chain is only as strong as its weakest link: if
+    X beats P by 5 and P beats Y by 2, the chain X &rarr; P &rarr; Y is worth 2.
+    Chains matter because head-to-head results can run in a loop, and this resolves
+    the loop without ignoring any of it.</p>
+
+    <p><strong>A project's rank is the number of projects it is placed above.</strong>
+    If one project is preferred over every other project one-to-one, it always comes
+    first. Projects placed above the same number of others share a rank &mdash; that
+    is a tie, and the sequence below applies.</p>
+  </div>
+
+  <h4 style="margin-bottom: 4px;">Step 2 &mdash; breaking a tie</h4>
+  <div style="font-size: 13px; max-width: 900px; line-height: 1.5;">
+    <p>Each test below is applied only among the tied projects, in this order. The
+    first test that separates them decides the order; the rest are not consulted.</p>
+
+    <p><strong>1. Least-bad worst defeat.</strong> Look only at how the tied projects
+    did against each other. Each one's worst defeat is its biggest losing margin
+    within that group. The one whose worst defeat is least bad is placed first.</p>
+
+    <div style="margin: 8px 0 8px 16px; padding: 10px 14px; border-left: 3px solid var(--hairline-color); background: rgba(0,0,0,0.02);">
+      <p style="margin-top: 0;">Example &mdash; three tied projects whose results run in a loop:</p>
+      <p><strong>A beats B by 2 &middot; B beats C by 4 &middot; C beats A by 6</strong></p>
+      <table style="border-collapse: collapse; font-size: 13px;">
+        <tr><th style="text-align: left; padding: 3px 14px 3px 0;">Project</th><th style="text-align: left; padding: 3px 14px 3px 0;">Worst defeat within the group</th><th></th></tr>
+        <tr><td style="padding: 3px 14px 3px 0;">A</td><td style="padding: 3px 14px 3px 0;">&minus;6 (to C)</td><td></td></tr>
+        <tr><td style="padding: 3px 14px 3px 0;">B</td><td style="padding: 3px 14px 3px 0;">&minus;2 (to A)</td><td style="color: #ca8a04;">&larr; least bad</td></tr>
+        <tr><td style="padding: 3px 14px 3px 0;">C</td><td style="padding: 3px 14px 3px 0;">&minus;4 (to B)</td><td></td></tr>
+      </table>
+      <p style="margin-bottom: 0;">No project is unbeaten, so no comparison alone can
+      settle it. B is placed first because it lost by less than either of the others did.</p>
+    </div>
+
+    <p>This test uses the same margins as the ranking itself, so it can never
+    contradict the vote &mdash; it only reads more out of it.</p>
+
+    <p><strong>2. Ranked by more reviewers.</strong> How many reviewers ranked the
+    project at all. A project ten reviewers formed a view on is placed above one that
+    only four did. Only meaningful when reviewers rank some projects and not others.</p>
+
+    <p><strong>3. Better mean position.</strong> The average position the project was
+    given, among the reviewers who ranked it. Lower is better &mdash; a mean of 2.1
+    beats 3.4. A project nobody ranked has no mean position and is placed last.</p>
+
+    <p><strong>4. More first-place votes.</strong> How many reviewers put the project top.</p>
+
+    <p>Tests 3 and 4 measure <em>how much</em> reviewers preferred a project rather
+    than <em>how often</em>, which is the kind of scoring this method deliberately
+    moves away from &mdash; a project a few reviewers love and most rank last can
+    score well on both. They come last for that reason, and only ever see projects
+    the margins could not separate at all.</p>
+
+    <p><strong>If all four tests tie</strong>, the projects are indistinguishable on
+    this vote. They keep a shared rank and the choice is yours.</p>
+  </div>
+
   {% endif %}
 
   <div style="margin-top: 24px;">

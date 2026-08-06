@@ -47,7 +47,12 @@ from apps.projects.models import (
 )
 from apps.users.models import User
 from services import HANDLERS
-from services.review.tally import reduce_ballots_to_margins, schulze_order
+from services.review.tally import (
+    break_ties,
+    reduce_ballots_to_margins,
+    schulze_order,
+    support_signals,
+)
 
 COIN_FLIP = 1
 CLOSE = 3
@@ -176,7 +181,9 @@ def report(export: Export, competition: dict) -> None:
     )
 
     margins = reduce_ballots_to_margins(ballots.values(), eligible)
-    tiers = schulze_order(margins)
+    support = support_signals(ballots.values(), eligible)
+    # Same ladder the admin page applies, so the two never disagree.
+    tiers, tie_breaks = break_ties(schulze_order(margins), margins, support)
     scores = borda(ballots, eligible)
     old_order = sorted(eligible, key=lambda p: -scores[p])
     old_rank = {p: i + 1 for i, p in enumerate(old_order)}
@@ -191,12 +198,24 @@ def report(export: Export, competition: dict) -> None:
             arrow = (
                 "—" if move == 0 else (f"up {move}" if move > 0 else f"down {-move}")
             )
+            marker = (
+                "=" if len(tier) > 1 else ("*" if project_id in tie_breaks else " ")
+            )
             print(
-                f"  {was:<5}{str(rank) + ('=' if len(tier) > 1 else ' '):<6}"
+                f"  {was:<5}{str(rank) + marker:<6}"
                 f"{export.title.get(project_id, '?')[:23]:<24}"
                 f"{scores[project_id]:>6}{firsts[project_id]:>6}  {arrow}"
             )
         rank += len(tier)
+
+    for project_id in [p for tier in tiers for p in tier if p in tie_breaks]:
+        others = ", ".join(
+            export.title.get(o, "?") for o in tie_breaks[project_id].tied_with
+        )
+        print(
+            f"    * {export.title.get(project_id, '?')} — separated from "
+            f"{others} by {tie_breaks[project_id].rung}"
+        )
 
     flat = [p for tier in tiers for p in tier]
     if len(tiers[0]) > 1:

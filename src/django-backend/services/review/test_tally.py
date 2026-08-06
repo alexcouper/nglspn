@@ -297,3 +297,81 @@ class TestBreakTiesByTheLaterRungs:
 
         assert_that(tiers, equal_to([[A, B]]))
         assert_that(reasons, equal_to({}))
+
+
+class TestHistoricalTies:
+    """The five tied groups in the production ballot export, August 2026.
+
+    Signals are the real ones. These are the cases the ladder was designed
+    against, so a change in outcome here is a change in policy, not a refactor.
+    """
+
+    def test_naepa_rank_two_loop_resolves_to_habitera(self) -> None:
+        utsoluvaktin, utsolur, habitera = A, B, C
+        margins = margin_matrix(
+            {(utsoluvaktin, utsolur): 2, (habitera, utsoluvaktin): 2}
+        )
+        margins[utsolur][habitera] = 0
+        margins[habitera][utsolur] = 0
+        support = support_for(
+            {
+                utsoluvaktin: (1, 8, 3.125),
+                utsolur: (2, 8, 2.75),
+                habitera: (2, 8, 2.875),
+            }
+        )
+
+        tiers, reasons = break_ties(
+            [[utsoluvaktin, utsolur, habitera]], margins, support
+        )
+
+        assert_that(tiers[0], equal_to([habitera]))
+        assert_that(reasons[habitera].rung, equal_to("least-bad worst defeat"))
+
+    def test_hvitlaukur_rank_three_resolves_on_the_head_to_head(self) -> None:
+        icelandic_data, kronan = A, B
+        margins = margin_matrix({(icelandic_data, kronan): 1})
+        support = support_for({icelandic_data: (0, 11, 4.727), kronan: (1, 11, 4.273)})
+
+        tiers, reasons = break_ties([[icelandic_data, kronan]], margins, support)
+
+        assert_that(tiers, equal_to([[icelandic_data], [kronan]]))
+        assert_that(reasons[icelandic_data].rung, equal_to("least-bad worst defeat"))
+
+    def test_hvitlaukur_rank_five_does_not_reward_the_polarising_project(
+        self,
+    ) -> None:
+        # chessanalyses had 5 first-place votes -- more than the competition
+        # winner -- and still loses, because it lost head to head.
+        where_to_park, chessanalyses = A, B
+        margins = margin_matrix({(where_to_park, chessanalyses): 1})
+        support = support_for(
+            {where_to_park: (1, 11, 5.182), chessanalyses: (5, 11, 4.455)}
+        )
+
+        tiers, reasons = break_ties([[where_to_park, chessanalyses]], margins, support)
+
+        assert_that(tiers, equal_to([[where_to_park], [chessanalyses]]))
+        assert_that(reasons[where_to_park].rung, equal_to("least-bad worst defeat"))
+
+    def test_linsubaunir_rank_two_falls_through_to_mean_position(self) -> None:
+        navoa, runur = A, B
+        margins = margin_matrix({(navoa, runur): 0})
+        support = support_for({navoa: (1, 14, 4.429), runur: (2, 14, 3.929)})
+
+        tiers, reasons = break_ties([[navoa, runur]], margins, support)
+
+        assert_that(tiers, equal_to([[runur], [navoa]]))
+        assert_that(reasons[runur].rung, equal_to("better mean position"))
+
+    def test_linsubaunir_rank_four_falls_through_to_mean_position(self) -> None:
+        bilaleikir, beadblueprint = A, B
+        margins = margin_matrix({(bilaleikir, beadblueprint): 0})
+        support = support_for(
+            {bilaleikir: (1, 14, 5.714), beadblueprint: (2, 14, 5.214)}
+        )
+
+        tiers, reasons = break_ties([[bilaleikir, beadblueprint]], margins, support)
+
+        assert_that(tiers, equal_to([[beadblueprint], [bilaleikir]]))
+        assert_that(reasons[beadblueprint].rung, equal_to("better mean position"))

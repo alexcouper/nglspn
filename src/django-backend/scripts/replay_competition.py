@@ -57,8 +57,10 @@ from apps.users.models import User
 from services import HANDLERS, REPO
 from services.review.tally import (
     MarginMatrix,
+    break_ties,
     reduce_ballots_to_margins,
     schulze_order,
+    support_signals,
 )
 
 COMPETITION_NAME = "Broadside keppni (replay)"
@@ -197,7 +199,10 @@ def schulze_tiers(
     ballots: list[list[str]],
 ) -> tuple[list[list[str]], MarginMatrix]:
     margins = reduce_ballots_to_margins(ballots, TITLES)
-    return schulze_order(margins), margins
+    support = support_signals(ballots, TITLES)
+    # Same ladder the admin page applies, so a replay matches what it shows.
+    tiers, _reasons = break_ties(schulze_order(margins), margins, support)
+    return tiers, margins
 
 
 def has_condorcet_winner(margins: MarginMatrix) -> bool:

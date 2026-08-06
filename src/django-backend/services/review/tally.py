@@ -8,7 +8,7 @@ matrix. See openspec/changes/less-biased-project-ranking/design.md.
 from __future__ import annotations
 
 from collections import defaultdict
-from collections.abc import Collection, Iterable, Sequence
+from collections.abc import Callable, Collection, Iterable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 from uuid import UUID
@@ -32,6 +32,24 @@ class ProjectSupport:
     first_place_count: int = 0
     ranked_by_count: int = 0
     mean_position: float | None = None
+
+
+# A rung scores each tied project; higher is better, and equal scores stay tied.
+ScoreRung = Callable[
+    [list[ProjectId], MarginMatrix, dict[ProjectId, ProjectSupport]],
+    dict[ProjectId, float],
+]
+
+# Score for a project a rung cannot rate at all. Sorts last.
+_WORST = float("-inf")
+
+
+@dataclass(frozen=True)
+class TieBreak:
+    """Why a project that shared a tier now has a rank of its own."""
+
+    rung: str
+    tied_with: tuple[ProjectId, ...]
 
 
 class OrderingRule(Protocol):
@@ -148,3 +166,83 @@ def support_signals(
         )
         for project_id in eligible_project_ids
     }
+
+
+def _worst_defeat(
+    tied: list[ProjectId],
+    margins: MarginMatrix,
+    support: dict[ProjectId, ProjectSupport],
+) -> dict[ProjectId, float]:
+    """Each project's biggest losing margin *within the tied group*.
+
+    Least bad wins. For a pair this is simply the head-to-head result; for a
+    loop it is the only comparison-based answer available, because no project
+    in a loop is unbeaten.
+    """
+    return {a: min(margins[a][b] for b in tied if b != a) for a in tied}
+
+
+TIE_BREAK_RUNGS: list[tuple[str, ScoreRung]] = [
+    ("least-bad worst defeat", _worst_defeat),
+]
+
+
+def _separate(
+    tied: list[ProjectId],
+    margins: MarginMatrix,
+    support: dict[ProjectId, ProjectSupport],
+    rungs: list[tuple[str, ScoreRung]],
+) -> list[tuple[list[ProjectId], str | None]]:
+    """Split a tied group into ordered subgroups, best first.
+
+    Each subgroup is paired with the rung that separated it, or None when the
+    ladder ran out and the group is genuinely indistinguishable.
+    """
+    if len(tied) == 1 or not rungs:
+        return [(list(tied), None)]
+
+    (name, score), *rest = rungs
+    scores = score(tied, margins, support)
+    groups = [
+        [p for p in tied if scores[p] == value]
+        for value in sorted(set(scores.values()), reverse=True)
+    ]
+    if len(groups) == 1:
+        return _separate(tied, margins, support, rest)
+
+    separated: list[tuple[list[ProjectId], str | None]] = []
+    for group in groups:
+        for subgroup, deeper_name in _separate(group, margins, support, rest):
+            separated.append((subgroup, deeper_name or name))
+    return separated
+
+
+def break_ties(
+    tiers: list[list[ProjectId]],
+    margins: MarginMatrix,
+    support: dict[ProjectId, ProjectSupport],
+) -> tuple[list[list[ProjectId]], dict[ProjectId, TieBreak]]:
+    """Split tied tiers as far as the ladder allows.
+
+    Returns the new tiers and, for each project whose placement came from a
+    tiebreak, which rung decided it and who it had been tied with.
+    """
+    resolved: list[list[ProjectId]] = []
+    reasons: dict[ProjectId, TieBreak] = {}
+
+    for tier in tiers:
+        if len(tier) == 1:
+            resolved.append(list(tier))
+            continue
+
+        for group, rung in _separate(list(tier), margins, support, TIE_BREAK_RUNGS):
+            resolved.append(group)
+            if rung is None:
+                continue
+            for project_id in group:
+                reasons[project_id] = TieBreak(
+                    rung=rung,
+                    tied_with=tuple(p for p in tier if p != project_id),
+                )
+
+    return resolved, reasons

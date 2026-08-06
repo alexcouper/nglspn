@@ -7,6 +7,8 @@ from hamcrest import assert_that, equal_to
 from services.review.tally import (
     MarginMatrix,
     ProjectId,
+    ProjectSupport,
+    break_ties,
     reduce_ballots_to_margins,
     schulze_order,
     support_signals,
@@ -33,6 +35,11 @@ def margin_matrix(margins: dict[tuple[ProjectId, ProjectId], int]) -> MarginMatr
         matrix[winner][loser] = value
         matrix[loser][winner] = -value
     return matrix
+
+
+def no_support(project_ids: list[ProjectId]) -> dict[ProjectId, ProjectSupport]:
+    """Support signals that separate nothing, so only the margins decide."""
+    return {p: ProjectSupport(0, 0, None) for p in project_ids}
 
 
 def assert_margin(
@@ -183,3 +190,43 @@ class TestSupportSignals:
 
         assert_that(support[D].ranked_by_count, equal_to(0))
         assert_that(support[D].mean_position, equal_to(None))
+
+
+class TestBreakTiesByWorstDefeat:
+    def test_a_singleton_tier_is_left_alone(self) -> None:
+        margins = margin_matrix({(A, B): 1})
+
+        tiers, reasons = break_ties([[A], [B]], margins, no_support([A, B]))
+
+        assert_that(tiers, equal_to([[A], [B]]))
+        assert_that(reasons, equal_to({}))
+
+    def test_the_project_that_won_head_to_head_is_placed_first(self) -> None:
+        # Schulze could not separate them, but A beat B directly.
+        margins = margin_matrix({(A, B): 1})
+
+        tiers, reasons = break_ties([[A, B]], margins, no_support([A, B]))
+
+        assert_that(tiers, equal_to([[A], [B]]))
+        assert_that(reasons[A].rung, equal_to("least-bad worst defeat"))
+        assert_that(reasons[A].tied_with, equal_to((B,)))
+
+    def test_a_three_way_loop_is_settled_by_the_least_bad_defeat(self) -> None:
+        # The worked example printed on the admin page: A>B by 2, B>C by 4,
+        # C>A by 6. Nobody is unbeaten; B lost by least, so B is placed first.
+        margins = margin_matrix({(A, B): 2, (B, C): 4, (C, A): 6})
+
+        tiers, reasons = break_ties([[A, B, C]], margins, no_support([A, B, C]))
+
+        assert_that([t[0] for t in tiers], equal_to([B, C, A]))
+        assert_that(reasons[B].rung, equal_to("least-bad worst defeat"))
+
+    def test_a_dead_level_pair_is_left_tied_when_no_rung_can_separate_it(
+        self,
+    ) -> None:
+        margins = margin_matrix({(A, B): 0})
+
+        tiers, reasons = break_ties([[A, B]], margins, no_support([A, B]))
+
+        assert_that(tiers, equal_to([[A, B]]))
+        assert_that(reasons, equal_to({}))

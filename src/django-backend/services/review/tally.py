@@ -2,7 +2,8 @@
 
 No ORM, no Django. Ballot reduction and the ordering rule are separable —
 reduction never invokes an ordering rule, and an ordering rule sees only a
-matrix. See openspec/changes/less-biased-project-ranking/design.md.
+matrix. Swapping in a different rule therefore changes only which projects end
+up in which tier, never how a ballot is read.
 """
 
 from __future__ import annotations
@@ -46,7 +47,12 @@ _WORST = float("-inf")
 
 @dataclass(frozen=True)
 class TieBreak:
-    """Why a project that shared a tier now has a rank of its own."""
+    """Why a project shared a tier with others but no longer ranks alongside
+    all of them.
+
+    `tied_with` holds only the projects `rung` moved it clear of. A project it
+    still shares a rank with is absent — the ladder never separated the two.
+    """
 
     rung: str
     tied_with: tuple[ProjectId, ...]
@@ -216,8 +222,8 @@ def _first_places(
     return {a: support[a].first_place_count for a in tied}
 
 
-# Order matters and is argued in the design doc: the margin-based rung leads so
-# the ladder can never contradict the vote, and the positional rungs come last
+# Order matters: the margin-based rung leads so the ladder can never
+# contradict the vote, and the positional rungs come last
 # because they measure how much reviewers preferred a project rather than how
 # often — the scoring this tally deliberately moved away from.
 TIE_BREAK_RUNGS: list[tuple[str, ScoreRung]] = [
@@ -233,14 +239,16 @@ def _separate(
     margins: MarginMatrix,
     support: dict[ProjectId, ProjectSupport],
     rungs: list[tuple[str, ScoreRung]],
-) -> list[tuple[list[ProjectId], str | None]]:
+) -> list[tuple[list[ProjectId], str | None, list[ProjectId]]]:
     """Split a tied group into ordered subgroups, best first.
 
-    Each subgroup is paired with the rung that separated it, or None when the
-    ladder ran out and the group is genuinely indistinguishable.
+    Each subgroup carries the rung that separated it and the group that rung
+    was weighing when it did — the subgroup's own members plus the ones it was
+    separated from, and nobody else. The rung is None when the ladder ran out
+    and the subgroup is genuinely indistinguishable.
     """
     if len(tied) == 1 or not rungs:
-        return [(list(tied), None)]
+        return [(list(tied), None, list(tied))]
 
     (name, score), *rest = rungs
     scores = score(tied, margins, support)
@@ -251,10 +259,17 @@ def _separate(
     if len(groups) == 1:
         return _separate(tied, margins, support, rest)
 
-    separated: list[tuple[list[ProjectId], str | None]] = []
+    separated: list[tuple[list[ProjectId], str | None, list[ProjectId]]] = []
     for group in groups:
-        for subgroup, deeper_name in _separate(group, margins, support, rest):
-            separated.append((subgroup, deeper_name or name))
+        for subgroup, deeper_name, deeper_cohort in _separate(
+            group, margins, support, rest
+        ):
+            # A deeper rung acted last and on a narrower group; report that
+            # rather than this one, which the subgroup no longer needs.
+            if deeper_name is None:
+                separated.append((subgroup, name, tied))
+            else:
+                separated.append((subgroup, deeper_name, deeper_cohort))
     return separated
 
 
@@ -266,7 +281,9 @@ def break_ties(
     """Split tied tiers as far as the ladder allows.
 
     Returns the new tiers and, for each project whose placement came from a
-    tiebreak, which rung decided it and who it had been tied with.
+    tiebreak, which rung decided it and who that rung separated it from.
+    Projects still sharing its rank are not listed: they were tied with it
+    before and remain so.
     """
     resolved: list[list[ProjectId]] = []
     reasons: dict[ProjectId, TieBreak] = {}
@@ -276,14 +293,15 @@ def break_ties(
             resolved.append(list(tier))
             continue
 
-        for group, rung in _separate(list(tier), margins, support, TIE_BREAK_RUNGS):
+        for group, rung, cohort in _separate(
+            list(tier), margins, support, TIE_BREAK_RUNGS
+        ):
             resolved.append(group)
             if rung is None:
                 continue
+            still_tied = set(group)
+            separated_from = tuple(p for p in cohort if p not in still_tied)
             for project_id in group:
-                reasons[project_id] = TieBreak(
-                    rung=rung,
-                    tied_with=tuple(p for p in tier if p != project_id),
-                )
+                reasons[project_id] = TieBreak(rung=rung, tied_with=separated_from)
 
     return resolved, reasons

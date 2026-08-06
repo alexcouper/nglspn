@@ -8,13 +8,13 @@ from apps.projects.models import (
     Project,
     ProjectImage,
     ProjectRanking,
-    ProjectStatus,
     ReviewStatus,
 )
 from services.project.django_impl.query import (
     resolve_image_by_purpose,
     variant_url,
 )
+from services.review.eligibility import EXCLUDED_PROJECT_STATUSES
 from services.review.query_interface import (
     CompetitionTally,
     ReviewerProjects,
@@ -29,8 +29,6 @@ from services.review.tally import (
     schulze_order,
     support_signals,
 )
-
-EXCLUDED_PROJECT_STATUSES = [ProjectStatus.REJECTED, ProjectStatus.ICE_BOX]
 
 
 def _eligible_projects(competition_id: UUID) -> list[Project]:

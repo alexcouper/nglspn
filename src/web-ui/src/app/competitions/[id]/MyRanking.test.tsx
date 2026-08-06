@@ -409,6 +409,39 @@ describe("submitting when the ballot cannot be saved", () => {
   });
 });
 
+describe("submitting after an autosave has already failed", () => {
+  async function reorderWithAutosaveFailing() {
+    const [first, second] = makeReviewProjects(2);
+    await renderRanking([first, second], []);
+    vi.mocked(api.myReview.updateRankings).mockRejectedValue(new Error("network"));
+
+    await clickButtonWithLabel(`Move ${second.title} up`);
+    await letAutosaveFire();
+
+    return { first, second };
+  }
+
+  it("does not mark the review completed", async () => {
+    await reorderWithAutosaveFailing();
+
+    await clickButtonWithLabel("Submit Ranking");
+    await confirmSubmitInDialog();
+
+    expect(api.myReview.updateStatus).not.toHaveBeenCalled();
+  });
+
+  it("retries the write the failed autosave left outstanding", async () => {
+    const { first, second } = await reorderWithAutosaveFailing();
+    vi.mocked(api.myReview.updateRankings).mockResolvedValue({ success: true });
+
+    await clickButtonWithLabel("Submit Ranking");
+    await confirmSubmitInDialog();
+
+    expect(lastSavedIds()).toEqual([second.id, first.id]);
+    expect(api.myReview.updateStatus).toHaveBeenCalled();
+  });
+});
+
 describe("the narrow-screen tabs", () => {
   it("points each tab at the panel it controls", async () => {
     await renderRanking(makeReviewProjects(1), makeReviewProjects(1));

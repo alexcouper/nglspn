@@ -299,6 +299,43 @@ class TestBreakTiesByTheLaterRungs:
         assert_that(reasons, equal_to({}))
 
 
+class TestWhatATieBreakSeparatedAProjectFrom:
+    """`tied_with` is read out on the admin page, so it must not overstate.
+
+    A project is separated from those the deciding rung placed elsewhere —
+    never from one it still shares a rank with, and never from one an earlier
+    rung had already dealt with.
+    """
+
+    def test_a_project_is_not_listed_against_the_rank_it_still_shares(self) -> None:
+        # A beats both; B and C are level with each other on every rung.
+        margins = margin_matrix({(A, B): 2, (A, C): 2})
+        support = support_for({A: (0, 5, 2.0), B: (0, 5, 3.0), C: (0, 5, 3.0)})
+
+        tiers, reasons = break_ties([[A, B, C]], margins, support)
+
+        assert_that(tiers, equal_to([[A], [B, C]]))
+        assert_that(reasons[A].tied_with, equal_to((B, C)))
+        assert_that(reasons[B].tied_with, equal_to((A,)))
+        assert_that(reasons[C].tied_with, equal_to((A,)))
+
+    def test_a_later_rung_names_only_the_projects_it_weighed(self) -> None:
+        # Worst defeat splits {A, B} from {C, D}; breadth then splits A from B.
+        # A was never weighed against C or D by the rung that decided it.
+        margins = margin_matrix({(A, C): 2, (A, D): 2, (B, C): 2, (B, D): 2})
+        support = support_for(
+            {A: (0, 9, 2.0), B: (0, 4, 2.0), C: (0, 5, 3.0), D: (0, 5, 3.0)}
+        )
+
+        tiers, reasons = break_ties([[A, B, C, D]], margins, support)
+
+        assert_that(tiers, equal_to([[A], [B], [C, D]]))
+        assert_that(reasons[A].rung, equal_to("ranked by more reviewers"))
+        assert_that(reasons[A].tied_with, equal_to((B,)))
+        assert_that(reasons[C].rung, equal_to("least-bad worst defeat"))
+        assert_that(reasons[C].tied_with, equal_to((A, B)))
+
+
 class TestHistoricalTies:
     """The five tied groups in the production ballot export, August 2026.
 

@@ -182,13 +182,22 @@ function RankingActive({
   const isInProgress = reviewStatus === "in_progress";
   const readOnly = !isInProgress;
 
-  /** Returns whether the write landed, so submission can refuse to go ahead. */
+  /**
+   * Returns whether the write landed, so submission can refuse to go ahead.
+   *
+   * The ballot stays pending until it lands: a write that failed is still an
+   * unsaved change, and clearing it would let submission lock in the order the
+   * server happens to be holding.
+   */
   const saveNow = useCallback(
     async (projectIds: string[]): Promise<boolean> => {
       setIsSaving(true);
       setSaveError(null);
       try {
         await api.myReview.updateRankings(competitionId, projectIds);
+        // A newer edit may have arrived mid-flight; that one is still pending
+        // and this write does not cover it.
+        if (pendingIdsRef.current === projectIds) pendingIdsRef.current = null;
         return true;
       } catch {
         setSaveError("Failed to save rankings");
@@ -207,7 +216,6 @@ function RankingActive({
       saveTimeoutRef.current = setTimeout(() => {
         saveTimeoutRef.current = null;
         const ids = pendingIdsRef.current;
-        pendingIdsRef.current = null;
         if (ids) void saveNow(ids);
       }, 500);
     },
@@ -215,10 +223,11 @@ function RankingActive({
   );
 
   /**
-   * Write any debounced change immediately; used before submitting.
+   * Write any outstanding change immediately; used before submitting.
    *
    * Returns whether the ballot on screen is now the ballot on the server —
-   * `true` when there was nothing pending.
+   * `true` when there is nothing outstanding. An earlier autosave that failed
+   * is outstanding, so this retries it rather than waving submission through.
    */
   const flushPendingSave = useCallback(async (): Promise<boolean> => {
     if (saveTimeoutRef.current) {
@@ -226,7 +235,6 @@ function RankingActive({
       saveTimeoutRef.current = null;
     }
     const ids = pendingIdsRef.current;
-    pendingIdsRef.current = null;
     if (!ids) return true;
     return saveNow(ids);
   }, [saveNow]);

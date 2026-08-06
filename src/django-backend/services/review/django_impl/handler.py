@@ -9,7 +9,7 @@ from apps.projects.models import (
     ProjectRanking,
     ReviewStatus,
 )
-from services.review.django_impl.query import EXCLUDED_PROJECT_STATUSES
+from services.review.eligibility import EXCLUDED_PROJECT_STATUSES
 from services.review.exceptions import (
     DuplicateProjectError,
     ProjectNotInCompetitionError,

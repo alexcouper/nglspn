@@ -22,7 +22,7 @@ from apps.projects.models import (
     ProjectImage,
 )
 from services import HANDLERS, REPO
-from services.review.django_impl.query import EXCLUDED_PROJECT_STATUSES
+from services.review.eligibility import EXCLUDED_PROJECT_STATUSES
 from services.review.exceptions import (
     DuplicateProjectError,
     ProjectNotInCompetitionError,

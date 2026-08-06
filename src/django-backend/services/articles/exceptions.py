@@ -10,7 +10,7 @@ class ArticleNotFoundError(ArticleError):
 
 
 class ArticleNotPublishableError(ArticleError):
-    """Publish was requested but required fields (title/body/hero) are missing."""
+    """Publish was requested but required fields (title/body) are missing."""
 
 
 class ChannelNotFoundError(ArticleError):
@@ -21,12 +21,8 @@ class ChannelOnWrongProjectError(ArticleError):
     """The referenced Channel does not belong to the targeted Project."""
 
 
-class HeroImageOnWrongProjectError(ArticleError):
+class ListingImageOnWrongProjectError(ArticleError):
     """The referenced ProjectImage does not belong to the Article's project."""
-
-
-class PublishedArticleNeedsHeroImageError(ArticleError):
-    """Clearing the hero image was requested on an already-published article."""
 
 
 class InvalidCropError(ArticleError):

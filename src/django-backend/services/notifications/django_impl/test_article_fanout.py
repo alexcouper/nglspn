@@ -17,7 +17,6 @@ from tests.factories import (
     ArticleFactory,
     ChannelFactory,
     ProjectFactory,
-    ProjectImageFactory,
     PublishedArticleFactory,
     UserFactory,
 )
@@ -358,7 +357,6 @@ class TestPublishHandlerIntegration:
         channel = ChannelFactory(project=project, name="Updates")
         follower = UserFactory()
         _follow_channel(follower, project, channel)
-        image = ProjectImageFactory(project=project)
 
         article = self.article_handler.create_draft(
             project_id=project.id,
@@ -366,7 +364,6 @@ class TestPublishHandlerIntegration:
             author_id=project.creator.id,
             title="Hi",
             body="There",
-            hero_image_id=image.id,
         )
         self.article_handler.publish(article.id)
 
@@ -379,7 +376,6 @@ class TestPublishHandlerIntegration:
         channel = ChannelFactory(project=project, name="Updates")
         follower = UserFactory()
         _follow_channel(follower, project, channel)
-        image = ProjectImageFactory(project=project)
 
         article = self.article_handler.create_draft(
             project_id=project.id,
@@ -387,7 +383,6 @@ class TestPublishHandlerIntegration:
             author_id=project.creator.id,
             title="Hi",
             body="There",
-            hero_image_id=image.id,
         )
 
         self.article_handler.publish(

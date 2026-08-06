@@ -101,7 +101,7 @@ ARTICLE_DIGEST_EXCERPT_MAX = 500
 def _digest_article_image_url(article: Article) -> str | None:
     from services import REPO  # noqa: PLC0415
 
-    hero = article.hero_image
+    hero = article.listing_image
     if hero is not None:
         variants = list(hero.variants.all())
         thumb = next((v for v in variants if v.size == "thumb"), None)

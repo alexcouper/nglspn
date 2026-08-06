@@ -216,7 +216,10 @@ class ArticleFactory(factory.django.DjangoModelFactory):
 
     Sub-attributes default off the project so common cases work with no
     explicit args: `ArticleFactory()` is a publishable draft. Pass any of
-    project, channel, author, hero_image to override.
+    project, channel, author to override.
+
+    No listing image by default — an article needs none, and an image cannot be
+    linked to an article that does not exist yet. Use `article_image()` for one.
     """
 
     class Meta:
@@ -229,9 +232,13 @@ class ArticleFactory(factory.django.DjangoModelFactory):
     author = factory.LazyAttribute(lambda a: a.project.creator)
     title = "Hello world"
     body = "A solid body of text"
-    hero_image = factory.LazyAttribute(lambda a: ProjectImageFactory(project=a.project))
     source = ArticleSource.INTERNAL
     state = ArticleState.DRAFT
+
+
+def article_image(article: Article, **kwargs: object) -> ProjectImage:
+    """An image uploaded for `article`, on that article's project."""
+    return ProjectImageFactory(project=article.project, article=article, **kwargs)
 
 
 class PublishedArticleFactory(ArticleFactory):

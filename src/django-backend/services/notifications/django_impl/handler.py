@@ -90,8 +90,8 @@ def _build_group(rows: Iterable[Notification], root_id: UUID) -> NotificationGro
     )
 
 
-def _article_hero_image_url(article: Article) -> str | None:
-    hero = article.hero_image
+def _article_listing_image_url(article: Article) -> str | None:
+    hero = article.listing_image
     if hero is None:
         return None
     variants = list(hero.variants.all())
@@ -125,7 +125,7 @@ def _build_article_group(rows: list[Notification]) -> NotificationGroup:
         article_slug=article.slug,
         article_title=article.title,
         channel_name=article.channel.name,
-        article_image_url=_article_hero_image_url(article),
+        article_image_url=_article_listing_image_url(article),
     )
 
 
@@ -331,10 +331,10 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
                 "article",
                 "article__project",
                 "article__channel",
-                "article__hero_image",
+                "article__listing_image",
             )
             .prefetch_related(
-                "article__hero_image__variants",
+                "article__listing_image__variants",
                 "article__project__images__variants",
             )
             .order_by("recipient_id", "created_at")
@@ -382,10 +382,10 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
 
         article_rows = list(
             REPO.notifications.list_unread_articles_for_user(user_id)
-            .select_related("article__hero_image")
+            .select_related("article__listing_image")
             .prefetch_related(
                 "article__project__images__variants",
-                "article__hero_image__variants",
+                "article__listing_image__variants",
             )
         )
         by_article: defaultdict[UUID, list[Notification]] = defaultdict(list)

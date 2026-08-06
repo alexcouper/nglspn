@@ -2,12 +2,23 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
+from django.db import models
 from ninja import Schema
-
-from apps.projects.models import ImageSource
 
 from .tag import TagWithCategoryResponse
 from .user import PublicUserProfile
+
+
+class ImageSource(models.TextChoices):
+    """Which owner an upload is for.
+
+    This is a request shape, not a column. Storage records the owning article as
+    a real FK, so "is this an article image" cannot disagree with which article
+    it belongs to.
+    """
+
+    PROJECT = "project", "Project"
+    ARTICLE = "article", "Article"
 
 
 class ProjectCreate(Schema):
@@ -110,7 +121,7 @@ class ProjectResponse(Schema):
         # `project_gallery_images()`, but this schema can be reached with an
         # unfiltered relation and article images must never reach a gallery.
         # Filtered in Python so a prefetched relation is not thrown away.
-        return [img for img in obj.images.all() if img.source != ImageSource.ARTICLE]
+        return [img for img in obj.images.all() if img.article_id is None]
 
     @staticmethod
     def resolve_tags(obj: Any) -> list[Any]:
@@ -130,6 +141,9 @@ class PresignedUploadRequest(Schema):
     # "article" for uploads made from the article editor. Those stay out of the
     # project's gallery, cover-image picks and image cap.
     source: str = ImageSource.PROJECT
+    # The id of the owning item named by `source`. Required when source is
+    # "article"; ignored otherwise.
+    source_id: UUID | None = None
 
 
 class PresignedUploadResponse(Schema):

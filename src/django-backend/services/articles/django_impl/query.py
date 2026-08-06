@@ -17,8 +17,11 @@ if TYPE_CHECKING:
 class DjangoArticleQuery(ArticleQueryInterface):
     def get_by_id(self, article_id: UUID) -> Article | None:
         return (
-            Article.objects.select_related("project", "channel", "author", "hero_image")
-            .prefetch_related("hero_image__variants")
+            Article.objects.select_related(
+                "project", "channel", "author", "listing_image"
+            )
+            # `images` is the listing-image wizard's selection list on ArticleOut.
+            .prefetch_related("listing_image__variants", "images__variants")
             .filter(pk=article_id)
             .first()
         )
@@ -29,8 +32,11 @@ class DjangoArticleQuery(ArticleQueryInterface):
         article_slug: str,
     ) -> Article | None:
         return (
-            Article.objects.select_related("project", "channel", "author", "hero_image")
-            .prefetch_related("hero_image__variants")
+            Article.objects.select_related(
+                "project", "channel", "author", "listing_image"
+            )
+            # `images` is the listing-image wizard's selection list on ArticleOut.
+            .prefetch_related("listing_image__variants", "images__variants")
             .filter(project__slug=project_slug, slug=article_slug)
             .first()
         )
@@ -43,7 +49,7 @@ class DjangoArticleQuery(ArticleQueryInterface):
     ) -> QuerySet[Article]:
         qs = (
             Article.objects.filter(project_id=project_id)
-            .select_related("channel", "author", "hero_image")
+            .select_related("channel", "author", "listing_image")
             .order_by(F("published_at").desc(nulls_first=True), "-created_at")
         )
         if not include_drafts:

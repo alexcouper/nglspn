@@ -12,18 +12,20 @@ from apps.articles.models import (
     ArticleGlobalVisibility,
     ArticleSource,
     ArticleState,
+    ListingImageMode,
 )
 from apps.follows.models import Follow, FollowedChannel
 from apps.notifications.models import Notification
+from apps.projects.models import ProjectImage
 from apps.users.models import ArticleEmailFrequency
+from services.articles.crop import CARD_RATIO
 from services.articles.django_impl.handler import DjangoArticleHandler
 from services.articles.exceptions import (
     ArticleNotFoundError,
     ArticleNotPublishableError,
     ChannelNotFoundError,
     ChannelOnWrongProjectError,
-    HeroImageOnWrongProjectError,
-    PublishedArticleNeedsHeroImageError,
+    ListingImageOnWrongProjectError,
 )
 from tests.factories import (
     ArticleFactory,
@@ -32,7 +34,13 @@ from tests.factories import (
     ProjectImageFactory,
     PublishedArticleFactory,
     UserFactory,
+    article_image,
 )
+
+
+def _crop(x: float = 0.1, y: float = 0.2, w: float = 0.6) -> dict[str, float]:
+    """A 16:9 crop of a square source."""
+    return {"x": x, "y": y, "w": w, "h": w / CARD_RATIO, "ratio": CARD_RATIO}
 
 
 @pytest.mark.django_db
@@ -55,7 +63,8 @@ class TestCreateDraft:
         assert article.source == ArticleSource.INTERNAL
         assert article.title == ""
         assert article.body == ""
-        assert article.hero_image_id is None
+        assert article.listing_image_id is None
+        assert article.listing_image_mode == ListingImageMode.AUTO
         assert article.slug is None
         assert article.published_at is None
         assert article.global_visibility == ArticleGlobalVisibility.AUTO
@@ -70,20 +79,6 @@ class TestCreateDraft:
                 project_id=project_a.id,
                 channel_id=channel_b.id,
                 author_id=project_a.creator.id,
-            )
-
-    def test_rejects_hero_image_on_different_project(self):
-        project_a = ProjectFactory()
-        project_b = ProjectFactory()
-        channel = ChannelFactory(project=project_a)
-        image_b = ProjectImageFactory(project=project_b)
-
-        with pytest.raises(HeroImageOnWrongProjectError):
-            self.handler.create_draft(
-                project_id=project_a.id,
-                channel_id=channel.id,
-                author_id=project_a.creator.id,
-                hero_image_id=image_b.id,
             )
 
     def test_unknown_channel_raises_channel_not_found(self):
@@ -200,7 +195,6 @@ class TestPublish:
             channel_id=ChannelFactory(project=project).id,
             author_id=project.creator.id,
             body="x",
-            hero_image_id=ProjectImageFactory(project=project).id,
         )
 
         with pytest.raises(ArticleNotPublishableError):
@@ -215,13 +209,12 @@ class TestPublish:
             channel_id=ChannelFactory(project=project).id,
             author_id=project.creator.id,
             title="x",
-            hero_image_id=ProjectImageFactory(project=project).id,
         )
 
         with pytest.raises(ArticleNotPublishableError):
             self.handler.publish(article.id)
 
-    def test_rejects_publish_without_hero_image(self):
+    def test_publishes_without_an_image(self):
         project = ProjectFactory()
         article = self.handler.create_draft(
             project_id=project.id,
@@ -231,8 +224,10 @@ class TestPublish:
             body="y",
         )
 
-        with pytest.raises(ArticleNotPublishableError):
-            self.handler.publish(article.id)
+        published = self.handler.publish(article.id)
+
+        assert published.state == ArticleState.PUBLISHED
+        assert published.listing_image_id is None
 
     def test_trusted_author_gets_auto_visibility(self):
         author = UserFactory(article_trust=True)
@@ -432,41 +427,193 @@ class TestArticleSummary:
 
 
 @pytest.mark.django_db
-class TestUpdateHeroImage:
+class TestListingImageAutoMode:
     def setup_method(self):
         self.handler = DjangoArticleHandler()
 
-    def test_omitting_hero_image_id_leaves_the_hero_alone(self):
+    def test_adopts_the_earliest_upload_on_save(self):
         article = ArticleFactory()
-        original_hero_id = article.hero_image_id
+        first = article_image(article)
+        article_image(article)
 
         updated = self.handler.update_article(article.id, title="New title")
 
-        assert updated.hero_image_id == original_hero_id
+        assert updated.listing_image_id == first.id
+        assert updated.listing_crop is None
+        assert updated.listing_image_mode == ListingImageMode.AUTO
 
-    def test_explicit_none_clears_the_hero_on_a_draft(self):
+    def test_orders_by_upload_time_not_display_order(self):
+        # An article's uploads all take display_order from the project's
+        # non-article image count, so Meta.ordering cannot break the tie.
         article = ArticleFactory()
-        assert article.hero_image_id is not None
+        first = article_image(article, display_order=7)
+        article_image(article, display_order=0)
 
-        updated = self.handler.update_article(article.id, hero_image_id=None)
+        updated = self.handler.update_article(article.id, title="New title")
 
-        updated.refresh_from_db()
-        assert updated.hero_image_id is None
+        assert updated.listing_image_id == first.id
 
-    def test_explicit_none_on_a_published_article_is_rejected(self):
+    def test_a_later_upload_does_not_displace_it(self):
+        article = ArticleFactory()
+        first = article_image(article)
+        self.handler.update_article(article.id, title="One")
+
+        article_image(article)
+        updated = self.handler.update_article(article.id, title="Two")
+
+        assert updated.listing_image_id == first.id
+
+    def test_deleting_the_first_promotes_the_next(self):
+        article = ArticleFactory()
+        first = article_image(article)
+        second = article_image(article)
+        self.handler.update_article(article.id, title="One")
+
+        first.delete()
+        updated = self.handler.update_article(article.id, title="Two")
+
+        assert updated.listing_image_id == second.id
+
+    def test_stays_null_with_no_linked_images(self):
+        article = ArticleFactory()
+        ProjectImageFactory(project=article.project)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id is None
+        assert updated.listing_image_mode == ListingImageMode.AUTO
+
+
+@pytest.mark.django_db
+class TestListingImageChoice:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_choosing_an_image_commits_the_mode(self):
+        article = ArticleFactory()
+        article_image(article)
+        chosen = article_image(article)
+
+        updated = self.handler.update_article(article.id, listing_image_id=chosen.id)
+
+        assert updated.listing_image_id == chosen.id
+        assert updated.listing_image_mode == ListingImageMode.CHOSEN
+
+    def test_a_chosen_image_is_not_re_derived_on_a_later_save(self):
+        article = ArticleFactory()
+        article_image(article)
+        chosen = article_image(article)
+        self.handler.update_article(article.id, listing_image_id=chosen.id)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id == chosen.id
+
+    def test_adjusting_only_the_crop_commits_the_choice(self):
+        article = ArticleFactory()
+        first = article_image(article, width=4000, height=4000)
+        self.handler.update_article(article.id, title="One")
+
+        updated = self.handler.update_article(article.id, listing_crop=_crop())
+
+        assert updated.listing_image_mode == ListingImageMode.CHOSEN
+        assert updated.listing_image_id == first.id
+        assert updated.listing_crop["ratio"] == pytest.approx(CARD_RATIO, abs=1e-4)
+
+    def test_a_new_image_drops_a_crop_drawn_on_the_old_one(self):
+        article = ArticleFactory()
+        first = article_image(article, width=4000, height=4000)
+        replacement = article_image(article, width=4000, height=4000)
+        self.handler.update_article(
+            article.id, listing_image_id=first.id, listing_crop=_crop()
+        )
+
+        updated = self.handler.update_article(
+            article.id, listing_image_id=replacement.id
+        )
+
+        assert updated.listing_image_id == replacement.id
+        assert updated.listing_crop is None
+
+    def test_rejects_an_image_on_another_project(self):
+        article = ArticleFactory()
+        foreign = ProjectImageFactory(project=ProjectFactory())
+
+        with pytest.raises(ListingImageOnWrongProjectError):
+            self.handler.update_article(article.id, listing_image_id=foreign.id)
+
+    def test_clearing_the_image_on_a_published_article_is_allowed(self):
         article = PublishedArticleFactory(slug="a-post")
-        original_hero_id = article.hero_image_id
+        article_image(article)
+        self.handler.update_article(article.id, title="One")
 
-        with pytest.raises(PublishedArticleNeedsHeroImageError):
-            self.handler.update_article(article.id, hero_image_id=None)
+        updated = self.handler.update_article(
+            article.id,
+            listing_image_id=None,
+            listing_image_mode=ListingImageMode.NONE,
+        )
+
+        assert updated.listing_image_id is None
+
+
+@pytest.mark.django_db
+class TestListingImageRemoval:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_removal_survives_later_saves(self):
+        article = ArticleFactory()
+        article_image(article)
+        self.handler.update_article(article.id, title="One")
+
+        self.handler.update_article(
+            article.id,
+            listing_image_id=None,
+            listing_image_mode=ListingImageMode.NONE,
+        )
+        updated = self.handler.update_article(article.id, title="Two")
+
+        assert updated.listing_image_id is None
+        assert updated.listing_image_mode == ListingImageMode.NONE
+
+    def test_returning_to_auto_re_adopts_the_first_upload(self):
+        article = ArticleFactory()
+        first = article_image(article)
+        self.handler.update_article(
+            article.id,
+            listing_image_id=None,
+            listing_image_mode=ListingImageMode.NONE,
+        )
+
+        updated = self.handler.update_article(
+            article.id, listing_image_mode=ListingImageMode.AUTO
+        )
+
+        assert updated.listing_image_id == first.id
+
+
+@pytest.mark.django_db
+class TestImageArticleLink:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_deleting_an_article_deletes_its_images(self):
+        article = ArticleFactory()
+        image = article_image(article)
+        project_image = ProjectImageFactory(project=article.project)
+
+        self.handler.delete_article(article.id)
+
+        assert not ProjectImage.objects.filter(pk=image.id).exists()
+        assert ProjectImage.objects.filter(pk=project_image.id).exists()
+
+    def test_deleting_the_listing_image_blanks_it_rather_than_raising(self):
+        article = ArticleFactory()
+        image = article_image(article)
+        self.handler.update_article(article.id, listing_image_id=image.id)
+
+        image.delete()
 
         article.refresh_from_db()
-        assert article.hero_image_id == original_hero_id
-
-    def test_swapping_the_hero_on_a_published_article_is_allowed(self):
-        article = PublishedArticleFactory(slug="a-post")
-        replacement = ProjectImageFactory(project=article.project)
-
-        updated = self.handler.update_article(article.id, hero_image_id=replacement.id)
-
-        assert updated.hero_image_id == replacement.id
+        assert article.listing_image_id is None
+        assert article.listing_image_mode == ListingImageMode.CHOSEN

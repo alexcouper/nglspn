@@ -44,8 +44,6 @@ class ArticleHandlerInterface(ABC):
         author_id: UUID,
         title: str = "",
         body: str = "",
-        hero_image_id: UUID | None = None,
-        hero_crop: dict[str, float] | None = None,
     ) -> Article: ...
 
     @abstractmethod
@@ -56,11 +54,11 @@ class ArticleHandlerInterface(ABC):
         title: str | None = None,
         body: str | None = None,
         summary: str | None = None,
-        hero_image_id: UUID | None | UnsetType = UNSET,
-        # Same reason as hero_image_id: null clears the hero framing, or drops a
-        # card override back to the value derived from the hero.
-        hero_crop: dict[str, float] | None | UnsetType = UNSET,
-        card_crop: dict[str, float] | None | UnsetType = UNSET,
+        listing_image_id: UUID | None | UnsetType = UNSET,
+        # Same reason as listing_image_id: null clears the framing back to the
+        # default 16:9 centred rectangle.
+        listing_crop: dict[str, float] | None | UnsetType = UNSET,
+        listing_image_mode: str | None = None,
         channel_id: UUID | None = None,
         published_at: datetime | None = None,
     ) -> Article: ...

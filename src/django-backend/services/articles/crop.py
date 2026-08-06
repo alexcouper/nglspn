@@ -1,13 +1,11 @@
-"""Crop rectangles for article hero images and their listing cards.
+"""Crop rectangles for article listing images.
 
 A crop is normalised against the source image, so it survives the image being
 re-encoded or served at a different variant width. Cropping happens in CSS at
 render time — nothing here cuts pixels.
 
-The hero → card derivation lives only here, for the same reason
-``derive_summary`` does: a second implementation in TypeScript would drift, and
-the difference would show as a card that disagrees with itself between the
-editor's preview and the live listing.
+There is exactly one crop per article and it is always 16:9, because the lead
+card and the grid card render from the same rectangle.
 """
 
 from __future__ import annotations
@@ -19,12 +17,6 @@ from .exceptions import InvalidCropError
 
 # Listing cards are always 16:9 so a grid of them stays uniform.
 CARD_RATIO = 16 / 9
-
-# A hero wider than 4:1 is a hairline; taller than 1:1 is a tower. Neither
-# survives the article layout. Loosening these later does not invalidate stored
-# data, so they are deliberately a guess rather than a negotiation.
-MIN_RATIO = 1.0
-MAX_RATIO = 4.0
 
 # Enough to catch a client computing `ratio` wrongly, loose enough to survive
 # float round-tripping through JSON.
@@ -44,9 +36,8 @@ _PRECISION = 6
 ZERO_SIZE = "crop width and height must be greater than zero"
 TOO_LARGE = "crop is more than six times the size of the image"
 NO_OVERLAP = "crop does not overlap the image at all"
-RATIO_OUT_OF_RANGE = "crop ratio must be between 1:1 and 4:1"
 MALFORMED = "crop must carry x, y, w, h and ratio"
-NO_HERO_IMAGE = "cannot set a crop on an article with no hero image"
+NO_LISTING_IMAGE = "cannot set a crop on an article with no listing image"
 
 
 @dataclass(frozen=True)
@@ -95,7 +86,6 @@ def validate_crop(
     *,
     width: int | None = None,
     height: int | None = None,
-    expected_ratio: float | None = None,
 ) -> None:
     """Raise ``InvalidCropError`` if ``crop`` could not have come from the cropper.
 
@@ -114,12 +104,9 @@ def validate_crop(
     if crop.x >= 1 or crop.y >= 1 or crop.x + crop.w <= 0 or crop.y + crop.h <= 0:
         raise InvalidCropError(NO_OVERLAP)
 
-    if expected_ratio is not None:
-        if not _close(crop.ratio, expected_ratio):
-            msg = f"crop ratio {crop.ratio:.4f} must be {expected_ratio:.4f}"
-            raise InvalidCropError(msg)
-    elif not MIN_RATIO - _RATIO_TOLERANCE <= crop.ratio <= MAX_RATIO + _RATIO_TOLERANCE:
-        raise InvalidCropError(RATIO_OUT_OF_RANGE)
+    if not _close(crop.ratio, CARD_RATIO):
+        msg = f"crop ratio {crop.ratio:.4f} must be {CARD_RATIO:.4f}"
+        raise InvalidCropError(msg)
 
     if width and height:
         implied = (crop.w * width) / (crop.h * height)
@@ -129,58 +116,6 @@ def validate_crop(
                 f"({implied:.4f})"
             )
             raise InvalidCropError(msg)
-
-
-def derive_card_crop(
-    hero: CropRect,
-    width: int | None,
-    height: int | None,
-) -> CropRect | None:
-    """The 16:9 rect sharing ``hero``'s centre and width.
-
-    Not clamped into the image. Sliding it to fit would move the card away from
-    the subject the author framed; letting it overhang shows the same subject
-    with background at the top and bottom, which is the honest answer and the
-    one the cropper would have given.
-
-    Returns ``None`` when the source has no recorded dimensions — normalised
-    coordinates cannot be converted to an aspect without them, and those images
-    fall back to CSS centre-cropping, which is what they get today anyway.
-    """
-    if not width or not height:
-        return None
-
-    w = hero.w
-    h = w * width / (CARD_RATIO * height)
-    centre_x = hero.x + hero.w / 2
-    centre_y = hero.y + hero.h / 2
-
-    return CropRect(
-        x=centre_x - w / 2,
-        y=centre_y - h / 2,
-        w=w,
-        h=h,
-        ratio=CARD_RATIO,
-    )
-
-
-def resolve_card_crop(
-    stored_card: Any,
-    stored_hero: Any,
-    width: int | None,
-    height: int | None,
-) -> dict[str, float] | None:
-    """What a listing card should actually use: the override, else the derived rect."""
-    card = parse_crop(stored_card)
-    if card is not None:
-        return card.to_dict()
-
-    hero = parse_crop(stored_hero)
-    if hero is None:
-        return None
-
-    derived = derive_card_crop(hero, width, height)
-    return derived.to_dict() if derived else None
 
 
 def _close(a: float, b: float) -> bool:

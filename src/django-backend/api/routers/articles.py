@@ -27,9 +27,8 @@ from services.articles.exceptions import (
     ArticleNotPublishableError,
     ChannelNotFoundError,
     ChannelOnWrongProjectError,
-    HeroImageOnWrongProjectError,
     InvalidCropError,
-    PublishedArticleNeedsHeroImageError,
+    ListingImageOnWrongProjectError,
 )
 from services.articles.handler_interface import UNSET
 
@@ -74,15 +73,9 @@ def create_article(
             author_id=request.auth.id,
             title=payload.title,
             body=payload.body,
-            hero_image_id=payload.hero_image_id,
-            hero_crop=payload.hero_crop.dict() if payload.hero_crop else None,
         )
     except (ChannelNotFoundError, ChannelOnWrongProjectError):
         return 404, {"detail": "Channel not found on this project"}
-    except HeroImageOnWrongProjectError:
-        return 422, {"detail": "Hero image must belong to this project"}
-    except InvalidCropError:
-        return 422, {"detail": "Image framing is not a valid crop of this image"}
     return 201, article
 
 
@@ -158,12 +151,11 @@ _PATCH_ARTICLE_ERRORS: dict[type[ArticleError], tuple[int, str]] = {
     ArticleNotFoundError: (404, "Article not found"),
     ChannelNotFoundError: (404, "Channel not found on this project"),
     ChannelOnWrongProjectError: (404, "Channel not found on this project"),
-    HeroImageOnWrongProjectError: (422, "Hero image must belong to this project"),
-    InvalidCropError: (422, "Image framing is not a valid crop of this image"),
-    PublishedArticleNeedsHeroImageError: (
+    ListingImageOnWrongProjectError: (
         422,
-        "Published articles need a hero image — replace it rather than removing it.",
+        "Listing image must belong to this project",
     ),
+    InvalidCropError: (422, "Image framing is not a valid crop of this image"),
 }
 
 
@@ -185,9 +177,9 @@ def patch_article(
     existing = _get_article_in_project(project, article_id)
     if isinstance(existing, tuple):
         return existing
-    # A PATCH body cannot express "clear the hero" with null alone, because an
-    # omitted optional field deserialises to null too. Only forward the key the
-    # client actually sent; everything else stays UNSET.
+    # A PATCH body cannot express "clear the listing image" with null alone,
+    # because an omitted optional field deserialises to null too. Only forward
+    # the key the client actually sent; everything else stays UNSET.
     provided = payload.dict(exclude_unset=True)
     try:
         article = HANDLERS.articles.update_article(
@@ -195,9 +187,9 @@ def patch_article(
             title=payload.title,
             body=payload.body,
             summary=payload.summary,
-            hero_image_id=provided.get("hero_image_id", UNSET),
-            hero_crop=provided.get("hero_crop", UNSET),
-            card_crop=provided.get("card_crop", UNSET),
+            listing_image_id=provided.get("listing_image_id", UNSET),
+            listing_crop=provided.get("listing_crop", UNSET),
+            listing_image_mode=payload.listing_image_mode,
             channel_id=payload.channel_id,
             published_at=payload.published_at,
         )
@@ -235,7 +227,7 @@ def publish_article(
     except ArticleNotFoundError:
         return 404, {"detail": "Article not found"}
     except ArticleNotPublishableError:
-        return 422, {"detail": "Article requires title, body and hero image to publish"}
+        return 422, {"detail": "Article requires a title and body to publish"}
     return article
 
 

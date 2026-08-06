@@ -10,6 +10,7 @@ from ninja import Router
 from api.auth.security import auth
 from api.schemas.errors import Error
 from api.schemas.project import (
+    ImageSource,
     ImageUploadCompleteRequest,
     PresignedUploadRequest,
     PresignedUploadResponse,
@@ -20,8 +21,8 @@ from api.schemas.project import (
     UpdateImageRolesRequest,
 )
 from api.tasks.images import generate_image_variants
+from apps.articles.models import Article
 from apps.projects.models import (
-    ImageSource,
     Project,
     ProjectImage,
     UploadStatus,
@@ -243,12 +244,18 @@ def get_upload_url(
     is_icon = payload.is_icon
     is_article = payload.source == ImageSource.ARTICLE
 
+    article: Article | None = None
+    if is_article:
+        article = Article.objects.filter(pk=payload.source_id, project=project).first()
+        if article is None:
+            return 400, {"detail": "source_id must name an article on this project"}
+
     # Check image count limit. Icons and article uploads don't count — neither
     # occupies a slot in the project's gallery.
     current_count = (
         project.images.filter(upload_status=UploadStatus.UPLOADED)
         .exclude(is_icon=True)
-        .exclude(source=ImageSource.ARTICLE)
+        .filter(article__isnull=True)
         .count()
     )
     if not is_icon and not is_article and current_count >= MAX_IMAGES_PER_PROJECT:
@@ -269,7 +276,7 @@ def get_upload_url(
         upload_status=UploadStatus.PENDING,
         display_order=current_count,
         is_icon=is_icon,
-        source=payload.source,
+        article=article,
     )
 
     # Generate presigned URL
@@ -321,7 +328,7 @@ def complete_upload(
     # uploads are never promoted — the project's cover image must come from the
     # project's own images.
     is_icon = image.is_icon
-    is_article = image.source == ImageSource.ARTICLE
+    is_article = image.article_id is not None
     has_main = project.images.filter(is_main=True).exists()
     if not is_icon and not is_article and not has_main:
         image.is_main = True
@@ -407,7 +414,7 @@ def delete_image(
     if was_main:
         first_image = (
             project.images.filter(upload_status=UploadStatus.UPLOADED)
-            .exclude(source=ImageSource.ARTICLE)
+            .filter(article__isnull=True)
             .first()
         )
         if first_image:

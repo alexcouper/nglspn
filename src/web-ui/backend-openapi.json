@@ -5600,7 +5600,7 @@
             "title": "Summary Display",
             "type": "string"
           },
-          "hero_image_id": {
+          "listing_image_id": {
             "anyOf": [
               {
                 "format": "uuid",
@@ -5610,9 +5610,9 @@
                 "type": "null"
               }
             ],
-            "title": "Hero Image Id"
+            "title": "Listing Image Id"
           },
-          "hero_image_url": {
+          "listing_image_url": {
             "anyOf": [
               {
                 "type": "string"
@@ -5621,9 +5621,9 @@
                 "type": "null"
               }
             ],
-            "title": "Hero Image Url"
+            "title": "Listing Image Url"
           },
-          "hero_crop": {
+          "listing_crop": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/CropRect"
@@ -5633,27 +5633,11 @@
               }
             ]
           },
-          "card_crop": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CropRect"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "listing_image_mode": {
+            "title": "Listing Image Mode",
+            "type": "string"
           },
-          "card_crop_display": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CropRect"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "hero_image": {
+          "listing_image": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/ProjectImageResponse"
@@ -5662,6 +5646,13 @@
                 "type": "null"
               }
             ]
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectImageResponse"
+            },
+            "title": "Images",
+            "type": "array"
           },
           "slug": {
             "anyOf": [
@@ -5733,12 +5724,12 @@
           "body",
           "summary",
           "summary_display",
-          "hero_image_id",
-          "hero_image_url",
-          "hero_crop",
-          "card_crop",
-          "card_crop_display",
-          "hero_image",
+          "listing_image_id",
+          "listing_image_url",
+          "listing_crop",
+          "listing_image_mode",
+          "listing_image",
+          "images",
           "slug",
           "source",
           "external_url",
@@ -5833,28 +5824,6 @@
             "default": "",
             "title": "Body",
             "type": "string"
-          },
-          "hero_image_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hero Image Id"
-          },
-          "hero_crop": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CropRect"
-              },
-              {
-                "type": "null"
-              }
-            ]
           }
         },
         "required": [
@@ -5912,7 +5881,7 @@
           "channel": {
             "$ref": "#/components/schemas/ArticleChannelRef"
           },
-          "hero_image_url": {
+          "listing_image_url": {
             "anyOf": [
               {
                 "type": "string"
@@ -5921,9 +5890,9 @@
                 "type": "null"
               }
             ],
-            "title": "Hero Image Url"
+            "title": "Listing Image Url"
           },
-          "card_crop": {
+          "listing_crop": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/CropRect"
@@ -5943,8 +5912,8 @@
           "published_at",
           "global_visibility",
           "channel",
-          "hero_image_url",
-          "card_crop"
+          "listing_image_url",
+          "listing_crop"
         ],
         "title": "ArticleListItem",
         "type": "object"
@@ -5984,7 +5953,7 @@
             ],
             "title": "Summary"
           },
-          "hero_image_id": {
+          "listing_image_id": {
             "anyOf": [
               {
                 "format": "uuid",
@@ -5994,9 +5963,9 @@
                 "type": "null"
               }
             ],
-            "title": "Hero Image Id"
+            "title": "Listing Image Id"
           },
-          "hero_crop": {
+          "listing_crop": {
             "anyOf": [
               {
                 "$ref": "#/components/schemas/CropRect"
@@ -6006,15 +5975,16 @@
               }
             ]
           },
-          "card_crop": {
+          "listing_image_mode": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/CropRect"
+                "type": "string"
               },
               {
                 "type": "null"
               }
-            ]
+            ],
+            "title": "Listing Image Mode"
           },
           "channel_id": {
             "anyOf": [
@@ -6352,6 +6322,18 @@
             "default": "project",
             "title": "Source",
             "type": "string"
+          },
+          "source_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Id"
           }
         },
         "required": [

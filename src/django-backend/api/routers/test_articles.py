@@ -1,11 +1,16 @@
 from pathlib import Path
 
 import pytest
-from hamcrest import assert_that, equal_to, has_entries, has_length
+from hamcrest import (
+    assert_that,
+    contains_string,
+    equal_to,
+    has_entries,
+    has_length,
+)
 
 from apps.articles.models import Article, ArticleState
 from apps.projects.models import (
-    ImageSource,
     ImageVariant,
     ProjectStatus,
     VariantSize,
@@ -16,6 +21,7 @@ from tests.factories import (
     ProjectFactory,
     ProjectImageFactory,
     PublishedArticleFactory,
+    article_image,
 )
 
 
@@ -113,20 +119,17 @@ class TestCreateArticle:
         )
         assert_that(response.status_code, equal_to(404))
 
-    def test_hero_image_on_wrong_project_returns_422(
+    def test_listing_image_on_wrong_project_returns_422(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
-        channel = ChannelFactory(project=project, name="Updates")
+        article = ArticleFactory(project=project)
         foreign_image = ProjectImageFactory()  # belongs to a different project
 
-        response = _post(
+        response = _patch(
             client,
-            f"/api/projects/{project.id}/articles",
-            {
-                "channel_id": str(channel.id),
-                "hero_image_id": str(foreign_image.id),
-            },
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"listing_image_id": str(foreign_image.id)},
             auth_headers,
         )
         assert_that(response.status_code, equal_to(422))
@@ -379,12 +382,13 @@ class TestPatchArticle:
             equal_to("The body opening line."),
         )
 
-    def test_patch_without_hero_key_keeps_the_hero(
+    def test_patch_without_the_image_key_keeps_the_image(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
         article = ArticleFactory(project=project)
-        original_hero_id = article.hero_image_id
+        chosen = _sized_image(article)
+        _choose(client, project, article, auth_headers, chosen)
 
         response = _patch(
             client,
@@ -395,47 +399,43 @@ class TestPatchArticle:
 
         assert_that(response.status_code, equal_to(200))
         article.refresh_from_db()
-        assert_that(article.hero_image_id, equal_to(original_hero_id))
+        assert_that(article.listing_image_id, equal_to(chosen.id))
 
-    def test_explicit_null_hero_clears_it_on_a_draft(
+    def test_explicit_null_clears_the_image_on_a_draft(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
         article = ArticleFactory(project=project)
+        _choose(client, project, article, auth_headers, _sized_image(article))
 
         response = _patch(
             client,
             f"/api/projects/{project.id}/articles/{article.id}",
-            {"title": "Updated", "hero_image_id": None},
+            {"listing_image_id": None, "listing_image_mode": "none"},
             auth_headers,
         )
 
         assert_that(response.status_code, equal_to(200))
-        assert_that(response.json()["hero_image_id"], equal_to(None))
+        assert_that(response.json()["listing_image_id"], equal_to(None))
         article.refresh_from_db()
-        assert_that(article.hero_image_id, equal_to(None))
+        assert_that(article.listing_image_id, equal_to(None))
 
-    def test_explicit_null_hero_on_a_published_article_returns_422(
+    def test_explicit_null_on_a_published_article_is_accepted(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
         article = PublishedArticleFactory(project=project, slug="a-post")
+        _choose(client, project, article, auth_headers, _sized_image(article))
 
         response = _patch(
             client,
             f"/api/projects/{project.id}/articles/{article.id}",
-            {"hero_image_id": None},
+            {"listing_image_id": None, "listing_image_mode": "none"},
             auth_headers,
         )
 
-        assert_that(response.status_code, equal_to(422))
-        assert_that(
-            response.json()["detail"],
-            equal_to(
-                "Published articles need a hero image — "
-                "replace it rather than removing it."
-            ),
-        )
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["listing_image_id"], equal_to(None))
 
 
 SOURCE_WIDTH = 4000
@@ -443,323 +443,286 @@ SOURCE_HEIGHT = 2000
 CARD_RATIO = 16 / 9
 
 
-def _sized_image(project, width=SOURCE_WIDTH, height=SOURCE_HEIGHT):
-    return ProjectImageFactory(
-        project=project,
-        source=ImageSource.ARTICLE,
-        width=width,
-        height=height,
+def _sized_image(article, width=SOURCE_WIDTH, height=SOURCE_HEIGHT):
+    """An image uploaded for `article`, with dimensions so crops can validate."""
+    return article_image(article, width=width, height=height)
+
+
+def _crop(x: float, y: float, w: float) -> dict[str, float]:
+    """A 16:9 crop of the source above, with a consistent stored ratio."""
+    h = (w * SOURCE_WIDTH) / (CARD_RATIO * SOURCE_HEIGHT)
+    return {"x": x, "y": y, "w": w, "h": h, "ratio": CARD_RATIO}
+
+
+LISTING_CROP = _crop(x=0.2, y=0.3, w=0.6)
+
+
+def _choose(client, project, article, auth_headers, image, crop=None):
+    """Set the article's listing image through the API, as the wizard does."""
+    payload = {"listing_image_id": str(image.id), "listing_image_mode": "chosen"}
+    if crop is not None:
+        payload["listing_crop"] = crop
+    response = _patch(
+        client,
+        f"/api/projects/{project.id}/articles/{article.id}",
+        payload,
+        auth_headers,
     )
-
-
-def _crop(x: float, y: float, w: float, h: float) -> dict[str, float]:
-    """A crop whose ratio is consistent with its rectangle on the source above."""
-    ratio = (w * SOURCE_WIDTH) / (h * SOURCE_HEIGHT)
-    return {"x": x, "y": y, "w": w, "h": h, "ratio": ratio}
-
-
-# 3:1 on a 4000x2000 source.
-HERO_CROP = _crop(x=0.2, y=0.3, w=0.6, h=0.4)
-# 16:9 on the same source, framed somewhere else entirely.
-CARD_CROP = _crop(x=0.1, y=0.2, w=0.4, h=0.45)
+    assert_that(response.status_code, equal_to(200))
+    return response
 
 
 @pytest.mark.django_db
-class TestArticleCrops:
-    def test_a_new_article_keeps_the_framing_chosen_on_upload(
-        self, client, user, auth_headers
-    ) -> None:
+class TestListingImageMode:
+    def test_a_new_article_starts_in_auto(self, client, user, auth_headers) -> None:
         project = ProjectFactory(owner=user)
         channel = ChannelFactory(project=project, name="Updates")
-        image = _sized_image(project)
 
         response = _post(
             client,
             f"/api/projects/{project.id}/articles",
-            {
-                "channel_id": str(channel.id),
-                "title": "Framed on the first save",
-                "hero_image_id": str(image.id),
-                "hero_crop": HERO_CROP,
-            },
+            {"channel_id": str(channel.id), "title": "Fresh"},
             auth_headers,
         )
 
         assert_that(response.status_code, equal_to(201))
-        assert_that(response.json()["hero_crop"], has_entries(ratio=3.0))
+        assert_that(response.json()["listing_image_mode"], equal_to("auto"))
+        assert_that(response.json()["listing_image_id"], equal_to(None))
 
-    def test_a_new_article_rejects_a_crop_with_no_hero_image(
+    def test_auto_adopts_the_first_upload_on_save(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
-        channel = ChannelFactory(project=project, name="Updates")
-
-        response = _post(
-            client,
-            f"/api/projects/{project.id}/articles",
-            {"channel_id": str(channel.id), "hero_crop": HERO_CROP},
-            auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(422))
-
-    def test_setting_a_hero_crop_round_trips(self, client, user, auth_headers) -> None:
-        project = ProjectFactory(owner=user)
-        article = ArticleFactory(project=project, hero_image=_sized_image(project))
+        article = ArticleFactory(project=project)
+        first = _sized_image(article)
+        _sized_image(article)
 
         response = _patch(
             client,
             f"/api/projects/{project.id}/articles/{article.id}",
-            {"hero_crop": HERO_CROP},
+            {"title": "Saved"},
             auth_headers,
         )
 
-        assert_that(response.status_code, equal_to(200))
-        assert_that(response.json()["hero_crop"], has_entries(x=0.2, w=0.6, ratio=3.0))
-        article.refresh_from_db()
-        assert_that(article.hero_crop, has_entries(x=0.2, ratio=3.0))
+        assert_that(
+            response.json(),
+            has_entries(
+                listing_image_id=str(first.id),
+                listing_image_mode="auto",
+                listing_crop=None,
+            ),
+        )
 
-    def test_omitting_the_key_keeps_the_hero_crop(
+    def test_choosing_an_image_and_a_crop_round_trips(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
-        article = ArticleFactory(
-            project=project,
-            hero_image=_sized_image(project),
-            hero_crop=HERO_CROP,
+        article = ArticleFactory(project=project)
+        _sized_image(article)
+        chosen = _sized_image(article)
+
+        response = _choose(
+            client, project, article, auth_headers, chosen, crop=LISTING_CROP
         )
+
+        assert_that(
+            response.json(),
+            has_entries(
+                listing_image_id=str(chosen.id),
+                listing_image_mode="chosen",
+            ),
+        )
+        assert_that(response.json()["listing_crop"], has_entries(x=0.2, w=0.6))
+        article.refresh_from_db()
+        assert_that(article.listing_crop, has_entries(x=0.2, w=0.6))
+
+    def test_a_chosen_image_survives_a_later_save(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project)
+        _sized_image(article)
+        chosen = _sized_image(article)
+        _choose(client, project, article, auth_headers, chosen)
 
         response = _patch(
             client,
             f"/api/projects/{project.id}/articles/{article.id}",
-            {"title": "Updated"},
+            {"title": "Saved again"},
             auth_headers,
         )
 
-        assert_that(response.status_code, equal_to(200))
-        article.refresh_from_db()
-        assert_that(article.hero_crop, has_entries(ratio=3.0))
+        assert_that(response.json()["listing_image_id"], equal_to(str(chosen.id)))
 
-    def test_explicit_null_clears_the_hero_crop(
+    def test_removal_is_not_undone_by_a_later_save(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
-        article = ArticleFactory(
-            project=project,
-            hero_image=_sized_image(project),
-            hero_crop=HERO_CROP,
-        )
-
-        response = _patch(
+        article = ArticleFactory(project=project)
+        _sized_image(article)
+        _patch(
             client,
             f"/api/projects/{project.id}/articles/{article.id}",
-            {"hero_crop": None},
+            {"listing_image_id": None, "listing_image_mode": "none"},
             auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(200))
-        assert_that(response.json()["hero_crop"], equal_to(None))
-        article.refresh_from_db()
-        assert_that(article.hero_crop, equal_to(None))
-
-    def test_clearing_the_hero_image_clears_both_crops(
-        self, client, user, auth_headers
-    ) -> None:
-        project = ProjectFactory(owner=user)
-        article = ArticleFactory(
-            project=project,
-            hero_image=_sized_image(project),
-            hero_crop=HERO_CROP,
-            card_crop=CARD_CROP,
         )
 
         response = _patch(
             client,
             f"/api/projects/{project.id}/articles/{article.id}",
-            {"hero_image_id": None},
+            {"title": "Saved again"},
             auth_headers,
         )
 
-        assert_that(response.status_code, equal_to(200))
-        article.refresh_from_db()
-        assert_that(article.hero_crop, equal_to(None))
-        assert_that(article.card_crop, equal_to(None))
-
-    def test_replacing_the_hero_image_drops_a_stale_crop(
-        self, client, user, auth_headers
-    ) -> None:
-        project = ProjectFactory(owner=user)
-        article = ArticleFactory(
-            project=project,
-            hero_image=_sized_image(project),
-            hero_crop=HERO_CROP,
+        assert_that(
+            response.json(),
+            has_entries(listing_image_id=None, listing_image_mode="none"),
         )
-        replacement = _sized_image(project)
+
+
+@pytest.mark.django_db
+class TestArticleCrops:
+    def test_explicit_null_clears_the_crop(self, client, user, auth_headers) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project)
+        chosen = _sized_image(article)
+        _choose(client, project, article, auth_headers, chosen, crop=LISTING_CROP)
 
         response = _patch(
             client,
             f"/api/projects/{project.id}/articles/{article.id}",
-            {"hero_image_id": str(replacement.id)},
+            {"listing_crop": None},
             auth_headers,
         )
 
         assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["listing_crop"], equal_to(None))
         article.refresh_from_db()
-        assert_that(article.hero_crop, equal_to(None))
+        assert_that(article.listing_crop, equal_to(None))
 
-    def test_a_card_override_survives_a_hero_reframe(
+    def test_replacing_the_image_drops_a_stale_crop(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
-        article = ArticleFactory(
-            project=project,
-            hero_image=_sized_image(project),
-            hero_crop=HERO_CROP,
-            card_crop=CARD_CROP,
-        )
+        article = ArticleFactory(project=project)
+        chosen = _sized_image(article)
+        replacement = _sized_image(article)
+        _choose(client, project, article, auth_headers, chosen, crop=LISTING_CROP)
 
-        response = _patch(
-            client,
-            f"/api/projects/{project.id}/articles/{article.id}",
-            {"hero_crop": _crop(x=0.0, y=0.0, w=0.5, h=0.5)},
-            auth_headers,
-        )
+        _choose(client, project, article, auth_headers, replacement)
 
-        assert_that(response.status_code, equal_to(200))
         article.refresh_from_db()
-        assert_that(article.card_crop, has_entries(x=0.1, y=0.2, w=0.4))
+        assert_that(article.listing_image_id, equal_to(replacement.id))
+        assert_that(article.listing_crop, equal_to(None))
 
     def test_a_crop_overhanging_the_image_is_accepted(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
-        article = ArticleFactory(project=project, hero_image=_sized_image(project))
+        article = ArticleFactory(project=project)
+        chosen = _sized_image(article)
 
-        # Zoomed out until the box is wider than the image. The surround renders
-        # as the shared background colour rather than being refused.
-        response = _patch(
+        _choose(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
-            {"hero_crop": _crop(x=-0.25, y=0.1, w=1.5, h=0.75)},
+            project,
+            article,
             auth_headers,
+            chosen,
+            crop=_crop(x=-0.25, y=0.1, w=1.5),
         )
 
-        assert_that(response.status_code, equal_to(200))
         article.refresh_from_db()
-        assert_that(article.hero_crop, has_entries(x=-0.25, w=1.5))
+        assert_that(article.listing_crop, has_entries(x=-0.25, w=1.5))
 
     def test_a_crop_that_misses_the_image_entirely_returns_422(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
-        article = ArticleFactory(project=project, hero_image=_sized_image(project))
+        article = ArticleFactory(project=project)
+        chosen = _sized_image(article)
+        _choose(client, project, article, auth_headers, chosen)
 
         response = _patch(
             client,
             f"/api/projects/{project.id}/articles/{article.id}",
-            {"hero_crop": _crop(x=1.4, y=0.3, w=0.6, h=0.4)},
+            {"listing_crop": _crop(x=1.4, y=0.3, w=0.6)},
             auth_headers,
         )
 
         assert_that(response.status_code, equal_to(422))
         article.refresh_from_db()
-        assert_that(article.hero_crop, equal_to(None))
+        assert_that(article.listing_crop, equal_to(None))
 
-    def test_a_card_crop_at_the_wrong_ratio_returns_422(
+    def test_a_crop_at_the_wrong_ratio_returns_422(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
-        article = ArticleFactory(project=project, hero_image=_sized_image(project))
+        article = ArticleFactory(project=project)
+        chosen = _sized_image(article)
+        _choose(client, project, article, auth_headers, chosen)
+        four_by_three = {"x": 0.1, "y": 0.2, "w": 0.6, "h": 0.9, "ratio": 4 / 3}
 
         response = _patch(
             client,
             f"/api/projects/{project.id}/articles/{article.id}",
-            {"card_crop": _crop(x=0.1, y=0.2, w=0.6, h=0.4)},
+            {"listing_crop": four_by_three},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+        article.refresh_from_db()
+        assert_that(article.listing_crop, equal_to(None))
+
+    def test_a_crop_with_no_listing_image_returns_422(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project)
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"listing_crop": LISTING_CROP},
             auth_headers,
         )
 
         assert_that(response.status_code, equal_to(422))
 
-    def test_card_crop_display_falls_back_to_the_derived_rect(
-        self, client, user, auth_headers
-    ) -> None:
-        project = ProjectFactory(owner=user)
-        article = ArticleFactory(
-            project=project,
-            hero_image=_sized_image(project),
-            hero_crop=HERO_CROP,
-        )
-
-        response = _patch(
-            client,
-            f"/api/projects/{project.id}/articles/{article.id}",
-            {"title": "Updated"},
-            auth_headers,
-        )
-
-        body = response.json()
-        assert_that(body["card_crop"], equal_to(None))
-        assert_that(body["card_crop_display"], has_entries(ratio=round(CARD_RATIO, 6)))
-
 
 @pytest.mark.django_db
 class TestArticleListCardCrop:
-    def test_list_derives_the_card_crop_from_the_hero(self, client) -> None:
-        project = ProjectFactory(status=ProjectStatus.APPROVED)
-        PublishedArticleFactory(
-            project=project,
-            slug="derived-post",
-            hero_image=_sized_image(project),
-            hero_crop=HERO_CROP,
-        )
+    def test_list_carries_the_stored_crop(self, client, user, auth_headers) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.APPROVED)
+        article = PublishedArticleFactory(project=project, slug="a-post")
+        chosen = _sized_image(article)
+        _choose(client, project, article, auth_headers, chosen, crop=LISTING_CROP)
 
         response = client.get(f"/api/projects/{project.id}/articles")
 
-        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()[0]["listing_crop"], has_entries(x=0.2, w=0.6))
         assert_that(
-            response.json()[0]["card_crop"],
-            has_entries(ratio=round(CARD_RATIO, 6), x=0.2),
+            response.json()[0]["listing_image_url"], contains_string(chosen.storage_key)
         )
 
-    def test_list_prefers_the_card_override(self, client) -> None:
-        project = ProjectFactory(status=ProjectStatus.APPROVED)
-        PublishedArticleFactory(
-            project=project,
-            slug="override-post",
-            hero_image=_sized_image(project),
-            hero_crop=HERO_CROP,
-            card_crop=CARD_CROP,
-        )
+    def test_list_crop_is_null_without_one(self, client, user, auth_headers) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.APPROVED)
+        article = PublishedArticleFactory(project=project, slug="b-post")
+        _choose(client, project, article, auth_headers, _sized_image(article))
 
         response = client.get(f"/api/projects/{project.id}/articles")
 
-        assert_that(response.json()[0]["card_crop"], has_entries(x=0.1, y=0.2, w=0.4))
+        assert_that(response.json()[0]["listing_crop"], equal_to(None))
 
-    def test_list_card_crop_is_null_without_a_hero_crop(self, client) -> None:
+    def test_list_image_is_null_for_an_imageless_article(self, client) -> None:
         project = ProjectFactory(status=ProjectStatus.APPROVED)
-        PublishedArticleFactory(
-            project=project,
-            slug="uncropped-post",
-            hero_image=_sized_image(project),
-        )
+        PublishedArticleFactory(project=project, slug="c-post")
 
         response = client.get(f"/api/projects/{project.id}/articles")
 
-        assert_that(response.json()[0]["card_crop"], equal_to(None))
-
-    def test_list_card_crop_is_null_without_source_dimensions(self, client) -> None:
-        project = ProjectFactory(status=ProjectStatus.APPROVED)
-        undimensioned = ProjectImageFactory(project=project, source=ImageSource.ARTICLE)
-        PublishedArticleFactory(
-            project=project,
-            slug="dimensionless-post",
-            hero_image=undimensioned,
-            hero_crop=HERO_CROP,
+        assert_that(
+            response.json()[0],
+            has_entries(listing_image_url=None, listing_crop=None),
         )
-
-        response = client.get(f"/api/projects/{project.id}/articles")
-
-        assert_that(response.json()[0]["card_crop"], equal_to(None))
 
 
 @pytest.mark.django_db
@@ -830,6 +793,22 @@ class TestPublishArticle:
         article.refresh_from_db()
         assert_that(article.state, equal_to(ArticleState.PUBLISHED))
         assert article.slug  # slug assigned on publish
+
+    def test_publish_without_an_image_succeeds(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project)
+
+        response = _post(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}/publish",
+            {},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["listing_image_id"], equal_to(None))
 
     def test_publish_without_body_returns_422(self, client, user, auth_headers) -> None:
         project = ProjectFactory(owner=user)
@@ -919,54 +898,92 @@ class TestRouterHasNoOrmAccess:
 
 
 @pytest.mark.django_db
-class TestArticleHeroImage:
-    """The editor resolves an article's hero from the article response. It
-    cannot use `ProjectResponse.images`, which excludes article uploads."""
+class TestArticleListingImage:
+    """The editor resolves an article's listing image from the article
+    response. It cannot use `ProjectResponse.images`, which excludes article
+    uploads."""
 
-    def test_article_response_carries_the_full_hero_image(
+    def test_article_response_carries_the_full_listing_image(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
-        hero = ProjectImageFactory(project=project, source=ImageSource.ARTICLE)
+        article = ArticleFactory(project=project)
+        image = _sized_image(article)
         ImageVariant.objects.create(
-            image=hero,
+            image=image,
             size=VariantSize.LARGE,
             storage_key="variants/large.jpg",
             width=1536,
             height=864,
             file_size=2048,
         )
-        article = ArticleFactory(project=project, hero_image=hero)
+        _choose(client, project, article, auth_headers, image)
 
         response = client.get(
             f"/api/projects/{project.id}/articles/{article.id}", **auth_headers
         )
 
         assert_that(response.status_code, equal_to(200))
-        hero_payload = response.json()["hero_image"]
-        assert_that(hero_payload, has_entries(id=str(hero.id)))
-        assert_that(hero_payload["variants"], has_length(1))
-        assert_that(hero_payload["variants"][0], has_entries(size="large"))
+        payload = response.json()["listing_image"]
+        assert_that(payload, has_entries(id=str(image.id)))
+        assert_that(payload["variants"], has_length(1))
+        assert_that(payload["variants"][0], has_entries(size="large"))
 
-    def test_hero_image_is_null_when_the_article_has_none(
+    def test_listing_image_is_null_when_the_article_has_none(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
-        article = ArticleFactory(project=project, hero_image=None)
+        article = ArticleFactory(project=project)
 
         response = client.get(
             f"/api/projects/{project.id}/articles/{article.id}", **auth_headers
         )
 
-        assert_that(response.json()["hero_image"], equal_to(None))
+        assert_that(response.json()["listing_image"], equal_to(None))
 
-    def test_the_hero_image_stays_out_of_the_project_gallery(
+    def test_the_listing_image_stays_out_of_the_project_gallery(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user, status=ProjectStatus.APPROVED)
-        hero = ProjectImageFactory(project=project, source=ImageSource.ARTICLE)
-        ArticleFactory(project=project, hero_image=hero)
+        article = ArticleFactory(project=project)
+        _choose(client, project, article, auth_headers, _sized_image(article))
 
         response = client.get(f"/api/projects/{project.id}")
 
         assert_that(response.json()["images"], has_length(0))
+
+
+@pytest.mark.django_db
+class TestArticleImageList:
+    """`ArticleOut.images` is the listing-image wizard's selection list."""
+
+    def test_carries_the_articles_own_uploads_in_upload_order(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project)
+        first = article_image(article)
+        second = article_image(article)
+
+        response = client.get(
+            f"/api/projects/{project.id}/articles/{article.id}", **auth_headers
+        )
+
+        ids = [image["id"] for image in response.json()["images"]]
+        assert_that(ids, equal_to([str(first.id), str(second.id)]))
+
+    def test_excludes_project_images_and_other_articles_uploads(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project)
+        mine = article_image(article)
+        ProjectImageFactory(project=project)
+        article_image(ArticleFactory(project=project))
+
+        response = client.get(
+            f"/api/projects/{project.id}/articles/{article.id}", **auth_headers
+        )
+
+        ids = [image["id"] for image in response.json()["images"]]
+        assert_that(ids, equal_to([str(mine.id)]))

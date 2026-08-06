@@ -4,7 +4,6 @@ from uuid import UUID
 
 from ninja import Schema
 
-from services.articles.crop import resolve_card_crop
 from services.articles.summary import derive_summary
 
 from .project import ProjectImageResponse
@@ -28,11 +27,9 @@ class ArticleCreate(Schema):
     channel_id: UUID
     title: str = ""
     body: str = ""
-    hero_image_id: UUID | None = None
-    # The editor frames a hero at upload time, which can happen before the
-    # article's first save. No card_crop here: it is derived until the author
-    # opens the card preview, which is only reachable on a saved article.
-    hero_crop: CropRect | None = None
+    # No listing image here: an image is uploaded against an article, so a brand
+    # new article cannot have one yet. The editor creates the draft first and
+    # sets the listing image by PATCH.
 
 
 class ArticleUpdate(Schema):
@@ -41,13 +38,15 @@ class ArticleUpdate(Schema):
     # "" is meaningful here: it clears the override and returns the article to
     # the derived fallback.
     summary: str | None = None
-    hero_image_id: UUID | None = None
     # null is meaningful on both of these, so patch_article reads them out of
-    # dict(exclude_unset=True) rather than treating null as "not sent": on
-    # hero_crop it drops back to the uncropped 16:9 default, and on card_crop it
-    # drops the override back to the value derived from the hero.
-    hero_crop: CropRect | None = None
-    card_crop: CropRect | None = None
+    # dict(exclude_unset=True) rather than treating null as "not sent": null on
+    # listing_image_id clears the image, and null on listing_crop drops back to
+    # the 16:9 centred default.
+    listing_image_id: UUID | None = None
+    listing_crop: CropRect | None = None
+    # "auto" | "chosen" | "none". Omitted means "leave it as it is", except that
+    # sending an image or a crop without a mode commits the author's choice.
+    listing_image_mode: str | None = None
     channel_id: UUID | None = None
     published_at: datetime | None = None
 
@@ -78,18 +77,18 @@ class ArticleOut(Schema):
     # `summary_display` is what a listing will actually show.
     summary: str
     summary_display: str
-    hero_image_id: UUID | None
-    hero_image_url: str | None
-    # `hero_crop` and `card_crop` are what is stored — the editor needs to know
-    # whether a card override exists so it can offer "reset to match hero" —
-    # while `card_crop_display` is what a listing will actually use.
-    hero_crop: CropRect | None
-    card_crop: CropRect | None
-    card_crop_display: CropRect | None
+    listing_image_id: UUID | None
+    listing_image_url: str | None
+    listing_crop: CropRect | None
+    listing_image_mode: str
     # The full image, with variants. The editor needs this: article images are
-    # excluded from `ProjectResponse.images`, so it cannot look the hero up
-    # there when loading an article for editing.
-    hero_image: ProjectImageResponse | None
+    # excluded from `ProjectResponse.images`, so it cannot look the listing
+    # image up there when loading an article for editing.
+    listing_image: ProjectImageResponse | None
+    # Every image uploaded for this article. This is the listing-image wizard's
+    # selection list — it comes off the image-article link, so no second
+    # endpoint and no parsing of the body are needed for it.
+    images: list[ProjectImageResponse]
     slug: str | None
     source: str
     external_url: str | None
@@ -115,23 +114,25 @@ class ArticleOut(Schema):
         return obj.summary or derive_summary(obj.body)
 
     @staticmethod
-    def resolve_hero_image_id(obj: Any) -> UUID | None:
-        return obj.hero_image_id
+    def resolve_listing_image_id(obj: Any) -> UUID | None:
+        return obj.listing_image_id
 
     @staticmethod
-    def resolve_hero_image_url(obj: Any) -> str | None:
-        hero = obj.hero_image
-        if hero is None:
+    def resolve_listing_image_url(obj: Any) -> str | None:
+        image = obj.listing_image
+        if image is None:
             return None
-        return hero.url
+        return image.url
 
     @staticmethod
-    def resolve_hero_image(obj: Any) -> Any:
-        return obj.hero_image
+    def resolve_listing_image(obj: Any) -> Any:
+        return obj.listing_image
 
     @staticmethod
-    def resolve_card_crop_display(obj: Any) -> dict[str, float] | None:
-        return _resolved_card_crop(obj)
+    def resolve_images(obj: Any) -> list[Any]:
+        # Ordered by upload time to match how `auto` picks its image, so the
+        # wizard lists them in the same order the default was chosen from.
+        return sorted(obj.images.all(), key=lambda img: img.created_at)
 
     @staticmethod
     def resolve_is_globally_visible(obj: Any) -> bool:
@@ -147,19 +148,13 @@ class ArticleListItem(Schema):
     published_at: datetime | None
     global_visibility: str
     channel: ArticleChannelRef
-    hero_image_url: str | None
-    # Already resolved: a card never needs the hero crop, and deriving it here
-    # rather than in TypeScript keeps one implementation of the rule.
-    card_crop: CropRect | None
+    listing_image_url: str | None
+    listing_crop: CropRect | None
 
     @staticmethod
     def resolve_channel(obj: Any) -> dict[str, Any]:
         channel = obj.channel
         return {"id": channel.id, "name": channel.name}
-
-    @staticmethod
-    def resolve_card_crop(obj: Any) -> dict[str, float] | None:
-        return _resolved_card_crop(obj)
 
     # REPO.articles.for_project selects whole rows, so obj.body is already
     # loaded and this costs no extra queries. Do not add .only(...) to that
@@ -169,19 +164,8 @@ class ArticleListItem(Schema):
         return obj.summary or derive_summary(obj.body)
 
     @staticmethod
-    def resolve_hero_image_url(obj: Any) -> str | None:
-        hero = obj.hero_image
-        if hero is None:
+    def resolve_listing_image_url(obj: Any) -> str | None:
+        image = obj.listing_image
+        if image is None:
             return None
-        return hero.url
-
-
-def _resolved_card_crop(article: Any) -> dict[str, float] | None:
-    """The card override if set, else the rect derived from the hero crop."""
-    hero = article.hero_image
-    return resolve_card_crop(
-        article.card_crop,
-        article.hero_crop,
-        hero.width if hero else None,
-        hero.height if hero else None,
-    )
+        return image.url

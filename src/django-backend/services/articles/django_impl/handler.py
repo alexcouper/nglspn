@@ -12,12 +12,12 @@ from apps.articles.models import (
     ArticleGlobalVisibility,
     ArticleSource,
     ArticleState,
+    ListingImageMode,
 )
 from apps.articles.slugs import assign_unique_article_slug
 from apps.follows.models import Channel
 from apps.projects.models import ProjectImage
 from services.articles import crop
-from services.articles.crop import CARD_RATIO
 from services.articles.exceptions import (
     ArticleNotFoundError,
     ArticleNotPublishableError,
@@ -25,10 +25,9 @@ from services.articles.exceptions import (
     ChannelNotFoundError,
     ChannelOnWrongProjectError,
     DuplicateChannelNameError,
-    HeroImageOnWrongProjectError,
     InvalidCropError,
     LastChannelError,
-    PublishedArticleNeedsHeroImageError,
+    ListingImageOnWrongProjectError,
 )
 from services.articles.handler_interface import (
     UNSET,
@@ -74,25 +73,20 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         author_id: UUID,
         title: str = "",
         body: str = "",
-        hero_image_id: UUID | None = None,
-        hero_crop: dict[str, float] | None = None,
     ) -> Article:
         channel = self._resolve_channel_on_project(channel_id, project_id)
-        hero_image = self._resolve_hero_image(hero_image_id, project_id)
+        # No listing image on create: an image cannot be uploaded against an
+        # article that does not exist yet, so `auto` has nothing to resolve to.
         article = Article(
             project_id=project_id,
             channel=channel,
             author_id=author_id,
             title=title,
             body=body,
-            hero_image=hero_image,
+            listing_image_mode=ListingImageMode.AUTO,
             source=ArticleSource.INTERNAL,
             state=ArticleState.DRAFT,
         )
-        # The editor opens its crop dialog on upload, so the first save of a new
-        # article already carries a framing. Without this it would be dropped
-        # and only stick on the second save.
-        article.hero_crop = self._validated_crop(hero_crop, article)
         article.save()
         return article
 
@@ -103,15 +97,14 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         title: str | None = None,
         body: str | None = None,
         summary: str | None = None,
-        hero_image_id: UUID | None | UnsetType = UNSET,
-        hero_crop: dict[str, float] | None | UnsetType = UNSET,
-        card_crop: dict[str, float] | None | UnsetType = UNSET,
+        listing_image_id: UUID | None | UnsetType = UNSET,
+        listing_crop: dict[str, float] | None | UnsetType = UNSET,
+        listing_image_mode: str | None = None,
         channel_id: UUID | None = None,
         published_at: datetime | None = None,
     ) -> Article:
         article = self._get_article(article_id)
         update_fields: list[str] = []
-        hero_changed = False
 
         if title is not None and title != article.title:
             article.title = title
@@ -122,24 +115,11 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         if summary is not None and summary != article.summary:
             article.summary = summary
             update_fields.append("summary")
-        if hero_image_id is not UNSET:
-            # _resolve_hero_image raises for an unknown id, so None here only
-            # ever means "the caller asked to clear it".
-            hero_image = self._resolve_hero_image(hero_image_id, article.project_id)
-            if hero_image is None and article.state == ArticleState.PUBLISHED:
-                raise PublishedArticleNeedsHeroImageError
-            new_hero_id = hero_image.pk if hero_image else None
-            if new_hero_id != article.hero_image_id:
-                article.hero_image = hero_image
-                update_fields.append("hero_image")
-                hero_changed = True
-        # Called after the hero is reassigned, so a new image and its crop
-        # arriving together validate against the image the crop was drawn on.
-        update_fields += self._apply_crops(
+        update_fields += self._apply_listing_image(
             article,
-            hero_crop=hero_crop,
-            card_crop=card_crop,
-            hero_changed=hero_changed,
+            listing_image_id=listing_image_id,
+            listing_crop=listing_crop,
+            listing_image_mode=listing_image_mode,
         )
         if channel_id is not None and channel_id != article.channel_id:
             channel = self._resolve_channel_on_project(channel_id, article.project_id)
@@ -163,7 +143,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
     ) -> Article:
         article = self._get_article(article_id)
 
-        if not article.title or not article.body or article.hero_image_id is None:
+        if not article.title or not article.body:
             raise ArticleNotPublishableError
 
         effective_published_at = published_at or timezone.now()
@@ -259,75 +239,123 @@ class DjangoArticleHandler(ArticleHandlerInterface):
     # Helpers
     # ------------------------------------------------------------------
 
-    def _apply_crops(
+    def _apply_listing_image(
         self,
         article: Article,
         *,
-        hero_crop: dict[str, float] | None | UnsetType,
-        card_crop: dict[str, float] | None | UnsetType,
-        hero_changed: bool,
+        listing_image_id: UUID | None | UnsetType,
+        listing_crop: dict[str, float] | None | UnsetType,
+        listing_image_mode: str | None,
     ) -> list[str]:
-        """Set whichever crops the caller sent, and return the fields touched."""
+        """Settle the listing image, its crop and its mode; return fields touched.
+
+        Called on every update, because ``auto`` is resolved on save rather than
+        on read — a listing card is then a plain FK join instead of a per-card
+        subquery.
+        """
+        mode = self._resolve_mode(
+            article,
+            listing_image_id=listing_image_id,
+            listing_crop=listing_crop,
+            listing_image_mode=listing_image_mode,
+        )
+
+        if mode == ListingImageMode.NONE:
+            image: ProjectImage | None = None
+            rect: dict[str, float] | None = None
+        elif mode == ListingImageMode.AUTO:
+            # `ProjectImage.Meta.ordering` leads with display_order, which is
+            # identical across an article's uploads, so order explicitly.
+            image = article.images.order_by("created_at").first()
+            rect = None
+        else:
+            image = self._chosen_image(article, listing_image_id)
+            rect = self._chosen_crop(
+                article,
+                image,
+                listing_crop=listing_crop,
+                image_changed=(image.pk if image else None) != article.listing_image_id,
+            )
+
         touched: list[str] = []
-
-        if hero_crop is not UNSET:
-            value = self._validated_crop(hero_crop, article)
-            if value != article.hero_crop:
-                article.hero_crop = value
-                touched.append("hero_crop")
-        if card_crop is not UNSET:
-            value = self._validated_crop(card_crop, article, expected_ratio=CARD_RATIO)
-            if value != article.card_crop:
-                article.card_crop = value
-                touched.append("card_crop")
-
-        if not hero_changed:
-            return touched
-
-        # A rectangle drawn on one image means nothing on another, so a hero
-        # that changed or went away takes with it any crop the caller did not
-        # explicitly replace in the same request.
-        if hero_crop is UNSET and article.hero_crop is not None:
-            article.hero_crop = None
-            touched.append("hero_crop")
-        if card_crop is UNSET and article.card_crop is not None:
-            article.card_crop = None
-            touched.append("card_crop")
+        if (image.pk if image else None) != article.listing_image_id:
+            article.listing_image = image
+            touched.append("listing_image")
+        if rect != article.listing_crop:
+            article.listing_crop = rect
+            touched.append("listing_crop")
+        if mode != article.listing_image_mode:
+            article.listing_image_mode = mode
+            touched.append("listing_image_mode")
         return touched
+
+    def _resolve_mode(
+        self,
+        article: Article,
+        *,
+        listing_image_id: UUID | None | UnsetType,
+        listing_crop: dict[str, float] | None | UnsetType,
+        listing_image_mode: str | None,
+    ) -> str:
+        """An explicit mode wins; otherwise touching the image or its framing
+        commits the author's choice, so the next save does not re-derive the
+        image out from under a rectangle they just drew.
+        """
+        if listing_image_mode is not None:
+            return listing_image_mode
+        if listing_image_id is not UNSET or listing_crop is not UNSET:
+            return ListingImageMode.CHOSEN
+        return article.listing_image_mode
+
+    def _chosen_image(
+        self,
+        article: Article,
+        listing_image_id: UUID | None | UnsetType,
+    ) -> ProjectImage | None:
+        if listing_image_id is UNSET:
+            return article.listing_image
+        return self._resolve_listing_image(listing_image_id, article.project_id)
+
+    def _chosen_crop(
+        self,
+        article: Article,
+        image: ProjectImage | None,
+        *,
+        listing_crop: dict[str, float] | None | UnsetType,
+        image_changed: bool,
+    ) -> dict[str, float] | None:
+        if listing_crop is not UNSET:
+            return self._validated_crop(listing_crop, image)
+        # A rectangle drawn on one image means nothing on another, so an image
+        # that changed or went away takes its framing with it.
+        if image_changed:
+            return None
+        return article.listing_crop
 
     def _validated_crop(
         self,
         value: dict[str, float] | None,
-        article: Article,
-        *,
-        expected_ratio: float | None = None,
+        image: ProjectImage | None,
     ) -> dict[str, float] | None:
         """Normalise an incoming crop, or raise ``InvalidCropError``."""
         if value is None:
             return None
-
-        hero = article.hero_image
-        if hero is None:
-            raise InvalidCropError(crop.NO_HERO_IMAGE)
+        if image is None:
+            raise InvalidCropError(crop.NO_LISTING_IMAGE)
 
         rect = crop.parse_crop(value)
         if rect is None:
             raise InvalidCropError(crop.MALFORMED)
-        crop.validate_crop(
-            rect,
-            width=hero.width,
-            height=hero.height,
-            expected_ratio=expected_ratio,
-        )
+        crop.validate_crop(rect, width=image.width, height=image.height)
         return rect.to_dict()
 
     def _get_article(self, article_id: UUID) -> Article:
         try:
             return (
                 Article.objects.select_related(
-                    "project", "channel", "author", "hero_image"
+                    "project", "channel", "author", "listing_image"
                 )
-                .prefetch_related("hero_image__variants")
+                .prefetch_related("listing_image__variants")
                 .get(pk=article_id)
             )
         except Article.DoesNotExist as exc:
@@ -344,15 +372,15 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             raise ChannelOnWrongProjectError
         return channel
 
-    def _resolve_hero_image(
-        self, hero_image_id: UUID | None, project_id: UUID
+    def _resolve_listing_image(
+        self, listing_image_id: UUID | None, project_id: UUID
     ) -> ProjectImage | None:
-        if hero_image_id is None:
+        if listing_image_id is None:
             return None
         try:
-            image = ProjectImage.objects.get(pk=hero_image_id)
+            image = ProjectImage.objects.get(pk=listing_image_id)
         except ProjectImage.DoesNotExist as exc:
-            raise HeroImageOnWrongProjectError from exc
+            raise ListingImageOnWrongProjectError from exc
         if image.project_id != project_id:
-            raise HeroImageOnWrongProjectError
+            raise ListingImageOnWrongProjectError
         return image

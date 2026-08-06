@@ -11,7 +11,6 @@ from django.utils import timezone
 from apps.projects.models import (
     Competition,
     ContributorRole,
-    ImageSource,
     Project,
     ProjectCategory,
     ProjectContributor,
@@ -45,7 +44,7 @@ def project_gallery_images() -> QuerySet[ProjectImage]:
     """
     return (
         ProjectImage.objects.filter(upload_status=UploadStatus.UPLOADED)
-        .exclude(source=ImageSource.ARTICLE)
+        .filter(article__isnull=True)
         .prefetch_related("variants")
     )
 

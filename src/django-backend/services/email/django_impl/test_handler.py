@@ -6,7 +6,12 @@ from apps.emails.models import BroadcastEmailRecipient, SentEmail, SentEmailType
 from apps.projects.models import ContributorRole, ProjectContributor
 from services import REPO
 from services.email.django_impl import DjangoEmailHandler
+from services.email.django_impl.handler import (
+    ARTICLE_DIGEST_EXCERPT_MAX,
+    build_article_digest_entries,
+)
 from tests.factories import (
+    ArticleFactory,
     BroadcastEmailFactory,
     DiscussionFactory,
     NotificationFactory,
@@ -421,3 +426,63 @@ class TestSendDiscussionDigestEmail:
         html, _ = mailoutbox[0].alternatives[0]
         expected = f"/projects/my-app?comment={latest.id}#discussions"
         assert expected in html
+
+
+def _article_notification(body="", summary=""):
+    from apps.notifications.models import Notification  # noqa: PLC0415
+
+    return Notification.objects.create(
+        recipient=UserFactory(),
+        discussion=None,
+        article=ArticleFactory(body=body, summary=summary),
+    )
+
+
+def _excerpt_of(notification):
+    return build_article_digest_entries([notification])[0]["body_excerpt"]
+
+
+@pytest.mark.django_db
+class TestArticleDigestExcerpt:
+    def test_strips_markdown_syntax_from_the_body(self):
+        notification = _article_notification(
+            body="Read the [full write-up](https://example.com/post) today."
+        )
+
+        assert _excerpt_of(notification) == "Read the full write-up today."
+
+    def test_skips_leading_heading_and_image_blocks(self):
+        notification = _article_notification(
+            body="# The Results\n\n![](https://cdn.example.com/hero.jpg)\n\n"
+            "Eight entries."
+        )
+
+        assert _excerpt_of(notification) == "Eight entries."
+
+    def test_prefers_the_authored_summary(self):
+        notification = _article_notification(
+            body="## Ignored\n\nDerived from the body.",
+            summary="The authored summary.",
+        )
+
+        assert _excerpt_of(notification) == "The authored summary."
+
+    def test_truncates_a_long_body_on_a_word_boundary(self):
+        notification = _article_notification(body="chili " * 200)
+
+        excerpt = _excerpt_of(notification)
+        assert len(excerpt) <= ARTICLE_DIGEST_EXCERPT_MAX + 1
+        assert excerpt.endswith("chili…")
+
+    def test_digest_email_html_carries_no_markdown_syntax(self, mailoutbox):
+        notification = _article_notification(
+            body="Winner: [Broadside](https://example.com/broadside)\n\n"
+            "### Congratulations\n\n*Fast, tactical naval battles.*"
+        )
+
+        handler.send_article_digest_email([notification])
+
+        html, _ = mailoutbox[0].alternatives[0]
+        assert "Winner: Broadside" in html
+        assert "[Broadside]" not in html
+        assert "### Congratulations" not in html

@@ -13,6 +13,7 @@ from apps.emails.models import (
     SentEmail,
     SentEmailType,
 )
+from services.articles.summary import derive_summary
 from services.email import EMAIL_LOGO_URL
 from services.email.handler_interface import EmailHandlerInterface
 
@@ -115,9 +116,11 @@ def build_article_digest_entries(notifications: Sequence[Notification]) -> list[
     for n in notifications:
         article = n.article
         project = article.project
-        body_excerpt = (article.body or "").strip()
-        if len(body_excerpt) > ARTICLE_DIGEST_EXCERPT_MAX:
-            body_excerpt = body_excerpt[:ARTICLE_DIGEST_EXCERPT_MAX].rstrip() + "…"
+        # Same excerpt the listing card shows: the email is plain text, so the
+        # markdown body has to be flattened rather than pasted in raw.
+        body_excerpt = article.summary or derive_summary(
+            article.body or "", limit=ARTICLE_DIGEST_EXCERPT_MAX
+        )
         project_slug_or_id = project.slug or project.id
         article_slug_or_id = article.slug or article.id
         entries.append(

@@ -11,7 +11,6 @@ import remarkGfm from "remark-gfm";
 import { articleSanitizeSchema } from "../sanitize-schema";
 import "../article-markdown.css";
 import { useAuth } from "@/contexts/auth";
-import { ArticleHeroImage } from "@/components/ArticleHeroImage";
 import type { Article, Project } from "@/lib/api";
 import { api } from "@/lib/api";
 import { formatDate, getAuthorName } from "@/lib/utils";
@@ -95,19 +94,9 @@ export function ArticleRenderContent({ project, article }: Props) {
           </span>
         </div>
 
-        {article.hero_image_url && (
-          <ArticleHeroImage
-            src={article.hero_image_url}
-            alt={article.title}
-            articleId={article.id}
-            // The framing the author chose, frozen with the article. Same
-            // component and same crop as the editor's preview.
-            crop={article.hero_crop}
-            priority
-            className="rounded-lg mt-6"
-          />
-        )}
-
+        {/* No image band above the body. The listing image describes the
+            article in a list; an author who wants an image at the top of the
+            piece inserts one into the body. */}
         <div className="markdown markdown-article mt-8">
           <ReactMarkdown
             remarkPlugins={[remarkGfm]}

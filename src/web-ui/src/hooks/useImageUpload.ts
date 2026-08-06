@@ -20,6 +20,8 @@ interface UseImageUploadOptions {
   projectId: string;
   isIcon?: boolean;
   source?: ImageSource;
+  // The article an "article" upload belongs to.
+  sourceId?: string | null;
   onUploadComplete?: (image: ProjectImage) => void;
   onError?: (error: Error) => void;
 }
@@ -28,6 +30,7 @@ export function useImageUpload({
   projectId,
   isIcon = false,
   source = "project",
+  sourceId = null,
   onUploadComplete,
   onError,
 }: UseImageUploadOptions) {
@@ -53,6 +56,7 @@ export function useImageUpload({
         const completedImage = await uploadProjectImage(projectId, file, {
           isIcon,
           source,
+          sourceId,
           onImageId: (id) => {
             imageId = id;
             setUploads((prev) => [
@@ -104,6 +108,7 @@ export function useImageUpload({
       projectId,
       isIcon,
       source,
+      sourceId,
       onUploadComplete,
       onError,
       updateUpload,

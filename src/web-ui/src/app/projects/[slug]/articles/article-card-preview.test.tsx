@@ -1,9 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { Article } from "@/lib/api";
+import type { Article, ProjectImage } from "@/lib/api";
 import type { CropRect } from "@/components/CroppedImage";
 import { ArticleCardPreview, toListItem } from "./ArticleCardPreview";
+import { ListingSettingsPanel } from "./ListingSettingsPanel";
 
 // ------------------------------------------------------------------ mounting
 
@@ -33,20 +34,34 @@ async function typeInto(el: HTMLTextAreaElement, value: string) {
   });
 }
 
+async function click(el: Element) {
+  await act(async () => {
+    el.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
+function buttonLabelled(container: HTMLElement, label: string): HTMLElement {
+  return [...container.querySelectorAll("button")].find(
+    (b) => b.textContent?.trim() === label,
+  )!;
+}
+
 // --------------------------------------------------------------- factories
 
-// Only the fields the preview reads; the rest of ProjectImage is irrelevant here.
-function heroImage(
-  overrides: { width: number | null; height: number | null } = {
-    width: 4000,
-    height: 2000,
-  },
-): Article["hero_image"] {
+// Only the fields these components read; the rest of ProjectImage is
+// irrelevant here.
+function listingImage(
+  overrides: Partial<ProjectImage> = {},
+): ProjectImage {
   return {
     id: "img-1",
+    url: "https://cdn.example/listing.png",
+    original_filename: "listing.png",
+    width: 4000,
+    height: 2000,
     variants: [],
     ...overrides,
-  } as unknown as Article["hero_image"];
+  } as unknown as ProjectImage;
 }
 
 function article(overrides: Partial<Article> = {}): Article {
@@ -59,12 +74,12 @@ function article(overrides: Partial<Article> = {}): Article {
     body: "The body opening line.",
     summary: "",
     summary_display: "The body opening line.",
-    hero_image_id: "img-1",
-    hero_image_url: "https://cdn.example/hero.png",
-    hero_image: heroImage(),
-    hero_crop: null,
-    card_crop: null,
-    card_crop_display: null,
+    listing_image_id: "img-1",
+    listing_image_url: "https://cdn.example/listing.png",
+    listing_image: listingImage(),
+    listing_crop: null,
+    listing_image_mode: "auto",
+    images: [listingImage()],
     slug: "a-headline",
     source: "internal",
     external_url: null,
@@ -78,10 +93,25 @@ function article(overrides: Partial<Article> = {}): Article {
   } as Article;
 }
 
-// ---------------------------------------------------------------- the tests
+const LISTING_CROP: CropRect = { x: 0.1, y: 0.2, w: 0.4, h: 0.225, ratio: 16 / 9 };
 
-const CARD_CROP: CropRect = { x: 0.1, y: 0.2, w: 0.4, h: 0.45, ratio: 16 / 9 };
-const DERIVED_CROP: CropRect = { x: 0, y: 0, w: 0.9, h: 1, ratio: 16 / 9 };
+function panel(overrides: Partial<React.ComponentProps<typeof ListingSettingsPanel>> = {}) {
+  return (
+    <ListingSettingsPanel
+      article={article()}
+      summary=""
+      listingImage={listingImage()}
+      crop={null}
+      mode="auto"
+      onSummaryChange={() => {}}
+      onChangeImage={() => {}}
+      onRemoveImage={() => {}}
+      {...overrides}
+    />
+  );
+}
+
+// ---------------------------------------------------------------- the tests
 
 describe("toListItem", () => {
   it("prefers the authored summary over the derived one", () => {
@@ -96,39 +126,86 @@ describe("toListItem", () => {
     expect(item.summary).toBe("The body opening line.");
   });
 
-  it("falls back to the derived card crop when there is no override", () => {
+  it("takes the unsaved image and crop over the saved ones", () => {
     const item = toListItem(
-      article({ card_crop_display: DERIVED_CROP }),
+      article(),
       undefined,
-      null,
+      "https://cdn.example/other.png",
+      LISTING_CROP,
     );
 
-    expect(item.card_crop).toEqual(DERIVED_CROP);
+    expect(item.listing_image_url).toBe("https://cdn.example/other.png");
+    expect(item.listing_crop).toEqual(LISTING_CROP);
   });
 
-  it("prefers a card crop override over the derived one", () => {
-    const item = toListItem(
-      article({ card_crop_display: DERIVED_CROP }),
-      undefined,
-      CARD_CROP,
-    );
+  it("carries an explicit null image through rather than falling back", () => {
+    const item = toListItem(article(), undefined, null, null);
 
-    expect(item.card_crop).toEqual(CARD_CROP);
+    expect(item.listing_image_url).toBeNull();
   });
 });
 
 describe("ArticleCardPreview", () => {
-  it("shows the derived summary as a placeholder when none is authored", async () => {
+  it("shows one variant at a time, starting with the lead card", async () => {
     const { container, unmount: cleanup } = await mount(
       <ArticleCardPreview
         article={article()}
         summary=""
-        cardCrop={null}
-        onSummaryChange={() => {}}
-        onAdjustFraming={() => {}}
-        onResetFraming={() => {}}
+        imageUrl="https://cdn.example/listing.png"
+        crop={null}
       />,
     );
+
+    expect(container.querySelectorAll("article").length).toBe(1);
+    expect(
+      buttonLabelled(container, "As lead story").getAttribute("aria-selected"),
+    ).toBe("true");
+
+    cleanup();
+  });
+
+  it("switches to the grid card without showing the lead one as well", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <ArticleCardPreview
+        article={article()}
+        summary=""
+        imageUrl="https://cdn.example/listing.png"
+        crop={null}
+      />,
+    );
+
+    await click(buttonLabelled(container, "In the grid"));
+
+    expect(container.querySelectorAll("article").length).toBe(1);
+    expect(
+      buttonLabelled(container, "In the grid").getAttribute("aria-selected"),
+    ).toBe("true");
+    expect(
+      buttonLabelled(container, "As lead story").getAttribute("aria-selected"),
+    ).toBe("false");
+
+    cleanup();
+  });
+
+  it("previews the typed summary rather than the derived one", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <ArticleCardPreview
+        article={article()}
+        summary="An authored hook."
+        imageUrl={null}
+        crop={null}
+      />,
+    );
+
+    expect(container.textContent).toContain("An authored hook.");
+
+    cleanup();
+  });
+});
+
+describe("ListingSettingsPanel", () => {
+  it("shows the derived summary as a placeholder when none is authored", async () => {
+    const { container, unmount: cleanup } = await mount(panel());
 
     const textarea = container.querySelector("textarea")!;
     expect(textarea.value).toBe("");
@@ -140,14 +217,7 @@ describe("ArticleCardPreview", () => {
   it("reports typed text back to its owner", async () => {
     const onSummaryChange = vi.fn();
     const { container, unmount: cleanup } = await mount(
-      <ArticleCardPreview
-        article={article()}
-        summary=""
-        cardCrop={null}
-        onSummaryChange={onSummaryChange}
-        onAdjustFraming={() => {}}
-        onResetFraming={() => {}}
-      />,
+      panel({ onSummaryChange }),
     );
 
     await typeInto(container.querySelector("textarea")!, "An authored hook.");
@@ -157,96 +227,57 @@ describe("ArticleCardPreview", () => {
     cleanup();
   });
 
-  it("previews the typed summary rather than the derived one", async () => {
-    const { container, unmount: cleanup } = await mount(
-      <ArticleCardPreview
-        article={article()}
-        summary="An authored hook."
-        cardCrop={null}
-        onSummaryChange={() => {}}
-        onAdjustFraming={() => {}}
-        onResetFraming={() => {}}
-      />,
-    );
+  it("says the image is following the article rather than chosen", async () => {
+    const { container, unmount: cleanup } = await mount(panel({ mode: "auto" }));
 
-    expect(container.textContent).toContain("An authored hook.");
+    expect(container.textContent).toContain(
+      "Following the first image in this article.",
+    );
 
     cleanup();
   });
 
-  it("renders both a lead and a grid card", async () => {
+  it("says the image is the author's own choice", async () => {
     const { container, unmount: cleanup } = await mount(
-      <ArticleCardPreview
-        article={article()}
-        summary=""
-        cardCrop={null}
-        onSummaryChange={() => {}}
-        onAdjustFraming={() => {}}
-        onResetFraming={() => {}}
-      />,
+      panel({ mode: "chosen", crop: LISTING_CROP }),
     );
 
-    expect(container.querySelectorAll("article").length).toBe(2);
+    expect(container.textContent).toContain("Your choice.");
 
     cleanup();
   });
 
-  it("says the card follows the hero until an override is set", async () => {
+  it("says an article shows no image once one has been removed", async () => {
     const { container, unmount: cleanup } = await mount(
-      <ArticleCardPreview
-        article={article()}
-        summary=""
-        cardCrop={null}
-        onSummaryChange={() => {}}
-        onAdjustFraming={() => {}}
-        onResetFraming={() => {}}
-      />,
+      panel({ mode: "none", listingImage: null }),
     );
 
-    expect(container.textContent).toContain("Cards follow the hero framing.");
-    expect(container.textContent).not.toContain("Reset to match hero");
+    expect(container.textContent).toContain(
+      "This article shows no image in listings.",
+    );
 
     cleanup();
   });
 
-  it("offers a reset once the card has its own framing", async () => {
-    const onResetFraming = vi.fn();
-    const { container, unmount: cleanup } = await mount(
-      <ArticleCardPreview
-        article={article()}
-        summary=""
-        cardCrop={CARD_CROP}
-        onSummaryChange={() => {}}
-        onAdjustFraming={() => {}}
-        onResetFraming={onResetFraming}
-      />,
-    );
+  it("offers Remove until the image is already removed", async () => {
+    const withImage = await mount(panel({ mode: "auto" }));
+    expect(buttonLabelled(withImage.container, "Remove")).toBeDefined();
+    withImage.unmount();
 
-    const reset = [...container.querySelectorAll("button")].find(
-      (b) => b.textContent === "Reset to match hero",
-    )!;
-    await act(async () => {
-      reset.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    });
-
-    expect(onResetFraming).toHaveBeenCalledOnce();
-
-    cleanup();
+    const removed = await mount(panel({ mode: "none", listingImage: null }));
+    expect(buttonLabelled(removed.container, "Remove")).toBeUndefined();
+    removed.unmount();
   });
 
-  it("hides the framing controls when the hero has no recorded dimensions", async () => {
+  it("opens the wizard from Change", async () => {
+    const onChangeImage = vi.fn();
     const { container, unmount: cleanup } = await mount(
-      <ArticleCardPreview
-        article={article({ hero_image: heroImage({ width: null, height: null }) })}
-        summary=""
-        cardCrop={null}
-        onSummaryChange={() => {}}
-        onAdjustFraming={() => {}}
-        onResetFraming={() => {}}
-      />,
+      panel({ onChangeImage }),
     );
 
-    expect(container.textContent).not.toContain("Adjust framing");
+    await click(buttonLabelled(container, "Change…"));
+
+    expect(onChangeImage).toHaveBeenCalledOnce();
 
     cleanup();
   });

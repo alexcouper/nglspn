@@ -90,11 +90,11 @@ async function click(element: Element) {
 
 // --------------------------------------------------------- hook test harness
 
-function renderUploadStatus(projectId: string) {
+function renderUploadStatus(projectId: string, articleId = "article-1") {
   const captured = {} as ReturnType<typeof useImageUploadStatus>;
 
   function Harness() {
-    Object.assign(captured, useImageUploadStatus(projectId));
+    Object.assign(captured, useImageUploadStatus(projectId, articleId));
     return null;
   }
 

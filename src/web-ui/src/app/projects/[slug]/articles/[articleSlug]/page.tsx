@@ -24,8 +24,8 @@ export async function generateMetadata({
         type: "article",
         title: article.title,
         description: article.body.slice(0, 160).trim(),
-        ...(article.hero_image_url && {
-          images: [{ url: article.hero_image_url, alt: article.title }],
+        ...(article.listing_image_url && {
+          images: [{ url: article.listing_image_url, alt: article.title }],
         }),
       },
     };

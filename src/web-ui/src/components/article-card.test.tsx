@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { ArticleListItem } from "@/lib/api";
-import { ArticleHeroImage } from "./ArticleHeroImage";
+import { ArticleListingImage } from "./ArticleListingImage";
 import { ArticleCard } from "./ArticleCard";
 import { CroppedImage, type CropRect } from "./CroppedImage";
 
@@ -37,8 +37,8 @@ function articleListItem(
     published_at: "2026-08-01T10:00:00Z",
     global_visibility: "auto",
     channel: { id: "channel-1", name: "Releases" },
-    hero_image_url: "https://cdn.example/hero.png",
-    card_crop: null,
+    listing_image_url: "https://cdn.example/listing.png",
+    listing_crop: null,
     ...overrides,
   } as ArticleListItem;
 }
@@ -95,19 +95,18 @@ describe("CroppedImage", () => {
   });
 });
 
-describe("ArticleHeroImage", () => {
+describe("ArticleListingImage", () => {
   it("renders at the stored ratio rather than a fixed shape", async () => {
     const { container, unmount: cleanup } = await mount(
-      <ArticleHeroImage
-        src="https://cdn.example/hero.png"
+      <ArticleListingImage
+        src="https://cdn.example/listing.png"
         alt="A screenshot"
-        articleId="article-1"
         crop={crop({ ratio: 2.8333 })}
       />,
     );
 
     expect(container.querySelector("img")!.getAttribute("src")).toBe(
-      "https://cdn.example/hero.png",
+      "https://cdn.example/listing.png",
     );
     expect(frameOf(container).style.aspectRatio).toBe("2.8333");
 
@@ -116,10 +115,9 @@ describe("ArticleHeroImage", () => {
 
   it("crops to 16:9 so an uncropped wide upload is not squashed into a square", async () => {
     const { container, unmount: cleanup } = await mount(
-      <ArticleHeroImage
-        src="https://cdn.example/hero.png"
+      <ArticleListingImage
+        src="https://cdn.example/listing.png"
         alt="A screenshot"
-        articleId="article-1"
       />,
     );
 
@@ -130,39 +128,26 @@ describe("ArticleHeroImage", () => {
     cleanup();
   });
 
-  it("falls back to a gradient placeholder when there is no image", async () => {
+  it("renders nothing at all when there is no image", async () => {
     const { container, unmount: cleanup } = await mount(
-      <ArticleHeroImage src={null} alt="" articleId="article-1" />,
+      <ArticleListingImage src={null} alt="" />,
     );
 
-    expect(container.querySelector("img")).toBeNull();
-    expect(frameOf(container).style.aspectRatio).toBe(String(16 / 9));
-
-    cleanup();
-  });
-
-  it("keeps the placeholder at the stored ratio so removing an image does not reflow", async () => {
-    const { container, unmount: cleanup } = await mount(
-      <ArticleHeroImage src={null} alt="" articleId="a" crop={crop()} />,
-    );
-
-    expect(frameOf(container).style.aspectRatio).toBe("2");
+    expect(container.innerHTML).toBe("");
 
     cleanup();
   });
 
   it("loads eagerly when marked priority and lazily otherwise", async () => {
     const eager = await mount(
-      <ArticleHeroImage src="/a.png" alt="" articleId="a" priority />,
+      <ArticleListingImage src="/a.png" alt="" priority />,
     );
     expect(eager.container.querySelector("img")!.getAttribute("loading")).toBe(
       "eager",
     );
     eager.unmount();
 
-    const lazy = await mount(
-      <ArticleHeroImage src="/b.png" alt="" articleId="b" />,
-    );
+    const lazy = await mount(<ArticleListingImage src="/b.png" alt="" />);
     expect(lazy.container.querySelector("img")!.getAttribute("loading")).toBe(
       "lazy",
     );
@@ -203,7 +188,7 @@ describe("ArticleCard", () => {
     grid.unmount();
   });
 
-  it("loads the lead hero eagerly and grid heroes lazily", async () => {
+  it("loads the lead image eagerly and grid images lazily", async () => {
     const lead = await mount(
       <ArticleCard article={articleListItem()} href="/x" variant="lead" />,
     );
@@ -233,5 +218,67 @@ describe("ArticleCard", () => {
     expect(container.textContent).toContain("A headline about something");
 
     cleanup();
+  });
+
+  it("draws no image element at all for an article with no listing image", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <ArticleCard
+        article={articleListItem({ listing_image_url: null })}
+        href="/x"
+        variant="grid"
+      />,
+    );
+
+    expect(container.querySelector("img")).toBeNull();
+    expect(container.querySelector("svg")).toBeNull();
+
+    cleanup();
+  });
+
+  it("gives an imageless card wider clamps than an imaged one", async () => {
+    const bare = await mount(
+      <ArticleCard
+        article={articleListItem({ listing_image_url: null })}
+        href="/x"
+        variant="grid"
+      />,
+    );
+    expect(bare.container.querySelector("h3")!.className).toContain(
+      "line-clamp-4",
+    );
+    expect(bare.container.querySelector("p")!.className).toContain(
+      "line-clamp-5",
+    );
+    bare.unmount();
+
+    const imaged = await mount(
+      <ArticleCard article={articleListItem()} href="/x" variant="grid" />,
+    );
+    expect(imaged.container.querySelector("h3")!.className).toContain(
+      "line-clamp-2",
+    );
+    expect(imaged.container.querySelector("p")!.className).toContain(
+      "line-clamp-3",
+    );
+    imaged.unmount();
+  });
+
+  it("marks an imageless lead card so it does not read as a failed image", async () => {
+    const bare = await mount(
+      <ArticleCard
+        article={articleListItem({ listing_image_url: null })}
+        href="/x"
+        variant="lead"
+      />,
+    );
+    expect(bare.container.querySelector(".bg-accent")).not.toBeNull();
+    expect(bare.container.querySelector("h3")!.className).toContain("text-3xl");
+    bare.unmount();
+
+    const imaged = await mount(
+      <ArticleCard article={articleListItem()} href="/x" variant="lead" />,
+    );
+    expect(imaged.container.querySelector(".bg-accent")).toBeNull();
+    imaged.unmount();
   });
 });

@@ -12,12 +12,6 @@ import {
 } from "react";
 import { CROP_BACKGROUND, CroppedImage, type CropRect } from "./CroppedImage";
 
-// Ratio bounds for a free-shape crop. Wider than 4:1 is a hairline, taller than
-// 1:1 is a tower; neither is a shape a page layout survives. A consumer that
-// wants different limits passes its own.
-export const DEFAULT_MIN_RATIO = 1;
-export const DEFAULT_MAX_RATIO = 4;
-
 // Zoom is the image's displayed width as a multiple of the crop box's width, so
 // it is exactly `1 / crop.w`. Below 1 the image is narrower than the box and
 // CROP_BACKGROUND shows at the edges — which is the point: a fixed-shape crop
@@ -36,21 +30,15 @@ const BOX_WIDTH_FRACTION = 0.6;
 // Breathing room above and below the box, in px.
 const STAGE_PADDING = 64;
 
-// Dragging one edge moves the box's far edge too, since the box stays centred.
-const EDGE_TO_HEIGHT = 2;
-
 export interface ImageCropperProps {
   src: string;
   naturalWidth: number;
   naturalHeight: number;
   value: CropRect | null;
   onChange: (crop: CropRect) => void;
-  // Fixes the box's shape and removes its handles — the author can only zoom
-  // and pan. Used where the output size is dictated by the layout, e.g. a
-  // listing card's 16:9.
-  lockRatio?: number;
-  minRatio?: number;
-  maxRatio?: number;
+  // The box's shape, fixed. The author can only zoom and pan — the output
+  // shape is dictated by the layout it fills, e.g. a listing card's 16:9.
+  lockRatio: number;
   // Source pixels across the box below which the result will look soft. A
   // warning, never a block.
   minSourceWidth?: number;
@@ -72,8 +60,6 @@ export function ImageCropper({
   value,
   onChange,
   lockRatio,
-  minRatio = DEFAULT_MIN_RATIO,
-  maxRatio = DEFAULT_MAX_RATIO,
   minSourceWidth = 768,
   previewLabel = "Preview",
 }: ImageCropperProps) {
@@ -85,10 +71,8 @@ export function ImageCropper({
       width: naturalWidth,
       height: naturalHeight,
       lockRatio,
-      minRatio,
-      maxRatio,
     }),
-    [naturalWidth, naturalHeight, lockRatio, minRatio, maxRatio],
+    [naturalWidth, naturalHeight, lockRatio],
   );
 
   const crop = value ?? defaultCrop(source);
@@ -122,15 +106,6 @@ export function ImageCropper({
       });
     },
     [crop, layout.imageWidth, layout.imageHeight, onChange],
-  );
-
-  const resizeBy = useCallback(
-    (deltaPx: number) => {
-      if (!boxWidth) return;
-      const nextHeight = Math.max(1, boxHeight + deltaPx);
-      onChange(withRatio(crop, clamp(boxWidth / nextHeight, minRatio, maxRatio), source));
-    },
-    [crop, boxWidth, boxHeight, minRatio, maxRatio, onChange, source],
   );
 
   const drag = useDrag(pan);
@@ -176,12 +151,6 @@ export function ImageCropper({
               className="pointer-events-none absolute border-2 border-dashed border-white ring-1 ring-slate-900/50 shadow-[0_0_0_9999px_rgba(15,23,42,0.28)]"
               data-testid="crop-box"
             />
-            {!lockRatio && (
-              <>
-                <EdgeHandle edge="top" layout={layout} onDrag={resizeBy} />
-                <EdgeHandle edge="bottom" layout={layout} onDrag={resizeBy} />
-              </>
-            )}
           </>
         )}
       </div>
@@ -203,10 +172,10 @@ export function ImageCropper({
           />
         </label>
         <span
-          className="text-sm font-medium tabular-nums text-foreground"
-          data-testid="crop-ratio"
+          className="text-sm font-medium tabular-nums text-muted-foreground"
+          data-testid="crop-source-width"
         >
-          {formatRatio(crop.w * naturalWidth, crop.h * naturalHeight)}
+          {sourcePixelWidth}px
         </span>
       </div>
 
@@ -240,9 +209,7 @@ export function ImageCropper({
 interface Source {
   width: number;
   height: number;
-  lockRatio?: number;
-  minRatio: number;
-  maxRatio: number;
+  lockRatio: number;
 }
 
 interface Layout {
@@ -260,9 +227,8 @@ interface Layout {
 // The crop that covers the box with no background showing, centred: the
 // friendliest place to start. The author is free to zoom back out past it.
 export function defaultCrop(source: Source): CropRect {
-  const ratio = source.lockRatio ?? clamp(16 / 9, source.minRatio, source.maxRatio);
-  const zoom = coveringZoom(ratio, source);
-  return centred(1 / zoom, ratio, source);
+  const zoom = coveringZoom(source.lockRatio, source);
+  return centred(1 / zoom, source.lockRatio, source);
 }
 
 // Below this the crop box reaches past the image on one axis. Not a limit —
@@ -285,8 +251,7 @@ function sliderToZoom(position: number, source: Source): number {
 }
 
 function zoomCeiling(source: Source): number {
-  const ratio = source.lockRatio ?? DEFAULT_MAX_RATIO;
-  return Math.max(MAX_ZOOM, coveringZoom(ratio, source));
+  return Math.max(MAX_ZOOM, coveringZoom(source.lockRatio, source));
 }
 
 function centred(w: number, ratio: number, source: Source): CropRect {
@@ -294,14 +259,10 @@ function centred(w: number, ratio: number, source: Source): CropRect {
   return { x: (1 - w) / 2, y: (1 - h) / 2, w, h, ratio };
 }
 
-// Zoom and ratio both change the crop's size, and both keep its centre where it
-// is — otherwise the subject drifts out of frame as you adjust.
+// Zoom keeps the crop's centre where it is — otherwise the subject drifts out
+// of frame as you adjust.
 function withZoom(crop: CropRect, zoom: number, source: Source): CropRect {
   return resizedAboutCentre(crop, 1 / zoom, crop.ratio, source);
-}
-
-function withRatio(crop: CropRect, ratio: number, source: Source): CropRect {
-  return resizedAboutCentre(crop, crop.w, ratio, source);
 }
 
 function resizedAboutCentre(
@@ -375,7 +336,6 @@ function useDrag(pan: (dx: number, dy: number) => void) {
 
   return {
     onPointerDown: (event: ReactPointerEvent) => {
-      if ((event.target as HTMLElement).dataset.handle) return;
       (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
       last.current = { x: event.clientX, y: event.clientY };
     },
@@ -390,69 +350,6 @@ function useDrag(pan: (dx: number, dy: number) => void) {
       last.current = null;
     },
   };
-}
-
-function EdgeHandle({
-  edge,
-  layout,
-  onDrag,
-}: {
-  edge: "top" | "bottom";
-  layout: Layout;
-  onDrag: (deltaPx: number) => void;
-}) {
-  const last = useRef<number | null>(null);
-  const top =
-    edge === "top" ? layout.boxTop - 10 : layout.boxTop + layout.boxHeight - 10;
-
-  return (
-    <div
-      data-handle={edge}
-      data-testid={`crop-handle-${edge}`}
-      role="separator"
-      aria-label={`Drag to change the ${edge} edge`}
-      onPointerDown={(event: ReactPointerEvent) => {
-        event.stopPropagation();
-        (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-        last.current = event.clientY;
-      }}
-      onPointerMove={(event: ReactPointerEvent) => {
-        if (last.current === null) return;
-        const delta = event.clientY - last.current;
-        last.current = event.clientY;
-        // Dragging the top edge up and the bottom edge down both make the box
-        // taller, so the top handle's delta is inverted.
-        onDrag((edge === "top" ? -delta : delta) * EDGE_TO_HEIGHT);
-      }}
-      onPointerUp={() => {
-        last.current = null;
-      }}
-      style={{ left: layout.boxLeft, top, width: layout.boxWidth }}
-      className="absolute flex h-5 cursor-ns-resize items-center justify-center"
-    >
-      <span className="h-1.5 w-12 rounded-full bg-white shadow" />
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------- display
-
-// The smallest whole-number pair that matches, searched over denominators
-// rather than reduced from the pixel counts: a 16:9 box on a 4000x2000 source
-// is 2250x1266 after rounding, whose true reduction is 1125:633 — which tells
-// the author nothing. Anything that has no small form falls back to a decimal.
-const MAX_RATIO_TERM = 40;
-const MAX_RATIO_DENOMINATOR = 24;
-const RATIO_DISPLAY_TOLERANCE = 0.005;
-
-function formatRatio(pixelWidth: number, pixelHeight: number): string {
-  const ratio = pixelWidth / Math.max(1, pixelHeight);
-  for (let b = 1; b <= MAX_RATIO_DENOMINATOR; b++) {
-    const a = Math.round(ratio * b);
-    if (a < 1 || a > MAX_RATIO_TERM) continue;
-    if (Math.abs(ratio - a / b) < RATIO_DISPLAY_TOLERANCE) return `${a} : ${b}`;
-  }
-  return `${ratio.toFixed(2)} : 1`;
 }
 
 function clamp(value: number, low: number, high: number): number {

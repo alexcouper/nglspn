@@ -5,17 +5,12 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/auth";
+import type { Project } from "@/lib/api";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
-import { useImageUpload } from "@/hooks/useImageUpload";
-import { api } from "@/lib/api";
-import type { Project, ProjectImage } from "@/lib/api";
-import { ImageCropDialog } from "@/components/ImageCropDialog";
-import type { CropRect } from "@/components/CroppedImage";
-import { pickVariant } from "@/lib/utils";
 import { PublishDialog } from "./PublishDialog";
-import { ArticleCardPreviewDialog } from "./ArticleCardPreviewDialog";
-import { HeroImageUploader } from "./HeroImageUploader";
 import { ChannelDropdown } from "./ChannelDropdown";
+import { ListingImageDialog } from "./ListingImageDialog";
+import { ListingSettingsPanel } from "./ListingSettingsPanel";
 import { useArticleDraft } from "./useArticleDraft";
 
 const ArticleEditor = dynamic(
@@ -23,9 +18,17 @@ const ArticleEditor = dynamic(
   { ssr: false, loading: () => <div className="skeleton h-[60vh] w-full" /> },
 );
 
+type Tab = "content" | "listing";
+
+const TABS: { key: Tab; label: string }[] = [
+  { key: "content", label: "Content" },
+  { key: "listing", label: "Listing settings" },
+];
+
 interface Props {
   project: Project;
-  // Present → editing an existing article; absent → creating a new one.
+  // Present → editing an existing article; absent → the /new route, which
+  // creates a draft on mount and swaps the URL to /edit/<id>.
   articleId?: string;
 }
 
@@ -35,12 +38,9 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
 
   const draft = useArticleDraft({ project, articleId });
   const [showPublishDialog, setShowPublishDialog] = useState(false);
-  const [showCardPreview, setShowCardPreview] = useState(false);
-  const [isOpeningPreview, setIsOpeningPreview] = useState(false);
-  // A hero that has been uploaded but not yet framed. It is deliberately not in
-  // the draft form: cancelling the crop dialog must leave the article as it was.
-  const [pendingHero, setPendingHero] = useState<ProjectImage | null>(null);
-  const [isAdjustingFraming, setIsAdjustingFraming] = useState(false);
+  const [showImageWizard, setShowImageWizard] = useState(false);
+  const [tab, setTab] = useState<Tab>("content");
+  const [isSwitchingTab, setIsSwitchingTab] = useState(false);
 
   const canEdit = useMemo(() => {
     if (!user) return false;
@@ -48,49 +48,6 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
       (c) => c.user.id === user.id && c.full_edit,
     );
   }, [project.contributors, user]);
-
-  const { uploadFile: uploadHeroFile, isUploading: isHeroUploading } =
-    useImageUpload({
-      projectId: project.id,
-      source: "article",
-      // Frame it before it becomes the hero. An image with no recorded
-      // dimensions cannot be cropped, so it skips the dialog and lands
-      // uncropped — the 16:9 centre fallback, which is what it would get anyway.
-      onUploadComplete: (image) => {
-        if (image.width && image.height) {
-          setPendingHero(image);
-        } else {
-          draft.handleHeroUpload(image, null);
-        }
-      },
-      onError: (err) => draft.setError(err.message),
-    });
-
-  // The image the crop dialog is working on: a fresh upload, or the current
-  // hero when the author asked to re-frame it.
-  const croppingImage = pendingHero ?? (isAdjustingFraming ? draft.heroImage : null);
-
-  const handleCropConfirm = (crop: CropRect) => {
-    if (pendingHero) {
-      draft.handleHeroUpload(pendingHero, crop);
-      setPendingHero(null);
-    } else {
-      draft.setHeroCrop(crop);
-    }
-    setIsAdjustingFraming(false);
-  };
-
-  const handleCropCancel = () => {
-    // A cancelled first upload never becomes the hero, so the file it left
-    // behind is deleted. Best-effort: article images are excluded from the
-    // project gallery, so a failure leaves an invisible orphan rather than a
-    // visible one.
-    if (pendingHero) {
-      api.myProjects.deleteImage(project.id, pendingHero.id).catch(() => {});
-      setPendingHero(null);
-    }
-    setIsAdjustingFraming(false);
-  };
 
   const isEditing = !!articleId;
   const mode = isEditing ? "Edit article" : "New article";
@@ -110,9 +67,7 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
   if (!canEdit) {
     return (
       <div className="max-w-2xl mx-auto py-12 px-4 text-center">
-        <h1 className="text-lg font-semibold text-foreground">
-          Not allowed
-        </h1>
+        <h1 className="text-lg font-semibold text-foreground">Not allowed</h1>
         <p className="text-sm text-muted-foreground mt-2">
           You need full edit access on this project to author articles.
         </p>
@@ -128,21 +83,30 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
     );
   }
 
-  if (!draft.form) return null;
+  if (!draft.form || !draft.article) return null;
+
+  const article = draft.article;
+  const form = draft.form;
 
   const handleDeleteClick = async () => {
     if (!window.confirm("Delete this article? This cannot be undone.")) return;
     await draft.remove();
   };
 
-  // The derived summary lives only in the backend, so the preview has to render
-  // a saved article — otherwise it would show a stale excerpt for unsaved body
-  // text. Save first; if that fails, draft.error already says why.
-  const handlePreviewClick = async () => {
-    setIsOpeningPreview(true);
-    await draft.save();
-    setIsOpeningPreview(false);
-    setShowCardPreview(true);
+  // The previewed summary is derived server-side from the saved body, so the
+  // listing tab has to render a saved article — otherwise it would show a stale
+  // excerpt for text the author has just typed. On failure the tab does not
+  // open, and draft.error already says why.
+  const handleTabClick = async (next: Tab) => {
+    if (next === tab) return;
+    if (next !== "listing") {
+      setTab(next);
+      return;
+    }
+    setIsSwitchingTab(true);
+    const saved = await draft.save();
+    setIsSwitchingTab(false);
+    if (saved) setTab("listing");
   };
 
   return (
@@ -170,29 +134,9 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
                 {draft.error}
               </span>
             )}
-            {draft.article && (
-              <button
-                onClick={handlePreviewClick}
-                disabled={
-                  draft.isSaving ||
-                  draft.isPublishing ||
-                  isOpeningPreview ||
-                  draft.needsHeroImage
-                }
-                className="text-sm py-2 px-4 rounded-lg border border-border text-foreground hover:bg-muted transition-colors"
-              >
-                {isOpeningPreview ? (
-                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
-                ) : (
-                  "Preview card"
-                )}
-              </button>
-            )}
             <button
               onClick={draft.save}
-              disabled={
-                draft.isSaving || draft.isPublishing || draft.needsHeroImage
-              }
+              disabled={draft.isSaving || draft.isPublishing}
               className="btn-primary text-sm py-2 px-4"
             >
               {draft.isSaving ? (
@@ -219,57 +163,83 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
                 )}
               </button>
             )}
-            {draft.article && (
-              <button
-                onClick={handleDeleteClick}
-                disabled={draft.isDeleting}
-                title="Delete article"
-                className="p-2 rounded-lg text-muted-foreground border border-border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
-              >
-                <TrashIcon className="w-4 h-4" />
-              </button>
-            )}
+            <button
+              onClick={handleDeleteClick}
+              disabled={draft.isDeleting}
+              title="Delete article"
+              className="p-2 rounded-lg text-muted-foreground border border-border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
+            >
+              <TrashIcon className="w-4 h-4" />
+            </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+        {/* Above the tabs: the title is article identity and it is what the
+            card preview renders, so tuning a headline for the card should not
+            mean changing tabs. */}
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 sm:items-center">
           <input
             type="text"
-            value={draft.form.title}
+            value={form.title}
             onChange={(e) => draft.updateForm({ title: e.target.value })}
             placeholder="Article title"
             className="w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-lg font-semibold text-foreground placeholder:text-[#94a3b8] focus:outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/12 transition-[border-color,box-shadow]"
           />
           <ChannelDropdown
             channels={draft.channels}
-            value={draft.form.channel_id}
+            value={form.channel_id}
             onChange={(value) => draft.updateForm({ channel_id: value })}
           />
         </div>
 
-        <HeroImageUploader
-          heroImage={draft.heroImage}
-          crop={draft.form.hero_crop}
-          articleId={draft.article?.id ?? "new"}
-          isUploading={isHeroUploading}
-          onUpload={uploadHeroFile}
-          onAdjustFraming={() => setIsAdjustingFraming(true)}
-          onClear={draft.clearHero}
-        />
+        <div role="tablist" aria-label="Article editor" className="flex gap-1">
+          {TABS.map(({ key, label }) => (
+            <button
+              key={key}
+              role="tab"
+              aria-selected={tab === key}
+              disabled={isSwitchingTab}
+              onClick={() => handleTabClick(key)}
+              className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm transition-colors ${
+                tab === key
+                  ? "border-accent font-medium text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {label}
+              {key === "listing" && isSwitchingTab && (
+                <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
+              )}
+            </button>
+          ))}
+        </div>
 
-        {draft.needsHeroImage && (
-          <p className="text-sm text-amber-800" role="alert">
-            Published articles need a hero image — add one before saving.
-          </p>
+        {/* Mounted, not unmounted, when hidden: MDXEditor holds the body
+            uncontrolled, and remounting it on every tab switch would lose the
+            cursor and re-run its plugin setup. */}
+        <div className={tab === "content" ? undefined : "hidden"}>
+          <ArticleEditor
+            projectId={project.id}
+            articleId={article.id}
+            initialMarkdown={form.body}
+            onChange={draft.handleBodyChange}
+          />
+        </div>
+
+        {tab === "listing" && (
+          <ListingSettingsPanel
+            article={article}
+            summary={form.summary}
+            listingImage={draft.listingImage}
+            crop={form.listing_crop}
+            mode={form.listing_image_mode}
+            onSummaryChange={(value) => draft.updateForm({ summary: value })}
+            onChangeImage={() => setShowImageWizard(true)}
+            onRemoveImage={draft.removeListingImage}
+          />
         )}
-
-        <ArticleEditor
-          projectId={project.id}
-          initialMarkdown={draft.form.body}
-          onChange={draft.handleBodyChange}
-        />
       </div>
 
       {showPublishDialog && (
@@ -283,25 +253,22 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
         />
       )}
 
-      {croppingImage && croppingImage.width && croppingImage.height && (
-        <ImageCropDialog
-          isOpen
-          src={pickVariant(croppingImage.variants, "large") ?? croppingImage.url}
-          naturalWidth={croppingImage.width}
-          naturalHeight={croppingImage.height}
-          initial={pendingHero ? null : draft.form.hero_crop}
-          title="Frame the hero image"
-          onConfirm={handleCropConfirm}
-          onCancel={handleCropCancel}
-        />
-      )}
-
-      {showCardPreview && draft.article && (
-        <ArticleCardPreviewDialog
-          article={draft.article}
-          projectSlug={project.slug ?? project.id}
-          onClose={() => setShowCardPreview(false)}
-          onSaved={draft.setArticle}
+      {showImageWizard && (
+        <ListingImageDialog
+          projectId={project.id}
+          articleId={article.id}
+          images={draft.images}
+          currentImageId={form.listing_image_id}
+          currentCrop={form.listing_crop}
+          onConfirm={(image, crop) => {
+            draft.chooseListingImage(image, crop);
+            setShowImageWizard(false);
+          }}
+          onRemove={() => {
+            draft.removeListingImage();
+            setShowImageWizard(false);
+          }}
+          onClose={() => setShowImageWizard(false)}
         />
       )}
     </>

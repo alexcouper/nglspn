@@ -19,6 +19,10 @@ export class ImageValidationError extends Error {}
 interface UploadOptions {
   isIcon?: boolean;
   source?: ImageSource;
+  // The article the upload belongs to. Required when source is "article" —
+  // the backend records it as a real link, and rejects an id that does not
+  // name an article on the project being uploaded to.
+  sourceId?: string | null;
   // Fired once the backend allocates the image row but before the S3 PUT —
   // useful for callers that want to track per-upload progress by id.
   onImageId?: (imageId: string) => void;
@@ -55,6 +59,7 @@ export async function uploadProjectImage(
     file.size,
     options.isIcon ?? false,
     options.source ?? "project",
+    options.sourceId ?? null,
   );
 
   options.onImageId?.(presigned.image_id);

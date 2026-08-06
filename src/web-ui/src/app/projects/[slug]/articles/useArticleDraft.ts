@@ -3,45 +3,59 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import type {
-  Article,
-  Channel,
-  Project,
-  ProjectImage,
-} from "@/lib/api";
+import type { Article, Channel, Project, ProjectImage } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
 import type { CropRect } from "@/components/CroppedImage";
+
+// How the article's listing image was decided. Mirrors ListingImageMode in
+// apps/articles/models.py.
+export type ListingImageMode = "auto" | "chosen" | "none";
 
 export interface ArticleFormState {
   title: string;
   body: string;
   channel_id: string;
-  hero_image_id: string | null;
-  // The author's framing of the hero, and an optional override for listing
-  // cards. Null on card_crop means "derive it from the hero", not "no crop".
-  hero_crop: CropRect | null;
-  card_crop: CropRect | null;
+  // The authored standfirst. "" is meaningful: it clears the override and
+  // returns the card to the summary derived server-side from the body.
+  summary: string;
+  listing_image_id: string | null;
+  // The author's 16:9 framing of the listing image. Null renders as 16:9
+  // centred, which is what `auto` always gets.
+  listing_crop: CropRect | null;
+  listing_image_mode: ListingImageMode;
 }
 
 interface Options {
   project: Project;
-  // Present → editing an existing article; absent → creating a new one.
+  // Present → editing an existing article. Absent → the /new route, which
+  // creates a draft immediately (see below) rather than waiting for a save.
   articleId?: string;
+}
+
+// True when nothing has been written to this draft. Used to sweep up the empty
+// draft that opening /new creates when the author leaves without editing.
+function isUntouched(article: Article, body: string): boolean {
+  return (
+    !article.title.trim() &&
+    !body.trim() &&
+    !article.listing_image_id &&
+    article.images.length === 0
+  );
 }
 
 // Form + persistence state for the article authoring page.
 //
 // Separated from the page component so the component is mostly layout/wiring.
-// Owns: initial load (channels + article), form snapshot (form fields plus
-// the uncontrolled MDXEditor body held in a ref), save/publish/delete, and
-// the post-create URL swap from /new to /edit/{id}.
+// Owns: the eager draft creation on /new, initial load (channels + article),
+// form snapshot (form fields plus the uncontrolled MDXEditor body held in a
+// ref), and save/publish/delete.
 export function useArticleDraft({ project, articleId }: Options) {
   const router = useRouter();
+  const projectRef = project.slug ?? project.id;
 
   const [channels, setChannels] = useState<Channel[]>([]);
   const [article, setArticle] = useState<Article | null>(null);
   const [form, setForm] = useState<ArticleFormState | null>(null);
-  const [heroImage, setHeroImage] = useState<ProjectImage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -52,6 +66,14 @@ export function useArticleDraft({ project, articleId }: Options) {
   // Track the in-memory body separately from the article form to avoid
   // MDXEditor re-keying on every keystroke (it is uncontrolled internally).
   const bodyRef = useRef<string>("");
+  // React StrictMode runs effects twice in development. Without this guard
+  // opening /new would create two drafts per visit.
+  const creatingRef = useRef(false);
+  // Read by the unmount cleanup, which cannot see current state.
+  const latestRef = useRef<{ article: Article | null; leaving: boolean }>({
+    article: null,
+    leaving: false,
+  });
 
   const isEditing = !!articleId;
 
@@ -60,40 +82,40 @@ export function useArticleDraft({ project, articleId }: Options) {
 
     async function load() {
       try {
-        const channelList = await api.channels.list(project.slug ?? project.id);
+        const channelList = await api.channels.list(projectRef);
         if (cancelled) return;
         setChannels(channelList);
 
+        // An upload cannot name an article that does not exist yet, so /new
+        // creates an empty draft up front and swaps the URL to /edit/<id> —
+        // the same swap that used to happen on first save, moved earlier.
+        let loaded: Article;
         if (isEditing) {
-          const loaded = await api.articles.get(
-            project.slug ?? project.id,
-            articleId!,
-          );
-          if (cancelled) return;
-          setArticle(loaded);
-          bodyRef.current = loaded.body;
-          setForm({
-            title: loaded.title,
-            body: loaded.body,
-            channel_id: loaded.channel.id,
-            hero_image_id: loaded.hero_image_id,
-            hero_crop: loaded.hero_crop,
-            card_crop: loaded.card_crop,
-          });
-          // Comes off the article, not project.images — article uploads are
-          // excluded from the project's gallery, so the hero is not in there.
-          setHeroImage(loaded.hero_image ?? null);
+          loaded = await api.articles.get(projectRef, articleId!);
         } else {
-          bodyRef.current = "";
-          setForm({
+          if (creatingRef.current) return;
+          creatingRef.current = true;
+          loaded = await api.articles.create(projectRef, {
+            channel_id: channelList[0]?.id ?? "",
             title: "",
             body: "",
-            channel_id: channelList[0]?.id ?? "",
-            hero_image_id: null,
-            hero_crop: null,
-            card_crop: null,
           });
+          if (cancelled) return;
+          router.replace(`/projects/${projectRef}/articles/edit/${loaded.id}`);
         }
+        if (cancelled) return;
+
+        setArticle(loaded);
+        bodyRef.current = loaded.body;
+        setForm({
+          title: loaded.title,
+          body: loaded.body,
+          channel_id: loaded.channel.id,
+          summary: loaded.summary,
+          listing_image_id: loaded.listing_image_id,
+          listing_crop: loaded.listing_crop,
+          listing_image_mode: loaded.listing_image_mode as ListingImageMode,
+        });
         setIsLoading(false);
       } catch (err) {
         if (cancelled) return;
@@ -106,7 +128,26 @@ export function useArticleDraft({ project, articleId }: Options) {
     return () => {
       cancelled = true;
     };
-  }, [isEditing, articleId, project.slug, project.id]);
+  }, [isEditing, articleId, projectRef, router]);
+
+  // Kept in an effect, not written during render: the cleanup below is the
+  // only reader, and it runs after the last commit.
+  useEffect(() => {
+    latestRef.current.article = article;
+  }, [article]);
+
+  // Best-effort sweep of the draft /new created when the author leaves without
+  // writing anything. What survives it is a draft in the author's own list,
+  // invisible to readers, with a delete button next to it.
+  useEffect(() => {
+    const state = latestRef.current;
+    return () => {
+      const current = state.article;
+      if (state.leaving || !current) return;
+      if (!isUntouched(current, bodyRef.current)) return;
+      api.articles.delete(projectRef, current.id).catch(() => {});
+    };
+  }, [projectRef]);
 
   const handleBodyChange = useCallback((markdown: string) => {
     bodyRef.current = markdown;
@@ -125,20 +166,18 @@ export function useArticleDraft({ project, articleId }: Options) {
     return current;
   }, [form]);
 
-  // Called once the author has framed the upload, not when it lands: an
-  // unframed hero is never committed to the form.
-  const handleHeroUpload = useCallback(
+  // The wizard's outcome: an image and the rectangle the author drew on it.
+  // Any choice commits the mode, so the next save does not re-derive the image
+  // out from under a rectangle they just drew.
+  const chooseListingImage = useCallback(
     (image: ProjectImage, crop: CropRect | null) => {
-      setHeroImage(image);
       setForm((prev) =>
         prev
           ? {
               ...prev,
-              hero_image_id: image.id,
-              hero_crop: crop,
-              // A rectangle drawn on one image means nothing on another, so a
-              // new hero drops any card override with it.
-              card_crop: null,
+              listing_image_id: image.id,
+              listing_crop: crop,
+              listing_image_mode: "chosen",
             }
           : prev,
       );
@@ -146,73 +185,58 @@ export function useArticleDraft({ project, articleId }: Options) {
     [],
   );
 
-  // Re-framing an existing hero leaves any card override alone — once the
-  // author has set one it stops tracking the hero.
-  const setHeroCrop = useCallback((crop: CropRect) => {
-    setForm((prev) => (prev ? { ...prev, hero_crop: crop } : prev));
-  }, []);
-
-  const setCardCrop = useCallback((crop: CropRect | null) => {
-    setForm((prev) => (prev ? { ...prev, card_crop: crop } : prev));
-  }, []);
-
-  const clearHero = useCallback(() => {
-    setHeroImage(null);
+  const removeListingImage = useCallback(() => {
     setForm((prev) =>
       prev
-        ? { ...prev, hero_image_id: null, hero_crop: null, card_crop: null }
+        ? {
+            ...prev,
+            listing_image_id: null,
+            listing_crop: null,
+            listing_image_mode: "none",
+          }
         : prev,
     );
   }, []);
 
   const persistDraft = useCallback(
     async (current: ArticleFormState): Promise<Article | null> => {
+      if (!article) return null;
       try {
-        if (!article) {
-          const created = await api.articles.create(
-            project.slug ?? project.id,
-            {
-              channel_id: current.channel_id,
-              title: current.title,
-              body: current.body,
-              hero_image_id: current.hero_image_id ?? null,
-              hero_crop: current.hero_crop,
-            },
-          );
-          setArticle(created);
-          // Switch URL to /edit so subsequent saves PATCH instead of POST.
-          router.replace(
-            `/projects/${project.slug ?? project.id}/articles/edit/${created.id}`,
-          );
-          return created;
-        }
-        const updated = await api.articles.update(
-          project.slug ?? project.id,
-          article.id,
-          {
-            title: current.title,
-            body: current.body,
-            channel_id: current.channel_id,
-            hero_image_id: current.hero_image_id ?? null,
-            hero_crop: current.hero_crop,
-            card_crop: current.card_crop,
-          },
-        );
+        const updated = await api.articles.update(projectRef, article.id, {
+          title: current.title,
+          body: current.body,
+          channel_id: current.channel_id,
+          summary: current.summary,
+          listing_image_id: current.listing_image_id,
+          listing_crop: current.listing_crop,
+          listing_image_mode: current.listing_image_mode,
+        });
         setArticle(updated);
+        // `auto` is resolved server-side on every save, so the response is the
+        // only place the resolved image id exists.
+        setForm((prev) =>
+          prev
+            ? {
+                ...prev,
+                listing_image_id: updated.listing_image_id,
+                listing_crop: updated.listing_crop,
+                listing_image_mode:
+                  updated.listing_image_mode as ListingImageMode,
+              }
+            : prev,
+        );
         return updated;
       } catch (err) {
-        setError(
-          err instanceof Error ? err.message : "Failed to save article",
-        );
+        setError(err instanceof Error ? err.message : "Failed to save article");
         return null;
       }
     },
-    [article, project.id, project.slug, router],
+    [article, projectRef],
   );
 
-  const save = useCallback(async () => {
+  const save = useCallback(async (): Promise<Article | null> => {
     const current = snapshotForm();
-    if (!current) return;
+    if (!current) return null;
     setError("");
     setSuccessMessage("");
     setIsSaving(true);
@@ -222,64 +246,69 @@ export function useArticleDraft({ project, articleId }: Options) {
       setSuccessMessage(saved.state === "published" ? "Saved" : "Draft saved");
       setTimeout(() => setSuccessMessage(""), 2500);
     }
+    return saved;
   }, [snapshotForm, persistDraft]);
 
-  const publish = useCallback(
-    async () => {
-      const current = snapshotForm();
-      if (!current) return;
-      setError("");
-      setIsPublishing(true);
-      const saved = await persistDraft(current);
-      if (!saved) {
-        setIsPublishing(false);
-        return;
+  const publish = useCallback(async () => {
+    const current = snapshotForm();
+    if (!current) return;
+    setError("");
+    setIsPublishing(true);
+    const saved = await persistDraft(current);
+    if (!saved) {
+      setIsPublishing(false);
+      return;
+    }
+    try {
+      await api.articles.publish(projectRef, saved.id, { published_at: null });
+      latestRef.current.leaving = true;
+      router.push(`/projects/${projectRef}`);
+    } catch (err) {
+      if (err instanceof ApiRequestError && err.status === 422) {
+        const detail =
+          typeof err.body.detail === "string"
+            ? err.body.detail
+            : "Article is not ready to publish.";
+        setError(detail);
+      } else {
+        setError(
+          err instanceof Error ? err.message : "Failed to publish article",
+        );
       }
-      try {
-        await api.articles.publish(project.slug ?? project.id, saved.id, {
-          published_at: null,
-        });
-        router.push(`/projects/${project.slug ?? project.id}`);
-      } catch (err) {
-        if (err instanceof ApiRequestError && err.status === 422) {
-          const detail =
-            typeof err.body.detail === "string"
-              ? err.body.detail
-              : "Article is not ready to publish.";
-          setError(detail);
-        } else {
-          setError(
-            err instanceof Error ? err.message : "Failed to publish article",
-          );
-        }
-        setIsPublishing(false);
-      }
-    },
-    [snapshotForm, persistDraft, project.id, project.slug, router],
-  );
+      setIsPublishing(false);
+    }
+  }, [snapshotForm, persistDraft, projectRef, router]);
 
   const remove = useCallback(async () => {
     if (!article) return;
     setIsDeleting(true);
     try {
-      await api.articles.delete(project.slug ?? project.id, article.id);
-      router.push(`/projects/${project.slug ?? project.id}`);
+      await api.articles.delete(projectRef, article.id);
+      latestRef.current.leaving = true;
+      router.push(`/projects/${projectRef}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to delete article");
       setIsDeleting(false);
     }
-  }, [article, project.id, project.slug, router]);
+  }, [article, projectRef, router]);
 
   return {
     channels,
     article,
     setArticle,
     form,
-    heroImage,
-    // publish() requires a hero image, and the API refuses to clear one on an
-    // already-published article — so surface that in the editor rather than
-    // letting the author discover it via a 422.
-    needsHeroImage: article?.state === "published" && !form?.hero_image_id,
+    // The article's own uploads — the wizard's selection list. Comes off the
+    // image-article link, so it holds whatever was uploaded for this article
+    // whether or not it is in the body.
+    images: article?.images ?? [],
+    // The image the form currently points at, not the last-saved one: the
+    // panel must show what the wizard just picked, before any save.
+    listingImage:
+      article?.images.find((image) => image.id === form?.listing_image_id) ??
+      (form?.listing_image_id &&
+      form.listing_image_id === article?.listing_image_id
+        ? article.listing_image
+        : null),
     isLoading,
     error,
     setError,
@@ -291,10 +320,8 @@ export function useArticleDraft({ project, articleId }: Options) {
     handleBodyChange,
     updateForm,
     snapshotForm,
-    handleHeroUpload,
-    setHeroCrop,
-    setCardCrop,
-    clearHero,
+    chooseListingImage,
+    removeListingImage,
     save,
     publish,
     remove,

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import type { ArticleListItem } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
-import { ArticleHeroImage } from "./ArticleHeroImage";
+import { ArticleListingImage } from "./ArticleListingImage";
 
 interface Props {
   article: ArticleListItem;
@@ -13,32 +13,41 @@ interface Props {
   variant: "lead" | "grid";
 }
 
+// An article needs no image. Without one the card draws no placeholder — the
+// headline and summary take the space instead, so the clamps open up.
 const HEADLINE = {
-  lead: "text-2xl font-semibold line-clamp-3",
-  grid: "text-base font-semibold line-clamp-2",
+  lead: { imaged: "text-2xl line-clamp-3", bare: "text-3xl line-clamp-4" },
+  grid: { imaged: "text-base line-clamp-2", bare: "text-base line-clamp-4" },
 } as const;
 
 const SUMMARY = {
-  lead: "line-clamp-2",
-  grid: "line-clamp-3",
+  lead: { imaged: "line-clamp-2", bare: "line-clamp-4" },
+  grid: { imaged: "line-clamp-3", bare: "line-clamp-5" },
 } as const;
 
 export function ArticleCard({ article, href, variant }: Props) {
   const isLead = variant === "lead";
+  const hasImage = !!article.listing_image_url;
+  const shape = hasImage ? "imaged" : "bare";
 
   return (
     <article className="rounded-lg border border-border bg-white overflow-hidden hover:border-accent/50 transition-colors">
       <Link href={href} className="block">
-        <ArticleHeroImage
-          src={article.hero_image_url}
+        <ArticleListingImage
+          src={article.listing_image_url}
           alt=""
-          articleId={article.id}
-          // Always 16:9, resolved server-side from the card override or the
-          // hero framing, so a grid of cards stays uniform.
-          crop={article.card_crop}
+          // Always 16:9, so a grid of cards stays uniform.
+          crop={article.listing_crop}
           priority={isLead}
         />
         <div className={isLead ? "p-5" : "p-4"}>
+          {/* An imageless lead card is otherwise a bare block of text at full
+              column width, which reads as a card whose image failed to load.
+              The rule marks it as a deliberate text-led card; the grid variant
+              is small enough not to need one. */}
+          {isLead && !hasImage && (
+            <div className="mb-3 h-1 w-12 rounded-full bg-accent" />
+          )}
           <div className="text-xs font-semibold uppercase tracking-wide text-accent">
             {article.channel.name}
             {article.published_at && (
@@ -48,12 +57,14 @@ export function ArticleCard({ article, href, variant }: Props) {
               </span>
             )}
           </div>
-          <h3 className={`mt-1.5 text-foreground ${HEADLINE[variant]}`}>
+          <h3
+            className={`mt-1.5 font-semibold text-foreground ${HEADLINE[variant][shape]}`}
+          >
             {article.title}
           </h3>
           {article.summary && (
             <p
-              className={`mt-2 text-sm text-muted-foreground ${SUMMARY[variant]}`}
+              className={`mt-2 text-sm text-muted-foreground ${SUMMARY[variant][shape]}`}
             >
               {article.summary}
             </p>

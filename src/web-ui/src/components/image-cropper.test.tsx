@@ -10,6 +10,8 @@ const STAGE_WIDTH = 600;
 // Wider than 16:9, so a full-width selection cannot cover a 16:9 box — the case
 // where zooming out leaves background showing.
 const SOURCE = { naturalWidth: 4000, naturalHeight: 2000 };
+// The only shape the cropper produces now: a listing card.
+const CARD_RATIO = 16 / 9;
 
 // Assigned rather than vi.stubGlobal'd: the shared setup calls
 // vi.unstubAllGlobals() after every test, which would strip these after the
@@ -54,7 +56,8 @@ function Harness({
   const [crop, setCrop] = useState<CropRect | null>(props.value ?? null);
   return (
     <ImageCropper
-      src="/hero.png"
+      src="/listing.png"
+      lockRatio={CARD_RATIO}
       {...SOURCE}
       {...props}
       value={crop}
@@ -69,9 +72,10 @@ function Harness({
 async function mountCropper(
   props: Partial<Parameters<typeof ImageCropper>[0]> = {},
 ) {
+  const withRatio = { lockRatio: CARD_RATIO, ...props };
   const crops: CropRect[] = [];
   const mounted = await mount(
-    <Harness onCrop={(crop) => crops.push(crop)} {...props} />,
+    <Harness onCrop={(crop) => crops.push(crop)} {...withRatio} />,
   );
   return { ...mounted, crops, latest: () => crops[crops.length - 1] };
 }
@@ -130,7 +134,7 @@ function centreOf(crop: CropRect) {
 
 describe("defaultCrop", () => {
   it("covers the box with no background showing", () => {
-    const crop = defaultCrop({ ...source(), lockRatio: 16 / 9 });
+    const crop = defaultCrop(source());
 
     // A 4000x2000 source is wider than 16:9, so covering means zooming in.
     expect(crop.w).toBeLessThan(1);
@@ -139,7 +143,7 @@ describe("defaultCrop", () => {
   });
 
   it("is centred on the image", () => {
-    const crop = defaultCrop({ ...source(), lockRatio: 16 / 9 });
+    const crop = defaultCrop(source());
 
     expect(centreOf(crop)).toEqual({ x: 0.5, y: 0.5 });
   });
@@ -185,11 +189,9 @@ describe("ImageCropper", () => {
   });
 
   it("lets the box sit outside the image when zoomed out", async () => {
-    const { container, latest, unmount: cleanup } = await mountCropper({
-      lockRatio: 16 / 9,
-    });
+    const { container, latest, unmount: cleanup } = await mountCropper();
 
-    await setZoom(container, 0.5, { ...source(), lockRatio: 16 / 9 });
+    await setZoom(container, 0.5);
 
     // Twice the image's width, so the surround renders as the background.
     expect(latest().w).toBeCloseTo(2, 2);
@@ -221,40 +223,18 @@ describe("ImageCropper", () => {
     cleanup();
   });
 
-  it("makes the box taller when its bottom edge is dragged down", async () => {
+  it("holds the fixed shape through a zoom", async () => {
     const { container, latest, unmount: cleanup } = await mountCropper();
 
-    await drag(byTestId(container, "crop-handle-bottom"), { x: 300, y: 200 }, { x: 300, y: 260 });
+    await setZoom(container, 2.5);
 
-    expect(latest().ratio).toBeLessThan(16 / 9);
+    expect(latest().ratio).toBeCloseTo(CARD_RATIO, 4);
 
     cleanup();
   });
 
-  it("stops at 1:1 however far the edge is dragged", async () => {
-    const { container, latest, unmount: cleanup } = await mountCropper();
-
-    await drag(byTestId(container, "crop-handle-bottom"), { x: 300, y: 0 }, { x: 300, y: 5000 });
-
-    expect(latest().ratio).toBeCloseTo(1, 4);
-
-    cleanup();
-  });
-
-  it("stops at 4:1 however far the edge is dragged the other way", async () => {
-    const { container, latest, unmount: cleanup } = await mountCropper();
-
-    await drag(byTestId(container, "crop-handle-bottom"), { x: 300, y: 5000 }, { x: 300, y: 0 });
-
-    expect(latest().ratio).toBeCloseTo(4, 4);
-
-    cleanup();
-  });
-
-  it("hides the edge handles when the shape is fixed", async () => {
-    const { container, unmount: cleanup } = await mountCropper({
-      lockRatio: 16 / 9,
-    });
+  it("draws no edge handles — the shape is not the author's to change", async () => {
+    const { container, unmount: cleanup } = await mountCropper();
 
     expect(byTestId(container, "crop-handle-top")).toBeNull();
     expect(byTestId(container, "crop-handle-bottom")).toBeNull();
@@ -262,24 +242,12 @@ describe("ImageCropper", () => {
     cleanup();
   });
 
-  it("holds the fixed shape through a zoom", async () => {
-    const { container, latest, unmount: cleanup } = await mountCropper({
-      lockRatio: 16 / 9,
-    });
+  it("reports how many source pixels wide the selection is", async () => {
+    const { container, unmount: cleanup } = await mountCropper();
 
-    await setZoom(container, 2.5);
-
-    expect(latest().ratio).toBeCloseTo(16 / 9, 4);
-
-    cleanup();
-  });
-
-  it("shows the selection's reduced ratio", async () => {
-    const { container, unmount: cleanup } = await mountCropper({
-      lockRatio: 16 / 9,
-    });
-
-    expect(byTestId(container, "crop-ratio").textContent).toBe("16 : 9");
+    expect(byTestId(container, "crop-source-width").textContent).toMatch(
+      /^\d+px$/,
+    );
 
     cleanup();
   });
@@ -308,7 +276,6 @@ function source(): Parameters<typeof defaultCrop>[0] {
   return {
     width: SOURCE.naturalWidth,
     height: SOURCE.naturalHeight,
-    minRatio: 1,
-    maxRatio: 4,
+    lockRatio: CARD_RATIO,
   };
 }

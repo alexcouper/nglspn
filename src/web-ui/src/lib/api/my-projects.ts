@@ -58,7 +58,9 @@ export class MyProjectsClient {
     contentType: string,
     fileSize: number,
     isIcon: boolean = false,
-    source: "project" | "article" = "project"
+    source: "project" | "article" = "project",
+    // The id of the owning item named by `source`. Required for "article".
+    sourceId: string | null = null
   ): Promise<PresignedUploadResponse> {
     return this.client.request<PresignedUploadResponse>(
       `/api/my/projects/${projectId}/images/upload-url`,
@@ -70,6 +72,7 @@ export class MyProjectsClient {
           file_size: fileSize,
           is_icon: isIcon,
           source,
+          source_id: sourceId,
         }),
       }
     );

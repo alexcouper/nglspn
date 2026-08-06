@@ -851,6 +851,13 @@ def _tally_rows(tally: CompetitionTally) -> list[dict[str, Any]]:
         {
             "project": tally.projects[project_id],
             "rank": ranks[project_id],
+            "tie_break": tally.tie_breaks.get(project_id),
+            "tie_break_with": ", ".join(
+                tally.projects[other].title
+                for other in tally.tie_breaks[project_id].tied_with
+            )
+            if project_id in tally.tie_breaks
+            else "",
             "first_place_count": tally.support[project_id].first_place_count,
             "ranked_by_count": tally.support[project_id].ranked_by_count,
             "mean_position": tally.support[project_id].mean_position,

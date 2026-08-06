@@ -117,17 +117,28 @@ earns its place going forward, when partial ballots make it meaningful.
 it in would widen a deliberately narrow interface.
 
 ```python
+@dataclass(frozen=True)
+class TieBreak:
+    """Why a project that shared a tier now has a rank of its own."""
+
+    rung: str
+    tied_with: tuple[ProjectId, ...]
+
+
 def break_ties(
     tiers: list[list[ProjectId]],
     margins: MarginMatrix,
     support: dict[ProjectId, ProjectSupport],
-) -> tuple[list[list[ProjectId]], dict[ProjectId, str]]:
+) -> tuple[list[list[ProjectId]], dict[ProjectId, TieBreak]]:
     """Split tied tiers as far as the ladder allows.
 
     Returns the new tiers and, for each project whose placement came from a
-    tiebreak, the name of the rung that decided it.
+    tiebreak, which rung decided it and who it had been tied with.
     """
 ```
+
+`tied_with` carries the rest of the original tier so the page footnote can name
+the projects the tie was against, not just the rung.
 
 `DjangoReviewQuery.get_competition_tally` calls the ordering rule, then
 `break_ties`, and puts the rung names on `CompetitionTally` alongside the tiers.

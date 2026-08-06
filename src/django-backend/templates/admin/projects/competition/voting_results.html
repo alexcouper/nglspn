@@ -48,7 +48,7 @@
             <span style="color: #ca8a04;">{{ row.rank }}</span>
           {% else %}
             {{ row.rank }}
-          {% endif %}
+          {% endif %}{% if row.tie_break %}<span style="font-size: 12px; font-weight: normal; opacity: 0.7;" title="Placed by tie-break">&nbsp;*</span>{% endif %}
         </td>
         <td style="padding: 8px 12px;">
           <a href="{% url 'admin:projects_project_change' row.project.pk %}">{{ row.project.title }}</a>
@@ -64,6 +64,15 @@
       {% endfor %}
     </tbody>
   </table>
+
+  <div style="margin-top: 10px;">
+    {% for row in results %}{% if row.tie_break %}
+    <p style="opacity: 0.7; font-size: 12px; margin: 2px 0;">
+      * <strong>{{ row.rank }}. {{ row.project.title }}</strong> &mdash; separated from
+      {{ row.tie_break_with }} by {{ row.tie_break.rung }}.
+    </p>
+    {% endif %}{% endfor %}
+  </div>
 
   <p style="opacity: 0.6; font-size: 12px; margin-top: 12px;">
     Order is computed by the Schulze method over the pairwise margins below. A reviewer's

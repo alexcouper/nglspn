@@ -329,3 +329,68 @@ class TestVotingResultsButton:
         )
         assert expected_url in response.content.decode()
         assert "View Voting Results" in response.content.decode()
+
+
+def _competition_with_a_broken_tie():
+    """Two projects Schulze cannot separate; `b` wins on mean position.
+
+    The last two ballots are what hold the a/b margin at zero — one ranks `a`
+    and not `b`, the other the reverse. Drop either and the margin becomes ±1,
+    there is no tie, and the test proves nothing.
+    """
+    a, b, c = ProjectFactory.create_batch(3)
+    competition = _make_competition_with_ballots(
+        [
+            (UserFactory(), [a, b, c]),
+            (UserFactory(), [b, a, c]),
+            (UserFactory(), [c, a]),
+            (UserFactory(), [b]),
+        ],
+        projects=[a, b, c],
+    )
+    return competition, a, b
+
+
+@pytest.mark.django_db
+class TestVotingResultsTieBreaks:
+    def test_marks_a_rank_that_came_from_a_tie_break(self, admin_client):
+        competition, a, b = _competition_with_a_broken_tie()
+
+        response = admin_client.get(_results_url(competition))
+
+        assert_that(
+            _row_for(response, b)["tie_break"].rung,
+            equal_to("better mean position"),
+        )
+        assert_that(_row_for(response, b)["tie_break_with"], equal_to(a.title))
+        assert_that(_ranks(response)[b.id], equal_to(1))
+
+    def test_names_the_rung_in_the_rendered_page(self, admin_client):
+        competition, _a, _b = _competition_with_a_broken_tie()
+
+        content = admin_client.get(_results_url(competition)).content.decode()
+
+        assert_that("better mean position" in content, equal_to(True))
+
+    def test_leaves_untied_rows_unmarked(self, admin_client):
+        p1, p2 = ProjectFactory.create_batch(2)
+        competition = _make_competition_with_ballots([(UserFactory(), [p1, p2])])
+
+        response = admin_client.get(_results_url(competition))
+
+        assert_that(_row_for(response, p1)["tie_break"], none())
+
+    def test_an_exhausted_ladder_leaves_a_shared_rank_unmarked(self, admin_client):
+        p1, p2, p3 = ProjectFactory.create_batch(3)
+        competition = _make_competition_with_ballots(
+            [
+                (UserFactory(), [p1, p2, p3]),
+                (UserFactory(), [p2, p1, p3]),
+            ]
+        )
+
+        response = admin_client.get(_results_url(competition))
+
+        assert_that(_ranks(response)[p1.id], equal_to(1))
+        assert_that(_ranks(response)[p2.id], equal_to(1))
+        assert_that(_row_for(response, p1)["tie_break"], none())

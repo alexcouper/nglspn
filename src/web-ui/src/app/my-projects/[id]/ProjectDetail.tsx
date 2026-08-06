@@ -54,7 +54,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
 
   const { uploads, uploadFiles, isUploading } = useImageUpload({
-    projectId,
+    target: { kind: "project", projectId },
     onUploadComplete: (image) => {
       setImages((prev) => [...prev, image]);
     },
@@ -66,8 +66,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const {
     uploadFiles: uploadIconFiles,
   } = useImageUpload({
-    projectId,
-    isIcon: true,
+    target: { kind: "project", projectId, isIcon: true },
     onUploadComplete: (image) => {
       setImages((prev) => {
         const withoutOldIcon = prev.filter((img) => !img.is_icon);

@@ -6,6 +6,9 @@ export type ArticleListItem = components["schemas"]["ArticleListItem"];
 export type ArticleCreate = components["schemas"]["ArticleCreate"];
 export type ArticleUpdate = components["schemas"]["ArticleUpdate"];
 export type ArticlePublish = components["schemas"]["ArticlePublish"];
+export type ProjectImage = components["schemas"]["ProjectImageResponse"];
+export type PresignedUploadResponse =
+  components["schemas"]["PresignedUploadResponse"];
 
 export class ArticlesClient {
   constructor(private client: APIClient) {}
@@ -63,6 +66,59 @@ export class ArticlesClient {
   async delete(projectSlug: string, articleId: string): Promise<void> {
     await this.client.request<void>(
       `/api/projects/${projectSlug}/articles/${articleId}`,
+      { method: "DELETE" }
+    );
+  }
+
+  // Images are addressed under the article that owns them. The rows are the
+  // same `ProjectImage` the project gallery uses — same storage, same variants
+  // — but an article upload never enters that gallery, so it is never reached
+  // through the my-projects image endpoints.
+  async getImageUploadUrl(
+    projectSlug: string,
+    articleId: string,
+    filename: string,
+    contentType: string,
+    fileSize: number
+  ): Promise<PresignedUploadResponse> {
+    return this.client.request<PresignedUploadResponse>(
+      `/api/projects/${projectSlug}/articles/${articleId}/images/upload-url`,
+      {
+        method: "POST",
+        body: JSON.stringify({
+          filename,
+          content_type: contentType,
+          file_size: fileSize,
+        }),
+      }
+    );
+  }
+
+  async completeImageUpload(
+    projectSlug: string,
+    articleId: string,
+    imageId: string,
+    // Measured client-side so the listing-image wizard knows the shape it has
+    // to crop straight away, rather than waiting for the variant job to
+    // backfill it.
+    dimensions: { width: number; height: number } | null = null
+  ): Promise<ProjectImage> {
+    return this.client.request<ProjectImage>(
+      `/api/projects/${projectSlug}/articles/${articleId}/images/${imageId}/complete`,
+      {
+        method: "POST",
+        body: JSON.stringify(dimensions ?? {}),
+      }
+    );
+  }
+
+  async deleteImage(
+    projectSlug: string,
+    articleId: string,
+    imageId: string
+  ): Promise<void> {
+    await this.client.request<void>(
+      `/api/projects/${projectSlug}/articles/${articleId}/images/${imageId}`,
       { method: "DELETE" }
     );
   }

@@ -7,4 +7,4 @@ from django_tasks import task
 def generate_image_variants(image_id: str) -> None:
     from services import HANDLERS  # noqa: PLC0415
 
-    HANDLERS.image.generate_variants(image_id)
+    HANDLERS.images.generate_variants(image_id)

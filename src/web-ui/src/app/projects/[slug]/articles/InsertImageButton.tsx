@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { PhotoIcon } from "@heroicons/react/24/outline";
 import { ButtonWithTooltip, insertImage$, usePublisher } from "@mdxeditor/editor";
-import { ALLOWED_IMAGE_TYPES } from "@/lib/uploadProjectImage";
+import { ALLOWED_IMAGE_TYPES } from "@/lib/uploadImage";
 
 // Straight to the OS file picker — no dialog. insertImage$ runs the file through
 // the configured imageUploadHandler and inserts the node with empty alt text;

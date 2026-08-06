@@ -74,10 +74,10 @@ async function cleanUp(
 
       await Promise.all(
         imageIds.map((imageId: string) =>
-          fetch(`${apiUrl}/api/my/projects/${projectId}/images/${imageId}`, {
-            method: "DELETE",
-            headers,
-          }),
+          fetch(
+            `${apiUrl}/api/projects/${projectId}/articles/${articleId}/images/${imageId}`,
+            { method: "DELETE", headers },
+          ),
         ),
       );
       await fetch(`${apiUrl}/api/projects/${projectId}/articles/${articleId}`, {

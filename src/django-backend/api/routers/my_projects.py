@@ -1,16 +1,13 @@
-import logging
 from typing import Any
 
 from django.db.models import QuerySet
 from django.http import Http404, HttpRequest
 from django.shortcuts import get_object_or_404
-from django.utils import timezone
 from ninja import Router
 
 from api.auth.security import auth
 from api.schemas.errors import Error
 from api.schemas.project import (
-    ImageSource,
     ImageUploadCompleteRequest,
     PresignedUploadRequest,
     PresignedUploadResponse,
@@ -20,8 +17,6 @@ from api.schemas.project import (
     PublishMissingFieldsResponse,
     UpdateImageRolesRequest,
 )
-from api.tasks.images import generate_image_variants
-from apps.articles.models import Article
 from apps.projects.models import (
     Project,
     ProjectImage,
@@ -29,6 +24,8 @@ from apps.projects.models import (
 )
 from apps.users.models import User
 from services import HANDLERS, REPO
+from services.images.exceptions import ImageError
+from services.images.handler_interface import FileMeta
 from services.project.exceptions import (
     InvalidProjectStateError,
     InvalidTagsError,
@@ -36,7 +33,6 @@ from services.project.exceptions import (
     PublishPreconditionsError,
 )
 from services.project.handler_interface import CreateProjectInput, UpdateProjectInput
-from services.storage import storage_service
 
 
 def _get_editable_project_or_404(project_id: str, user: User) -> Project:
@@ -45,16 +41,6 @@ def _get_editable_project_or_404(project_id: str, user: User) -> Project:
         raise Http404
     return project
 
-
-# Image upload configuration
-MAX_IMAGES_PER_PROJECT = 10
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
-ALLOWED_CONTENT_TYPES = {
-    "image/jpeg",
-    "image/png",
-    "image/webp",
-    "image/gif",
-}
 
 router = Router()
 
@@ -227,70 +213,25 @@ def get_upload_url(
 ) -> PresignedUploadResponse | tuple[int, dict[str, str]]:
     project = _get_editable_project_or_404(project_id, request.auth)
 
-    # Validate content type
-    if payload.content_type not in ALLOWED_CONTENT_TYPES:
-        allowed = ", ".join(sorted(ALLOWED_CONTENT_TYPES))
-        return 400, {"detail": f"Content type must be one of: {allowed}"}
-
-    # Validate file size
-    if payload.file_size > MAX_FILE_SIZE:
-        max_mb = MAX_FILE_SIZE // (1024 * 1024)
-        return 400, {"detail": f"File size must be less than {max_mb}MB"}
-
-    if payload.source not in ImageSource.values:
-        allowed = ", ".join(ImageSource.values)
-        return 400, {"detail": f"Source must be one of: {allowed}"}
-
-    is_icon = payload.is_icon
-    is_article = payload.source == ImageSource.ARTICLE
-
-    article: Article | None = None
-    if is_article:
-        article = Article.objects.filter(pk=payload.source_id, project=project).first()
-        if article is None:
-            return 400, {"detail": "source_id must name an article on this project"}
-
-    # Check image count limit. Icons and article uploads don't count — neither
-    # occupies a slot in the project's gallery.
-    current_count = (
-        project.images.filter(upload_status=UploadStatus.UPLOADED)
-        .exclude(is_icon=True)
-        .filter(article__isnull=True)
-        .count()
-    )
-    if not is_icon and not is_article and current_count >= MAX_IMAGES_PER_PROJECT:
-        return 400, {"detail": f"Maximum {MAX_IMAGES_PER_PROJECT} images per project"}
-
-    # Generate storage key
-    storage_key = storage_service.generate_upload_key(
-        str(project.id),
-        payload.filename,
-    )
-
-    image = ProjectImage.objects.create(
-        project=project,
-        storage_key=storage_key,
-        original_filename=payload.filename,
-        content_type=payload.content_type,
-        file_size=payload.file_size,
-        upload_status=UploadStatus.PENDING,
-        display_order=current_count,
-        is_icon=is_icon,
-        article=article,
-    )
-
-    # Generate presigned URL
-    presigned = storage_service.generate_presigned_upload_url(
-        storage_key,
-        payload.content_type,
-    )
+    try:
+        prepared = HANDLERS.images.create_gallery_upload(
+            project,
+            FileMeta(
+                filename=payload.filename,
+                content_type=payload.content_type,
+                file_size=payload.file_size,
+            ),
+            is_icon=payload.is_icon,
+        )
+    except ImageError as exc:
+        return 400, {"detail": str(exc)}
 
     return PresignedUploadResponse(
-        image_id=image.id,
-        upload_url=presigned["upload_url"],
-        method=presigned["method"],
-        headers=presigned["headers"],
-        storage_key=storage_key,
+        image_id=prepared.image.id,
+        upload_url=prepared.upload_url,
+        method=prepared.method,
+        headers=prepared.headers,
+        storage_key=prepared.storage_key,
     )
 
 
@@ -307,38 +248,22 @@ def complete_upload(
     payload: ImageUploadCompleteRequest,
 ) -> ProjectImage | tuple[int, dict[str, str]]:
     project = _get_editable_project_or_404(project_id, request.auth)
+    # `article__isnull` keeps this endpoint off article uploads: those are
+    # addressed under the articles router and completed there.
     image = get_object_or_404(
         ProjectImage,
         id=image_id,
         project=project,
+        article__isnull=True,
         upload_status=UploadStatus.PENDING,
     )
 
-    # Verify the object exists in storage
-    if not storage_service.object_exists(image.storage_key):
-        return 400, {"detail": "Image not found in storage. Upload may have failed."}
-
-    # Update image record
-    image.upload_status = UploadStatus.UPLOADED
-    image.uploaded_at = timezone.now()
-    image.width = payload.width
-    image.height = payload.height
-
-    # If this is the first non-icon image, make it the main image. Article
-    # uploads are never promoted — the project's cover image must come from the
-    # project's own images.
-    is_icon = image.is_icon
-    is_article = image.article_id is not None
-    has_main = project.images.filter(is_main=True).exists()
-    if not is_icon and not is_article and not has_main:
-        image.is_main = True
-
-    image.save()
-
-    # Enqueue async variant generation
-    generate_image_variants.enqueue(str(image.id))
-
-    return image
+    try:
+        return HANDLERS.images.complete_upload(
+            image, width=payload.width, height=payload.height
+        )
+    except ImageError as exc:
+        return 400, {"detail": str(exc)}
 
 
 @router.post(
@@ -358,6 +283,7 @@ def update_image_roles(
         ProjectImage,
         id=image_id,
         project=project,
+        article__isnull=True,
         upload_status=UploadStatus.UPLOADED,
     )
 
@@ -393,32 +319,8 @@ def delete_image(
     image_id: str,
 ) -> tuple[int, None]:
     project = _get_editable_project_or_404(project_id, request.auth)
-    image = get_object_or_404(ProjectImage, id=image_id, project=project)
-
-    # Delete variant files from S3 (DB rows cascade-delete with the image)
-    for variant in image.variants.all():
-        try:
-            storage_service.delete_object(variant.storage_key)
-        except Exception:
-            logging.getLogger(__name__).exception(
-                "Failed to delete variant %s from S3", variant.storage_key
-            )
-
-    # Delete original from storage
-    storage_service.delete_object(image.storage_key)
-
-    was_main = image.is_main
-    image.delete()
-
-    # If deleted image was main, promote the first remaining project image
-    if was_main:
-        first_image = (
-            project.images.filter(upload_status=UploadStatus.UPLOADED)
-            .filter(article__isnull=True)
-            .first()
-        )
-        if first_image:
-            first_image.is_main = True
-            first_image.save()
-
+    image = get_object_or_404(
+        ProjectImage, id=image_id, project=project, article__isnull=True
+    )
+    HANDLERS.images.delete_image(image)
     return 204, None

@@ -9,7 +9,7 @@ from moto import mock_aws
 from PIL import Image
 
 from apps.projects.models import ImageVariant, UploadStatus, VariantSize
-from services.image.django_impl.handler import DjangoImageHandler
+from services.images.django_impl.handler import DjangoImageHandler
 from tests.factories import ProjectImageFactory
 
 TEST_BUCKET = "test-bucket"

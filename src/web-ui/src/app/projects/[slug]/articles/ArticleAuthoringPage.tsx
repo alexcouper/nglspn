@@ -36,6 +36,11 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
   const { user } = useAuth();
   const { isReady, isLoading: authLoading } = useRequireAuth();
 
+  // One reference to the project for everything under the article editor.
+  // Article images are addressed by the article that owns them, so the editor
+  // no longer needs the project's UUID alongside this.
+  const projectRef = project.slug ?? project.id;
+
   const draft = useArticleDraft({ project, articleId });
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showImageWizard, setShowImageWizard] = useState(false);
@@ -221,7 +226,7 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
             cursor and re-run its plugin setup. */}
         <div className={tab === "content" ? undefined : "hidden"}>
           <ArticleEditor
-            projectId={project.id}
+            projectRef={projectRef}
             articleId={article.id}
             initialMarkdown={form.body}
             onChange={draft.handleBodyChange}
@@ -255,7 +260,7 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
 
       {showImageWizard && (
         <ListingImageDialog
-          projectId={project.id}
+          projectRef={projectRef}
           articleId={article.id}
           images={draft.images}
           currentImageId={form.listing_image_id}

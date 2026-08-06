@@ -6,7 +6,7 @@ import type { ProjectImage } from "@/lib/api";
 import { ListingImageDialog } from "./ListingImageDialog";
 
 vi.mock("@/lib/api", () => ({
-  api: { myProjects: { deleteImage: vi.fn(() => Promise.resolve()) } },
+  api: { articles: { deleteImage: vi.fn(() => Promise.resolve()) } },
 }));
 
 const uploadHandlers: {
@@ -100,7 +100,7 @@ function dialog(
 ) {
   return (
     <ListingImageDialog
-      projectId="p1"
+      projectRef="p1"
       articleId="a1"
       images={[image("one"), image("two")]}
       currentImageId={null}
@@ -248,7 +248,11 @@ describe("ListingImageDialog", () => {
     });
     await click(buttonLabelled(container, "Cancel"));
 
-    expect(api.myProjects.deleteImage).toHaveBeenCalledWith("p1", "fresh");
+    expect(api.articles.deleteImage).toHaveBeenCalledWith(
+      "p1",
+      "a1",
+      "fresh",
+    );
 
     cleanup();
   });

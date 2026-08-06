@@ -1,6 +1,8 @@
+from typing import Any
 from uuid import UUID
 
 from django.http import HttpRequest
+from django.shortcuts import get_object_or_404
 from ninja import Router
 
 from api.auth.security import auth
@@ -11,14 +13,20 @@ from api.routers._helpers import (
 )
 from api.schemas.article import (
     ArticleCreate,
+    ArticleImageUploadRequest,
     ArticleListItem,
     ArticleOut,
     ArticlePublish,
     ArticleUpdate,
 )
 from api.schemas.errors import Error
+from api.schemas.project import (
+    ImageUploadCompleteRequest,
+    PresignedUploadResponse,
+    ProjectImageResponse,
+)
 from apps.articles.models import Article, ArticleState
-from apps.projects.models import Project
+from apps.projects.models import Project, ProjectImage, UploadStatus
 from apps.users.models import User
 from services import HANDLERS, REPO
 from services.articles.exceptions import (
@@ -31,6 +39,8 @@ from services.articles.exceptions import (
     ListingImageOnWrongProjectError,
 )
 from services.articles.handler_interface import UNSET
+from services.images.exceptions import ImageError
+from services.images.handler_interface import FileMeta
 
 router = Router()
 
@@ -249,4 +259,126 @@ def delete_article(
     if isinstance(existing, tuple):
         return existing
     HANDLERS.articles.delete_article(article_id)
+    return 204, None
+
+
+# ----------------------------------------------------------------------
+# Article images
+#
+# The rows live on `ProjectImage` so they share the storage and variant
+# pipeline, but they are addressed here because they belong to an article.
+# Ownership is the same `require_full_edit` + `_get_article_in_project` pair
+# the rest of this router uses.
+# ----------------------------------------------------------------------
+
+
+def _get_editable_article(
+    slug: str, article_id: UUID, user_id: UUID
+) -> Article | tuple[int, dict[str, str]]:
+    project = require_full_edit(slug, user_id)
+    if isinstance(project, tuple):
+        return project
+    return _get_article_in_project(project, article_id)
+
+
+def _get_article_image_or_404(
+    article: Article, image_id: UUID, **filters: Any
+) -> ProjectImage:
+    return get_object_or_404(ProjectImage, id=image_id, article=article, **filters)
+
+
+@router.post(
+    "/{slug}/articles/{article_id}/images/upload-url",
+    response={
+        200: PresignedUploadResponse,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+    },
+    auth=auth,
+    tags=["Article Images"],
+)
+def get_article_image_upload_url(
+    request: HttpRequest,
+    slug: str,
+    article_id: UUID,
+    payload: ArticleImageUploadRequest,
+) -> PresignedUploadResponse | tuple[int, dict[str, str]]:
+    article = _get_editable_article(slug, article_id, request.auth.id)
+    if isinstance(article, tuple):
+        return article
+
+    try:
+        prepared = HANDLERS.images.create_article_upload(
+            article,
+            FileMeta(
+                filename=payload.filename,
+                content_type=payload.content_type,
+                file_size=payload.file_size,
+            ),
+        )
+    except ImageError as exc:
+        return 400, {"detail": str(exc)}
+
+    return PresignedUploadResponse(
+        image_id=prepared.image.id,
+        upload_url=prepared.upload_url,
+        method=prepared.method,
+        headers=prepared.headers,
+        storage_key=prepared.storage_key,
+    )
+
+
+@router.post(
+    "/{slug}/articles/{article_id}/images/{image_id}/complete",
+    response={
+        200: ProjectImageResponse,
+        400: Error,
+        401: Error,
+        403: Error,
+        404: Error,
+    },
+    auth=auth,
+    tags=["Article Images"],
+)
+def complete_article_image_upload(
+    request: HttpRequest,
+    slug: str,
+    article_id: UUID,
+    image_id: UUID,
+    payload: ImageUploadCompleteRequest,
+) -> ProjectImage | tuple[int, dict[str, str]]:
+    article = _get_editable_article(slug, article_id, request.auth.id)
+    if isinstance(article, tuple):
+        return article
+
+    image = _get_article_image_or_404(
+        article, image_id, upload_status=UploadStatus.PENDING
+    )
+    try:
+        return HANDLERS.images.complete_upload(
+            image, width=payload.width, height=payload.height
+        )
+    except ImageError as exc:
+        return 400, {"detail": str(exc)}
+
+
+@router.delete(
+    "/{slug}/articles/{article_id}/images/{image_id}",
+    response={204: None, 401: Error, 403: Error, 404: Error},
+    auth=auth,
+    tags=["Article Images"],
+)
+def delete_article_image(
+    request: HttpRequest,
+    slug: str,
+    article_id: UUID,
+    image_id: UUID,
+) -> tuple[int, None] | tuple[int, dict[str, str]]:
+    article = _get_editable_article(slug, article_id, request.auth.id)
+    if isinstance(article, tuple):
+        return article
+
+    HANDLERS.images.delete_image(_get_article_image_or_404(article, image_id))
     return 204, None

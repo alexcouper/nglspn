@@ -2,23 +2,10 @@ from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
 
-from django.db import models
 from ninja import Schema
 
 from .tag import TagWithCategoryResponse
 from .user import PublicUserProfile
-
-
-class ImageSource(models.TextChoices):
-    """Which owner an upload is for.
-
-    This is a request shape, not a column. Storage records the owning article as
-    a real FK, so "is this an article image" cannot disagree with which article
-    it belongs to.
-    """
-
-    PROJECT = "project", "Project"
-    ARTICLE = "article", "Article"
 
 
 class ProjectCreate(Schema):
@@ -138,12 +125,6 @@ class PresignedUploadRequest(Schema):
     content_type: str
     file_size: int
     is_icon: bool = False
-    # "article" for uploads made from the article editor. Those stay out of the
-    # project's gallery, cover-image picks and image cap.
-    source: str = ImageSource.PROJECT
-    # The id of the owning item named by `source`. Required when source is
-    # "article"; ignored otherwise.
-    source_id: UUID | None = None
 
 
 class PresignedUploadResponse(Schema):

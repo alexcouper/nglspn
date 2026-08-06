@@ -19,7 +19,7 @@ class TestGenerateImageVariantsCommand:
             width=2000, height=1500, upload_status=UploadStatus.UPLOADED
         )
 
-        with patch("services.HANDLERS.image.generate_variants") as mock_gen:
+        with patch("services.HANDLERS.images.generate_variants") as mock_gen:
             call_command("generate_image_variants")
 
         assert mock_gen.call_count == 2
@@ -30,7 +30,7 @@ class TestGenerateImageVariantsCommand:
         ProjectImageFactory(width=4000, height=2250, upload_status=UploadStatus.PENDING)
         ProjectImageFactory(width=4000, height=2250, upload_status=UploadStatus.FAILED)
 
-        with patch("services.HANDLERS.image.generate_variants") as mock_gen:
+        with patch("services.HANDLERS.images.generate_variants") as mock_gen:
             call_command("generate_image_variants")
 
         mock_gen.assert_not_called()
@@ -50,7 +50,7 @@ class TestGenerateImageVariantsCommand:
                 file_size=1000,
             )
 
-        with patch("services.HANDLERS.image.generate_variants") as mock_gen:
+        with patch("services.HANDLERS.images.generate_variants") as mock_gen:
             call_command("generate_image_variants")
 
         mock_gen.assert_not_called()
@@ -69,7 +69,7 @@ class TestGenerateImageVariantsCommand:
             file_size=1000,
         )
 
-        with patch("services.HANDLERS.image.generate_variants") as mock_gen:
+        with patch("services.HANDLERS.images.generate_variants") as mock_gen:
             call_command("generate_image_variants")
 
         mock_gen.assert_called_once_with(str(image.id))
@@ -89,7 +89,7 @@ class TestGenerateImageVariantsCommand:
                 raise RuntimeError(msg)
 
         with patch(
-            "services.HANDLERS.image.generate_variants", side_effect=fail_on_first
+            "services.HANDLERS.images.generate_variants", side_effect=fail_on_first
         ) as mock_gen:
             call_command("generate_image_variants")
 

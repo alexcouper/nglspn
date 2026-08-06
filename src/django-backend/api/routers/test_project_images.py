@@ -247,7 +247,7 @@ class TestCompleteUpload:
             Body=b"test",
         )
 
-        with patch("api.routers.my_projects.generate_image_variants") as mock_task:
+        with patch("api.tasks.images.generate_image_variants") as mock_task:
             response = client.post(
                 f"/api/my/projects/{project.id}/images/{image.id}/complete",
                 data=json.dumps({"width": 800, "height": 600}),
@@ -639,7 +639,7 @@ def request_upload_url(client, project, auth_headers, **overrides):
 
 def complete_upload(client, project, image, auth_headers, storage):
     storage.put_object(Bucket=TEST_BUCKET, Key=image.storage_key, Body=b"test")
-    with patch("api.routers.my_projects.generate_image_variants"):
+    with patch("api.tasks.images.generate_image_variants"):
         return client.post(
             f"/api/my/projects/{project.id}/images/{image.id}/complete",
             data=json.dumps({"width": 800, "height": 600}),
@@ -661,36 +661,26 @@ def make_uploaded_image(project, index: int = 0, **overrides) -> ProjectImage:
     )
 
 
+def make_pending_image(project, **overrides) -> ProjectImage:
+    return ProjectImage.objects.create(
+        project=project,
+        storage_key="test/pending.png",
+        original_filename="pending.png",
+        content_type="image/png",
+        file_size=1024,
+        upload_status=UploadStatus.PENDING,
+        **overrides,
+    )
+
+
 def gallery_image_ids(response) -> list[str]:
     return [image["id"] for image in response.json()["images"]]
 
 
 class TestArticleLinkedImages:
-    """Images uploaded from the article editor describe an article, not the
-    project, so they stay out of the project's gallery, cover-image picks and
-    image cap. The link to the article is the only record of that — there is no
-    separate flag to disagree with it."""
-
-    def test_upload_url_links_the_image_to_its_article(
-        self,
-        client,
-        project,
-        auth_headers,
-        mock_storage_service,
-    ) -> None:
-        article = ArticleFactory(project=project)
-
-        response = request_upload_url(
-            client,
-            project,
-            auth_headers,
-            source="article",
-            source_id=str(article.id),
-        )
-
-        assert_that(response.status_code, equal_to(200))
-        image = ProjectImage.objects.get(id=response.json()["image_id"])
-        assert_that(image.article_id, equal_to(article.id))
+    """Article uploads live on the project so they share the storage and variant
+    pipeline, but they describe an article. The project's own image endpoints
+    must not see them: they are addressed under the articles router instead."""
 
     def test_a_project_upload_is_linked_to_no_article(
         self,
@@ -703,52 +693,6 @@ class TestArticleLinkedImages:
 
         image = ProjectImage.objects.get(id=response.json()["image_id"])
         assert_that(image.article_id, equal_to(None))
-
-    def test_rejects_an_unknown_source(
-        self,
-        client,
-        project,
-        auth_headers,
-        mock_storage_service,
-    ) -> None:
-        response = request_upload_url(
-            client, project, auth_headers, source="somewhere-else"
-        )
-
-        assert_that(response.status_code, equal_to(400))
-        assert_that(response.json()["detail"], contains_string("Source"))
-
-    def test_rejects_an_article_upload_with_no_source_id(
-        self,
-        client,
-        project,
-        auth_headers,
-        mock_storage_service,
-    ) -> None:
-        response = request_upload_url(client, project, auth_headers, source="article")
-
-        assert_that(response.status_code, equal_to(400))
-        assert_that(response.json()["detail"], contains_string("source_id"))
-
-    def test_rejects_an_article_on_another_project(
-        self,
-        client,
-        project,
-        auth_headers,
-        mock_storage_service,
-    ) -> None:
-        foreign = ArticleFactory()
-
-        response = request_upload_url(
-            client,
-            project,
-            auth_headers,
-            source="article",
-            source_id=str(foreign.id),
-        )
-
-        assert_that(response.status_code, equal_to(400))
-        assert_that(response.json()["detail"], contains_string("source_id"))
 
     def test_article_images_do_not_count_toward_the_image_cap(
         self,
@@ -766,52 +710,36 @@ class TestArticleLinkedImages:
 
         assert_that(response.status_code, equal_to(200))
 
-    def test_an_article_upload_is_allowed_at_the_image_cap(
-        self,
-        client,
-        user,
-        auth_headers,
-        mock_storage_service,
-    ) -> None:
-        project = ProjectFactory(owner=user)
-        article = ArticleFactory(project=project)
-        for i in range(10):
-            make_uploaded_image(project, i)
-
-        response = request_upload_url(
-            client,
-            project,
-            auth_headers,
-            source="article",
-            source_id=str(article.id),
-        )
-
-        assert_that(response.status_code, equal_to(200))
-
-    def test_an_article_image_is_not_promoted_to_main(
+    def test_completing_an_article_image_here_is_not_found(
         self,
         client,
         project,
         auth_headers,
         mock_storage_service,
     ) -> None:
-        image = ProjectImage.objects.create(
-            project=project,
-            article=ArticleFactory(project=project),
-            storage_key="test/article.png",
-            original_filename="article.png",
-            content_type="image/png",
-            file_size=1024,
-            upload_status=UploadStatus.PENDING,
-        )
+        image = make_pending_image(project, article=ArticleFactory(project=project))
 
         response = complete_upload(
             client, project, image, auth_headers, mock_storage_service
         )
 
-        assert_that(response.status_code, equal_to(200))
-        image.refresh_from_db()
-        assert_that(image.is_main, is_(False))
+        assert_that(response.status_code, equal_to(404))
+
+    def test_deleting_an_article_image_here_is_not_found(
+        self,
+        client,
+        project,
+        auth_headers,
+    ) -> None:
+        image = make_uploaded_image(project, 0, article=ArticleFactory(project=project))
+
+        response = client.delete(
+            f"/api/my/projects/{project.id}/images/{image.id}",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(404))
+        assert_that(ProjectImage.objects.filter(id=image.id).exists(), is_(True))
 
     def test_deleting_the_main_image_does_not_promote_an_article_image(
         self,

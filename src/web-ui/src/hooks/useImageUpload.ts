@@ -3,10 +3,10 @@
 import { useState, useCallback } from "react";
 import { type ProjectImage } from "@/lib/api";
 import {
-  type ImageSource,
+  type UploadTarget,
   ImageValidationError,
-  uploadProjectImage,
-} from "@/lib/uploadProjectImage";
+  uploadImage,
+} from "@/lib/uploadImage";
 
 interface UploadProgress {
   imageId: string;
@@ -17,20 +17,16 @@ interface UploadProgress {
 }
 
 interface UseImageUploadOptions {
-  projectId: string;
-  isIcon?: boolean;
-  source?: ImageSource;
-  // The article an "article" upload belongs to.
-  sourceId?: string | null;
+  // What the upload belongs to. A single value rather than a projectId plus a
+  // pair of source fields, so a caller cannot name one owner and upload to
+  // another.
+  target: UploadTarget;
   onUploadComplete?: (image: ProjectImage) => void;
   onError?: (error: Error) => void;
 }
 
 export function useImageUpload({
-  projectId,
-  isIcon = false,
-  source = "project",
-  sourceId = null,
+  target,
   onUploadComplete,
   onError,
 }: UseImageUploadOptions) {
@@ -53,10 +49,7 @@ export function useImageUpload({
     async (file: File) => {
       let imageId: string | null = null;
       try {
-        const completedImage = await uploadProjectImage(projectId, file, {
-          isIcon,
-          source,
-          sourceId,
+        const completedImage = await uploadImage(target, file, {
           onImageId: (id) => {
             imageId = id;
             setUploads((prev) => [
@@ -104,16 +97,7 @@ export function useImageUpload({
         );
       }
     },
-    [
-      projectId,
-      isIcon,
-      source,
-      sourceId,
-      onUploadComplete,
-      onError,
-      updateUpload,
-      removeUpload,
-    ]
+    [target, onUploadComplete, onError, updateUpload, removeUpload]
   );
 
   const uploadFiles = useCallback(

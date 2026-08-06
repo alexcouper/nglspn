@@ -200,7 +200,7 @@ The system SHALL provide a "Write article" entry point on the project page that 
 
 The system SHALL provide an authoring page at `/projects/<project-slug>/articles/new` (Next.js route) and `/projects/<project-slug>/articles/<id>/edit` for an existing draft. The authoring page SHALL provide:
 - A markdown editor with side-by-side preview on viewports `≥ md` and tabbed (Edit / Preview) below that.
-- Drag-to-insert image upload: dropping an image file on the editor SHALL upload it via the existing project-image upload endpoint and insert a `![](url)` reference at the cursor.
+- Drag-to-insert image upload: dropping an image file on the editor SHALL upload it against the article it is being written into and insert a `![](url)` reference at the cursor. Article images are addressed under the article that owns them (`/api/projects/{slug}/articles/{id}/images/...`), not through the project's gallery endpoints, and SHALL NOT count against the project's image cap or become its cover image.
 - A **Listing settings** tab holding the summary, the listing-image control and a preview of the article's card.
 - A channel dropdown listing this project's channels.
 - A "Save draft" button (no field requirements) and a "Publish" button (requires title and body; opens a confirm dialog with optional `published_at` override).

@@ -1970,6 +1970,290 @@
         ]
       }
     },
+    "/api/projects/{slug}/articles/{article_id}/images/upload-url": {
+      "post": {
+        "operationId": "api_routers_articles_get_article_image_upload_url",
+        "summary": "Get Article Image Upload Url",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "article_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Article Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Article Images"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleImageUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/projects/{slug}/articles/{article_id}/images/{image_id}/complete": {
+      "post": {
+        "operationId": "api_routers_articles_complete_article_image_upload",
+        "summary": "Complete Article Image Upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "article_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Article Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "image_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectImageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Article Images"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageUploadCompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/projects/{slug}/articles/{article_id}/images/{image_id}": {
+      "delete": {
+        "operationId": "api_routers_articles_delete_article_image",
+        "summary": "Delete Article Image",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "article_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Article Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "image_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Article Images"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
     "/api/projects/{slug}/channels": {
       "get": {
         "operationId": "api_routers_channels_list_channels",
@@ -6032,6 +6316,95 @@
         "title": "ArticlePublish",
         "type": "object"
       },
+      "PresignedUploadResponse": {
+        "properties": {
+          "image_id": {
+            "format": "uuid",
+            "title": "Image Id",
+            "type": "string"
+          },
+          "upload_url": {
+            "title": "Upload Url",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "storage_key": {
+            "title": "Storage Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_id",
+          "upload_url",
+          "method",
+          "headers",
+          "storage_key"
+        ],
+        "title": "PresignedUploadResponse",
+        "type": "object"
+      },
+      "ArticleImageUploadRequest": {
+        "description": "An article upload names only the file.\n\nThe article it belongs to is in the path, so there is no `source` /\n`source_id` pair here that could disagree with which article the row is\nstored against.",
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "file_size": {
+            "title": "File Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "content_type",
+          "file_size"
+        ],
+        "title": "ArticleImageUploadRequest",
+        "type": "object"
+      },
+      "ImageUploadCompleteRequest": {
+        "properties": {
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          }
+        },
+        "title": "ImageUploadCompleteRequest",
+        "type": "object"
+      },
       "ChannelResponse": {
         "properties": {
           "id": {
@@ -6262,43 +6635,6 @@
         "title": "PublishMissingFieldsResponse",
         "type": "object"
       },
-      "PresignedUploadResponse": {
-        "properties": {
-          "image_id": {
-            "format": "uuid",
-            "title": "Image Id",
-            "type": "string"
-          },
-          "upload_url": {
-            "title": "Upload Url",
-            "type": "string"
-          },
-          "method": {
-            "title": "Method",
-            "type": "string"
-          },
-          "headers": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Headers",
-            "type": "object"
-          },
-          "storage_key": {
-            "title": "Storage Key",
-            "type": "string"
-          }
-        },
-        "required": [
-          "image_id",
-          "upload_url",
-          "method",
-          "headers",
-          "storage_key"
-        ],
-        "title": "PresignedUploadResponse",
-        "type": "object"
-      },
       "PresignedUploadRequest": {
         "properties": {
           "filename": {
@@ -6317,23 +6653,6 @@
             "default": false,
             "title": "Is Icon",
             "type": "boolean"
-          },
-          "source": {
-            "default": "project",
-            "title": "Source",
-            "type": "string"
-          },
-          "source_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Source Id"
           }
         },
         "required": [
@@ -6342,34 +6661,6 @@
           "file_size"
         ],
         "title": "PresignedUploadRequest",
-        "type": "object"
-      },
-      "ImageUploadCompleteRequest": {
-        "properties": {
-          "width": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Width"
-          },
-          "height": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Height"
-          }
-        },
-        "title": "ImageUploadCompleteRequest",
         "type": "object"
       },
       "UpdateImageRolesRequest": {

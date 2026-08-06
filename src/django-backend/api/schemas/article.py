@@ -4,6 +4,7 @@ from uuid import UUID
 
 from ninja import Schema
 
+from apps.projects.models import UploadStatus
 from services.articles.summary import derive_summary
 
 from .project import ProjectImageResponse
@@ -53,6 +54,19 @@ class ArticleUpdate(Schema):
 
 class ArticlePublish(Schema):
     published_at: datetime | None = None
+
+
+class ArticleImageUploadRequest(Schema):
+    """An article upload names only the file.
+
+    The article it belongs to is in the path, so there is no `source` /
+    `source_id` pair here that could disagree with which article the row is
+    stored against.
+    """
+
+    filename: str
+    content_type: str
+    file_size: int
 
 
 class ArticleProjectRef(Schema):
@@ -130,9 +144,20 @@ class ArticleOut(Schema):
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:
-        # Ordered by upload time to match how `auto` picks its image, so the
-        # wizard lists them in the same order the default was chosen from.
-        return sorted(obj.images.all(), key=lambda img: img.created_at)
+        # Only completed uploads: a `PENDING` row whose PUT failed has a
+        # storage key but no object behind it, so offering it to the wizard
+        # would let an author pick a listing image that renders as a broken
+        # card. Ordered by upload time to match how `auto` picks its image, so
+        # the wizard lists them in the same order the default was chosen from.
+        # Filtered in Python so a prefetched relation is not thrown away.
+        return sorted(
+            (
+                img
+                for img in obj.images.all()
+                if img.upload_status == UploadStatus.UPLOADED
+            ),
+            key=lambda img: img.created_at,
+        )
 
     @staticmethod
     def resolve_is_globally_visible(obj: Any) -> bool:

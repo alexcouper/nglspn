@@ -15,7 +15,10 @@ import { pickVariant } from "@/lib/utils";
 const CARD_RATIO = 16 / 9;
 
 interface Props {
-  projectId: string;
+  // Slug or id — whatever the article editor addresses the project by. Article
+  // images hang off the article's own endpoints, so this is the same reference
+  // the rest of the editor uses.
+  projectRef: string;
   articleId: string;
   // Every image uploaded for this article, from the image-article link. Not
   // parsed out of the body, so an image the author uploaded here is offered on
@@ -31,7 +34,7 @@ interface Props {
 // Two steps: pick an image, then frame it at 16:9. Step two hosts ImageCropper
 // directly rather than nesting an ImageCropDialog inside this one.
 export function ListingImageDialog({
-  projectId,
+  projectRef,
   articleId,
   images,
   currentImageId,
@@ -52,9 +55,7 @@ export function ListingImageDialog({
   const inputRef = useRef<HTMLInputElement>(null);
 
   const { uploadFile, isUploading } = useImageUpload({
-    projectId,
-    source: "article",
-    sourceId: articleId,
+    target: { kind: "article", projectRef, articleId },
     onUploadComplete: (image) => {
       setPendingUpload(image);
       // A fresh upload has nothing to choose between, so it continues straight
@@ -76,7 +77,7 @@ export function ListingImageDialog({
     if (!pendingUpload) return;
     // Best-effort: article images are excluded from the project gallery, so a
     // failure leaves an invisible orphan rather than a visible one.
-    api.myProjects.deleteImage(projectId, pendingUpload.id).catch(() => {});
+    api.articles.deleteImage(projectRef, articleId, pendingUpload.id).catch(() => {});
     setPendingUpload(null);
   }
 

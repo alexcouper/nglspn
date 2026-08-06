@@ -43,7 +43,7 @@ class Command(BaseCommand):
 
         for i, image in enumerate(images, start=1):
             try:
-                HANDLERS.image.generate_variants(str(image.id))
+                HANDLERS.images.generate_variants(str(image.id))
             except Exception:
                 logger.exception("Failed to process image %s", image.id)
 

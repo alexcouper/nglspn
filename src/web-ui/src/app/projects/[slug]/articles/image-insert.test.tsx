@@ -5,15 +5,15 @@ import { buildAltTextSavePayload } from "./buildAltTextSavePayload";
 import { ImageAltDialog } from "./ImageAltDialog";
 import { useImageUploadStatus } from "./useImageUploadStatus";
 
-vi.mock("@/lib/uploadProjectImage", async () => {
+vi.mock("@/lib/uploadImage", async () => {
   const actual = await vi.importActual<
-    typeof import("@/lib/uploadProjectImage")
-  >("@/lib/uploadProjectImage");
-  return { ...actual, uploadProjectImage: vi.fn() };
+    typeof import("@/lib/uploadImage")
+  >("@/lib/uploadImage");
+  return { ...actual, uploadImage: vi.fn() };
 });
 
-const { uploadProjectImage } = await import("@/lib/uploadProjectImage");
-const uploadMock = vi.mocked(uploadProjectImage);
+const { uploadImage } = await import("@/lib/uploadImage");
+const uploadMock = vi.mocked(uploadImage);
 
 // ---------------------------------------------------------------- factories
 
@@ -33,7 +33,7 @@ function editingImage(
 }
 
 function projectImage(url: string) {
-  return { url } as Awaited<ReturnType<typeof uploadProjectImage>>;
+  return { url } as Awaited<ReturnType<typeof uploadImage>>;
 }
 
 function imageFile(name = "screenshot.png") {
@@ -90,11 +90,11 @@ async function click(element: Element) {
 
 // --------------------------------------------------------- hook test harness
 
-function renderUploadStatus(projectId: string, articleId = "article-1") {
+function renderUploadStatus(projectRef: string, articleId = "article-1") {
   const captured = {} as ReturnType<typeof useImageUploadStatus>;
 
   function Harness() {
-    Object.assign(captured, useImageUploadStatus(projectId, articleId));
+    Object.assign(captured, useImageUploadStatus(projectRef, articleId));
     return null;
   }
 
@@ -274,10 +274,10 @@ describe("useImageUploadStatus", () => {
   });
 });
 
-describe("article image source", () => {
-  it("tags inline body uploads as article-sourced so they stay off the project page", async () => {
+describe("article image target", () => {
+  it("uploads inline body images against the article, not the project gallery", async () => {
     uploadMock.mockResolvedValue(projectImage("https://cdn/uploaded.png"));
-    const { captured, mounted } = renderUploadStatus("project-1");
+    const { captured, mounted } = renderUploadStatus("a-project");
     const { unmount } = await mounted;
 
     await act(async () => {
@@ -285,9 +285,8 @@ describe("article image source", () => {
     });
 
     expect(uploadMock).toHaveBeenCalledWith(
-      "project-1",
+      { kind: "article", projectRef: "a-project", articleId: "article-1" },
       expect.any(File),
-      expect.objectContaining({ source: "article" }),
     );
 
     unmount();

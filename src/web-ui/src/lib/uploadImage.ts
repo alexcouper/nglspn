@@ -9,20 +9,16 @@ export const ALLOWED_IMAGE_TYPES = [
 
 export const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 
-// Where the upload came from. Article uploads live on the project so they share
-// the storage and variant pipeline, but they describe an article, so the backend
-// keeps them out of the project gallery, cover-image picks and image cap.
-export type ImageSource = "project" | "article";
+// Which owner the upload belongs to. The two differ in the endpoints they use
+// and in the rules the backend applies — a gallery image counts against the
+// project's cap and can become its cover; an article image does neither.
+export type UploadTarget =
+  | { kind: "project"; projectId: string; isIcon?: boolean }
+  | { kind: "article"; projectRef: string; articleId: string };
 
 export class ImageValidationError extends Error {}
 
 interface UploadOptions {
-  isIcon?: boolean;
-  source?: ImageSource;
-  // The article the upload belongs to. Required when source is "article" —
-  // the backend records it as a real link, and rejects an id that does not
-  // name an article on the project being uploaded to.
-  sourceId?: string | null;
   // Fired once the backend allocates the image row but before the S3 PUT —
   // useful for callers that want to track per-upload progress by id.
   onImageId?: (imageId: string) => void;
@@ -33,11 +29,14 @@ interface UploadOptions {
 }
 
 // Shared 3-step image upload: presigned URL → S3 PUT → backend completion.
+// Only the presign and completion calls differ between targets; the validation
+// and the PUT are the same, so they live here once.
+//
 // The `useImageUpload` hook wraps this with React state for a multi-file
 // progress list; one-shot callers (the article inline image handler) can use
 // it directly and ignore the callbacks.
-export async function uploadProjectImage(
-  projectId: string,
+export async function uploadImage(
+  target: UploadTarget,
   file: File,
   options: UploadOptions = {},
 ): Promise<ProjectImage> {
@@ -52,15 +51,22 @@ export async function uploadProjectImage(
   // leaving a completed row with no dimensions.
   const dimensions = await readImageDimensions(file);
 
-  const presigned = await api.myProjects.getImageUploadUrl(
-    projectId,
-    file.name,
-    file.type,
-    file.size,
-    options.isIcon ?? false,
-    options.source ?? "project",
-    options.sourceId ?? null,
-  );
+  const presigned =
+    target.kind === "project"
+      ? await api.myProjects.getImageUploadUrl(
+          target.projectId,
+          file.name,
+          file.type,
+          file.size,
+          target.isIcon ?? false,
+        )
+      : await api.articles.getImageUploadUrl(
+          target.projectRef,
+          target.articleId,
+          file.name,
+          file.type,
+          file.size,
+        );
 
   options.onImageId?.(presigned.image_id);
 
@@ -90,11 +96,18 @@ export async function uploadProjectImage(
 
   options.onUploadDone?.();
 
-  return api.myProjects.completeImageUpload(
-    projectId,
-    presigned.image_id,
-    dimensions,
-  );
+  return target.kind === "project"
+    ? api.myProjects.completeImageUpload(
+        target.projectId,
+        presigned.image_id,
+        dimensions,
+      )
+    : api.articles.completeImageUpload(
+        target.projectRef,
+        target.articleId,
+        presigned.image_id,
+        dimensions,
+      );
 }
 
 // Null rather than throwing: an image the browser cannot decode still uploads,

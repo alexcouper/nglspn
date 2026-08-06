@@ -52,15 +52,15 @@ export class MyProjectsClient {
     });
   }
 
+  // The project's own gallery only. Article images are uploaded through
+  // `api.articles.getImageUploadUrl`, which addresses them by the article that
+  // owns them.
   async getImageUploadUrl(
     projectId: string,
     filename: string,
     contentType: string,
     fileSize: number,
-    isIcon: boolean = false,
-    source: "project" | "article" = "project",
-    // The id of the owning item named by `source`. Required for "article".
-    sourceId: string | null = null
+    isIcon: boolean = false
   ): Promise<PresignedUploadResponse> {
     return this.client.request<PresignedUploadResponse>(
       `/api/my/projects/${projectId}/images/upload-url`,
@@ -71,8 +71,6 @@ export class MyProjectsClient {
           content_type: contentType,
           file_size: fileSize,
           is_icon: isIcon,
-          source,
-          source_id: sourceId,
         }),
       }
     );

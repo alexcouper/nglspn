@@ -98,4 +98,4 @@
 - [x] 12.3 E2E: create an article, insert two body images, save, confirm the card auto-adopts the earlier one; open the wizard, pick the second, frame it, save, reload and confirm it persisted; remove it and confirm it stays removed across a save. Run serially and clean up uploads — login is rate limited to 5/min per IP and projects cap at 10 images
 - [x] 12.4 E2E or manual: publish an article with no image at all and confirm it renders as a text-only card in both variants
 - [x] 12.5 Manually check the wizard on an emulated 375px viewport
-- [ ] 12.6 Run the repo's checks: `make lint` + `make test` in `src/django-backend/`, `npm run lint` + vitest in `src/web-ui/` (there is no working root `make ci` target)
+- [x] 12.6 Run the repo's checks: `make lint` + `make test` in `src/django-backend/`, `npm run lint` + vitest in `src/web-ui/` (there is no working root `make ci` target)

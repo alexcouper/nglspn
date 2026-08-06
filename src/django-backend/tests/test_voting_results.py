@@ -394,3 +394,35 @@ class TestVotingResultsTieBreaks:
         assert_that(_ranks(response)[p1.id], equal_to(1))
         assert_that(_ranks(response)[p2.id], equal_to(1))
         assert_that(_row_for(response, p1)["tie_break"], none())
+
+
+@pytest.mark.django_db
+class TestVotingResultsMethodExplanation:
+    def test_explains_the_ranking_and_the_tie_break_sequence(self, admin_client):
+        p1, p2 = ProjectFactory.create_batch(2)
+        competition = _make_competition_with_ballots([(UserFactory(), [p1, p2])])
+
+        content = admin_client.get(_results_url(competition)).content.decode()
+
+        # Case-insensitive because the page capitalises the rung names where
+        # they lead a sentence; the wording must still match the code exactly.
+        haystack = content.lower()
+        for phrase in [
+            "how this order is worked out",
+            "strongest chain",
+            "least-bad worst defeat",
+            "ranked by more reviewers",
+            "better mean position",
+            "more first-place votes",
+            "only completed reviews are counted",
+        ]:
+            assert_that(phrase in haystack, equal_to(True), phrase)
+
+    def test_shows_the_worked_example_for_the_first_test(self, admin_client):
+        p1, p2 = ProjectFactory.create_batch(2)
+        competition = _make_competition_with_ballots([(UserFactory(), [p1, p2])])
+
+        content = admin_client.get(_results_url(competition)).content.decode()
+
+        assert_that("A beats B by 2" in content, equal_to(True))
+        assert_that("least bad" in content, equal_to(True))

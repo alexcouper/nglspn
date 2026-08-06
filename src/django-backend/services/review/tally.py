@@ -182,8 +182,49 @@ def _worst_defeat(
     return {a: min(margins[a][b] for b in tied if b != a) for a in tied}
 
 
+def _breadth(
+    tied: list[ProjectId],
+    margins: MarginMatrix,
+    support: dict[ProjectId, ProjectSupport],
+) -> dict[ProjectId, float]:
+    """How many reviewers ranked the project at all. More is better."""
+    return {a: support[a].ranked_by_count for a in tied}
+
+
+def _mean_position(
+    tied: list[ProjectId],
+    margins: MarginMatrix,
+    support: dict[ProjectId, ProjectSupport],
+) -> dict[ProjectId, float]:
+    """Mean position among rankers, negated because position 1 is best.
+
+    A project nobody ranked has no mean position and sorts last.
+    """
+    scores: dict[ProjectId, float] = {}
+    for a in tied:
+        mean = support[a].mean_position
+        scores[a] = _WORST if mean is None else -mean
+    return scores
+
+
+def _first_places(
+    tied: list[ProjectId],
+    margins: MarginMatrix,
+    support: dict[ProjectId, ProjectSupport],
+) -> dict[ProjectId, float]:
+    """How many reviewers put the project top. More is better."""
+    return {a: support[a].first_place_count for a in tied}
+
+
+# Order matters and is argued in the design doc: the margin-based rung leads so
+# the ladder can never contradict the vote, and the positional rungs come last
+# because they measure how much reviewers preferred a project rather than how
+# often — the scoring this tally deliberately moved away from.
 TIE_BREAK_RUNGS: list[tuple[str, ScoreRung]] = [
     ("least-bad worst defeat", _worst_defeat),
+    ("ranked by more reviewers", _breadth),
+    ("better mean position", _mean_position),
+    ("more first-place votes", _first_places),
 ]
 
 

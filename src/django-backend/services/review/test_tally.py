@@ -230,3 +230,70 @@ class TestBreakTiesByWorstDefeat:
 
         assert_that(tiers, equal_to([[A, B]]))
         assert_that(reasons, equal_to({}))
+
+
+def support_for(
+    values: dict[ProjectId, tuple[int, int, float | None]],
+) -> dict[ProjectId, ProjectSupport]:
+    """(first places, ranked by, mean position) per project."""
+    return {
+        p: ProjectSupport(first_place_count=f, ranked_by_count=r, mean_position=m)
+        for p, (f, r, m) in values.items()
+    }
+
+
+class TestBreakTiesByTheLaterRungs:
+    def test_breadth_separates_when_the_margins_cannot(self) -> None:
+        margins = margin_matrix({(A, B): 0})
+        support = support_for({A: (0, 4, 2.0), B: (0, 9, 2.0)})
+
+        tiers, reasons = break_ties([[A, B]], margins, support)
+
+        assert_that(tiers, equal_to([[B], [A]]))
+        assert_that(reasons[B].rung, equal_to("ranked by more reviewers"))
+
+    def test_a_lower_mean_position_wins(self) -> None:
+        margins = margin_matrix({(A, B): 0})
+        support = support_for({A: (0, 5, 3.4), B: (0, 5, 2.1)})
+
+        tiers, reasons = break_ties([[A, B]], margins, support)
+
+        assert_that(tiers, equal_to([[B], [A]]))
+        assert_that(reasons[B].rung, equal_to("better mean position"))
+
+    def test_a_project_nobody_ranked_sorts_last_on_mean_position(self) -> None:
+        margins = margin_matrix({(A, B): 0})
+        support = support_for({A: (0, 0, None), B: (0, 5, 7.9)})
+
+        tiers, _reasons = break_ties([[A, B]], margins, support)
+
+        assert_that(tiers, equal_to([[B], [A]]))
+
+    def test_first_places_decide_only_when_everything_else_is_level(self) -> None:
+        margins = margin_matrix({(A, B): 0})
+        support = support_for({A: (1, 5, 2.0), B: (4, 5, 2.0)})
+
+        tiers, reasons = break_ties([[A, B]], margins, support)
+
+        assert_that(tiers, equal_to([[B], [A]]))
+        assert_that(reasons[B].rung, equal_to("more first-place votes"))
+
+    def test_the_margins_outrank_first_places_when_they_disagree(self) -> None:
+        # The Hvitlaukur rank-5 shape: the project with far more 1st places
+        # lost head to head, and the head-to-head result wins.
+        margins = margin_matrix({(A, B): 1})
+        support = support_for({A: (1, 11, 5.18), B: (5, 11, 4.45)})
+
+        tiers, reasons = break_ties([[A, B]], margins, support)
+
+        assert_that(tiers, equal_to([[A], [B]]))
+        assert_that(reasons[A].rung, equal_to("least-bad worst defeat"))
+
+    def test_a_tier_survives_when_every_rung_is_level(self) -> None:
+        margins = margin_matrix({(A, B): 0})
+        support = support_for({A: (2, 5, 1.5), B: (2, 5, 1.5)})
+
+        tiers, reasons = break_ties([[A, B]], margins, support)
+
+        assert_that(tiers, equal_to([[A, B]]))
+        assert_that(reasons, equal_to({}))

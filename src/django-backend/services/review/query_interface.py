@@ -3,7 +3,12 @@ from dataclasses import dataclass, field
 from uuid import UUID
 
 from apps.projects.models import Project
-from services.review.tally import MarginMatrix, ProjectId, ProjectSupport
+from services.review.tally import (
+    MarginMatrix,
+    ProjectId,
+    ProjectSupport,
+    TieBreak,
+)
 
 
 @dataclass(frozen=True)
@@ -15,6 +20,8 @@ class CompetitionTally:
     tiers: list[list[ProjectId]] = field(default_factory=list)
     support: dict[ProjectId, ProjectSupport] = field(default_factory=dict)
     margins: MarginMatrix = field(default_factory=dict)
+    # Populated only for projects whose rank came from the tie-break ladder.
+    tie_breaks: dict[ProjectId, TieBreak] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)

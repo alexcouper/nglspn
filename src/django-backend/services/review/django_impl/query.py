@@ -24,6 +24,7 @@ from services.review.query_interface import (
 from services.review.tally import (
     OrderingRule,
     ProjectId,
+    break_ties,
     reduce_ballots_to_margins,
     schulze_order,
     support_signals,
@@ -69,13 +70,16 @@ class DjangoReviewQuery(ReviewQueryInterface):
             competition_id, counted_reviewer_ids, set(eligible_ids)
         )
         margins = reduce_ballots_to_margins(ballots.values(), eligible_ids)
+        support = support_signals(ballots.values(), eligible_ids)
+        tiers, tie_breaks = break_ties(self._ordering_rule(margins), margins, support)
 
         return CompetitionTally(
             counted_ballots=len(counted_reviewer_ids),
             projects={p.id: p for p in projects},
-            tiers=self._ordering_rule(margins),
-            support=support_signals(ballots.values(), eligible_ids),
+            tiers=tiers,
+            support=support,
             margins=margins,
+            tie_breaks=tie_breaks,
         )
 
     def get_reviewer_projects(

@@ -144,6 +144,31 @@ class TestGetCompetitionTally:
 
         assert_that(tally.counted_ballots, equal_to(0))
 
+    def test_separates_projects_the_ordering_rule_left_tied(self, query) -> None:
+        # Four ballots leave `first` and `second` on a margin of exactly 0, so
+        # Schulze puts them in one tier. Both are ranked by three reviewers, so
+        # breadth is level too and the ladder falls through to mean position:
+        # `second` averages 4/3 against `first`'s 5/3.
+        competition, (first, second, third) = competition_with_projects(3)
+        cast_ballot(competition, UserFactory(), [first, second, third])
+        cast_ballot(competition, UserFactory(), [second, first, third])
+        cast_ballot(competition, UserFactory(), [third, first])
+        cast_ballot(competition, UserFactory(), [second])
+
+        tally = query.get_competition_tally(competition.id)
+
+        assert_that(flat_order(tally)[0], equal_to(second.id))
+        assert_that(tally.tie_breaks[second.id].rung, equal_to("better mean position"))
+        assert_that(tally.tie_breaks[second.id].tied_with, equal_to((first.id,)))
+
+    def test_reports_no_tie_break_when_the_rule_already_decided(self, query) -> None:
+        competition, (first, second) = competition_with_projects(2)
+        cast_ballot(competition, UserFactory(), [first, second])
+
+        tally = query.get_competition_tally(competition.id)
+
+        assert_that(tally.tie_breaks, equal_to({}))
+
     def test_uses_the_ordering_rule_it_was_given(self) -> None:
         competition, (first, second) = competition_with_projects(2)
         cast_ballot(competition, UserFactory(), [first, second])

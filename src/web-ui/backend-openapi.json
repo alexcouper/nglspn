@@ -5925,8 +5925,7 @@
             ]
           },
           "listing_image_mode": {
-            "title": "Listing Image Mode",
-            "type": "string"
+            "$ref": "#/components/schemas/ListingImageMode"
           },
           "listing_image": {
             "anyOf": [
@@ -6099,6 +6098,16 @@
         "title": "CropRect",
         "type": "object"
       },
+      "ListingImageMode": {
+        "description": "How an article's listing image was decided.\n\nA nullable ``listing_image`` cannot tell \"not chosen yet\" from \"deliberately\nremoved\", so removal would not survive the next save.",
+        "enum": [
+          "auto",
+          "chosen",
+          "none"
+        ],
+        "title": "ListingImageMode",
+        "type": "string"
+      },
       "ArticleCreate": {
         "properties": {
           "channel_id": {
@@ -6269,13 +6278,12 @@
           "listing_image_mode": {
             "anyOf": [
               {
-                "type": "string"
+                "$ref": "#/components/schemas/ListingImageMode"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Listing Image Mode"
+            ]
           },
           "channel_id": {
             "anyOf": [

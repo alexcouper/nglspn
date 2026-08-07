@@ -5,7 +5,7 @@ import { CroppedImage } from "@/components/CroppedImage";
 import type { Article, ProjectImage } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
 import { ArticleCardPreview } from "./ArticleCardPreview";
-import type { ListingImageMode } from "./useArticleDraft";
+import type { ListingImageMode } from "@/lib/api";
 
 const SUMMARY_MAX = 300;
 

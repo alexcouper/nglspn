@@ -579,6 +579,21 @@ class TestListingImageMode:
             has_entries(listing_image_id=None, listing_image_mode="none"),
         )
 
+    def test_an_unknown_mode_is_rejected(self, client, user, auth_headers) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project)
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"listing_image_mode": "nonsense"},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+        article.refresh_from_db()
+        assert_that(article.listing_image_mode, equal_to("auto"))
+
 
 @pytest.mark.django_db
 class TestArticleCrops:

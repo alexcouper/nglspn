@@ -20,7 +20,7 @@ Verified before reviewing:
 | 3 | `auto` mode adopts an incomplete upload | **Done** — `wvvx` |
 | 4 | N+1 on the Following page | **Done** — `tvyq`, wider than reviewed (see below) |
 | 5 | Fresh upload leaves the panel saying "No image" | **Done** — `678dc07e`, before this review was filed |
-| 6 | `listing_image_mode` unvalidated | Open |
+| 6 | `listing_image_mode` unvalidated | **Done** — `tkyl` |
 | 7–10, 12 | Nits | Open |
 | 11 | `ArticleOut.resolve_images` returns pending uploads | **Done** — `99d24cf2` |
 | — | Design: article images onto the articles router | **Done** — `99d24cf2` |
@@ -193,7 +193,7 @@ Images picked from the body (already in `article.images`) are fine, which is why
 the e2e — which picks index 1 of two body images — doesn't catch it. Push the
 confirmed image into `article.images` via the already-exposed `setArticle`.
 
-### 6. `listing_image_mode` is an unvalidated string all the way to the column — Open
+### 6. `listing_image_mode` is an unvalidated string all the way to the column — **Done**
 
 `src/django-backend/api/schemas/article.py:49`
 
@@ -203,6 +203,21 @@ Declared `str | None`, passed straight through `_resolve_mode` to
 persists it; subsequent reads hand the frontend a mode that isn't a key of
 `MODE_LABEL`. Make it a `Literal["auto", "chosen", "none"]` so Ninja rejects it
 with a 422.
+
+**Resolution.** Confirmed — `PATCH {"listing_image_mode": "nonsense"}` returned
+200 and the column held `nonsense`. Typed as the model's `ListingImageMode`
+rather than a literal, so the accepted values can't drift from the column's
+`choices`; the schema is the only place that enforces them, since Django doesn't.
+
+The same type on `ArticleOut` is the part that pays off twice: the response
+schema now carries the enum, so the generated
+`components["schemas"]["ListingImageMode"]` is a `"auto" | "chosen" | "none"`
+union. The hand-written mirror of it in `useArticleDraft.ts` and the two
+`as ListingImageMode` casts that propped it up are gone — `ListingImageMode` is
+exported from `lib/api` alongside `Article`, so the frontend union is generated
+from the model rather than kept in step with it by hand.
+
+Test: `test_an_unknown_mode_is_rejected` — 422, and the stored mode unchanged.
 
 ## Minor / nits
 
@@ -248,11 +263,13 @@ problem you can't undo after the first send, and the scheduler rename will take
 digests down silently. 3–6 are worth fixing in this change; the rest can follow.
 
 Blocker 1 is done, though the fix landed in `follows/0004`, not where the review
-pointed. Blocker 2 still stands. Findings 3 and 4 are done, both wider than
-written — in each case the rule the review wanted enforced at one call site had
-to be given a single home instead. Its fix is partly outside this repo: no
-scheduler config exists here (no `infra/prod`, no cron files), so the task names
-have to be changed wherever the schedule actually lives.
+pointed. Findings 3–6 are done; 3, 4 and 6 all came out wider than written,
+because in each case a rule the review wanted enforced at one call site had to
+be given a single home instead.
+
+Blocker 2 still stands, and its fix is partly outside this repo: no scheduler
+config exists here (no `infra/prod`, no cron files), so the task names have to be
+changed wherever the schedule actually lives. Only that and the nits are left.
 
 ## Design — move article image upload into the articles router — **Done** (`99d24cf2`)
 

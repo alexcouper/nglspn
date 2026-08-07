@@ -6,6 +6,9 @@ export type ArticleListItem = components["schemas"]["ArticleListItem"];
 export type ArticleCreate = components["schemas"]["ArticleCreate"];
 export type ArticleUpdate = components["schemas"]["ArticleUpdate"];
 export type ArticlePublish = components["schemas"]["ArticlePublish"];
+// How the article's listing image was decided. Generated from
+// ListingImageMode in apps/articles/models.py.
+export type ListingImageMode = components["schemas"]["ListingImageMode"];
 export type ProjectImage = components["schemas"]["ProjectImageResponse"];
 export type PresignedUploadResponse =
   components["schemas"]["PresignedUploadResponse"];

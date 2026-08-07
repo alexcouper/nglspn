@@ -3,13 +3,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import type { Article, Channel, Project, ProjectImage } from "@/lib/api";
+import type {
+  Article,
+  Channel,
+  ListingImageMode,
+  Project,
+  ProjectImage,
+} from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
 import type { CropRect } from "@/components/CroppedImage";
-
-// How the article's listing image was decided. Mirrors ListingImageMode in
-// apps/articles/models.py.
-export type ListingImageMode = "auto" | "chosen" | "none";
 
 export interface ArticleFormState {
   title: string;
@@ -131,7 +133,7 @@ export function useArticleDraft({ project, articleId }: Options) {
           summary: loaded.summary,
           listing_image_id: loaded.listing_image_id,
           listing_crop: loaded.listing_crop,
-          listing_image_mode: loaded.listing_image_mode as ListingImageMode,
+          listing_image_mode: loaded.listing_image_mode,
         });
         setIsLoading(false);
       } catch (err) {
@@ -276,8 +278,7 @@ export function useArticleDraft({ project, articleId }: Options) {
                 ...prev,
                 listing_image_id: updated.listing_image_id,
                 listing_crop: updated.listing_crop,
-                listing_image_mode:
-                  updated.listing_image_mode as ListingImageMode,
+                listing_image_mode: updated.listing_image_mode,
               }
             : prev,
         );

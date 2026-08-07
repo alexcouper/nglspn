@@ -17,9 +17,6 @@ class NotificationHandlerInterface(ABC):
     def create_notifications_for_article(self, article_id: UUID) -> None: ...
 
     @abstractmethod
-    def send_batch_notifications(self, cadence: str) -> None: ...
-
-    @abstractmethod
     def send_discussion_digest(self, cadence: str) -> None: ...
 
     @abstractmethod

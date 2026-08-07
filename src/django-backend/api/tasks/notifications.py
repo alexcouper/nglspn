@@ -15,13 +15,20 @@ def create_discussion_notifications(discussion_id: str) -> None:
     HANDLERS.notifications.create_notifications_for_discussion(UUID(discussion_id))
 
 
-# Per-kind digest tasks. Schedules are wired in the deployment cron / cloud
-# scheduler — wall-clock targets agreed for the first rollout:
-#   - discussion hourly: every hour at :00
-#   - discussion daily : 09:00 UTC
-#   - article hourly   : every hour at :05 (offset from discussion to spread load)
-#   - article daily    : 09:00 UTC
-#   - article weekly   : Monday 09:00 UTC
+# Per-kind digest tasks. Nothing in this repo enqueues them: the schedule is a
+# set of Kubernetes CronJobs in the naglasupan-hq infra repo
+# (`k8s/base/notifications/`), each running
+# `manage.py enqueue_digest --kind <kind> --cadence <cadence>` against this
+# image. Renaming a task here therefore only breaks production if the matching
+# CLI arguments change — see `apps/notifications/management/commands/enqueue_digest.py`,
+# which is the seam that keeps the cron off these symbol names.
+#
+# Deployed wall-clock (UTC), mirrored from the CronJobs:
+#   - discussion hourly: :05 past the hour
+#   - article hourly   : :05 past the hour
+#   - discussion daily : 18:00
+#   - article daily    : 18:00
+#   - article weekly   : Monday 18:00
 @task()
 def send_discussion_digest_hourly() -> None:
     from services import HANDLERS  # noqa: PLC0415

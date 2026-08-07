@@ -128,7 +128,7 @@ class TestDiscussionNotificationsExcludeInactiveUsers:
             ".DjangoEmailHandler"
             ".send_discussion_digest_email"
         ) as mock_digest:
-            handler.send_batch_notifications(NotificationCadence.HOURLY)
+            handler.send_discussion_digest(NotificationCadence.HOURLY)
 
         # Only called once — for the active user
         assert_that(mock_digest.call_count, equal_to(1))

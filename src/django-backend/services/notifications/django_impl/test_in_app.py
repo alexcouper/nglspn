@@ -328,7 +328,7 @@ class TestBatchDigestExcludesReadInApp:
             ".DjangoEmailHandler"
             ".send_discussion_digest_email"
         ) as mock_digest:
-            handler.send_batch_notifications(cadence)
+            handler.send_discussion_digest(cadence)
 
         sent = mock_digest.call_args[1]["notifications"]
         assert_that([n.id for n in sent], equal_to([unread_n.id]))

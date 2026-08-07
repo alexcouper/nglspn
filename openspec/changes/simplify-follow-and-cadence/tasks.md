@@ -47,7 +47,8 @@
 - [x] 7.2 Same split for the daily batch task: `send_discussion_digest_daily` + `send_article_digest_daily`.
 - [x] 7.3 Add `send_article_digest_weekly`. No matching discussion task (discussions have no `weekly`).
 - [x] 7.4 Add the two digest templates: `templates/email/discussion_digest.{mjml,txt}` (replaces the previous mixed template), `templates/email/article_digest.{mjml,txt}` (new). Each renders only its own kind.
-- [x] 7.5 Update the celery / django-tasks schedule entries to register the three new periodic tasks and remove the old mixed ones. Pick wall-clock for daily (e.g. 09:00 UTC) and weekly (e.g. Monday 09:00 UTC); document in settings.
+- [x] 7.5 Add `manage.py enqueue_digest --kind <kind> --cadence <cadence>` and `manage.py enqueue_notification_cleanup` as the deployment's entry points, so the schedule names a CLI instead of a Python symbol. Document the deployed wall-clock in `api/tasks/notifications.py`. _(The schedule itself lives in the `naglasupan-hq` infra repo, `k8s/base/notifications/` — see 7.7.)_
+- [ ] 7.7 **Infra repo (`naglasupan-hq`).** Replace the three `psql`-INSERT CronJobs with five single-purpose jobs invoking the management command on the backend image: discussion-hourly + article-hourly at `5 * * * *`, discussion-daily + article-daily at `0 18 * * *`, article-weekly at `0 18 * * 1`; convert `notify-cleanup-daily` to `enqueue_notification_cleanup`. Delete the unreferenced `infra/modules/services/notification-scheduler/` Terraform module, which hardcodes the old task paths. **Must ship with or before the backend deploy** — the old task paths do not exist on this branch. _(Cross-repo; tracked here so it isn't lost.)_
 - [x] 7.6 Add tests covering: per-kind filtering, two-emails-same-tick, never-cadence skip, already-read-in-app skip.
 
 ## 8. Backend — Broadcast send path

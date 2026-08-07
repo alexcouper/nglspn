@@ -262,16 +262,6 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
                 "Failed to send immediate notification %s", notification.id
             )
 
-    def send_batch_notifications(self, cadence: str) -> None:
-        """Legacy entry-point: dispatches to both per-kind digest tasks.
-
-        Retained so the existing tick (`api.tasks.notifications.send_*_notifications`)
-        keeps working without a celery-config flip. Each per-kind helper is
-        also independently callable for tests.
-        """
-        self.send_discussion_digest(cadence)
-        self.send_article_digest(cadence)
-
     def send_discussion_digest(self, cadence: str) -> None:
         if cadence == NotificationCadence.NEVER:
             return

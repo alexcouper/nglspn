@@ -1,8 +1,14 @@
 """Derive a listing summary from an article's markdown body.
 
-Used when an article has no authored summary. Lives only here — a second
-implementation in TypeScript would drift, so the frontend previews a saved
-article rather than deriving client-side.
+Used when an article has no authored summary. Every surface that shows an
+article excerpt goes `article.summary or derive_summary(article.body)`:
+`ArticleOut.summary_display`, `ArticleListItem.summary`, the digest email and
+the notification bell. Lives only here — a second implementation would drift,
+in Python as easily as in TypeScript, so the frontend previews a saved article
+rather than deriving client-side.
+
+Discussion bodies are NOT markdown and must not come through here; see
+`services/notifications/django_impl/handler.py::_plain_text_excerpt`.
 """
 
 from __future__ import annotations

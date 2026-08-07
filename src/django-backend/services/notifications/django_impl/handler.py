@@ -11,6 +11,7 @@ from apps.articles.models import Article, ArticleState
 from apps.discussions.models import Discussion
 from apps.follows.models import FollowedChannel
 from apps.notifications.models import Notification, NotificationCadence
+from services.articles.summary import derive_summary
 from services.images.django_impl.query import gallery_prefetch
 from services.notifications import (
     NotificationGroup,
@@ -45,7 +46,15 @@ def _actor_name(user: User | None) -> str:
     return user.first_name or user.email or "Someone"
 
 
-def _body_excerpt(text: str) -> str:
+def _plain_text_excerpt(text: str) -> str:
+    """Truncate a body that is already plain text.
+
+    Discussion bodies only. They are typed into a bare textarea and rendered
+    with `whitespace-pre-wrap`, so there is no markup to flatten — and running
+    `derive_summary` over one would mangle literal `[a](b)`, `<T>` and `> `
+    that a commenter meant literally. Articles are markdown: use
+    `derive_summary`.
+    """
     text = text.strip()
     if len(text) <= _BODY_EXCERPT_MAX:
         return text
@@ -84,7 +93,7 @@ def _build_group(rows: Iterable[Notification], root_id: UUID) -> NotificationGro
         ),
         headline_kind=headline_kind,
         actor_names=actor_names,
-        latest_body_excerpt=_body_excerpt(latest.discussion.body),
+        latest_body_excerpt=_plain_text_excerpt(latest.discussion.body),
         latest_event_at=latest.discussion.created_at,
         unread_count=len(rows),
         latest_comment_id=latest.discussion_id,
@@ -121,7 +130,12 @@ def _build_article_group(rows: list[Notification]) -> NotificationGroup:
         ),
         latest_event_at=article.published_at or latest.created_at,
         unread_count=len(rows),
-        latest_body_excerpt=_body_excerpt(article.body),
+        # Same rule as every other article surface (`ArticleOut.summary_display`,
+        # `ArticleListItem.summary`, the digest email): the authored summary
+        # wins, and the fallback is the one derivation in
+        # `services/articles/summary.py`.
+        latest_body_excerpt=article.summary
+        or derive_summary(article.body, limit=_BODY_EXCERPT_MAX),
         article_id=article.id,
         article_slug=article.slug,
         article_title=article.title,

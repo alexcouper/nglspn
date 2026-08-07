@@ -2,11 +2,13 @@
 
 Gaps found while reviewing.
 
-Items 1–4 are frontend fixes on `/profile/following` and are resolved. Items 5
-to 11 are open and unrelated to that page. Items 8 to 11 come from the
-article-authoring review and were deferred deliberately rather than fixed;
-**item 8 is live data loss and ships unfixed**, so it is not in the "blocks
-nothing" category the rest are.
+Items 1–4 are frontend fixes on `/profile/following` and are resolved. Item 5's
+code has landed but nothing schedules it yet. Items 6 to 16 are open. Items 8
+to 11 come from the article-authoring review and were deferred deliberately
+rather than fixed; **item 8 is live data loss and ships unfixed**, so it is not
+in the "blocks nothing" category the rest are. Items 13 to 16 are spillover
+from applying that review — found while fixing something adjacent, left alone
+to keep those changes honest.
 
 ## 1. No way to unfollow a single channel from the following page — done
 
@@ -50,7 +52,7 @@ The row header put the project `<Link>` inside the expand `<button>`. The
 chevron is now its own button with `aria-expanded` / `aria-controls`, and the
 link sits outside it.
 
-## 5. Nothing garbage-collects abandoned image uploads
+## 5. Nothing garbage-collects abandoned image uploads — code done, not scheduled
 
 `services/images/django_impl/handler.py:151`, `src/web-ui/src/lib/uploadImage.ts:86`
 
@@ -67,9 +69,18 @@ upload, each holding a `storage_key` for an object that may or may not exist —
 that succeeded while the completion call failed leaves an orphaned S3 object
 with no row that admits to owning it.
 
-Worth a periodic task that deletes `PENDING` rows older than some threshold,
-attempting the storage delete first. Sizing it needs a count from prod — the
-table may well be tiny, in which case this stays a note.
+`HANDLERS.images.sweep_orphaned_objects()` now does this. `PENDING` rows older
+than 24 hours are deleted — a presigned PUT expires after an hour, so nothing
+older can still complete — and deleting the row fires the `pre_delete` receiver
+that tombstones its `storage_key`, which the same sweep run then drains. The
+object goes with the row instead of being left behind. `UPLOADED` rows of any
+age and `FAILED` rows are untouched.
+
+**Still open: nothing schedules it.** `manage.py enqueue_storage_sweep` exists,
+but the CronJob belongs in the `naglasupan-hq` infra repo and has not been
+written. Until it lands, the sweep never runs and the tombstone table only
+grows — one row per deleted image. A `WARNING` fires when the oldest undrained
+tombstone passes 24 hours, so the gap is visible rather than silent.
 
 ## 6. The dev task-checker still reads `django_tasks`' table directly
 
@@ -500,3 +511,59 @@ a failure in the log.
 
 Fix is either to rename web-ui's target or to make the shared one conditional.
 Not worth doing alone; fold it into the next change that touches either Makefile.
+
+## 13. Discussion creation enqueues its fan-out outside any transaction
+
+`services/discussions/django_impl/handler.py:34-45`
+
+`create_discussion` does `Discussion.objects.create(...)` and then
+`create_discussion_notifications.enqueue(...)` with no `transaction.atomic()`
+around either, so the two commit separately. A crash or a connection loss
+between them leaves a discussion nobody is notified about, permanently — the
+queue is a table, so there is no retry that would notice.
+
+The article publish path was given exactly this treatment in the review round:
+the enqueue moved *inside* `transaction.atomic()`, so the task row and the
+content row commit together. `django-tasks-db` defines no `ENQUEUE_ON_COMMIT`,
+which is why `on_commit` is the wrong tool — it would widen the window rather
+than close it.
+
+This is the same fix, one `atomic()` block. It was out of scope for that change
+and is not urgent: the failure needs a crash in a sub-millisecond window.
+
+## 14. `projects__tags` is dead weight on both competition endpoints
+
+`api/routers/competitions.py`
+
+Same defect as the `projects__images` prefetch removed alongside it:
+`CompetitionResponse.from_competition` re-queries
+`competition.projects.filter(status=APPROVED)`, and calling `filter()` on a
+prefetched related manager clones the queryset and drops the cache, so the
+router's prefetch cannot reach it. `from_competition` brings its own
+`tags__category` prefetch.
+
+Left in place only because it is not an image prefetch and so fell outside that
+change's remit. Costs one wasted query per request on both endpoints. Removing
+`projects__images` measured 14 queries down to 13; expect the same shape here.
+
+## 15. `describeApiError` covers four screens, not the app
+
+`src/web-ui/src/lib/api/errors.ts`
+
+The author-facing error copy landed on the article authoring page, my-projects,
+profile and login. Roughly twenty `err instanceof Error ? err.message : "Failed
+to …"` sites remain — notifications, discussions, follows, competitions — and
+still surface raw throw text such as "Unauthorized" or "Failed to fetch".
+
+`describeApiError` is the seam; each site needs a fallback sentence chosen for
+what the user was doing. Mechanical, but it is twenty small copy decisions
+rather than a find-and-replace.
+
+## 16. The query-counting test helper is duplicated
+
+`services/articles/django_impl/test_handler.py`,
+`services/follows/django_impl/test_query.py`
+
+Both define their own `_count_queries`. A third copy is one prefetch regression
+away. Lifting it needs a shared test-support module, which does not exist yet —
+that decision is the actual work, not the move.

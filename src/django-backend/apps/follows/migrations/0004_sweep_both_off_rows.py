@@ -28,15 +28,24 @@ def sweep_email_disabled(apps, schema_editor):
     collapse — that state is not expressible once the booleans are gone, and
     erring toward a quiet inbox is the safer direction.
 
-    Leaves Follow rows untouched, including any this empties. Note that the API
-    does the opposite: `unfollow_channel` deletes the Follow when it removes the
-    last FollowedChannel. Unfollowing in bulk from a migration is a bigger
-    action than this sweep wants, and the users concerned receive nothing from
-    the project either way — but the consequence is that an emptied Follow is a
-    legacy-only state that still reports `is_following = true`. Small by
-    construction: 0002 seeds the house project's Updates channel with
-    email_enabled=True unconditionally, so no house Follow can be emptied here.
-    See design decision 6.
+    Leaves Follow rows untouched, including any this empties. Unfollowing in
+    bulk from a migration is a bigger action than this sweep wants, and the
+    users concerned receive nothing from the project either way.
+
+    An emptied Follow is a state the system tolerates, not something only this
+    sweep produces: deleting a Channel cascades FollowedChannel rows away (both
+    through delete_channel and through the admin), and two concurrent
+    unfollow_channel calls can each miss the other's delete. Nothing that acts
+    on a follow is harmed — the article fan-out and the digest select
+    FollowedChannel, not Follow — but the reads in
+    services/follows/django_impl/query.py key on Follow existence, so the user
+    still shows as "Following" with nothing ticked and pressing Follow again
+    writes nothing. Ticking a channel in the popover repairs it. See design
+    decision 6.
+
+    This sweep's own contribution is small by construction: 0002 seeds the
+    house project's Updates channel with email_enabled=True unconditionally, so
+    no house Follow can be emptied here.
     """
     FollowedChannel = apps.get_model("follows", "FollowedChannel")
     qs = FollowedChannel.objects.filter(email_enabled=False)

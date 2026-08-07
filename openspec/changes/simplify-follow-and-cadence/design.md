@@ -96,13 +96,22 @@ Users with no `Follow(user, house_project)` row stay unfollowed. That's an expli
 
 A `Follow` row whose `FollowedChannel` set becomes empty after the sweep is **left in place** — the popover still works, and the user can re-enable channels.
 
-**This no longer matches the API.** `unfollow_channel` deletes the `Follow` when it removes the last `FollowedChannel`, because a `Follow` with no channels notifies about nothing and reporting it as "Following" is a lie. The divergence is deliberate but narrow: a migration unfollowing people in bulk is a larger action than this sweep is willing to take, and the users concerned get nothing from the project either way. It does mean an emptied `Follow` is a legacy-only state — the API will not create another one, and nothing cleans up the existing ones.
+`unfollow_channel` does the opposite: it deletes the `Follow` when it removes the last `FollowedChannel`, because that is the one path where the user has just asked to stop. A migration unfollowing people in bulk is a larger action than this sweep is willing to take, and the users concerned get nothing from the project either way.
 
-If that proves untidy, the fix is to make the sweep delete the `Follow` too, not to reinstate the inert-follow semantics on the endpoint.
+**An emptied `Follow` is a state the system tolerates**, not a legacy-only artefact of this sweep. Four things produce it:
+
+1. Channel deletion through the API. `FollowedChannel.channel` is `CASCADE`, and `delete_channel` (`services/articles/django_impl/handler.py`) refuses only a channel with articles and the last channel on a project — so a user who follows just that channel loses their last row. This is the common case, no concurrency involved.
+2. Channel or `FollowedChannel` deletion through the Django admin, which bypasses the service layer entirely.
+3. Two concurrent `unfollow_channel` calls: under READ COMMITTED each sees the other's row as still present, so neither takes the `follow.delete()` branch.
+4. The rows this sweep leaves behind.
+
+Nothing that *acts* on a follow is harmed. The article fan-out (`services/notifications/django_impl/handler.py`) selects `FollowedChannel`, and the digest runs off `Notification` rows, so an emptied `Follow` already delivers nothing — which is the correct outcome.
+
+What it costs is cosmetic, and accepted. Three reads key on `Follow` existence rather than on its channels — `is_followed`, `get_state` and `_follow_queryset` in `services/follows/django_impl/query.py` — so the project page and `/profile/following` show the project as followed with nothing ticked. Pressing "Follow" again writes nothing, because `follow()` enrols channels only when `get_or_create` reports `created=True`. The way out is to tick a channel in the popover, which works because `follow_channel` only needs the `Follow` to exist.
 
 ### 7. Auto-follow on Follow creation
 
-When a user creates a `Follow(user, project)` row, the same handler creates a `FollowedChannel(follow, channel)` row for every channel currently on the project. The follow popover deletes individual rows when the user unticks a channel; if they delete all rows, the `Follow` itself stays (same reasoning as Decision 6).
+When a user creates a `Follow(user, project)` row, the same handler creates a `FollowedChannel(follow, channel)` row for every channel currently on the project. The follow popover deletes individual rows when the user unticks a channel; unticking the last one deletes the `Follow` too, via `unfollow_channel` (Decision 6).
 
 **Edge case:** a channel is added to the project after the user follows. The user does *not* automatically get a `FollowedChannel` row for the new channel. They keep the channels they had at follow-time. (Otherwise the project owner can unilaterally add a channel and silently push notifications into a follower's bell.)
 

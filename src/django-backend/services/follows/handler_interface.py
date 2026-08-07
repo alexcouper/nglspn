@@ -14,6 +14,12 @@ class FollowHandlerInterface(ABC):
         currently on the project. Re-following an already-followed project is
         a no-op: existing FollowedChannel rows are left alone, and no rows
         are added for channels that were created after the original follow.
+
+        That includes a Follow whose channels have all gone (see
+        ``unfollow_channel``): re-following writes nothing, so the user stays
+        followed-with-nothing-ticked until they tick a channel themselves.
+        Accepted; see design decision 6 in
+        openspec/changes/simplify-follow-and-cadence/design.md.
         """
 
     @abstractmethod
@@ -38,8 +44,16 @@ class FollowHandlerInterface(ABC):
         """Hard-delete a FollowedChannel row, returning the project's state.
 
         When no followed channels remain the project Follow is deleted too —
-        a follow that notifies about nothing is not a state we keep — and the
+        this is the one path where the user has just asked to stop — and the
         returned state has ``is_followed=False``. Idempotent while other
         channels remain; once the Follow is gone a repeat raises
         ``NotFollowingError``.
+
+        That is a rule about this method, not an invariant on the table.
+        Deleting a Channel cascades FollowedChannel rows away, two concurrent
+        calls here can each miss the other's delete, and follows/0004 left
+        emptied rows behind on purpose. A Follow with no channels is tolerated:
+        it notifies about nothing (every actor selects FollowedChannel), but
+        the reads still report it as followed. See design decision 6 in
+        openspec/changes/simplify-follow-and-cadence/design.md.
         """

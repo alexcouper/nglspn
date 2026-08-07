@@ -209,7 +209,9 @@ The endpoint SHALL return 200 with the channel's current `followed: true` state 
 
 The platform SHALL expose `DELETE /api/projects/{slug}/follow/channels/{channel_id}`, authentication required. The endpoint SHALL hard-delete the `FollowedChannel` row for the requesting user's `Follow` on the project and the specified channel.
 
-When the delete leaves the `Follow` with no `FollowedChannel` rows, the endpoint SHALL delete the `Follow` as well. A `Follow` with no channels notifies about nothing, so dropping the last channel is a full unfollow rather than a silently inert follow that still reports `is_following = true`.
+When the delete leaves the `Follow` with no `FollowedChannel` rows, the endpoint SHALL delete the `Follow` as well: the user has just asked to stop, so dropping the last channel is a full unfollow rather than a silently inert follow that still reports `is_following = true`.
+
+This is a rule about this endpoint, not an invariant on the table. A `Follow` with no `FollowedChannel` rows is a tolerated state and arrives by other routes — see "Data migration sweeps existing FollowChannelPreference rows" below.
 
 The endpoint SHALL return `200` with a `FollowStateResponse` rather than `204`, so the caller learns the resulting project-level state instead of re-deriving the last-channel rule client-side.
 
@@ -256,7 +258,11 @@ A one-shot data migration SHALL collapse every existing `FollowChannelPreference
 
 The migration SHALL NOT delete any `Follow` row, even when the sweep removes the last `FollowedChannel` underneath it.
 
-This is a deliberate divergence from the API, which *does* unfollow the project when a user drops their last channel (see "Endpoint to unfollow a single channel"). Unfollowing in bulk from a migration is a larger action than the sweep is willing to take, and the affected users receive nothing from the project either way. The consequence is a `Follow` with no channels — a state the API will no longer produce, so any such row is legacy by definition. It reports `is_following = true` (`services/follows/django_impl/query.py:49`) and so still shows as "Following" on the project page and on `/profile/following`, while delivering nothing. The user can repair it by re-enrolling a channel from the popover, which works because `follow_channel` only needs the `Follow` to exist.
+This is a deliberate divergence from the unfollow-channel endpoint, which *does* unfollow the project when a user drops their last channel (see "Endpoint to unfollow a single channel"). Unfollowing in bulk from a migration is a larger action than the sweep is willing to take, and the affected users receive nothing from the project either way.
+
+The consequence is a `Follow` with no channels. That is a state the platform tolerates rather than one it prevents, and the sweep is not the only source of it. It also arises when a project owner deletes a channel (`FollowedChannel.channel` is `CASCADE`, and `DELETE /api/projects/{slug}/channels/{id}` refuses only a channel with articles or the last channel on a project), when a staff user deletes a `Channel` or a `FollowedChannel` in the Django admin, and when two `DELETE /api/projects/{slug}/follow/channels/{id}` requests race.
+
+Everything that notifies keys on `FollowedChannel` — the article fan-out selects it directly, and the digest runs off `Notification` rows — so such a `Follow` correctly delivers nothing. The reads key on `Follow` instead: `is_followed`, `get_state` and `_follow_queryset` (`services/follows/django_impl/query.py`) all report `is_following = true`, so the project still shows as "Following" with no channels ticked, on the project page and on `/profile/following`. `POST /follow` does not repair it — the handler enrols channels only when it creates the `Follow` — but re-enrolling a channel from the popover does, because `follow_channel` only needs the `Follow` to exist.
 
 Expect this cohort to be small: `follows/0002` seeds the house project's `Updates` channel with `email_enabled = True` unconditionally, so no house-project `Follow` can be emptied by the sweep, and `POST /follow` creates channels with `email_enabled` defaulting to `True`. Only a user who deliberately turned email off on *every* channel of a project can land here.
 

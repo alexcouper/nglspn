@@ -17,7 +17,9 @@ class DjangoFollowHandler(FollowHandlerInterface):
     def follow(self, user_id: UUID, project: Project) -> FollowState:
         # First follow auto-enrols every current channel. Re-following does
         # not enrol channels added after the original follow — that's the
-        # user's choice to make via follow_channel().
+        # user's choice to make via follow_channel(). The same applies to a
+        # Follow left with no channels at all: `created` is False, so this
+        # writes nothing and recovery is via follow_channel() too.
         with transaction.atomic():
             follow, created = Follow.objects.get_or_create(
                 user_id=user_id, project=project
@@ -64,8 +66,11 @@ class DjangoFollowHandler(FollowHandlerInterface):
     def unfollow_channel(
         self, user_id: UUID, project_slug: str, channel_id: UUID
     ) -> FollowState:
-        # A Follow with no channels notifies about nothing, so dropping the
-        # last one is a full unfollow rather than a silently inert follow.
+        # Dropping the last channel is a full unfollow: this is the one path
+        # where the user has just asked to stop. It does not make "no channels"
+        # impossible — channel deletion cascades rows away, and two concurrent
+        # calls here can each see the other's row as still present. See
+        # handler_interface.unfollow_channel.
         with transaction.atomic():
             follow, channel = self._resolve(user_id, project_slug, channel_id)
             FollowedChannel.objects.filter(follow=follow, channel=channel).delete()

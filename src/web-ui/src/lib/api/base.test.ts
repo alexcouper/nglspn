@@ -1,5 +1,10 @@
 import { beforeEach, describe, expect, it } from "vitest";
-import { APIClient } from "./base";
+import {
+  APIClient,
+  ApiRequestError,
+  AuthExpiredError,
+  AuthTransientError,
+} from "./base";
 import { makeTokenPair, seedTokens, type TokenPair } from "@/test/factories";
 import {
   expectLoggedOut,
@@ -93,9 +98,38 @@ describe("APIClient", () => {
       await expect(client.request("/api/anything")).rejects.toThrow("Unauthorized");
       expectLoggedOut();
     });
+
+    it("throws AuthExpiredError so callers can say the session ended", async () => {
+      mockFetchSequence(
+        jsonResponse({ status: 401 }),
+        jsonResponse({ status: 401, body: { detail: "Invalid or expired refresh token" } }),
+      );
+
+      const err = await client.request("/api/anything").catch((e) => e);
+
+      expect(err).toBeInstanceOf(AuthExpiredError);
+      expect(err).not.toBeInstanceOf(AuthTransientError);
+    });
   });
 
   describe("when the refresh request fails for non-credential reasons", () => {
+    // The distinction callers show to a person is carried by the error's type,
+    // not by its message. If these two ever became the same class, everything
+    // downstream would start telling people they had been logged out when they
+    // had not.
+    it("throws AuthTransientError, not AuthExpiredError", async () => {
+      mockFetchSequence(
+        jsonResponse({ status: 401 }),
+        jsonResponse({ status: 503, body: { detail: "Service Unavailable" } }),
+      );
+
+      const err = await client.request("/api/anything").catch((e) => e);
+
+      expect(err).toBeInstanceOf(AuthTransientError);
+      expect(err).not.toBeInstanceOf(AuthExpiredError);
+      expectStillLoggedIn(tokens);
+    });
+
     it("does not clear tokens when fetch throws a network error", async () => {
       mockFetchSequence(
         jsonResponse({ status: 401 }),
@@ -138,6 +172,26 @@ describe("APIClient", () => {
       await expect(client.request("/api/anything")).rejects.toThrow();
 
       expectStillLoggedIn(tokens);
+    });
+  });
+
+  describe("when an error response is not JSON", () => {
+    it("reports the status rather than a JSON parse failure", async () => {
+      // A 502 from the proxy is an HTML page. An unguarded json() here used to
+      // surface `Unexpected token '<'` to the user, which reads like a bug in
+      // our client.
+      mockFetchSequence(
+        new Response("<html><body>502 Bad Gateway</body></html>", {
+          status: 502,
+          headers: { "Content-Type": "text/html" },
+        }),
+      );
+
+      const err = await client.request("/api/anything").catch((e) => e);
+
+      expect(err).toBeInstanceOf(ApiRequestError);
+      expect((err as ApiRequestError).status).toBe(502);
+      expect((err as ApiRequestError).message).not.toContain("JSON");
     });
   });
 

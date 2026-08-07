@@ -6,6 +6,8 @@ import Link from "next/link";
 import { useAuth } from "@/contexts/auth";
 import { getPostAuthDestination } from "@/lib/auth-routing";
 import { api, VerifyCodeError } from "@/lib/api";
+import { AuthExpiredError } from "@/lib/api/base";
+import { describeApiError } from "@/lib/api/errors";
 import { PinInput } from "@/components/PinInput";
 
 type FlowState = "login" | "forgot" | "code" | "reset";
@@ -50,7 +52,14 @@ export default function LoginPage() {
       const userData = await login(email, password);
       router.push(getPostAuthDestination(userData, next));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Login failed");
+      // Nobody on this screen has a session yet, so the 401 the API layer turns
+      // into AuthExpiredError means the credentials just typed were rejected —
+      // not that a session ran out. "Sign in again" would be nonsense here.
+      setError(
+        err instanceof AuthExpiredError
+          ? "Email or password is incorrect."
+          : describeApiError(err, "Couldn't log you in."),
+      );
     } finally {
       setIsLoading(false);
     }
@@ -65,7 +74,7 @@ export default function LoginPage() {
       await api.auth.forgotPassword(email);
       setFlowState("code");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      setError(describeApiError(err, "Couldn't send a reset code."));
     } finally {
       setIsLoading(false);
     }
@@ -85,7 +94,7 @@ export default function LoginPage() {
           setAttemptsRemaining(err.attemptsRemaining);
           setError(err.message);
         } else {
-          setError(err instanceof Error ? err.message : "Verification failed");
+          setError(describeApiError(err, "Couldn't check that code."));
         }
         setPinKey((k) => k + 1);
       } finally {
@@ -105,7 +114,7 @@ export default function LoginPage() {
       setSuccessMessage("Password updated. Please log in.");
       goToLogin();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to reset password");
+      setError(describeApiError(err, "Couldn't reset your password."));
     } finally {
       setIsLoading(false);
     }

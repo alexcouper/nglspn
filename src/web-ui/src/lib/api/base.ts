@@ -15,6 +15,25 @@ export class ApiRequestError extends Error {
   }
 }
 
+// The refresh outcome matters to callers, not only to this file. "transient"
+// means the credentials are still good and a retry will work; "invalid" means
+// the session is over and the redirect to /login is already in flight. Callers
+// that tell a person what happened must be able to tell the two apart by type —
+// a string match on the message would not survive the first reword.
+//
+// The messages are unchanged. They are for whoever is reading the console.
+export class AuthTransientError extends Error {
+  constructor() {
+    super("Token refresh failed");
+  }
+}
+
+export class AuthExpiredError extends Error {
+  constructor() {
+    super("Unauthorized");
+  }
+}
+
 type RefreshOutcome = "refreshed" | "invalid" | "transient";
 
 export class APIClient {
@@ -134,13 +153,13 @@ export class APIClient {
         if (typeof window !== "undefined") {
           window.dispatchEvent(new Event("auth:logout"));
         }
-        throw new Error("Unauthorized");
+        throw new AuthExpiredError();
       }
 
       // transient: refresh request failed for non-credential reasons
       // (network blip, 5xx, rate limit). Keep tokens so the user stays
       // logged in once connectivity / the backend recovers.
-      throw new Error("Token refresh failed");
+      throw new AuthTransientError();
     }
 
     if (response.status === 401) {
@@ -148,11 +167,13 @@ export class APIClient {
       if (typeof window !== "undefined") {
         window.dispatchEvent(new Event("auth:logout"));
       }
-      throw new Error("Unauthorized");
+      throw new AuthExpiredError();
     }
 
     if (!response.ok) {
-      const body = await response.json();
+      // A 502 from the proxy is an HTML page, and an unguarded json() would
+      // throw a SyntaxError that reads to the user like a bug in our client.
+      const body = await response.json().catch(() => ({}));
       const error = body as ApiError;
       throw new ApiRequestError(
         error.detail || "Request failed",

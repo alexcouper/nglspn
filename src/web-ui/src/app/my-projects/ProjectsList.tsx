@@ -5,6 +5,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api, type Project } from "@/lib/api";
+import { describeApiError } from "@/lib/api/errors";
 import { pickVariant } from "@/lib/utils";
 
 function StatusBadge({ status }: { status: string }) {
@@ -109,7 +110,7 @@ export function ProjectsList() {
       },
       (err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load projects");
+          setError(describeApiError(err, "Couldn't load your projects."));
           setIsLoading(false);
         }
       }

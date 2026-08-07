@@ -16,6 +16,21 @@ const CARD_RATIO = 16 / 9;
 
 const TITLE_ID = "listing-image-dialog-title";
 
+// Framing needs the image's shape, and the shape is not always known: the
+// browser records it at upload time and `readImageDimensions` returns null for
+// anything it cannot decode, leaving the row without dimensions until the
+// backend's variant job backfills them from the file itself. Narrowing here
+// rather than checking at each use keeps the cropper and defaultCrop from ever
+// seeing a null.
+type CroppableImage = ProjectImage & { width: number; height: number };
+
+function isCroppable(image: ProjectImage): image is CroppableImage {
+  return Boolean(image.width && image.height);
+}
+
+const UNCROPPABLE =
+  "We couldn't read that image's dimensions, so there's nothing to frame yet. Try another image.";
+
 interface Props {
   // Slug or id — whatever the article editor addresses the project by. Article
   // images hang off the article's own endpoints, so this is the same reference
@@ -45,9 +60,10 @@ export function ListingImageDialog({
   onRemove,
   onClose,
 }: Props) {
-  const [selected, setSelected] = useState<ProjectImage | null>(
-    () => images.find((image) => image.id === currentImageId) ?? null,
-  );
+  const [selected, setSelected] = useState<CroppableImage | null>(() => {
+    const current = images.find((image) => image.id === currentImageId);
+    return current && isCroppable(current) ? current : null;
+  });
   const [step, setStep] = useState<"pick" | "frame">("pick");
   const [crop, setCrop] = useState<CropRect | null>(null);
   const [error, setError] = useState("");
@@ -74,9 +90,16 @@ export function ListingImageDialog({
     onError: (err) => setError(err.message),
   });
 
-  // A rectangle drawn on one image means nothing on another, so only the image
-  // that is already chosen reopens on its stored crop.
+  // The one door onto the framing step, so a dimensionless image cannot reach
+  // it — not from the picker, not from a fresh upload. A rectangle drawn on one
+  // image means nothing on another, so only the image that is already chosen
+  // reopens on its stored crop.
   function openFraming(image: ProjectImage) {
+    if (!isCroppable(image)) {
+      setError(UNCROPPABLE);
+      return;
+    }
+    setError("");
     setSelected(image);
     setCrop(image.id === currentImageId ? currentCrop : null);
     setStep("frame");
@@ -125,8 +148,7 @@ export function ListingImageDialog({
             onFile={uploadFile}
           />
         ) : (
-          selected?.width &&
-          selected?.height && (
+          selected && (
             <ImageCropper
               src={pickVariant(selected.variants, "large") ?? selected.url}
               naturalWidth={selected.width}
@@ -193,8 +215,8 @@ export function ListingImageDialog({
                   selected,
                   crop ??
                     defaultCrop({
-                      width: selected.width!,
-                      height: selected.height!,
+                      width: selected.width,
+                      height: selected.height,
                       lockRatio: CARD_RATIO,
                     }),
                 );
@@ -222,12 +244,12 @@ function PickStep({
   selectedId: string | null;
   isUploading: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;
-  onSelect: (image: ProjectImage) => void;
+  onSelect: (image: CroppableImage) => void;
   onFile: (file: File) => void;
 }) {
   // Without recorded dimensions there is nothing to frame, so those images are
   // not offered.
-  const selectable = images.filter((image) => image.width && image.height);
+  const selectable = images.filter(isCroppable);
 
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">

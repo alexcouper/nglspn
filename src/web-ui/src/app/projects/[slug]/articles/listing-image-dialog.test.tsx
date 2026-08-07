@@ -136,6 +136,40 @@ describe("ListingImageDialog", () => {
     cleanup();
   });
 
+  it("does not preselect a current image with no recorded dimensions", async () => {
+    const { container, unmount: cleanup } = await mount(
+      dialog({
+        images: [image("one"), image("two", { width: null, height: null })],
+        currentImageId: "two",
+      }),
+    );
+
+    expect(buttonLabelled(container, "Next")).toHaveProperty("disabled", true);
+
+    cleanup();
+  });
+
+  it("refuses to frame a fresh upload with no recorded dimensions", async () => {
+    const onConfirm = vi.fn();
+    const { container, unmount: cleanup } = await mount(dialog({ onConfirm }));
+
+    await act(async () => {
+      uploadHandlers.onUploadComplete!(
+        image("fresh", { width: null, height: null }),
+      );
+    });
+
+    // Still on the picking step, with an explanation rather than an empty
+    // frame and a live "Use it".
+    expect(buttonLabelled(container, "Use it")).toBeUndefined();
+    expect(container.querySelector("[role=alert]")?.textContent).toMatch(
+      /dimensions/i,
+    );
+    expect(onConfirm).not.toHaveBeenCalled();
+
+    cleanup();
+  });
+
   it("marks the current selection", async () => {
     const { container, unmount: cleanup } = await mount(
       dialog({ currentImageId: "two" }),

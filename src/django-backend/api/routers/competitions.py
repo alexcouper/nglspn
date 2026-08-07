@@ -15,6 +15,7 @@ from api.schemas.competition import (
 )
 from api.schemas.errors import Error
 from apps.projects.models import Competition, CompetitionStatus, Project, ProjectStatus
+from services import REPO
 
 
 def is_valid_uuid(value: str) -> bool:
@@ -50,9 +51,12 @@ def list_competitions_with_projects(request: HttpRequest) -> CompetitionListResp
         Competition.objects.select_related("winner")
         .prefetch_related(
             "projects",
-            "projects__images",
             "projects__tags",
-            "winner__images",
+            # `to_list_item(competition.winner)` reads the relation as-is and
+            # falls back to `images[0]`, so an unfiltered prefetch lets an
+            # article figure or a PUT that never landed become the winner's
+            # card image.
+            REPO.images.gallery_prefetch("winner__images"),
             "winner__tags",
         )
         .all()
@@ -101,9 +105,10 @@ def get_highlights(request: HttpRequest) -> CompetitionHighlightsResponse:
 def get_competition(request: HttpRequest, competition_id: str) -> CompetitionResponse:
     queryset = Competition.objects.select_related("winner").prefetch_related(
         "projects",
-        "projects__images",
         "projects__tags",
-        "winner__images",
+        # See `list_competitions_with_projects`: the winner's gallery has to be
+        # filtered before `to_list_item` picks from it.
+        REPO.images.gallery_prefetch("winner__images"),
         "winner__tags",
     )
     if is_valid_uuid(competition_id):

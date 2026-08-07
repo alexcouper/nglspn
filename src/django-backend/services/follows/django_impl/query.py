@@ -1,6 +1,8 @@
 from uuid import UUID
 
-from apps.follows.models import Follow
+from django.db.models import Prefetch, QuerySet
+
+from apps.follows.models import Channel, Follow
 from apps.projects.models import Project
 from services.follows.query_interface import (
     ChannelFollowState,
@@ -9,9 +11,34 @@ from services.follows.query_interface import (
     FollowWithPreferences,
 )
 from services.project.django_impl.query import (
+    project_gallery_images,
     resolve_image_by_purpose,
     variant_url,
 )
+
+
+def _follow_queryset(user_id: UUID) -> QuerySet[Follow]:
+    """Everything `_to_follow_with_preferences` reads, in three queries.
+
+    The project's channels and its gallery come off the prefetch rather than
+    per follow — the Following page renders one row per follow, so anything
+    fetched inside that loop is an N+1. The image prefetch is narrowed by
+    `project_gallery_images()` because `resolve_image_by_purpose` does no
+    filtering of its own and would otherwise fall back to an article upload or
+    a row whose PUT never landed.
+    """
+    return (
+        Follow.objects.filter(user_id=user_id)
+        .select_related("project")
+        .prefetch_related(
+            "followed_channels",
+            Prefetch(
+                "project__channels",
+                queryset=Channel.objects.order_by("created_at"),
+            ),
+            Prefetch("project__images", queryset=project_gallery_images()),
+        )
+    )
 
 
 def _hero_image_url(project: Project) -> str | None:
@@ -20,8 +47,6 @@ def _hero_image_url(project: Project) -> str | None:
 
 
 def _to_follow_with_preferences(follow: Follow) -> FollowWithPreferences:
-    from apps.follows.models import Channel  # noqa: PLC0415
-
     followed_ids = {fc.channel_id for fc in follow.followed_channels.all()}
     channels = [
         ChannelFollowState(
@@ -29,9 +54,7 @@ def _to_follow_with_preferences(follow: Follow) -> FollowWithPreferences:
             channel_name=channel.name,
             followed=channel.id in followed_ids,
         )
-        for channel in Channel.objects.filter(project=follow.project).order_by(
-            "created_at"
-        )
+        for channel in follow.project.channels.all()
     ]
     return FollowWithPreferences(
         project_slug=follow.project.slug or "",
@@ -57,23 +80,13 @@ class DjangoFollowQuery(FollowQueryInterface):
         return FollowState(is_followed=True, created_at=follow.created_at)
 
     def list_user_follows(self, user_id: UUID) -> list[FollowWithPreferences]:
-        follows = (
-            Follow.objects.filter(user_id=user_id)
-            .select_related("project")
-            .prefetch_related("followed_channels")
-            .order_by("-created_at")
-        )
+        follows = _follow_queryset(user_id).order_by("-created_at")
         return [_to_follow_with_preferences(f) for f in follows]
 
     def get_follow_preferences(
         self, user_id: UUID, project_slug: str
     ) -> FollowWithPreferences | None:
-        follow = (
-            Follow.objects.filter(user_id=user_id, project__slug=project_slug)
-            .select_related("project")
-            .prefetch_related("followed_channels")
-            .first()
-        )
+        follow = _follow_queryset(user_id).filter(project__slug=project_slug).first()
         if follow is None:
             return None
         return _to_follow_with_preferences(follow)

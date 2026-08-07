@@ -18,7 +18,7 @@ Verified before reviewing:
 | 1 | Notification opt-out lost in migration | **Done** — `xzpr 33b4`, but not as reviewed (see below) |
 | 2 | Digest cron broken by the task rename | Backend **done** — `nnkr b401`; infra repo in progress |
 | 3 | `auto` mode adopts an incomplete upload | **Done** — `wvvx` |
-| 4 | N+1 on the Following page | Open |
+| 4 | N+1 on the Following page | **Done** — `tvyq`, wider than reviewed (see below) |
 | 5 | Fresh upload leaves the panel saying "No image" | Open |
 | 6 | `listing_image_mode` unvalidated | Open |
 | 7–10, 12 | Nits | Open |
@@ -124,7 +124,7 @@ holds that id — `upload-url` returned it.
 Orphaned `PENDING` rows are now inert but still accumulate; logged as
 `FOLLOW_UPS.md` item 5.
 
-### 4. N+1 on the Following page — Open
+### 4. N+1 on the Following page — **Done**
 
 `src/django-backend/services/follows/django_impl/query.py:32`
 
@@ -133,6 +133,34 @@ per follow, inside the loop in `list_follows_for_user`. The old code got all of
 it from `prefetch_related("preferences__channel")`. A user following 20 projects
 goes from 3 queries to 23. Prefetch `project__channels` on the outer queryset
 instead.
+
+**Resolution.** Confirmed, and it was three queries per follow, not one. The
+channel query is the regression this change introduced; `_hero_image_url` was
+already unprefetched on `main`, so `resolve_image_by_purpose`'s
+`project.images.all()` and `variant_url`'s `image.variants.all()` each fired per
+follow too. Measured, before → after:
+
+| follows | before | after |
+|---|---|---|
+| 1 | 5 | 5 |
+| 4 | 14 | 5 |
+| 20 | 62 | 5 |
+
+Flat at 5 = follows, `followed_channels`, `project__channels`,
+`project__images`, variants.
+
+The image prefetch also closes a correctness hole. `resolve_image_by_purpose`
+does no filtering and trusts what the prefetch handed it — stated at
+`services/review/django_impl/query.py:90,122` — and this was the one caller that
+never narrowed it. So the hero fallback chain (role → main → `images[0]`) could
+land on an article upload or a `PENDING` row, i.e. finding 3's failure mode in a
+sixth place. `Prefetch("project__images", queryset=project_gallery_images())`
+handles ordering, `.uploaded()`, `article__isnull=True` and the variants in one.
+
+Both entry points now share `_follow_queryset`, so `get_follow_preferences`
+can't drift from the list path. Tests: a scaling assertion (query count for four
+follows equals the count for one), plus hero resolution ignoring article uploads
+and incomplete ones.
 
 ### 5. Picking a freshly-uploaded image in the wizard leaves the panel saying "No image" — Open
 
@@ -205,7 +233,9 @@ problem you can't undo after the first send, and the scheduler rename will take
 digests down silently. 3–6 are worth fixing in this change; the rest can follow.
 
 Blocker 1 is done, though the fix landed in `follows/0004`, not where the review
-pointed. Blocker 2 still stands. Its fix is partly outside this repo: no
+pointed. Blocker 2 still stands. Findings 3 and 4 are done, both wider than
+written — in each case the rule the review wanted enforced at one call site had
+to be given a single home instead. Its fix is partly outside this repo: no
 scheduler config exists here (no `infra/prod`, no cron files), so the task names
 have to be changed wherever the schedule actually lives.
 

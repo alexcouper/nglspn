@@ -160,7 +160,13 @@ class ProjectAdmin(admin.ModelAdmin):
         "created_at",
         "tags",
     )
-    search_fields = ("title", "description", "creator__email", "creator__username")
+    search_fields = (
+        "title",
+        "description",
+        "creator__email",
+        "creator__first_name",
+        "creator__last_name",
+    )
     ordering = ("-created_at",)
     readonly_fields = (
         "id",

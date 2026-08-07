@@ -127,7 +127,8 @@ radius from "dev is slow" to "prod tasks don't run".
 
 ## 7. An author cannot see an article the way readers will
 
-Raised as finding 9 of `REVIEW.md`, which was written up as a stale comment.
+Raised as finding 9 of the branch's own `REVIEW.md` (since deleted; see
+`b83f4e3f`), which was written up as a stale comment.
 Checking it turned up the absence behind the comment, which is the part worth
 keeping.
 

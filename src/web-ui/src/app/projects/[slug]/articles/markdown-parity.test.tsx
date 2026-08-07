@@ -5,7 +5,10 @@ import rehypePrismPlus from "rehype-prism-plus";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
-import { articleSanitizeSchema } from "./sanitize-schema";
+import {
+  articleAllowedSpanClasses,
+  articleSanitizeSchema,
+} from "./sanitize-schema";
 
 // Parity verification for the GFM subset enabled in MDXEditor (tablePlugin,
 // listsPlugin, linkPlugin, imagePlugin) plus the raw-HTML constructs we let
@@ -39,6 +42,27 @@ function renderArticle(markdown: string): string {
       {markdown}
     </ReactMarkdown>,
   );
+}
+
+// The same pipeline with sanitisation removed, so a test can tell "the
+// highlighter never produced this class" from "sanitisation threw it away".
+function renderArticleUnsanitized(markdown: string): string {
+  return renderToStaticMarkup(
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeRaw, [rehypePrismPlus, { ignoreMissing: true }]]}
+    >
+      {markdown}
+    </ReactMarkdown>,
+  );
+}
+
+function classNamesIn(html: string): Set<string> {
+  const names = new Set<string>();
+  for (const match of html.matchAll(/class="([^"]*)"/g)) {
+    for (const name of match[1].split(/\s+/).filter(Boolean)) names.add(name);
+  }
+  return names;
 }
 
 const render = renderMarkdown;
@@ -168,9 +192,9 @@ describe("Code blocks (rehype-prism-plus + sanitize)", () => {
     const html = renderArticle(
       "```js\nconst x = 1;\n```\n",
     );
-    // rehype-prism-plus adds `language-js` (and sometimes `code-highlight`)
-    // to the <code> element. Sanitize is configured to allow className on
-    // <pre>/<code>/<span>, so it must survive.
+    // rehype-prism-plus adds `language-js` (and `code-highlight`) to the
+    // <code> element. Both are on the sanitiser's class allowlist, so they
+    // must survive.
     expect(html).toMatch(/language-js/);
   });
 
@@ -178,8 +202,8 @@ describe("Code blocks (rehype-prism-plus + sanitize)", () => {
     const html = renderArticle(
       "```js\nconst answer = 42;\n```\n",
     );
-    // Prism produces <span class="token keyword">const</span>, etc. The
-    // sanitize schema allows className on <span> so these survive.
+    // Prism produces <span class="token keyword">const</span>, etc. Both
+    // class names are on the sanitiser's allowlist so these survive.
     expect(html).toMatch(/<span class="token/);
   });
 
@@ -190,5 +214,101 @@ describe("Code blocks (rehype-prism-plus + sanitize)", () => {
     // Should not throw, should still render the code text.
     expect(html).toContain("<pre");
     expect(html).toContain("foo bar");
+  });
+});
+
+// Fenced samples for every language ArticleEditor.tsx offers in its code-block
+// dropdown, chosen to exercise a spread of token types per grammar.
+const EDITOR_LANGUAGE_SAMPLES: Record<string, string> = {
+  ts: 'const n: number = 1; // note\nclass A { get x() { return `t${n}`; } }\n',
+  js: 'const re = /a+/g;\nexport default function f(a = "s") { return a ?? 1; }\n',
+  tsx: 'const A = ({ x }: { x: number }) => <div className="a">{x}</div>;\n',
+  jsx: 'const A = ({ x }) => <div className="a">{/* c */}{x}</div>;\n',
+  python: 'import os\n\n\ndef f(a, *, b="s"):\n    """doc"""\n    return f"{a!r}"  # note\n',
+  bash: '#!/usr/bin/env bash\nset -e\nfor f in *.txt; do\n  echo "$f" >&2\ndone\n',
+  css: '@media (min-width: 40rem) {\n  .a > b::before { color: #fff !important; }\n}\n',
+  html: '<!doctype html>\n<div class="a" data-x="1"><!-- c --><b>t</b></div>\n',
+  json: '{"a": [1, true, null], "b": {"c": "s"}}\n',
+  md: "# Heading\n\n**bold** and *italic* and `code` and [l](https://e.com)\n\n> quote\n",
+  sql: "SELECT COUNT(*) AS n FROM t WHERE a = 'x' AND b IS NOT NULL; -- note\n",
+};
+
+function fence(language: string, body: string): string {
+  return "```" + language + "\n" + body + "```\n";
+}
+
+describe("Code-block class sanitisation", () => {
+  it("strips the layout classes a contributor could use to cover the page", () => {
+    const html = renderArticle(
+      '<span class="fixed inset-0 z-50 bg-white">gotcha</span>',
+    );
+    expect(html).toContain("gotcha");
+    for (const utility of ["fixed", "inset-0", "z-50", "bg-white"]) {
+      expect(classNamesIn(html)).not.toContain(utility);
+    }
+  });
+
+  it("strips layout classes from a raw <pre> too", () => {
+    const html = renderArticle(
+      '<pre class="fixed inset-0 z-50 bg-white">gotcha</pre>',
+    );
+    expect(html).toContain("gotcha");
+    expect(classNamesIn(html).size).toBe(0);
+  });
+
+  it("keeps the classes rehype-prism-plus puts on a highlighted block", () => {
+    const html = renderArticle(fence("ts", "const x = 1;\n"));
+    expect(html).toContain("language-ts");
+    expect(html).toContain("code-highlight");
+    expect(html).toContain("code-line");
+    expect(html).toContain("token keyword");
+  });
+
+  it.each(Object.keys(EDITOR_LANGUAGE_SAMPLES))(
+    "drops no highlighter class for a %s block",
+    (language) => {
+      const markdown = fence(language, EDITOR_LANGUAGE_SAMPLES[language]);
+      const emitted = classNamesIn(renderArticleUnsanitized(markdown));
+      const survived = classNamesIn(renderArticle(markdown));
+
+      expect(emitted.size).toBeGreaterThan(3);
+      expect([...emitted].filter((name) => !survived.has(name))).toEqual([]);
+    },
+  );
+
+  it("still colours the common tokens of a language the editor cannot produce", () => {
+    // Pasted markdown can carry any fence. The allow-list is sized to the
+    // editor's languages, so exotic token types of other grammars are dropped
+    // — but every token class `article-markdown.css` colours survives.
+    const html = renderArticle(
+      fence("go", 'package main\n\nfunc main() { // note\n\ts := "x"\n}\n'),
+    );
+    expect(html).toContain("token keyword");
+    expect(html).toContain("token string");
+    expect(html).toContain("token comment");
+  });
+
+  it("allows no class that could position or size an element", () => {
+    const layoutUtilities = [
+      "fixed",
+      "absolute",
+      "sticky",
+      "relative",
+      "inset-0",
+      "top-0",
+      "left-0",
+      "z-50",
+      "bg-white",
+      "w-full",
+      "h-full",
+      "block",
+      "inline-block",
+      "hidden",
+      "opacity-0",
+      "pointer-events-none",
+    ];
+    expect(
+      layoutUtilities.filter((name) => articleAllowedSpanClasses.has(name)),
+    ).toEqual([]);
   });
 });

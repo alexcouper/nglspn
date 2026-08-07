@@ -21,8 +21,12 @@ Verified before reviewing:
 | 4 | N+1 on the Following page | **Done** — `tvyq`, wider than reviewed (see below) |
 | 5 | Fresh upload leaves the panel saying "No image" | **Done** — `678dc07e`, before this review was filed |
 | 6 | `listing_image_mode` unvalidated | **Done** — `tkyl` |
-| 7–10, 12 | Nits | Open |
+| 7 | `ListingImageDialog` ignores its "uncroppable" contract | **Done** — `zkxk` |
+| 8 | `generateMetadata` builds the description from raw markdown | **Done** — `znzkrxml`, before this review was filed |
+| 9 | Misleading comment / unreachable draft badge | Moved — `FOLLOW_UPS.md` item 7 |
+| 10 | Column churn in the migrations | **Won't do** |
 | 11 | `ArticleOut.resolve_images` returns pending uploads | **Done** — `99d24cf2` |
+| 12 | Article uploads have no cap | Open |
 | — | Design: article images onto the articles router | **Done** — `99d24cf2` |
 
 Each finding is verified against the code before anything is changed. Finding 1
@@ -221,30 +225,54 @@ Test: `test_an_unknown_mode_is_rejected` — 422, and the stored mode unchanged.
 
 ## Minor / nits
 
-7. **`ListingImageDialog` doesn't honour its own "uncroppable" contract.** The
-   `frame` step renders the cropper only when `selected.width && selected.height`,
-   but "Use it" stays live and calls `defaultCrop({width: selected.width!, …})`.
-   With null dimensions — which `lib/uploadProjectImage.ts::readImageDimensions`
-   explicitly allows — that yields a NaN rect, `JSON.stringify` turns it into
-   nulls, and the PATCH 422s with "Failed to save article". Disable the button,
-   or don't advance to `frame` for a dimensionless image.
+7. **`ListingImageDialog` doesn't honour its own "uncroppable" contract** —
+   **Done** (`zkxk`). The `frame` step renders the cropper only when
+   `selected.width && selected.height`, but "Use it" stays live and calls
+   `defaultCrop({width: selected.width!, …})`. With null dimensions — which
+   `lib/uploadImage.ts::readImageDimensions` explicitly allows — that yields a
+   NaN rect, `JSON.stringify` turns it into nulls, and the PATCH 422s with
+   "Failed to save article".
+
+   Two paths reached it, not one. `PickStep` filtered the grid, but the initial
+   `selected` was read straight out of `images.find(…)`, and `onUploadComplete`
+   called `openFraming` directly — so both a reopened dialog on a dimensionless
+   current image and a fresh upload the browser couldn't decode walked past the
+   filter. The upload path is the live one: `complete_upload` writes the
+   client's measurements verbatim (`services/images/django_impl/handler.py:88`)
+   and only `generate_image_variants` backfills them from the file
+   (`:221-227`), so there is a real window where the response carries nulls.
+
+   Fixed by narrowing instead of guarding: an `isCroppable` predicate gives a
+   `CroppableImage` type, `selected` holds that, and `openFraming` is the single
+   door onto the framing step — it refuses and explains rather than advancing.
+   Both `!` assertions are gone, so the NaN is now unrepresentable. Tests cover
+   each path.
 
 8. **`generateMetadata` builds the page description from raw markdown** —
-   `src/web-ui/src/app/projects/[slug]/articles/[articleSlug]/page.tsx:22,26`.
-   `article.body.slice(0, 160)` will emit `![](https://…)` and `##` into
-   `<meta description>` and the OG card. `summary_display` is right there and is
-   exactly this, cleaned.
+   **Done** (`znzkrxml`). Already fixed when this finding was checked, by the
+   same front-end review round that fixed finding 5. `page.tsx:34` now reads
+   `truncate(article.summary || article.summary_display)` — the authored
+   standfirst first, the server's plain-text excerpt as the fallback — trimmed
+   at a word boundary rather than mid-word. The original finding, for the
+   record: `article.body.slice(0, 160)` emitted `![](https://…)` and `##` into
+   `<meta description>` and the OG card.
 
-9. **Misleading comment / unreachable branch.** `page.tsx:42` says "the
-   client-side path in `ArticleRenderContent` rehydrates drafts for the author";
-   `ArticleRenderContent` only marks notifications read, it never refetches.
-   Drafts also have `slug = None` until publish, so there is no URL to reach one
-   by — the `isDraft` badge in `ArticleRenderContent` is dead code.
+9. **Misleading comment / unreachable branch** — moved to `FOLLOW_UPS.md` item
+   7. `page.tsx:58-61` says "the client-side path in `ArticleRenderContent`
+   rehydrates drafts for the author"; it never refetches, and three separate
+   things make that path unreachable anyway. But the comment describes a feature
+   that ought to exist and doesn't: there is no way to preview an article,
+   drafted or published, and no button for it in the editor. That is a feature,
+   not a review nit, so it goes to the follow-ups with the constraints written
+   up.
 
-10. **Column churn in the migrations.** `projects/0044` adds
+10. **Column churn in the migrations** — **Won't do.** `projects/0044` adds
     `ProjectImage.source` and `projects/0045` removes it again, both in this
     change — an add-then-drop of an indexed column on a production table for no
-    net effect. Worth squashing before deploy.
+    net effect. Squashing would mean deleting `0044` and retargeting two
+    dependency lines (`projects/0045:10` and `articles/0005:10`) at `0043`.
+    Not worth rewriting applied migration history for one transient column;
+    leaving both in place.
 
 11. **`ArticleOut.resolve_images` returns pending/failed uploads.**
     `api/schemas/article.py:132` returns every linked row regardless of

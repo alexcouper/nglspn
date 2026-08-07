@@ -55,10 +55,16 @@ export async function generateMetadata({
 export default async function ArticleRenderPage({ params }: PageProps) {
   const { slug, articleSlug } = await params;
 
-  // `getProjectOr404` handles the project 404; the article fetch needs its
-  // own try because draft articles return 404 for unauthenticated server
-  // fetches (the client-side path in ArticleRenderContent rehydrates drafts
-  // for the author / full_edit contributors).
+  // `getProjectOr404` handles the project 404; the article fetch needs its own
+  // catch to map a missing article onto the same 404.
+  //
+  // Only published articles resolve here, and nothing rehydrates a draft
+  // afterwards. `serverFetch` sends no credentials — auth is a bearer token in
+  // localStorage, so no server component can authenticate — so the backend
+  // always sees an anonymous user and 404s on a draft. A draft has no slug to
+  // be addressed by anyway: `publish_article` assigns one, and there is no
+  // unpublish path. Previewing a draft needs a client-side route; see
+  // FOLLOW_UPS.md item 7.
   const [project, article] = await Promise.all([
     getProjectOr404(slug),
     fetchArticleBySlug(slug, articleSlug).catch((err) => {

@@ -152,10 +152,12 @@ A is the cheaper of the two and needs no backend work.
 Either way the editor needs a button; there is none today, which is why this is
 a feature rather than a fix.
 
-**Two things left in place deliberately.** The `isDraft` badge in
-`ArticleRenderContent.tsx:69-73` is unreachable today but becomes correct the
-moment a preview exists, so it stays. And the comment at
-`[articleSlug]/page.tsx:58-61` — "the client-side path in `ArticleRenderContent`
-rehydrates drafts for the author" — describes exactly this missing feature as
-though it were already built. It is wrong today and should be corrected whether
-or not this item is picked up.
+**The `isDraft` badge stays.** `ArticleRenderContent.tsx:69-73` is unreachable
+today, but it becomes correct the moment a preview exists, so deleting it would
+only mean writing it again.
+
+The comment that raised this is fixed (`swzk`). It read "the client-side path in
+`ArticleRenderContent` rehydrates drafts for the author" — a description of this
+missing feature written as though it were already built, which is the kind of
+thing that stops the next reader from noticing the gap. It now records the three
+constraints above instead, and points here.

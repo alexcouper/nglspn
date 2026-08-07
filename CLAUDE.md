@@ -17,8 +17,11 @@ them as truth, and don't write checks that depend on them.
 Every check CI runs is a `make` target in one of the two service directories.
 There is no root `Makefile` and no `make ci` — running the pipeline locally
 means running both lists below. The pipeline is `.github/workflows/ci.yml`: two
-independent jobs, same stage order, `install → lint → extra-tests → test →
-(build)`.
+independent jobs. Backend runs `install → lint → extra-tests → test`; web-ui
+runs `install → lint → test → build → extra-tests`. `extra-tests` sits in
+different places on purpose — the backend's check is fast and has no
+prerequisite, so it fails early; the web-ui's measures build output, so it has
+to follow the build.
 
 **Django Backend** (from `src/django-backend/`):
 ```bash
@@ -32,10 +35,10 @@ make test          # pytest
 ```bash
 npm ci             # or: make install
 make lint          # eslint && tsc --noEmit
-make extra-tests   # service-specific extra CI checks
 make test          # vitest run
 make test-watch    # vitest, watch mode
 make build-app     # next build
+make extra-tests   # per-route client-JS bundle budgets; builds first if needed
 ```
 
 `extra-tests` is defined once, in `scripts/app-common.mk`, as `@$(EXTRA_TESTS)`

@@ -1,0 +1,9 @@
+{
+  "*": 200000,
+  "/projects/[slug]": 85000,
+  "/projects/[slug]/articles/[articleSlug]": 380000,
+  "/projects/[slug]/articles/edit/[articleId]": 40000,
+  "/projects/[slug]/articles/edit/[articleId] (lazy)": 400000,
+  "/projects/[slug]/articles/new": 40000,
+  "/projects/[slug]/articles/new (lazy)": 400000
+}

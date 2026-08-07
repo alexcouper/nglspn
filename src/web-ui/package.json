@@ -9,6 +9,7 @@
     "start": "next start",
     "lint": "eslint && tsc --noEmit",
     "test": "vitest run",
+    "test:scripts": "node --test 'scripts/*.test.mjs'",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:e2e": "playwright test",

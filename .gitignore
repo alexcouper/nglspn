@@ -185,3 +185,8 @@ prod-dump.sql
 
 # Superpowers brainstorm artifacts
 .superpowers/
+
+# Node — the only other rule is the directory-anchored /node_modules in
+# src/web-ui/.gitignore, which does not cover a nested or root-level one.
+node_modules/
+.vite/

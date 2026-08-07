@@ -1,0 +1,158 @@
+/*
+ * Article-specific markdown styles. Imported only by the article authoring
+ * (`ArticleEditor.tsx`) and render (`ArticleRenderContent.tsx`) components,
+ * so this stylesheet ships only with the article route chunks — not on every
+ * page.
+ *
+ * The base `.markdown` rules (h1/h2/p/ul/blockquote/a) still live in
+ * `globals.css` because they're shared with project descriptions and other
+ * surfaces.
+ */
+
+/*
+ * Slate / one-dark-ish palette shared by both code surfaces:
+ *   - The static read-page Prism output (rules below in this file).
+ *   - The MDXEditor CodeMirror code-block surface (article-codemirror-theme.ts
+ *     reads these variables through `var()` in its theme rules).
+ *
+ * Declared on :root so both surfaces inherit. Change a colour here and both
+ * views move together.
+ */
+:root {
+  --article-code-bg: rgb(15 23 42); /* slate-900 */
+  --article-code-fg: rgb(241 245 249); /* slate-100 */
+  --article-code-inline-bg: rgb(241 245 249); /* slate-100 */
+  --article-code-selection: rgb(51 65 85); /* slate-700 */
+  --article-code-gutter-fg: rgb(100 116 139); /* slate-500 */
+  --article-code-comment: rgb(148 163 184); /* slate-400 */
+  --article-code-punctuation: rgb(203 213 225); /* slate-300 */
+  --article-code-literal: rgb(248 113 113); /* red-400 */
+  --article-code-string: rgb(134 239 172); /* green-300 */
+  --article-code-operator: rgb(165 180 252); /* indigo-300 */
+  --article-code-keyword: rgb(196 181 253); /* violet-300 */
+  --article-code-fn-or-class: rgb(253 224 71); /* yellow-300 */
+  --article-code-regex: rgb(252 165 165); /* red-300 */
+}
+
+/* --- Body images --------------------------------------------------------- */
+
+.markdown-article img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.5rem auto;
+  border-radius: 0.5rem;
+}
+
+/* MDXEditor wraps body images in <span data-lexical-decorator><div
+ * data-editor-block-type="image">…</div></span> inside a <p>. The decorator
+ * span is inline by default, which kills `margin: auto` on the image. Force
+ * the decorator to block-flow and center its inline-block child so the editor
+ * view matches the rendered article view. */
+.markdown-article [data-lexical-decorator]:has([data-editor-block-type="image"]) {
+  display: block;
+  text-align: center;
+}
+.markdown-article [data-editor-block-type="image"] {
+  display: inline-block;
+  max-width: 100%;
+}
+
+/* --- Tables -------------------------------------------------------------- */
+
+/* The read page applies Tailwind utility classes directly via react-markdown's
+ * components prop (see ArticleRenderContent). The MDXEditor view styles tables
+ * with its own internal CSS. No table rules needed here — the cascade ordering
+ * with Tailwind v4's preflight made global rules unreliable for tables. */
+
+/* --- Code blocks (read view + inline) ------------------------------------ */
+
+/* Inline code: `like this` */
+.markdown-article :not(pre) > code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.875em;
+  padding: 0.15em 0.4em;
+  background-color: var(--article-code-inline-bg);
+  border-radius: 0.25rem;
+  color: var(--foreground);
+}
+
+/* Fenced code blocks: ```js … ``` */
+.markdown-article pre {
+  margin: 1.5rem 0;
+  padding: 1rem 1.125rem;
+  background-color: var(--article-code-bg);
+  color: var(--article-code-fg);
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  font-size: 0.875rem;
+  line-height: 1.6;
+}
+
+.markdown-article pre > code {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  background: none;
+  padding: 0;
+  color: inherit;
+  font-size: inherit;
+}
+
+/* Prism token colours — minimal one-dark-ish palette tuned for the dark code
+ * block background above. We deliberately don't import a full Prism theme
+ * stylesheet because most of them target broader scope selectors that would
+ * leak out of `.markdown-article`. */
+.markdown-article pre .token.comment,
+.markdown-article pre .token.prolog,
+.markdown-article pre .token.doctype,
+.markdown-article pre .token.cdata {
+  color: var(--article-code-comment);
+  font-style: italic;
+}
+
+.markdown-article pre .token.punctuation {
+  color: var(--article-code-punctuation);
+}
+
+.markdown-article pre .token.property,
+.markdown-article pre .token.tag,
+.markdown-article pre .token.boolean,
+.markdown-article pre .token.number,
+.markdown-article pre .token.constant,
+.markdown-article pre .token.symbol,
+.markdown-article pre .token.deleted {
+  color: var(--article-code-literal);
+}
+
+.markdown-article pre .token.selector,
+.markdown-article pre .token.attr-name,
+.markdown-article pre .token.string,
+.markdown-article pre .token.char,
+.markdown-article pre .token.builtin,
+.markdown-article pre .token.inserted {
+  color: var(--article-code-string);
+}
+
+.markdown-article pre .token.operator,
+.markdown-article pre .token.entity,
+.markdown-article pre .token.url,
+.markdown-article pre .language-css .token.string,
+.markdown-article pre .style .token.string {
+  color: var(--article-code-operator);
+}
+
+.markdown-article pre .token.atrule,
+.markdown-article pre .token.attr-value,
+.markdown-article pre .token.keyword {
+  color: var(--article-code-keyword);
+}
+
+.markdown-article pre .token.function,
+.markdown-article pre .token.class-name {
+  color: var(--article-code-fn-or-class);
+}
+
+.markdown-article pre .token.regex,
+.markdown-article pre .token.important,
+.markdown-article pre .token.variable {
+  color: var(--article-code-regex);
+}

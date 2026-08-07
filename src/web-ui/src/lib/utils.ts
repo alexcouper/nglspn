@@ -73,6 +73,34 @@ export function groupTagsByCategory<T extends TagWithCategory>(tags: T[] | undef
   return Array.from(groups.values());
 }
 
+// Default style: "May 30, 2026" — what the article pages render. Pass a
+// custom `Intl.DateTimeFormatOptions` for short months or other locales.
+export function formatDate(
+  date: string | Date,
+  options: Intl.DateTimeFormatOptions = {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  },
+): string {
+  const d = typeof date === "string" ? new Date(date) : date;
+  return d.toLocaleDateString("en-US", options);
+}
+
+// Default style: "May 30, 2026 – Jun 5, 2026" (short months) — competitions
+// listings. Render uses an en-dash separator.
+export function formatDateRange(
+  start: string | Date,
+  end: string | Date,
+  options: Intl.DateTimeFormatOptions = {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  },
+): string {
+  return `${formatDate(start, options)} – ${formatDate(end, options)}`;
+}
+
 export function getContrastColor(hexColor: string): string {
   const hex = hexColor.replace("#", "");
   const r = parseInt(hex.substring(0, 2), 16);

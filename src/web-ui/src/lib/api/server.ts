@@ -1,6 +1,10 @@
 import "server-only";
 
+import { notFound } from "next/navigation";
+
 import type {
+  Article,
+  ArticleListItem,
   CategoryItem,
   Competition,
   CompetitionHighlightsResponse,
@@ -48,6 +52,34 @@ export async function fetchProjects(params?: {
 
 export async function fetchProject(id: string): Promise<Project> {
   return serverFetch<Project>(`/api/projects/${id}`);
+}
+
+// Fetches a project and triggers Next.js' `notFound()` on 404 — the common
+// shape for project-scoped page wrappers. Errors other than 404 bubble.
+export async function getProjectOr404(slugOrId: string): Promise<Project> {
+  try {
+    return await fetchProject(slugOrId);
+  } catch (err) {
+    if (err instanceof ApiNotFoundError) notFound();
+    throw err;
+  }
+}
+
+export async function fetchArticleBySlug(
+  projectSlug: string,
+  articleSlug: string,
+): Promise<Article> {
+  return serverFetch<Article>(
+    `/api/projects/${projectSlug}/articles/by-slug/${articleSlug}`,
+  );
+}
+
+export async function fetchProjectArticles(
+  projectSlug: string,
+): Promise<ArticleListItem[]> {
+  return serverFetch<ArticleListItem[]>(
+    `/api/projects/${projectSlug}/articles`,
+  );
 }
 
 export async function fetchCompetitions(): Promise<CompetitionOverviewListResponse> {

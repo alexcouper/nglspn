@@ -6,15 +6,13 @@ from ninja import Router
 from api.auth.security import auth
 from api.schemas.errors import Error
 from api.schemas.follow import (
-    FollowChannelPreferencePatch,
-    FollowChannelPreferenceResponse,
+    ChannelFollowStateResponse,
     FollowResponse,
     FollowStateResponse,
 )
 from services import HANDLERS, REPO
 from services.follows.exceptions import (
     ChannelNotOnProjectError,
-    EmptyPatchError,
     NotFollowingError,
 )
 from services.follows.query_interface import FollowWithPreferences
@@ -34,11 +32,10 @@ def _to_follow_response(item: FollowWithPreferences) -> FollowResponse:
         project_hero_image_url=item.project_hero_image_url,
         created_at=item.created_at,
         channels=[
-            FollowChannelPreferenceResponse(
+            ChannelFollowStateResponse(
                 channel_id=c.channel_id,
                 channel_name=c.channel_name,
-                email_enabled=c.email_enabled,
-                in_app_enabled=c.in_app_enabled,
+                followed=c.followed,
             )
             for c in item.channels
         ],
@@ -109,32 +106,22 @@ def get_follow_preferences(
     return _to_follow_response(item)
 
 
-@router.patch(
+@router.post(
     "/{slug}/follow/channels/{channel_id}",
     response={
-        200: FollowChannelPreferenceResponse,
-        400: Error,
+        200: ChannelFollowStateResponse,
         404: Error,
     },
     auth=auth,
     tags=["Follows"],
 )
-def patch_follow_channel(
+def follow_channel(
     request: HttpRequest,
     slug: str,
     channel_id: UUID,
-    payload: FollowChannelPreferencePatch,
-) -> FollowChannelPreferenceResponse | tuple[int, dict[str, str]]:
+) -> ChannelFollowStateResponse | tuple[int, dict[str, str]]:
     try:
-        state = HANDLERS.follows.set_channel_preference(
-            request.auth.id,
-            slug,
-            channel_id,
-            email_enabled=payload.email_enabled,
-            in_app_enabled=payload.in_app_enabled,
-        )
-    except EmptyPatchError:
-        return 400, {"detail": "Provide email_enabled and/or in_app_enabled"}
+        state = HANDLERS.follows.follow_channel(request.auth.id, slug, channel_id)
     except (
         ProjectNotFoundError,
         ChannelNotOnProjectError,
@@ -142,9 +129,35 @@ def patch_follow_channel(
     ):
         return 404, {"detail": "Not found"}
 
-    return FollowChannelPreferenceResponse(
+    return ChannelFollowStateResponse(
         channel_id=state.channel_id,
         channel_name=state.channel_name,
-        email_enabled=state.email_enabled,
-        in_app_enabled=state.in_app_enabled,
+        followed=state.followed,
+    )
+
+
+@router.delete(
+    "/{slug}/follow/channels/{channel_id}",
+    response={200: FollowStateResponse, 404: Error},
+    auth=auth,
+    tags=["Follows"],
+)
+def unfollow_channel(
+    request: HttpRequest,
+    slug: str,
+    channel_id: UUID,
+) -> FollowStateResponse | tuple[int, dict[str, str]]:
+    try:
+        state = HANDLERS.follows.unfollow_channel(request.auth.id, slug, channel_id)
+    except (
+        ProjectNotFoundError,
+        ChannelNotOnProjectError,
+        NotFollowingError,
+    ):
+        return 404, {"detail": "Not found"}
+
+    # Dropping the last channel unfollows the project, so the caller needs the
+    # resulting project-level state, not just an empty 204.
+    return FollowStateResponse(
+        is_followed=state.is_followed, created_at=state.created_at
     )

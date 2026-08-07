@@ -71,21 +71,34 @@ class TestKennitalaExists:
 
 @pytest.mark.django_db
 class TestListOptedInForBroadcastType:
-    def test_returns_followers_with_email_enabled_platform_updates(self):
-        follower = make_broadcast_follower("platform_updates", email_enabled=True)
-        make_broadcast_follower("platform_updates", email_enabled=False)
+    def test_returns_channel_followers_for_platform_updates(self):
+        follower = make_broadcast_follower("platform_updates")
+        # System user — auto-follow signal skips them.
+        UserFactory(is_system_user=True)
 
         result = query.list_opted_in_for_broadcast_type("platform_updates")
 
         assert list(result) == [follower]
 
-    def test_returns_followers_with_email_enabled_competition_results(self):
-        follower = make_broadcast_follower("competition_results", email_enabled=True)
-        make_broadcast_follower("competition_results", email_enabled=False)
+    def test_returns_channel_followers_for_competition_results(self):
+        follower = make_broadcast_follower("competition_results")
+        UserFactory(is_system_user=True)
 
         result = query.list_opted_in_for_broadcast_type("competition_results")
 
         assert list(result) == [follower]
+
+    def test_excludes_users_on_never_article_cadence(self):
+        from apps.users.models import ArticleEmailFrequency  # noqa: PLC0415
+
+        make_broadcast_follower(
+            "platform_updates",
+            article_email_frequency=ArticleEmailFrequency.NEVER,
+        )
+
+        result = query.list_opted_in_for_broadcast_type("platform_updates")
+
+        assert result.count() == 0
 
     def test_returns_empty_for_unknown_type(self):
         make_broadcast_follower("platform_updates")

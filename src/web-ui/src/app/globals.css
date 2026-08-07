@@ -300,6 +300,11 @@ textarea.input {
   text-decoration-color: var(--accent);
 }
 
+/* Article-specific markdown styles live in
+ * `app/projects/[slug]/articles/article-markdown.css` and are imported by the
+ * article components only, so they ship with the article route chunks rather
+ * than on every page. */
+
 /* Article wrapper */
 .article {
   padding: 1.5rem 0;

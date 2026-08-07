@@ -4,7 +4,7 @@ from uuid import UUID
 
 from ninja import Schema
 
-from apps.notifications.models import NotificationCadence
+from apps.users.models import ArticleEmailFrequency, DiscussionEmailFrequency
 
 
 class UserCreate(Schema):
@@ -26,7 +26,8 @@ class UserResponse(Schema):
     created_at: datetime
     groups: list[str]
     opt_in_to_external_promotions: bool
-    notification_frequency: str
+    discussion_email_frequency: str
+    article_email_frequency: str
     pending_onboarding_steps: list[str]
 
     @staticmethod
@@ -45,7 +46,8 @@ class UserUpdate(Schema):
     last_name: str | None = None
     info: str | None = None
     opt_in_to_external_promotions: bool | None = None
-    notification_frequency: NotificationCadence | None = None
+    discussion_email_frequency: DiscussionEmailFrequency | None = None
+    article_email_frequency: ArticleEmailFrequency | None = None
 
 
 class PublicUserProfile(Schema):

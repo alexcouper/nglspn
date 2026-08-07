@@ -330,17 +330,23 @@ class TestReassignChannel:
         assert_that(response.status_code, equal_to(404))
 
 
-@pytest.mark.django_db
 class TestRouterHasNoOrmAccess:
-    """Spec invariant — no direct ORM access in api/routers/channels.py."""
+    """Spec invariant — no direct ORM access in api/routers/channels.py.
 
-    def test_no_orm_imports(self) -> None:
+    `get_object_or_404` is banned alongside `<Model>.objects` because it takes
+    the model class and reaches `_default_manager` itself, so a router can
+    query the database without ever writing `.objects`.
+    """
+
+    def test_no_direct_orm_access(self) -> None:
         src = Path(__file__).resolve().parent.parent / "routers" / "channels.py"
         text = src.read_text()
         for forbidden in (
             "Article.objects",
             "Channel.objects",
-            "FollowChannelPreference.objects",
+            "FollowedChannel.objects",
+            "ProjectImage.objects",
+            "get_object_or_404",
         ):
             assert forbidden not in text, (
                 f"{forbidden} must not appear in api/routers/channels.py"

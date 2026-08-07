@@ -16,17 +16,68 @@ def create_discussion_notifications(discussion_id: str) -> None:
 
 
 @task()
-def send_hourly_notifications() -> None:
+def create_article_notifications(article_id: str) -> None:
     from services import HANDLERS  # noqa: PLC0415
 
-    HANDLERS.notifications.send_batch_notifications("hourly")
+    try:
+        HANDLERS.notifications.create_notifications_for_article(UUID(article_id))
+    except Exception:
+        # django-tasks-db does not retry: `db_worker.run_task` marks the row
+        # FAILED and moves on. A FAILED row is not something anyone watches, so
+        # name the article in the log before letting it become one.
+        logger.exception(
+            "create_article_notifications failed: article_id=%s", article_id
+        )
+        raise
+
+
+# Per-kind digest tasks. Nothing in this repo enqueues them: the schedule is a
+# set of Kubernetes CronJobs in the naglasupan-hq infra repo
+# (`k8s/base/notifications/`), each running
+# `manage.py enqueue_digest --kind <kind> --cadence <cadence>` against this
+# image. Renaming a task here therefore only breaks production if the matching
+# CLI arguments change — see `apps/notifications/management/commands/enqueue_digest.py`,
+# which is the seam that keeps the cron off these symbol names.
+#
+# Deployed wall-clock (UTC), mirrored from the CronJobs:
+#   - discussion hourly: :05 past the hour
+#   - article hourly   : :05 past the hour
+#   - discussion daily : 18:00
+#   - article daily    : 18:00
+#   - article weekly   : Monday 18:00
+@task()
+def send_discussion_digest_hourly() -> None:
+    from services import HANDLERS  # noqa: PLC0415
+
+    HANDLERS.notifications.send_discussion_digest("hourly")
 
 
 @task()
-def send_daily_notifications() -> None:
+def send_discussion_digest_daily() -> None:
     from services import HANDLERS  # noqa: PLC0415
 
-    HANDLERS.notifications.send_batch_notifications("daily")
+    HANDLERS.notifications.send_discussion_digest("daily")
+
+
+@task()
+def send_article_digest_hourly() -> None:
+    from services import HANDLERS  # noqa: PLC0415
+
+    HANDLERS.notifications.send_article_digest("hourly")
+
+
+@task()
+def send_article_digest_daily() -> None:
+    from services import HANDLERS  # noqa: PLC0415
+
+    HANDLERS.notifications.send_article_digest("daily")
+
+
+@task()
+def send_article_digest_weekly() -> None:
+    from services import HANDLERS  # noqa: PLC0415
+
+    HANDLERS.notifications.send_article_digest("weekly")
 
 
 @task()

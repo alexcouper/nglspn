@@ -57,13 +57,16 @@ class DjangoUserQuery(UserQueryInterface):
         house = Project.objects.filter(is_house_project=True).first()
         if house is None:
             return user_model.objects.none()
-        return user_model.objects.filter(
-            is_active=True,
-            is_system_user=False,
-            follows__project=house,
-            follows__preferences__channel__name=channel_name,
-            follows__preferences__email_enabled=True,
-        ).distinct()
+        return (
+            user_model.objects.filter(
+                is_active=True,
+                is_system_user=False,
+                follows__project=house,
+                follows__followed_channels__channel__name=channel_name,
+            )
+            .exclude(article_email_frequency="never")
+            .distinct()
+        )
 
     def get_community_user(self) -> User:
         user_model = get_user_model()

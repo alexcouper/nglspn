@@ -1,35 +1,93 @@
 from __future__ import annotations
 
 import uuid
+from contextlib import contextmanager
 from datetime import timedelta
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
+from django.db import IntegrityError, connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
+from api.schemas.article import ArticleOut
 from apps.articles.models import (
     Article,
     ArticleGlobalVisibility,
     ArticleSource,
     ArticleState,
+    ListingImageMode,
 )
-from apps.follows.models import Follow, FollowChannelPreference
-from apps.notifications.models import Notification, NotificationCadence
+from apps.follows.models import Follow, FollowedChannel
+from apps.notifications.models import Notification
+from apps.projects.models import ProjectImage, UploadStatus
+from apps.users.models import ArticleEmailFrequency
+from services.articles.crop import CARD_RATIO
 from services.articles.django_impl.handler import DjangoArticleHandler
 from services.articles.exceptions import (
     ArticleNotFoundError,
     ArticleNotPublishableError,
     ChannelNotFoundError,
     ChannelOnWrongProjectError,
-    HeroImageOnWrongProjectError,
+    ListingImageNotUploadedError,
+    ListingImageOnWrongProjectError,
 )
 from tests.factories import (
     ArticleFactory,
     ChannelFactory,
     ProjectFactory,
     ProjectImageFactory,
+    PublishedArticleFactory,
     UserFactory,
+    article_image,
 )
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+
+def _crop(x: float = 0.1, y: float = 0.2, w: float = 0.6) -> dict[str, float]:
+    """A 16:9 crop of a square source."""
+    return {"x": x, "y": y, "w": w, "h": w / CARD_RATIO, "ratio": CARD_RATIO}
+
+
+@contextmanager
+def _patched_enqueue():
+    """Stop the fan-out task at the queue boundary, yielding its `enqueue` mock.
+
+    The test settings pin `ImmediateBackend`, which runs the task body inline,
+    so without this a query count over `publish` measures the fan-out too. The
+    whole `Task` is replaced rather than its `enqueue` attribute because `Task`
+    is a frozen dataclass and `patch` cannot unset an attribute on one.
+    """
+    with patch("api.tasks.notifications.create_article_notifications") as fan_out_task:
+        yield fan_out_task.enqueue
+
+
+def _follow_channel_from_new_users(project, channel, *, count: int) -> None:
+    for _ in range(count):
+        follow = Follow.objects.create(user=UserFactory(), project=project)
+        FollowedChannel.objects.create(follow=follow, channel=channel)
+
+
+def _count_queries(work: Callable[[], object]) -> int:
+    with CaptureQueriesContext(connection) as queries:
+        work()
+    return len(queries)
+
+
+def _article_with_figures(count: int) -> Article:
+    article = ArticleFactory()
+    for _ in range(count):
+        article_image(article)
+    return article
+
+
+def _save_and_serialise(handler: DjangoArticleHandler, article_id) -> None:
+    """What a *Save draft* actually costs: the write plus the response body."""
+    article = handler.update_article(article_id, title="Edited")
+    ArticleOut.from_orm(article)
 
 
 @pytest.mark.django_db
@@ -52,7 +110,8 @@ class TestCreateDraft:
         assert article.source == ArticleSource.INTERNAL
         assert article.title == ""
         assert article.body == ""
-        assert article.hero_image_id is None
+        assert article.listing_image_id is None
+        assert article.listing_image_mode == ListingImageMode.AUTO
         assert article.slug is None
         assert article.published_at is None
         assert article.global_visibility == ArticleGlobalVisibility.AUTO
@@ -67,20 +126,6 @@ class TestCreateDraft:
                 project_id=project_a.id,
                 channel_id=channel_b.id,
                 author_id=project_a.creator.id,
-            )
-
-    def test_rejects_hero_image_on_different_project(self):
-        project_a = ProjectFactory()
-        project_b = ProjectFactory()
-        channel = ChannelFactory(project=project_a)
-        image_b = ProjectImageFactory(project=project_b)
-
-        with pytest.raises(HeroImageOnWrongProjectError):
-            self.handler.create_draft(
-                project_id=project_a.id,
-                channel_id=channel.id,
-                author_id=project_a.creator.id,
-                hero_image_id=image_b.id,
             )
 
     def test_unknown_channel_raises_channel_not_found(self):
@@ -124,12 +169,7 @@ class TestUpdateArticle:
         channel = ChannelFactory(project=project, name="Updates")
         follower = UserFactory()
         follow = Follow.objects.create(user=follower, project=project)
-        FollowChannelPreference.objects.create(
-            follow=follow,
-            channel=channel,
-            email_enabled=False,
-            in_app_enabled=True,
-        )
+        FollowedChannel.objects.create(follow=follow, channel=channel)
         article = ArticleFactory(project=project, channel=channel)
         handler.publish(article.id)
         # Clear any rows from publish-time fan-out so this test is unambiguous.
@@ -142,6 +182,26 @@ class TestUpdateArticle:
     def test_unknown_article_raises(self):
         with pytest.raises(ArticleNotFoundError):
             self.handler.update_article(uuid.uuid4(), title="x")
+
+
+@pytest.mark.django_db
+class TestSaveDraftQueryCount:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_does_not_query_per_article_figure(self):
+        # `ArticleOut.from_orm` is the load-bearing half: the cost is in
+        # serialising `images` and their variants, not in the handler, so a
+        # count over `update_article` alone would pass without the prefetch.
+        one = _article_with_figures(1)
+        twelve = _article_with_figures(12)
+
+        one_figure = _count_queries(lambda: _save_and_serialise(self.handler, one.id))
+        twelve_figures = _count_queries(
+            lambda: _save_and_serialise(self.handler, twelve.id)
+        )
+
+        assert twelve_figures == one_figure
 
 
 @pytest.mark.django_db
@@ -202,7 +262,6 @@ class TestPublish:
             channel_id=ChannelFactory(project=project).id,
             author_id=project.creator.id,
             body="x",
-            hero_image_id=ProjectImageFactory(project=project).id,
         )
 
         with pytest.raises(ArticleNotPublishableError):
@@ -217,13 +276,12 @@ class TestPublish:
             channel_id=ChannelFactory(project=project).id,
             author_id=project.creator.id,
             title="x",
-            hero_image_id=ProjectImageFactory(project=project).id,
         )
 
         with pytest.raises(ArticleNotPublishableError):
             self.handler.publish(article.id)
 
-    def test_rejects_publish_without_hero_image(self):
+    def test_publishes_without_an_image(self):
         project = ProjectFactory()
         article = self.handler.create_draft(
             project_id=project.id,
@@ -233,8 +291,10 @@ class TestPublish:
             body="y",
         )
 
-        with pytest.raises(ArticleNotPublishableError):
-            self.handler.publish(article.id)
+        published = self.handler.publish(article.id)
+
+        assert published.state == ArticleState.PUBLISHED
+        assert published.listing_image_id is None
 
     def test_trusted_author_gets_auto_visibility(self):
         author = UserFactory(article_trust=True)
@@ -261,12 +321,7 @@ class TestPublish:
         channel = ChannelFactory(project=project, name="Updates")
         follower = UserFactory()
         follow = Follow.objects.create(user=follower, project=project)
-        FollowChannelPreference.objects.create(
-            follow=follow,
-            channel=channel,
-            email_enabled=True,
-            in_app_enabled=True,
-        )
+        FollowedChannel.objects.create(follow=follow, channel=channel)
         article = ArticleFactory(project=project, channel=channel)
 
         self.handler.publish(
@@ -275,16 +330,62 @@ class TestPublish:
 
         assert not Notification.objects.filter(recipient=follower).exists()
 
-    def test_live_publish_invokes_notification_handler(self):
+    def test_live_publish_enqueues_the_fan_out_task(self):
         article = ArticleFactory()
 
-        with patch(
-            "services.notifications.django_impl.handler"
-            ".DjangoNotificationHandler.create_notifications_for_article"
-        ) as fan_out:
+        with _patched_enqueue() as enqueue:
             self.handler.publish(article.id)
 
-        fan_out.assert_called_once_with(article.id)
+        # `str`, not `UUID`: the DatabaseBackend serialises task arguments
+        # through `normalize_json` and a bare UUID does not survive it. The
+        # ImmediateBackend used in tests would accept one silently.
+        enqueue.assert_called_once_with(str(article.id))
+
+    def test_backdated_publish_enqueues_nothing(self):
+        article = ArticleFactory()
+
+        with _patched_enqueue() as enqueue:
+            self.handler.publish(
+                article.id, published_at=timezone.now() - timedelta(days=7)
+            )
+
+        enqueue.assert_not_called()
+
+    def test_a_failed_publish_write_enqueues_nothing(self):
+        article = ArticleFactory()
+
+        with (
+            _patched_enqueue() as enqueue,
+            patch.object(Article, "save", side_effect=IntegrityError),
+            pytest.raises(IntegrityError),
+        ):
+            self.handler.publish(article.id)
+
+        enqueue.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestPublishQueryCount:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_does_not_query_per_follower(self):
+        """The fan-out is O(N) by nature, so publish itself must not carry it."""
+        project = ProjectFactory()
+        channel = ChannelFactory(project=project, name="Updates")
+        _follow_channel_from_new_users(project, channel, count=1)
+        # Distinct titles: two articles sharing one would differ by the extra
+        # `.exists()` the slug collision loop costs, which is not what this
+        # test is about.
+        one = ArticleFactory(project=project, channel=channel, title="First")
+        twenty = ArticleFactory(project=project, channel=channel, title="Second")
+
+        with _patched_enqueue():
+            one_follower = _count_queries(lambda: self.handler.publish(one.id))
+            _follow_channel_from_new_users(project, channel, count=19)
+            twenty_followers = _count_queries(lambda: self.handler.publish(twenty.id))
+
+        assert twenty_followers == one_follower
 
 
 @pytest.mark.django_db
@@ -297,12 +398,7 @@ class TestDelete:
         channel = ChannelFactory(project=project, name="Updates")
         follower = UserFactory()
         follow = Follow.objects.create(user=follower, project=project)
-        FollowChannelPreference.objects.create(
-            follow=follow,
-            channel=channel,
-            email_enabled=False,
-            in_app_enabled=True,
-        )
+        FollowedChannel.objects.create(follow=follow, channel=channel)
         article = ArticleFactory(project=project, channel=channel)
         self.handler.publish(article.id)
         assert Notification.objects.filter(article=article).exists()
@@ -394,11 +490,285 @@ class TestTrustFlagAndExistingArticles:
 
     def test_cadence_snapshot_unaffected_here(self):
         """Sanity: publish does not mutate the author's cadence."""
-        author = UserFactory(notification_frequency=NotificationCadence.DAILY)
+        author = UserFactory(article_email_frequency=ArticleEmailFrequency.DAILY)
         project = ProjectFactory(owner=author)
         article = ArticleFactory(project=project, author=author)
 
         self.handler.publish(article.id)
 
         author.refresh_from_db()
-        assert author.notification_frequency == NotificationCadence.DAILY
+        assert author.article_email_frequency == ArticleEmailFrequency.DAILY
+
+
+@pytest.mark.django_db
+class TestArticleSummary:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_new_article_has_empty_summary(self):
+        project = ProjectFactory()
+        channel = ChannelFactory(project=project)
+
+        article = self.handler.create_draft(
+            project_id=project.id,
+            channel_id=channel.id,
+            author_id=project.creator.id,
+        )
+
+        assert article.summary == ""
+
+    def test_update_sets_summary(self):
+        article = ArticleFactory(body="The body opening.")
+
+        updated = self.handler.update_article(article.id, summary="A hook.")
+
+        assert updated.summary == "A hook."
+
+    def test_empty_string_clears_the_summary(self):
+        article = ArticleFactory(summary="A hook.")
+
+        updated = self.handler.update_article(article.id, summary="")
+
+        assert updated.summary == ""
+
+    def test_omitting_summary_leaves_it_alone(self):
+        article = ArticleFactory(summary="A hook.")
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.summary == "A hook."
+
+
+@pytest.mark.django_db
+class TestListingImageAutoMode:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_adopts_the_earliest_upload_on_save(self):
+        article = ArticleFactory()
+        first = article_image(article)
+        article_image(article)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id == first.id
+        assert updated.listing_crop is None
+        assert updated.listing_image_mode == ListingImageMode.AUTO
+
+    def test_orders_by_upload_time_not_display_order(self):
+        # An article's uploads all take display_order from the project's
+        # non-article image count, so Meta.ordering cannot break the tie.
+        article = ArticleFactory()
+        first = article_image(article, display_order=7)
+        article_image(article, display_order=0)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id == first.id
+
+    def test_a_later_upload_does_not_displace_it(self):
+        article = ArticleFactory()
+        first = article_image(article)
+        self.handler.update_article(article.id, title="One")
+
+        article_image(article)
+        updated = self.handler.update_article(article.id, title="Two")
+
+        assert updated.listing_image_id == first.id
+
+    def test_deleting_the_first_promotes_the_next(self):
+        article = ArticleFactory()
+        first = article_image(article)
+        second = article_image(article)
+        self.handler.update_article(article.id, title="One")
+
+        first.delete()
+        updated = self.handler.update_article(article.id, title="Two")
+
+        assert updated.listing_image_id == second.id
+
+    def test_stays_null_with_no_linked_images(self):
+        article = ArticleFactory()
+        ProjectImageFactory(project=article.project)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id is None
+        assert updated.listing_image_mode == ListingImageMode.AUTO
+
+    def test_skips_an_upload_that_never_completed(self):
+        # The row is created before the S3 PUT and nothing deletes it when the
+        # PUT fails, so the earliest row is not necessarily a usable image.
+        article = ArticleFactory()
+        article_image(article, upload_status=UploadStatus.PENDING)
+        completed = article_image(article)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id == completed.id
+
+    def test_skips_a_failed_upload(self):
+        article = ArticleFactory()
+        article_image(article, upload_status=UploadStatus.FAILED)
+        completed = article_image(article)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id == completed.id
+
+    def test_stays_null_when_every_upload_is_incomplete(self):
+        article = ArticleFactory()
+        article_image(article, upload_status=UploadStatus.PENDING)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id is None
+
+
+@pytest.mark.django_db
+class TestListingImageChoice:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_choosing_an_image_commits_the_mode(self):
+        article = ArticleFactory()
+        article_image(article)
+        chosen = article_image(article)
+
+        updated = self.handler.update_article(article.id, listing_image_id=chosen.id)
+
+        assert updated.listing_image_id == chosen.id
+        assert updated.listing_image_mode == ListingImageMode.CHOSEN
+
+    def test_a_chosen_image_is_not_re_derived_on_a_later_save(self):
+        article = ArticleFactory()
+        article_image(article)
+        chosen = article_image(article)
+        self.handler.update_article(article.id, listing_image_id=chosen.id)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id == chosen.id
+
+    def test_adjusting_only_the_crop_commits_the_choice(self):
+        article = ArticleFactory()
+        first = article_image(article, width=4000, height=4000)
+        self.handler.update_article(article.id, title="One")
+
+        updated = self.handler.update_article(article.id, listing_crop=_crop())
+
+        assert updated.listing_image_mode == ListingImageMode.CHOSEN
+        assert updated.listing_image_id == first.id
+        assert updated.listing_crop["ratio"] == pytest.approx(CARD_RATIO, abs=1e-4)
+
+    def test_a_new_image_drops_a_crop_drawn_on_the_old_one(self):
+        article = ArticleFactory()
+        first = article_image(article, width=4000, height=4000)
+        replacement = article_image(article, width=4000, height=4000)
+        self.handler.update_article(
+            article.id, listing_image_id=first.id, listing_crop=_crop()
+        )
+
+        updated = self.handler.update_article(
+            article.id, listing_image_id=replacement.id
+        )
+
+        assert updated.listing_image_id == replacement.id
+        assert updated.listing_crop is None
+
+    def test_rejects_an_image_on_another_project(self):
+        article = ArticleFactory()
+        foreign = ProjectImageFactory(project=ProjectFactory())
+
+        with pytest.raises(ListingImageOnWrongProjectError):
+            self.handler.update_article(article.id, listing_image_id=foreign.id)
+
+    def test_rejects_an_upload_that_never_completed(self):
+        article = ArticleFactory()
+        pending = article_image(article, upload_status=UploadStatus.PENDING)
+
+        with pytest.raises(ListingImageNotUploadedError):
+            self.handler.update_article(article.id, listing_image_id=pending.id)
+
+    def test_rejects_a_failed_upload(self):
+        article = ArticleFactory()
+        failed = article_image(article, upload_status=UploadStatus.FAILED)
+
+        with pytest.raises(ListingImageNotUploadedError):
+            self.handler.update_article(article.id, listing_image_id=failed.id)
+
+    def test_clearing_the_image_on_a_published_article_is_allowed(self):
+        article = PublishedArticleFactory(slug="a-post")
+        article_image(article)
+        self.handler.update_article(article.id, title="One")
+
+        updated = self.handler.update_article(
+            article.id,
+            listing_image_id=None,
+            listing_image_mode=ListingImageMode.NONE,
+        )
+
+        assert updated.listing_image_id is None
+
+
+@pytest.mark.django_db
+class TestListingImageRemoval:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_removal_survives_later_saves(self):
+        article = ArticleFactory()
+        article_image(article)
+        self.handler.update_article(article.id, title="One")
+
+        self.handler.update_article(
+            article.id,
+            listing_image_id=None,
+            listing_image_mode=ListingImageMode.NONE,
+        )
+        updated = self.handler.update_article(article.id, title="Two")
+
+        assert updated.listing_image_id is None
+        assert updated.listing_image_mode == ListingImageMode.NONE
+
+    def test_returning_to_auto_re_adopts_the_first_upload(self):
+        article = ArticleFactory()
+        first = article_image(article)
+        self.handler.update_article(
+            article.id,
+            listing_image_id=None,
+            listing_image_mode=ListingImageMode.NONE,
+        )
+
+        updated = self.handler.update_article(
+            article.id, listing_image_mode=ListingImageMode.AUTO
+        )
+
+        assert updated.listing_image_id == first.id
+
+
+@pytest.mark.django_db
+class TestImageArticleLink:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_deleting_an_article_deletes_its_images(self):
+        article = ArticleFactory()
+        image = article_image(article)
+        project_image = ProjectImageFactory(project=article.project)
+
+        self.handler.delete_article(article.id)
+
+        assert not ProjectImage.objects.filter(pk=image.id).exists()
+        assert ProjectImage.objects.filter(pk=project_image.id).exists()
+
+    def test_deleting_the_listing_image_blanks_it_rather_than_raising(self):
+        article = ArticleFactory()
+        image = article_image(article)
+        self.handler.update_article(article.id, listing_image_id=image.id)
+
+        image.delete()
+
+        article.refresh_from_db()
+        assert article.listing_image_id is None
+        assert article.listing_image_mode == ListingImageMode.CHOSEN

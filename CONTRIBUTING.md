@@ -14,7 +14,7 @@ read the rest too — the conventions are the same.
 |------|------|-------|
 | **Backend** | `src/django-backend/` | Django 4.2 + **Django Ninja** (not DRF), Python 3.12, `uv`, Ruff, pytest + factory-boy. Layered: routers → `HANDLERS`/`REPO` services → models. |
 | **Frontend** | `src/web-ui/` | Next.js 16 App Router, React 19, TypeScript (strict), Tailwind 4, vitest + Playwright. Talks to the backend through a typed `APIClient` and **generated** types. |
-| **Infra** | `infra/prod/app/` | Terraform. |
+| **Infra** | separate repo, `naglasupan-hq` | Terraform + Kubernetes, including the CronJobs that drive scheduled tasks. `infra/` in this repo is only a Grafana dashboard export. |
 
 
 ## Local setup
@@ -46,24 +46,27 @@ Run these before you push — CI runs the same on every PR
 **Backend** (`src/django-backend/`):
 
 ```bash
+make install-deps  # uv sync --all-extras; run this if pytest can't be found
 make lint          # ruff check + ruff format --check
+make extra-tests   # fails if backend-openapi.json is stale
 make test          # pytest
-make install-deps  # if pytest can't be found
 ```
 
 **Frontend** (`src/web-ui/`):
 
 ```bash
-npm run lint   # eslint + tsc --noEmit
-npm test       # vitest
+npm ci             # or: make install
+make lint          # eslint + tsc --noEmit
+make extra-tests   # service-specific extra CI checks
+make test          # vitest
+make build-app     # next build
 ```
 
-**Terraform** (`infra/prod/app/`):
-
-```bash
-terraform fmt -check
-terraform validate
-```
+There is no root `Makefile`; run each list from its service directory. The
+`extra-tests` stage is defined once in `scripts/app-common.mk` — a service opts
+in by setting `EXTRA_TESTS` *before* it includes that file, and one that sets
+nothing inherits a no-op, so the pipeline line stays uniform. The backend uses
+it for the OpenAPI drift check below.
 
 ## Two workflows that bite
 
@@ -82,6 +85,7 @@ cd src/web-ui && npm run generate-types          # updates src/lib/api-types.ts
 Commit **`backend-openapi.json`**. Do **not** commit `api-types.ts` — it's
 gitignored and regenerated locally and in CI. An API change without a matching
 `backend-openapi.json` means the frontend is reviewing against a stale contract.
+`make extra-tests` in the backend fails the build if you skip this.
 
 ### 2. Migrations
 
@@ -118,7 +122,8 @@ full documentation map.
 ## Branches, commits, and PRs
 
 - **Branch per change.** Descriptive names (`add-follow-preferences-ui`) are
-  preferred over generated ones.
+  preferred over generated ones. The repo is jj-colocated — work with `jj`, and
+  treat `git status` as unreliable, since git HEAD lags the jj working copy.
 - **Commits** reference the issue or PR they relate to (`Fix #61: …`,
   `… (#64)`). Keep the subject line a real summary.
 - **Open a PR against `main`.** The
@@ -127,7 +132,9 @@ full documentation map.
   a test plan, and a **verification line** (test counts, `lint` clean,
   `openspec validate` clean). Good PR descriptions are a point of pride here —
   the diff says what changed; the description says *why* and *what you checked*.
-- **CI must be green** before merge: backend lint + tests, web-ui build.
+- **CI must be green** before merge: backend lint + OpenAPI drift check + tests;
+  web-ui lint, unit tests, and build. Playwright is not in CI — it needs a
+  running stack, so it stays a local tool.
 
 ## For AI coding assistants
 
@@ -137,13 +144,13 @@ You're a first-class contributor here. A few repo-specific expectations:
   documentation, and **`nglspn-code-review`** before proposing a change as ready.
 - **Honor the two workflows above** — regenerate `backend-openapi.json` on API
   changes, add migrations on model changes. These are the most-forgotten steps.
-- **Run `make lint` + `make test` (backend) and `npm run lint` (frontend)**
+- **Run `make lint`, `make extra-tests` and `make test` in both services**
   before claiming a change is done, and report the result in the PR's
   verification line. Don't assert "tests pass" without having run them.
 - **Plan non-trivial work as an OpenSpec change** before implementing.
-- **Match the house voice** — Icelandic user-facing strings, the `HANDLERS`/`REPO`
-  services layer, generated types over hand-rolled interfaces.
-- End commit and PR trailers per `CLAUDE.md`.
+- **Match the house patterns** — the `HANDLERS`/`REPO` services layer, generated
+  types over hand-rolled interfaces. Docs, code and the current web-ui copy are
+  all English.
 
 ## Questions
 

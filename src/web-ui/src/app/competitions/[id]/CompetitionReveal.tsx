@@ -6,22 +6,11 @@ import { TrophyIcon, RocketLaunchIcon } from "@heroicons/react/24/solid";
 import { api, type Competition, type CompetitionProject } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
 import { useAuth } from "@/contexts/auth";
-import { pickVariant } from "@/lib/utils";
+import { formatDateRange, pickVariant } from "@/lib/utils";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
 import { MyRanking } from "./MyRanking";
 import type { ReviewState } from "./types";
-
-function formatDateRange(startDate: string, endDate: string): string {
-  const start = new Date(startDate);
-  const end = new Date(endDate);
-  const options: Intl.DateTimeFormatOptions = {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-  };
-  return `${start.toLocaleDateString("en-US", options)} – ${end.toLocaleDateString("en-US", options)}`;
-}
 
 function formatPrize(amount: string): string {
   const num = parseInt(amount, 10);
@@ -117,7 +106,11 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
               {competition.name}
             </h1>
             <p className="text-slate-300 text-sm sm:text-base mt-2">
-              {formatDateRange(competition.start_date, competition.submission_deadline)}
+              {formatDateRange(
+                competition.start_date,
+                competition.submission_deadline,
+                { year: "numeric", month: "long", day: "numeric" },
+              )}
               {competition.prize_amount &&
                 ` · ${formatPrize(competition.prize_amount)} prize`}
               {" · "}

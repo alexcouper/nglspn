@@ -13,11 +13,10 @@ class FollowState:
 
 
 @dataclass(frozen=True)
-class ChannelPreferenceState:
+class ChannelFollowState:
     channel_id: UUID
     channel_name: str
-    email_enabled: bool
-    in_app_enabled: bool
+    followed: bool
 
 
 @dataclass(frozen=True)
@@ -26,7 +25,7 @@ class FollowWithPreferences:
     project_title: str
     project_hero_image_url: str | None
     created_at: datetime
-    channels: list[ChannelPreferenceState] = field(default_factory=list)
+    channels: list[ChannelFollowState] = field(default_factory=list)
 
 
 class FollowQueryInterface(ABC):

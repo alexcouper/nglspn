@@ -29,11 +29,11 @@ class ArticleAdmin(admin.ModelAdmin):
         "render_link",
     )
     ordering = ("-published_at", "-created_at")
-    autocomplete_fields = ("project", "channel", "author", "hero_image")
+    autocomplete_fields = ("project", "channel", "author", "listing_image")
 
     fieldsets = (
         (None, {"fields": ("id", "project", "channel", "author")}),
-        ("Content", {"fields": ("title", "slug", "body", "hero_image")}),
+        ("Content", {"fields": ("title", "slug", "body", "listing_image")}),
         (
             "Source",
             {"fields": ("source", "external_url")},
@@ -56,7 +56,7 @@ class ArticleAdmin(admin.ModelAdmin):
         return (
             super()
             .get_queryset(request)
-            .select_related("project", "channel", "author", "hero_image")
+            .select_related("project", "channel", "author", "listing_image")
         )
 
     @admin.display(description="Render page")

@@ -4,7 +4,7 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from django.db.models import Count, Prefetch, Q, QuerySet
+from django.db.models import Count, Q, QuerySet
 from django.db.models.functions import Coalesce, Lower
 from django.utils import timezone
 
@@ -17,6 +17,7 @@ from apps.projects.models import (
     ProjectImage,
     ProjectStatus,
 )
+from services.images.django_impl.query import gallery_prefetch
 from services.project.exceptions import ProjectNotFoundError
 from services.project.query_interface import (
     CategoryItem,
@@ -37,12 +38,7 @@ def _top_level_discussion_count() -> Count:
 def _discover_queryset() -> QuerySet[Project]:
     return Project.objects.select_related("creator", "category").prefetch_related(
         "won_competitions",
-        Prefetch(
-            "images",
-            queryset=ProjectImage.objects.filter(
-                upload_status="uploaded"
-            ).prefetch_related("variants"),
-        ),
+        gallery_prefetch(),
     )
 
 
@@ -52,12 +48,7 @@ def _base_queryset() -> QuerySet[Project]:
         "tags__category",
         "won_competitions",
         "contributors__user",
-        Prefetch(
-            "images",
-            queryset=ProjectImage.objects.filter(
-                upload_status="uploaded"
-            ).prefetch_related("variants"),
-        ),
+        gallery_prefetch(),
     )
 
 
@@ -330,12 +321,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
             .select_related("winner", "winner__category")
             .prefetch_related(
                 "winner__won_competitions",
-                Prefetch(
-                    "winner__images",
-                    queryset=ProjectImage.objects.filter(
-                        upload_status="uploaded"
-                    ).prefetch_related("variants"),
-                ),
+                gallery_prefetch("winner__images"),
             )
             .order_by("-submission_deadline")
         )

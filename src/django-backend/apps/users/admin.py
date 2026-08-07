@@ -15,14 +15,16 @@ class UserAdmin(BaseUserAdmin):
         "is_staff",
         "created_at",
         "kennitala",
-        "notification_frequency",
+        "discussion_email_frequency",
+        "article_email_frequency",
     )
     list_filter = (
         "is_verified",
         "is_active",
         "is_staff",
         "is_superuser",
-        "notification_frequency",
+        "discussion_email_frequency",
+        "article_email_frequency",
         "created_at",
     )
     search_fields = ("email", "first_name", "last_name", "kennitala")
@@ -36,7 +38,10 @@ class UserAdmin(BaseUserAdmin):
         (
             _("Email preferences"),
             {
-                "fields": ("notification_frequency",),
+                "fields": (
+                    "discussion_email_frequency",
+                    "article_email_frequency",
+                ),
             },
         ),
         (_("Privacy"), {"fields": ("opt_in_to_external_promotions",)}),

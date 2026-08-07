@@ -12,14 +12,14 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.db import transaction
 
-from apps.follows.models import Channel, Follow, FollowChannelPreference
+from apps.follows.models import Channel, Follow, FollowedChannel
 from apps.projects.models import Project
 
 logger = logging.getLogger(__name__)
 
 
 def create_house_project_follow(user: "settings.AUTH_USER_MODEL") -> Follow | None:
-    """Create a Follow on the house project for `user`, with all-on prefs.
+    """Create a Follow on the house project for `user` and enrol each channel.
 
     Returns the Follow row, or None if no house project exists (greenfield dev
     DB case — logs a warning and no-ops).
@@ -38,10 +38,9 @@ def create_house_project_follow(user: "settings.AUTH_USER_MODEL") -> Follow | No
             user=user, project=house_project
         )
         for channel in Channel.objects.filter(project=house_project):
-            FollowChannelPreference.objects.get_or_create(
+            FollowedChannel.objects.get_or_create(
                 follow=follow,
                 channel=channel,
-                defaults={"email_enabled": True, "in_app_enabled": True},
             )
     return follow
 
@@ -50,8 +49,8 @@ def anoint_house_project(project: Project) -> dict[str, int]:
     """Make `project` the house project and seed its broadcast plumbing.
 
     Demotes any current house project, flags this one, ensures the named
-    broadcast channels exist, and backfills a Follow + all-on
-    FollowChannelPreference rows for every active, non-system user.
+    broadcast channels exist, and backfills a Follow + FollowedChannel rows
+    for every active, non-system user.
 
     Idempotent. In prod this state came from a data migration; this
     gives local dev and any fresh install the same starting point without
@@ -84,10 +83,9 @@ def anoint_house_project(project: Project) -> dict[str, int]:
             follow, created = Follow.objects.get_or_create(user=user, project=project)
             follows_created += int(created)
             for channel in channels:
-                FollowChannelPreference.objects.get_or_create(
+                FollowedChannel.objects.get_or_create(
                     follow=follow,
                     channel=channel,
-                    defaults={"email_enabled": True, "in_app_enabled": True},
                 )
 
     return {

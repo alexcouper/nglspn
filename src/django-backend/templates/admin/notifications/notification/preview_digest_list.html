@@ -4,7 +4,7 @@
 {% block title %}Digest Preview{% endblock %}
 
 {% block content %}
-<div style="max-width: 800px; margin: 20px auto; color: #1e293b;">
+<div style="max-width: 900px; margin: 20px auto; color: #1e293b;">
   <h2>Digest Email Preview</h2>
   <p style="color: #64748b;">
     Preview what digest emails would look like if sent now. This does not send anything.
@@ -19,37 +19,70 @@
     <thead>
       <tr style="border-bottom: 2px solid #e2e8f0;">
         <th style="text-align: left; padding: 8px 12px;">Recipient</th>
-        <th style="text-align: left; padding: 8px 12px;">Notifications</th>
+        <th style="text-align: left; padding: 8px 12px;">Kind</th>
+        <th style="text-align: left; padding: 8px 12px;">Count</th>
         <th style="text-align: left; padding: 8px 12px;">Projects</th>
         <th style="text-align: center; padding: 8px 12px;">Preview</th>
       </tr>
     </thead>
     <tbody>
       {% for r in recipients %}
-      <tr style="border-bottom: 1px solid #e2e8f0;">
-        <td style="padding: 8px 12px;">
-          {{ r.recipient.email }}
-          {% if r.recipient.full_name %}
-            <br><span style="color: #64748b; font-size: 12px;">{{ r.recipient.full_name }}</span>
+        {% if r.discussion_count %}
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          <td style="padding: 8px 12px;" rowspan="{% if r.discussion_count and r.article_count %}2{% else %}1{% endif %}">
+            {{ r.recipient.email }}
+            {% if r.recipient.full_name %}
+              <br><span style="color: #64748b; font-size: 12px;">{{ r.recipient.full_name }}</span>
+            {% endif %}
+          </td>
+          <td style="padding: 8px 12px;">discussions</td>
+          <td style="padding: 8px 12px;">{{ r.discussion_count }}</td>
+          <td style="padding: 8px 12px;">
+            {% for project, count in r.discussion_projects.items %}
+              <span style="background: #e0f2fe; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 4px;">
+                {{ project }} ({{ count }})
+              </span>
+            {% endfor %}
+          </td>
+          <td style="padding: 8px 12px; text-align: center;">
+            <a href="{{ r.discussion_preview_url }}" target="_blank" class="button" style="padding: 4px 12px; font-size: 12px;">
+              HTML
+            </a>
+            <a href="{{ r.discussion_preview_url }}?format=text" target="_blank" class="button" style="padding: 4px 12px; font-size: 12px; margin-left: 4px;">
+              Text
+            </a>
+          </td>
+        </tr>
+        {% endif %}
+        {% if r.article_count %}
+        <tr style="border-bottom: 1px solid #e2e8f0;">
+          {% if not r.discussion_count %}
+          <td style="padding: 8px 12px;">
+            {{ r.recipient.email }}
+            {% if r.recipient.full_name %}
+              <br><span style="color: #64748b; font-size: 12px;">{{ r.recipient.full_name }}</span>
+            {% endif %}
+          </td>
           {% endif %}
-        </td>
-        <td style="padding: 8px 12px;">{{ r.count }}</td>
-        <td style="padding: 8px 12px;">
-          {% for project, count in r.projects.items %}
-            <span style="background: #e0f2fe; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 4px;">
-              {{ project }} ({{ count }})
-            </span>
-          {% endfor %}
-        </td>
-        <td style="padding: 8px 12px; text-align: center;">
-          <a href="{{ r.preview_url }}" target="_blank" class="button" style="padding: 4px 12px; font-size: 12px;">
-            HTML
-          </a>
-          <a href="{{ r.preview_url }}?format=text" target="_blank" class="button" style="padding: 4px 12px; font-size: 12px; margin-left: 4px;">
-            Text
-          </a>
-        </td>
-      </tr>
+          <td style="padding: 8px 12px;">articles</td>
+          <td style="padding: 8px 12px;">{{ r.article_count }}</td>
+          <td style="padding: 8px 12px;">
+            {% for project, count in r.article_projects.items %}
+              <span style="background: #ede9fe; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-right: 4px;">
+                {{ project }} ({{ count }})
+              </span>
+            {% endfor %}
+          </td>
+          <td style="padding: 8px 12px; text-align: center;">
+            <a href="{{ r.article_preview_url }}" target="_blank" class="button" style="padding: 4px 12px; font-size: 12px;">
+              HTML
+            </a>
+            <a href="{{ r.article_preview_url }}?format=text" target="_blank" class="button" style="padding: 4px 12px; font-size: 12px; margin-left: 4px;">
+              Text
+            </a>
+          </td>
+        </tr>
+        {% endif %}
       {% endfor %}
     </tbody>
   </table>

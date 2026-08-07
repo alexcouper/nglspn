@@ -1,7 +1,11 @@
-import { notFound, permanentRedirect } from "next/navigation";
+import { permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ProjectDetailContent } from "./ProjectDetailContent";
-import { fetchProject, ApiNotFoundError } from "@/lib/api/server";
+import {
+  fetchProject,
+  fetchProjectArticles,
+  getProjectOr404,
+} from "@/lib/api/server";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
@@ -56,13 +60,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function ProjectPage({ params }: PageProps) {
   const { slug } = await params;
 
-  let project;
-  try {
-    project = await fetchProject(slug);
-  } catch (err) {
-    if (err instanceof ApiNotFoundError) notFound();
-    throw err;
-  }
+  // The articles alongside the project: the listing tab is content, so it
+  // belongs in the server HTML rather than in a second round-trip after the
+  // page has rendered. `serverFetch` sends no token, so this is the published
+  // set — exactly what the tab shows. A failure falls back to the client
+  // fetch rather than taking the whole page down with it.
+  const [project, articles] = await Promise.all([
+    getProjectOr404(slug),
+    fetchProjectArticles(slug).catch(() => null),
+  ]);
 
   // Canonicalise: if the URL identifier isn't the project's current slug
   // (e.g. accessed by UUID), 301 to the slug URL.
@@ -72,7 +78,11 @@ export default async function ProjectPage({ params }: PageProps) {
 
   return (
     <main className="min-h-screen bg-muted pt-14">
-      <ProjectDetailContent project={project} projectId={project.id} />
+      <ProjectDetailContent
+        project={project}
+        projectId={project.id}
+        articles={articles}
+      />
     </main>
   );
 }

@@ -104,7 +104,11 @@ class ProjectResponse(Schema):
 
     @staticmethod
     def resolve_images(obj: Any) -> list[Any]:
-        return list(obj.images.all())
+        # Belt and braces: the project querysets already prefetch through
+        # `project_gallery_images()`, but this schema can be reached with an
+        # unfiltered relation and article images must never reach a gallery.
+        # Filtered in Python so a prefetched relation is not thrown away.
+        return [img for img in obj.images.all() if img.article_id is None]
 
     @staticmethod
     def resolve_tags(obj: Any) -> list[Any]:

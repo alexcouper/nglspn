@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from apps.follows.models import Channel, Follow, FollowChannelPreference
+from apps.follows.models import Channel, Follow, FollowedChannel
 
 
 @admin.register(Channel)
@@ -18,8 +18,8 @@ class FollowAdmin(admin.ModelAdmin):
     raw_id_fields = ("user", "project")
 
 
-@admin.register(FollowChannelPreference)
-class FollowChannelPreferenceAdmin(admin.ModelAdmin):
-    list_display = ("follow", "channel", "email_enabled", "in_app_enabled")
-    list_filter = ("channel", "email_enabled", "in_app_enabled")
+@admin.register(FollowedChannel)
+class FollowedChannelAdmin(admin.ModelAdmin):
+    list_display = ("follow", "channel")
+    list_filter = ("channel",)
     raw_id_fields = ("follow", "channel")

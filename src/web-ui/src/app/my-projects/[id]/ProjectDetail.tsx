@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -13,6 +13,7 @@ import {
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
+import { describeApiError } from "@/lib/api/errors";
 import type { Project, ProjectImage } from "@/lib/api";
 import { ProjectDetailContent } from "@/app/projects/[slug]/ProjectDetailContent";
 import { EditProjectContent } from "./EditProjectContent";
@@ -53,8 +54,19 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [images, setImages] = useState<ProjectImage[]>([]);
   const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
 
+  // Object literals here would change identity on every render, which is what
+  // useImageUpload's uploadFile memoises on.
+  const galleryTarget = useMemo(
+    () => ({ kind: "project" as const, projectId }),
+    [projectId],
+  );
+  const iconTarget = useMemo(
+    () => ({ kind: "project" as const, projectId, isIcon: true }),
+    [projectId],
+  );
+
   const { uploads, uploadFiles, isUploading } = useImageUpload({
-    projectId,
+    target: galleryTarget,
     onUploadComplete: (image) => {
       setImages((prev) => [...prev, image]);
     },
@@ -66,8 +78,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const {
     uploadFiles: uploadIconFiles,
   } = useImageUpload({
-    projectId,
-    isIcon: true,
+    target: iconTarget,
     onUploadComplete: (image) => {
       setImages((prev) => {
         const withoutOldIcon = prev.filter((img) => !img.is_icon);
@@ -112,7 +123,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       },
       (err) => {
         if (!cancelled) {
-          setError(err instanceof Error ? err.message : "Failed to load project");
+          setError(describeApiError(err, "Couldn't open this project."));
           setIsLoading(false);
         }
       }
@@ -158,7 +169,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       setSuccessMessage("Project saved successfully!");
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save project");
+      setError(describeApiError(err, "Couldn't save this project."));
     } finally {
       setIsSaving(false);
     }
@@ -197,7 +208,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           return;
         }
       }
-      setError(err instanceof Error ? err.message : "Failed to publish project");
+      setError(describeApiError(err, "Couldn't publish this project."));
     } finally {
       setIsPublishing(false);
     }
@@ -213,7 +224,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       await api.myProjects.delete(project.id);
       router.push("/my-projects");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete project");
+      setError(describeApiError(err, "Couldn't delete this project."));
       setIsDeleting(false);
       setShowDeleteDialog(false);
     }
@@ -241,9 +252,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         })
       );
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Failed to update image roles"
-      );
+      setError(describeApiError(err, "Couldn't update this image."));
     }
   };
 
@@ -252,7 +261,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       await api.myProjects.deleteImage(projectId, imageId);
       setImages((prev) => prev.filter((img) => img.id !== imageId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete icon");
+      setError(describeApiError(err, "Couldn't delete this icon."));
     }
   };
 
@@ -261,7 +270,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       await api.myProjects.deleteImage(projectId, imageId);
       setImages((prev) => prev.filter((img) => img.id !== imageId));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete image");
+      setError(describeApiError(err, "Couldn't delete this image."));
     }
   };
 

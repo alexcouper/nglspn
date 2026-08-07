@@ -16,6 +16,18 @@ class ArticleState(models.TextChoices):
     PUBLISHED = "published", "Published"
 
 
+class ListingImageMode(models.TextChoices):
+    """How an article's listing image was decided.
+
+    A nullable ``listing_image`` cannot tell "not chosen yet" from "deliberately
+    removed", so removal would not survive the next save.
+    """
+
+    AUTO = "auto", "First image uploaded to the article"
+    CHOSEN = "chosen", "Author's choice"
+    NONE = "none", "No image"
+
+
 class ArticleGlobalVisibility(models.TextChoices):
     AUTO = "auto", "Auto-approved (trusted author)"
     PENDING = "pending", "Pending admin review"
@@ -44,12 +56,30 @@ class Article(models.Model):
     )
     title = models.CharField(max_length=200, default="", blank=True)
     body = models.TextField(default="", blank=True)
-    hero_image = models.ForeignKey(
+    # Optional authored standfirst for listing cards. When blank, listings fall
+    # back to services.articles.summary.derive_summary(body).
+    summary = models.CharField(max_length=300, default="", blank=True)
+    # SET_NULL, not PROTECT: ProjectImage.article cascades from this article, so
+    # deleting an article collects rows that this column points at. Rather than
+    # rely on how the collector orders that cycle, a deleted image simply blanks
+    # the card.
+    listing_image = models.ForeignKey(
         "projects.ProjectImage",
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        related_name="hero_for_articles",
+        related_name="listing_for_articles",
+    )
+    # Framing for the listing image, as {"x", "y", "w", "h", "ratio"} with
+    # x/y/w/h normalised 0-1 against the source image and always 16:9. `ratio`
+    # is derivable from the rect and the source dimensions, but is stored so a
+    # listing card can reserve its box without being told the source's pixel
+    # size. Null means the default: 16:9, centred.
+    listing_crop = models.JSONField(null=True, blank=True)
+    listing_image_mode = models.CharField(
+        max_length=20,
+        choices=ListingImageMode.choices,
+        default=ListingImageMode.AUTO,
     )
     slug = models.SlugField(max_length=200, null=True, blank=True)
     source = models.CharField(

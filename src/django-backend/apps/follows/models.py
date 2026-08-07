@@ -47,21 +47,22 @@ class Follow(models.Model):
         return f"{self.user} → {self.project}"
 
 
-class FollowChannelPreference(models.Model):
+class FollowedChannel(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     follow = models.ForeignKey(
         Follow,
         on_delete=models.CASCADE,
-        related_name="preferences",
+        related_name="followed_channels",
     )
     channel = models.ForeignKey(
         Channel,
         on_delete=models.CASCADE,
     )
-    email_enabled = models.BooleanField(default=True)
-    in_app_enabled = models.BooleanField(default=True)
 
     class Meta:
+        # Table name pinned: the row identity is what carries "is followed";
+        # renaming the table buys nothing and would invalidate any raw-SQL
+        # references. Pre-existing rows survive the column drop unchanged.
         db_table = "follow_channel_preferences"
         unique_together = (("follow", "channel"),)
 

@@ -1,17 +1,44 @@
 from uuid import UUID
 
-from apps.follows.models import Follow
+from django.db.models import Prefetch, QuerySet
+
+from apps.follows.models import Channel, Follow
 from apps.projects.models import Project
 from services.follows.query_interface import (
-    ChannelPreferenceState,
+    ChannelFollowState,
     FollowQueryInterface,
     FollowState,
     FollowWithPreferences,
 )
+from services.images.django_impl.query import gallery_prefetch
 from services.project.django_impl.query import (
     resolve_image_by_purpose,
     variant_url,
 )
+
+
+def _follow_queryset(user_id: UUID) -> QuerySet[Follow]:
+    """Everything `_to_follow_with_preferences` reads, in three queries.
+
+    The project's channels and its gallery come off the prefetch rather than
+    per follow — the Following page renders one row per follow, so anything
+    fetched inside that loop is an N+1. The image prefetch is narrowed by
+    `gallery_prefetch()` because `resolve_image_by_purpose` does no filtering
+    of its own and would otherwise fall back to an article upload or a row
+    whose PUT never landed.
+    """
+    return (
+        Follow.objects.filter(user_id=user_id)
+        .select_related("project")
+        .prefetch_related(
+            "followed_channels",
+            Prefetch(
+                "project__channels",
+                queryset=Channel.objects.order_by("created_at"),
+            ),
+            gallery_prefetch("project__images"),
+        )
+    )
 
 
 def _hero_image_url(project: Project) -> str | None:
@@ -20,14 +47,14 @@ def _hero_image_url(project: Project) -> str | None:
 
 
 def _to_follow_with_preferences(follow: Follow) -> FollowWithPreferences:
+    followed_ids = {fc.channel_id for fc in follow.followed_channels.all()}
     channels = [
-        ChannelPreferenceState(
-            channel_id=pref.channel.id,
-            channel_name=pref.channel.name,
-            email_enabled=pref.email_enabled,
-            in_app_enabled=pref.in_app_enabled,
+        ChannelFollowState(
+            channel_id=channel.id,
+            channel_name=channel.name,
+            followed=channel.id in followed_ids,
         )
-        for pref in follow.preferences.all()
+        for channel in follow.project.channels.all()
     ]
     return FollowWithPreferences(
         project_slug=follow.project.slug or "",
@@ -39,6 +66,16 @@ def _to_follow_with_preferences(follow: Follow) -> FollowWithPreferences:
 
 
 class DjangoFollowQuery(FollowQueryInterface):
+    """Reads that key on Follow existence, not on its channels.
+
+    A Follow with no FollowedChannel rows is a state the system tolerates —
+    channel deletion cascades them away, concurrent unfollow_channel calls can
+    both miss, and follows/0004 left some behind. These reads report such a
+    Follow as followed, so the UI shows the project as "Following" with nothing
+    ticked. Deliberate; see design decision 6 in
+    openspec/changes/archive/2026-08-07-simplify-follow-and-cadence/design.md.
+    """
+
     def is_followed(self, user_id: UUID | None, project: Project) -> bool:
         if user_id is None:
             return False
@@ -53,23 +90,13 @@ class DjangoFollowQuery(FollowQueryInterface):
         return FollowState(is_followed=True, created_at=follow.created_at)
 
     def list_user_follows(self, user_id: UUID) -> list[FollowWithPreferences]:
-        follows = (
-            Follow.objects.filter(user_id=user_id)
-            .select_related("project")
-            .prefetch_related("preferences__channel")
-            .order_by("-created_at")
-        )
+        follows = _follow_queryset(user_id).order_by("-created_at")
         return [_to_follow_with_preferences(f) for f in follows]
 
     def get_follow_preferences(
         self, user_id: UUID, project_slug: str
     ) -> FollowWithPreferences | None:
-        follow = (
-            Follow.objects.filter(user_id=user_id, project__slug=project_slug)
-            .select_related("project")
-            .prefetch_related("preferences__channel")
-            .first()
-        )
+        follow = _follow_queryset(user_id).filter(project__slug=project_slug).first()
         if follow is None:
             return None
         return _to_follow_with_preferences(follow)

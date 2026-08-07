@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 import uuid
 from datetime import timedelta
 from unittest.mock import patch
@@ -7,9 +8,11 @@ from unittest.mock import patch
 import pytest
 from django.utils import timezone
 
-from apps.follows.models import Follow, FollowChannelPreference
+from apps.follows.models import Follow, FollowedChannel
 from apps.notifications.models import Notification, NotificationCadence
+from apps.users.models import ArticleEmailFrequency
 from services.articles.django_impl.handler import DjangoArticleHandler
+from services.email.django_impl.handler import build_article_digest_entries
 from services.notifications.django_impl.handler import DjangoNotificationHandler
 from tests.factories import (
     ArticleFactory,
@@ -18,24 +21,19 @@ from tests.factories import (
     ProjectImageFactory,
     PublishedArticleFactory,
     UserFactory,
+    article_image,
 )
 
 
-def _seed_follow(user, project, channel, *, email: bool, in_app: bool):
-    """Set up `(user, project, channel)` follow with the given switches.
+def _follow_channel(user, project, channel) -> Follow:
+    """Set up `(user, project, channel)` follow.
 
-    A small helper rather than a factory because it composes two rows
-    (Follow + FollowChannelPreference) with an `update_or_create` on the
-    pair to be idempotent against the test setup. Keeping it as a helper
-    keeps each call concise and avoids inventing factory plumbing for a
-    relationship that only matters in these notification tests.
+    The model collapse means "is followed" is captured by row existence —
+    no booleans to pass. A small helper keeps each call concise and avoids
+    inventing factory plumbing for the (Follow, FollowedChannel) pair.
     """
     follow, _ = Follow.objects.get_or_create(user=user, project=project)
-    FollowChannelPreference.objects.update_or_create(
-        follow=follow,
-        channel=channel,
-        defaults={"email_enabled": email, "in_app_enabled": in_app},
-    )
+    FollowedChannel.objects.get_or_create(follow=follow, channel=channel)
     return follow
 
 
@@ -44,79 +42,51 @@ class TestCreateNotificationsForArticle:
     def setup_method(self):
         self.handler = DjangoNotificationHandler()
 
-    def test_in_app_on_email_on_creates_row_and_sends_immediate(self):
+    def test_followed_channel_recipient_gets_in_app_row(self):
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
-        follower = UserFactory(notification_frequency=NotificationCadence.IMMEDIATE)
-        _seed_follow(follower, project, channel, email=True, in_app=True)
-        article = PublishedArticleFactory(project=project, channel=channel)
-
-        with patch(
-            "services.email.django_impl.handler"
-            ".DjangoEmailHandler.send_article_notification_email"
-        ) as send_email:
-            self.handler.create_notifications_for_article(article.id)
-
-        send_email.assert_called_once()
-        row = Notification.objects.get(recipient=follower, article=article)
-        assert row.in_app_read_at is None
-        assert row.email_sent is True
-        assert row.email_sent_at is not None
-        assert row.email_cadence == NotificationCadence.IMMEDIATE
-
-    def test_in_app_on_email_off_creates_row_no_email(self):
-        project = ProjectFactory()
-        channel = ChannelFactory(project=project, name="Updates")
-        follower = UserFactory(notification_frequency=NotificationCadence.IMMEDIATE)
-        _seed_follow(follower, project, channel, email=False, in_app=True)
-        article = PublishedArticleFactory(project=project, channel=channel)
-
-        with patch(
-            "services.email.django_impl.handler"
-            ".DjangoEmailHandler.send_article_notification_email"
-        ) as send_email:
-            self.handler.create_notifications_for_article(article.id)
-
-        send_email.assert_not_called()
-        row = Notification.objects.get(recipient=follower, article=article)
-        assert row.in_app_read_at is None
-        assert row.email_sent is False
-
-    def test_in_app_off_email_on_creates_pre_read_row_and_sends(self):
-        project = ProjectFactory()
-        channel = ChannelFactory(project=project, name="Updates")
-        follower = UserFactory(notification_frequency=NotificationCadence.IMMEDIATE)
-        _seed_follow(follower, project, channel, email=True, in_app=False)
-        article = PublishedArticleFactory(project=project, channel=channel)
-
-        with patch(
-            "services.email.django_impl.handler"
-            ".DjangoEmailHandler.send_article_notification_email"
-        ) as send_email:
-            self.handler.create_notifications_for_article(article.id)
-
-        send_email.assert_called_once()
-        row = Notification.objects.get(recipient=follower, article=article)
-        # Pre-read so it never surfaces in-app.
-        assert row.in_app_read_at is not None
-        assert row.email_sent is True
-
-    def test_both_off_creates_no_row(self):
-        project = ProjectFactory()
-        channel = ChannelFactory(project=project, name="Updates")
-        follower = UserFactory()
-        _seed_follow(follower, project, channel, email=False, in_app=False)
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.HOURLY)
+        _follow_channel(follower, project, channel)
         article = PublishedArticleFactory(project=project, channel=channel)
 
         self.handler.create_notifications_for_article(article.id)
 
-        assert not Notification.objects.filter(recipient=follower).exists()
+        row = Notification.objects.get(recipient=follower, article=article)
+        assert row.in_app_read_at is None
+        assert row.email_sent is False
+        assert row.email_cadence == NotificationCadence.HOURLY
+
+    def test_recipient_without_followed_channel_gets_nothing(self):
+        project = ProjectFactory()
+        channel = ChannelFactory(project=project, name="Updates")
+        # User has Follow on the project but no FollowedChannel — no row.
+        user = UserFactory()
+        Follow.objects.get_or_create(user=user, project=project)
+        article = PublishedArticleFactory(project=project, channel=channel)
+
+        self.handler.create_notifications_for_article(article.id)
+
+        assert not Notification.objects.filter(recipient=user, article=article).exists()
+
+    def test_recipient_on_never_still_gets_in_app_row(self):
+        project = ProjectFactory()
+        channel = ChannelFactory(project=project, name="Updates")
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.NEVER)
+        _follow_channel(follower, project, channel)
+        article = PublishedArticleFactory(project=project, channel=channel)
+
+        self.handler.create_notifications_for_article(article.id)
+
+        row = Notification.objects.get(recipient=follower, article=article)
+        assert row.email_cadence == NotificationCadence.NEVER
+        assert row.email_sent is False
+        assert row.in_app_read_at is None
 
     def test_author_excluded(self):
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
         author = project.creator
-        _seed_follow(author, project, channel, email=True, in_app=True)
+        _follow_channel(author, project, channel)
         article = PublishedArticleFactory(
             project=project, channel=channel, author=author
         )
@@ -129,71 +99,60 @@ class TestCreateNotificationsForArticle:
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
         follower = UserFactory(is_active=False)
-        _seed_follow(follower, project, channel, email=True, in_app=True)
+        _follow_channel(follower, project, channel)
         article = PublishedArticleFactory(project=project, channel=channel)
 
         self.handler.create_notifications_for_article(article.id)
 
         assert not Notification.objects.filter(recipient=follower).exists()
 
-    def test_never_cadence_creates_in_app_but_no_email(self):
+    def test_no_synchronous_email_at_fan_out(self):
+        """Article fan-out NEVER fires immediate email — always digest path."""
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
-        follower = UserFactory(notification_frequency=NotificationCadence.NEVER)
-        _seed_follow(follower, project, channel, email=True, in_app=True)
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.HOURLY)
+        _follow_channel(follower, project, channel)
         article = PublishedArticleFactory(project=project, channel=channel)
 
         with patch(
             "services.email.django_impl.handler"
-            ".DjangoEmailHandler.send_article_notification_email"
+            ".DjangoEmailHandler.send_article_digest_email"
         ) as send_email:
             self.handler.create_notifications_for_article(article.id)
 
         send_email.assert_not_called()
-        row = Notification.objects.get(recipient=follower, article=article)
-        assert row.email_cadence == NotificationCadence.NEVER
-        assert row.email_sent is False
-        assert row.in_app_read_at is None
+        assert Notification.objects.filter(recipient=follower, article=article).exists()
 
-    def test_hourly_cadence_creates_row_but_does_not_fire_immediate(self):
+    def test_snapshots_article_cadence_at_creation_time(self):
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
-        follower = UserFactory(notification_frequency=NotificationCadence.HOURLY)
-        _seed_follow(follower, project, channel, email=True, in_app=True)
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.WEEKLY)
+        _follow_channel(follower, project, channel)
         article = PublishedArticleFactory(project=project, channel=channel)
 
-        with patch(
-            "services.email.django_impl.handler"
-            ".DjangoEmailHandler.send_article_notification_email"
-        ) as send_email:
-            self.handler.create_notifications_for_article(article.id)
+        self.handler.create_notifications_for_article(article.id)
 
-        send_email.assert_not_called()
         row = Notification.objects.get(recipient=follower, article=article)
-        assert row.email_cadence == NotificationCadence.HOURLY
-        assert row.email_sent is False
+        assert row.email_cadence == ArticleEmailFrequency.WEEKLY
 
     def test_idempotent_on_re_invoke(self):
-        """Second invocation should not duplicate rows (partial unique constraint)."""
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
-        follower = UserFactory(notification_frequency=NotificationCadence.HOURLY)
-        _seed_follow(follower, project, channel, email=False, in_app=True)
+        follower = UserFactory()
+        _follow_channel(follower, project, channel)
         article = PublishedArticleFactory(project=project, channel=channel)
 
         self.handler.create_notifications_for_article(article.id)
         self.handler.create_notifications_for_article(article.id)
 
-        assert (
-            Notification.objects.filter(recipient=follower, article=article).count()
-            == 1
-        )
+        count = Notification.objects.filter(recipient=follower, article=article).count()
+        assert count == 1
 
     def test_draft_article_is_no_op(self):
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
         follower = UserFactory()
-        _seed_follow(follower, project, channel, email=True, in_app=True)
+        _follow_channel(follower, project, channel)
         article = ArticleFactory(project=project, channel=channel)
 
         self.handler.create_notifications_for_article(article.id)
@@ -201,21 +160,14 @@ class TestCreateNotificationsForArticle:
         assert not Notification.objects.filter(article=article).exists()
 
     def test_unknown_article_id_is_no_op(self):
-        # Should log a warning but not raise.
         self.handler.create_notifications_for_article(uuid.uuid4())
 
     def test_backdate_gating_is_not_owned_here(self):
-        """Per design: HANDLERS.articles.publish owns backdate gating.
-
-        Calling create_notifications_for_article directly with a published
-        article — regardless of how old published_at is — SHALL fan out.
-        """
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
-        follower = UserFactory(notification_frequency=NotificationCadence.HOURLY)
-        _seed_follow(follower, project, channel, email=False, in_app=True)
+        follower = UserFactory()
+        _follow_channel(follower, project, channel)
         article = PublishedArticleFactory(project=project, channel=channel)
-        # Manually backdate.
         article.published_at = timezone.now() - timedelta(days=30)
         article.save(update_fields=["published_at"])
 
@@ -234,8 +186,8 @@ class TestMarkArticleReadForUser:
         channel = ChannelFactory(project=project, name="Updates")
         user_a = UserFactory()
         user_b = UserFactory()
-        _seed_follow(user_a, project, channel, email=False, in_app=True)
-        _seed_follow(user_b, project, channel, email=False, in_app=True)
+        _follow_channel(user_a, project, channel)
+        _follow_channel(user_b, project, channel)
         article = PublishedArticleFactory(project=project, channel=channel)
         self.handler.create_notifications_for_article(article.id)
 
@@ -251,7 +203,7 @@ class TestMarkArticleReadForUser:
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
         user = UserFactory()
-        _seed_follow(user, project, channel, email=False, in_app=True)
+        _follow_channel(user, project, channel)
         article = PublishedArticleFactory(project=project, channel=channel)
         self.handler.create_notifications_for_article(article.id)
         self.handler.mark_article_read_for_user(user.id, article.id)
@@ -267,55 +219,183 @@ class TestMarkArticleReadForUser:
 
 
 @pytest.mark.django_db
-class TestArticleBatchSendPath:
-    """The HOURLY/DAILY batch picks up article rows whose email is wanted."""
-
+class TestArticleDigest:
     def setup_method(self):
         self.handler = DjangoNotificationHandler()
 
-    def test_batch_sends_email_for_hourly_article_row(self):
+    def test_hourly_digest_sends_email_and_marks_sent(self):
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
-        follower = UserFactory(notification_frequency=NotificationCadence.HOURLY)
-        _seed_follow(follower, project, channel, email=True, in_app=True)
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.HOURLY)
+        _follow_channel(follower, project, channel)
         article = PublishedArticleFactory(project=project, channel=channel)
-        # Live publish fan-out creates the row but doesn't send (HOURLY).
         self.handler.create_notifications_for_article(article.id)
-        row = Notification.objects.get(recipient=follower, article=article)
-        assert row.email_sent is False
 
         with patch(
             "services.email.django_impl.handler"
-            ".DjangoEmailHandler.send_article_notification_email"
+            ".DjangoEmailHandler.send_article_digest_email"
         ) as send_email:
-            self.handler.send_batch_notifications(NotificationCadence.HOURLY)
+            self.handler.send_article_digest("hourly")
 
         send_email.assert_called_once()
-        row.refresh_from_db()
+        row = Notification.objects.get(recipient=follower, article=article)
         assert row.email_sent is True
 
-    def test_batch_skips_already_read_article_row(self):
+    def test_weekly_digest_picks_up_weekly_rows(self):
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
-        follower = UserFactory(notification_frequency=NotificationCadence.HOURLY)
-        _seed_follow(follower, project, channel, email=True, in_app=True)
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.WEEKLY)
+        _follow_channel(follower, project, channel)
+        article = PublishedArticleFactory(project=project, channel=channel)
+        self.handler.create_notifications_for_article(article.id)
+
+        with patch(
+            "services.email.django_impl.handler"
+            ".DjangoEmailHandler.send_article_digest_email"
+        ) as send_email:
+            self.handler.send_article_digest("weekly")
+
+        send_email.assert_called_once()
+
+    def test_digest_skips_already_read_rows(self):
+        project = ProjectFactory()
+        channel = ChannelFactory(project=project, name="Updates")
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.HOURLY)
+        _follow_channel(follower, project, channel)
         article = PublishedArticleFactory(project=project, channel=channel)
         self.handler.create_notifications_for_article(article.id)
         self.handler.mark_article_read_for_user(follower.id, article.id)
 
         with patch(
             "services.email.django_impl.handler"
-            ".DjangoEmailHandler.send_article_notification_email"
+            ".DjangoEmailHandler.send_article_digest_email"
         ) as send_email:
-            self.handler.send_batch_notifications(NotificationCadence.HOURLY)
+            self.handler.send_article_digest("hourly")
+
+        send_email.assert_not_called()
+
+    def test_digest_skips_never_cadence(self):
+        project = ProjectFactory()
+        channel = ChannelFactory(project=project, name="Updates")
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.NEVER)
+        _follow_channel(follower, project, channel)
+        article = PublishedArticleFactory(project=project, channel=channel)
+        self.handler.create_notifications_for_article(article.id)
+
+        with patch(
+            "services.email.django_impl.handler"
+            ".DjangoEmailHandler.send_article_digest_email"
+        ) as send_email:
+            self.handler.send_article_digest("hourly")
+            self.handler.send_article_digest("never")
 
         send_email.assert_not_called()
 
 
 @pytest.mark.django_db
-class TestPublishHandlerIntegration:
-    """End-to-end: publish through HANDLERS.articles fires fan-out correctly."""
+class TestArticleDigestProjectIcon:
+    """An article with no listing image falls back to the project icon, and
+    `resolve_image_by_purpose` filters nothing — so the digest's prefetch is
+    the only thing keeping an article figure or an abandoned upload out of it.
+    """
 
+    def setup_method(self):
+        self.handler = DjangoNotificationHandler()
+
+    def _digest_image_url(self, project) -> str | None:
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.HOURLY)
+        channel = ChannelFactory(project=project, name="Updates")
+        _follow_channel(follower, project, channel)
+        article = PublishedArticleFactory(project=project, channel=channel)
+        self.handler.create_notifications_for_article(article.id)
+
+        with patch(
+            "services.email.django_impl.handler"
+            ".DjangoEmailHandler.send_article_digest_email"
+        ) as send_email:
+            self.handler.send_article_digest("hourly")
+
+        notifications = send_email.call_args.kwargs["notifications"]
+        return build_article_digest_entries(notifications)[0]["article_image_url"]
+
+    def test_uses_the_projects_own_image(self):
+        project = ProjectFactory()
+        icon = ProjectImageFactory(project=project, is_icon=True)
+
+        assert self._digest_image_url(project) == icon.url
+
+    def test_ignores_images_uploaded_for_an_article(self):
+        project = ProjectFactory()
+        article_image(ArticleFactory(project=project))
+
+        assert self._digest_image_url(project) is None
+
+    def test_ignores_an_upload_that_never_completed(self):
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, upload_status="pending")
+
+        assert self._digest_image_url(project) is None
+
+
+@pytest.mark.django_db
+class TestHouseChannelLogging:
+    def setup_method(self):
+        self.handler = DjangoNotificationHandler()
+
+    def test_logs_for_house_channel_article(self, caplog):
+        from tests.factories import ensure_house_project  # noqa: PLC0415
+
+        house = ensure_house_project()
+        channel = ChannelFactory(project=house, name="Competition Winners")
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.HOURLY)
+        _follow_channel(follower, house, channel)
+        article = PublishedArticleFactory(project=house, channel=channel)
+
+        with caplog.at_level(logging.INFO):
+            self.handler.create_notifications_for_article(article.id)
+
+        relevant = [
+            r
+            for r in caplog.records
+            if "house_channel_article_enqueued" in r.getMessage()
+        ]
+        assert len(relevant) >= 1
+        assert str(follower.id) in relevant[0].getMessage()
+
+    def test_logs_for_never_cadence_too(self, caplog):
+        from tests.factories import ensure_house_project  # noqa: PLC0415
+
+        house = ensure_house_project()
+        channel = ChannelFactory(project=house, name="Product Updates")
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.NEVER)
+        _follow_channel(follower, house, channel)
+        article = PublishedArticleFactory(project=house, channel=channel)
+
+        with caplog.at_level(logging.INFO):
+            self.handler.create_notifications_for_article(article.id)
+
+        msg = "\n".join(
+            r.getMessage() for r in caplog.records if "house_channel" in r.getMessage()
+        )
+        assert "recipient_frequency=never" in msg
+
+    def test_no_log_for_non_house_channel_article(self, caplog):
+        project = ProjectFactory()  # not house
+        channel = ChannelFactory(project=project, name="Updates")
+        follower = UserFactory()
+        _follow_channel(follower, project, channel)
+        article = PublishedArticleFactory(project=project, channel=channel)
+
+        with caplog.at_level(logging.INFO):
+            self.handler.create_notifications_for_article(article.id)
+
+        assert not any(
+            "house_channel_article_enqueued" in r.getMessage() for r in caplog.records
+        )
+
+
+@pytest.mark.django_db
+class TestPublishHandlerIntegration:
     def setup_method(self):
         self.article_handler = DjangoArticleHandler()
         self.notif_handler = DjangoNotificationHandler()
@@ -323,9 +403,8 @@ class TestPublishHandlerIntegration:
     def test_live_publish_creates_in_app_row(self):
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
-        follower = UserFactory(notification_frequency=NotificationCadence.HOURLY)
-        _seed_follow(follower, project, channel, email=False, in_app=True)
-        image = ProjectImageFactory(project=project)
+        follower = UserFactory()
+        _follow_channel(follower, project, channel)
 
         article = self.article_handler.create_draft(
             project_id=project.id,
@@ -333,7 +412,6 @@ class TestPublishHandlerIntegration:
             author_id=project.creator.id,
             title="Hi",
             body="There",
-            hero_image_id=image.id,
         )
         self.article_handler.publish(article.id)
 
@@ -345,8 +423,7 @@ class TestPublishHandlerIntegration:
         project = ProjectFactory()
         channel = ChannelFactory(project=project, name="Updates")
         follower = UserFactory()
-        _seed_follow(follower, project, channel, email=True, in_app=True)
-        image = ProjectImageFactory(project=project)
+        _follow_channel(follower, project, channel)
 
         article = self.article_handler.create_draft(
             project_id=project.id,
@@ -354,7 +431,6 @@ class TestPublishHandlerIntegration:
             author_id=project.creator.id,
             title="Hi",
             body="There",
-            hero_image_id=image.id,
         )
 
         self.article_handler.publish(

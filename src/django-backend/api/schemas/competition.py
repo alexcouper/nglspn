@@ -4,11 +4,10 @@ from enum import Enum
 from typing import Any
 from uuid import UUID
 
-from django.db.models import Prefetch
 from django.db.models.functions import Lower
 from ninja import Schema
 
-from apps.projects.models import ProjectImage, ProjectStatus
+from apps.projects.models import ProjectStatus
 from services.project.django_impl import to_list_item
 
 from .project import ImageVariantResponse
@@ -64,16 +63,15 @@ class CompetitionResponse(Schema):
 
     @classmethod
     def from_competition(cls, competition: Any) -> "CompetitionResponse":
+        # Deferred: a schema module reaching `services` at import time risks a
+        # cycle. Same pattern as `api/schemas/user.py`.
+        from services import REPO  # noqa: PLC0415
+
         approved_projects = list(
             competition.projects.filter(status=ProjectStatus.APPROVED)
             .order_by(Lower("title"))
             .prefetch_related(
-                Prefetch(
-                    "images",
-                    queryset=ProjectImage.objects.filter(
-                        upload_status="uploaded"
-                    ).prefetch_related("variants"),
-                ),
+                REPO.images.gallery_prefetch(),
                 "tags__category",
                 "won_competitions",
             )

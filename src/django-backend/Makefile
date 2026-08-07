@@ -1,5 +1,8 @@
 APP:=django-backend
-.PHONY: help install dev migrate makemigrations shell test createsuperuser clean extract-openapi lint bootstrap seed seed-prod-copy dev-services dev-services-down
+.PHONY: help install dev migrate makemigrations shell test createsuperuser clean extract-openapi lint bootstrap seed seed-prod-copy dev-services dev-services-down check-openapi-sync
+
+# Opt in to the shared `extra-tests` stage (see scripts/app-common.mk).
+EXTRA_TESTS := $(MAKE) --no-print-directory check-openapi-sync
 
 include ../../scripts/app-common.mk
 
@@ -14,6 +17,8 @@ help:
 	@echo "  test          Run tests"
 	@echo "  createsuperuser Create superuser"
 	@echo "  extract-openapi Extract OpenAPI specification to openapi.json"
+	@echo "  check-openapi-sync Fail if backend-openapi.json is stale"
+	@echo "  extra-tests   Service-specific extra CI checks (OpenAPI drift)"
 	@echo "  lint          Run ruff linter and formatter check"
 	@echo "  seed          Populate database with sample users, projects, and competitions"
 	@echo "  clean         Clean cache files"
@@ -79,6 +84,23 @@ createsuperuser:
 
 extract-openapi:
 	uv run python scripts/extract_openapi.py
+
+# Fails if the committed backend-openapi.json is not what the current routers
+# and schemas produce. Regenerates in place, so a failure leaves the correct
+# file on disk ready to commit. Deliberately VCS-neutral (no `git diff`): this
+# repo is jj-colocated and git HEAD lags the jj working copy.
+check-openapi-sync:
+	@before=$$(mktemp) && cp ../web-ui/backend-openapi.json $$before && \
+	uv run python scripts/extract_openapi.py && \
+	if diff -q $$before ../web-ui/backend-openapi.json >/dev/null; then \
+		rm -f $$before; \
+		echo "backend-openapi.json is in sync."; \
+	else \
+		rm -f $$before; \
+		echo "ERROR: backend-openapi.json was stale. It has been regenerated;"; \
+		echo "       commit src/web-ui/backend-openapi.json and push again."; \
+		exit 1; \
+	fi
 
 clean:
 	find . -name "*.pyc" -delete

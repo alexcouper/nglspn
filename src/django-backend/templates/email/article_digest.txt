@@ -1,0 +1,15 @@
+Hi {{ recipient_name }},
+
+Here are the latest articles from the projects you follow:
+
+{% for entry in entries %}{{ entry.article_title }}
+on {{ entry.project_title }} - {{ entry.channel_name }}
+
+{{ entry.body_excerpt }}
+
+{{ entry.article_url }}
+
+---
+
+{% endfor %}
+Change your article email frequency: {{ profile_url }}

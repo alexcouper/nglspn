@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import type {
-  FollowChannelPreference,
-  FollowWithPreferences,
-} from "@/lib/api/follows";
+import type { ChannelFollowState, FollowWithPreferences } from "@/lib/api/follows";
 import { useToasts } from "@/contexts/toasts";
+import { ChannelToggleList } from "@/components/ChannelToggleList";
+import { useChannelToggle } from "@/hooks/useChannelToggle";
 
 interface FollowPopoverProps {
   projectSlug: string;
@@ -54,40 +53,25 @@ export function FollowPopover({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  const updateChannel = async (
-    channel: FollowChannelPreference,
-    patch: { email_enabled?: boolean; in_app_enabled?: boolean }
-  ) => {
-    if (!follow) return;
-    // Optimistic update.
-    const next = { ...channel, ...patch };
-    setFollow({
-      ...follow,
-      channels: follow.channels.map((c) =>
-        c.channel_id === channel.channel_id ? next : c
-      ),
-    });
-    try {
-      await api.follows.patchFollowChannel(
-        projectSlug,
-        channel.channel_id,
-        patch
+  const setChannels = useCallback(
+    (update: (channels: ChannelFollowState[]) => ChannelFollowState[]) => {
+      setFollow((prev) =>
+        prev === null ? prev : { ...prev, channels: update(prev.channels) }
       );
-    } catch {
-      // Revert.
-      setFollow({
-        ...follow,
-        channels: follow.channels.map((c) =>
-          c.channel_id === channel.channel_id ? channel : c
-        ),
-      });
-      showToast({
-        kind: "error",
-        title: "Couldn't update notification preference",
-        ttlMs: 5_000,
-      });
-    }
-  };
+    },
+    []
+  );
+
+  const handleProjectUnfollowed = useCallback(() => {
+    onUnfollow();
+    onClose();
+  }, [onUnfollow, onClose]);
+
+  const toggleChannel = useChannelToggle({
+    projectSlug,
+    setChannels,
+    onProjectUnfollowed: handleProjectUnfollowed,
+  });
 
   const handleUnfollow = async () => {
     try {
@@ -109,7 +93,7 @@ export function FollowPopover({
       className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-border z-20"
     >
       <div className="px-3 py-2 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-        Notifications
+        Channels
       </div>
       <div className="p-1">
         {loadError && (
@@ -122,38 +106,12 @@ export function FollowPopover({
             Loading…
           </div>
         )}
-        {follow?.channels.map((channel) => (
-          <div
-            key={channel.channel_id}
-            className="px-3 py-2 border-b border-border/50 last:border-0"
-          >
-            <div className="text-sm font-medium text-foreground mb-1">
-              {channel.channel_name}
-            </div>
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={channel.email_enabled}
-                  onChange={(e) =>
-                    updateChannel(channel, { email_enabled: e.target.checked })
-                  }
-                />
-                Email
-              </label>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={channel.in_app_enabled}
-                  onChange={(e) =>
-                    updateChannel(channel, { in_app_enabled: e.target.checked })
-                  }
-                />
-                In-app
-              </label>
-            </div>
-          </div>
-        ))}
+        {follow && (
+          <ChannelToggleList
+            channels={follow.channels}
+            onToggle={toggleChannel}
+          />
+        )}
       </div>
       <div className="px-3 py-2 border-t border-border">
         <button

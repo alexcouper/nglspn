@@ -3,8 +3,15 @@ from unittest.mock import PropertyMock, patch
 import pytest
 from hamcrest import assert_that, contains_inanyorder, equal_to, has_entries, has_length
 
-from apps.projects.models import Competition, CompetitionStatus, ProjectStatus
-from tests.factories import CompetitionFactory, ProjectFactory, TagFactory
+from apps.projects.models import Competition, CompetitionStatus, Project, ProjectStatus
+from tests.factories import (
+    ArticleFactory,
+    CompetitionFactory,
+    ProjectFactory,
+    ProjectImageFactory,
+    TagFactory,
+    article_image,
+)
 
 
 @pytest.mark.django_db
@@ -243,6 +250,68 @@ class TestCompetitionWinner:
                 title="Winner",
             ),
         )
+
+
+def _competition_with_winner() -> tuple[Competition, Project]:
+    winner = ProjectFactory(status=ProjectStatus.APPROVED, title="Winner")
+    competition = CompetitionFactory(winner=winner)
+    competition.projects.add(winner)
+    return competition, winner
+
+
+def _winner_from_list(client, competition: Competition) -> dict:
+    response = client.get("/api/competitions/with-projects")
+    assert_that(response.status_code, equal_to(200))
+    return response.json()["competitions"][0]["winner"]
+
+
+def _winner_from_detail(client, competition: Competition) -> dict:
+    response = client.get(f"/api/competitions/{competition.id}")
+    assert_that(response.status_code, equal_to(200))
+    return response.json()["winner"]
+
+
+both_winner_endpoints = pytest.mark.parametrize(
+    "read_winner",
+    [_winner_from_list, _winner_from_detail],
+    ids=["with-projects", "by-id"],
+)
+
+
+@pytest.mark.django_db
+class TestCompetitionWinnerImage:
+    """`to_list_item` falls back to `images[0]` with no filtering of its own,
+    so the router's prefetch is the only thing keeping a non-gallery row out of
+    the winner's card.
+    """
+
+    @both_winner_endpoints
+    def test_uses_the_winners_own_uploaded_main_image(
+        self, client, read_winner
+    ) -> None:
+        competition, winner = _competition_with_winner()
+        main_image = ProjectImageFactory(project=winner, is_main=True)
+
+        assert_that(
+            read_winner(client, competition)["main_image_url"],
+            equal_to(main_image.url),
+        )
+
+    @both_winner_endpoints
+    def test_ignores_an_image_uploaded_for_an_article(
+        self, client, read_winner
+    ) -> None:
+        competition, winner = _competition_with_winner()
+        article_image(ArticleFactory(project=winner))
+
+        assert_that(read_winner(client, competition)["main_image_url"], equal_to(None))
+
+    @both_winner_endpoints
+    def test_ignores_an_upload_that_never_completed(self, client, read_winner) -> None:
+        competition, winner = _competition_with_winner()
+        ProjectImageFactory(project=winner, is_main=True, upload_status="pending")
+
+        assert_that(read_winner(client, competition)["main_image_url"], equal_to(None))
 
 
 @pytest.mark.django_db

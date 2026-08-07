@@ -9,11 +9,10 @@ class FollowStateResponse(Schema):
     created_at: datetime | None = None
 
 
-class FollowChannelPreferenceResponse(Schema):
+class ChannelFollowStateResponse(Schema):
     channel_id: UUID
     channel_name: str
-    email_enabled: bool
-    in_app_enabled: bool
+    followed: bool
 
 
 class FollowResponse(Schema):
@@ -21,9 +20,4 @@ class FollowResponse(Schema):
     project_title: str
     project_hero_image_url: str | None = None
     created_at: datetime
-    channels: list[FollowChannelPreferenceResponse]
-
-
-class FollowChannelPreferencePatch(Schema):
-    email_enabled: bool | None = None
-    in_app_enabled: bool | None = None
+    channels: list[ChannelFollowStateResponse]

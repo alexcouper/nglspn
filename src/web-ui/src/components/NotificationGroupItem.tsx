@@ -40,8 +40,8 @@ export function NotificationGroupItem({ group, variant, showUnreadSuffix }: Prop
   return (
     <>
       <NotificationProjectIcon
-        imageUrl={group.project.image_url}
-        title={group.project.title}
+        imageUrl={group.article_image_url ?? group.project.image_url}
+        title={group.article_title ?? group.project.title}
         size={ICON_SIZE[variant]}
       />
       <div className="flex-1 min-w-0">

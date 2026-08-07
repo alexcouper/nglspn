@@ -11,12 +11,13 @@ import {
 } from "react";
 import { api, NotificationGroup, NotificationSummary } from "@/lib/api";
 import { useAuth } from "@/contexts/auth";
+import { groupKey } from "@/lib/notifications";
 
 const POLL_INTERVAL_MS = 30_000;
 
 export interface NotificationDiffEvent {
-  newlyActiveRoots: string[];
-  groupsByRoot: Map<string, NotificationGroup>;
+  newlyActiveKeys: string[];
+  groupsByKey: Map<string, NotificationGroup>;
 }
 
 type DiffListener = (event: NotificationDiffEvent) => void;
@@ -29,6 +30,7 @@ interface NotificationsContextValue {
   refreshGroups: () => Promise<void>;
   markThreadRead: (rootDiscussionId: string) => Promise<void>;
   markThreadByComment: (commentId: string) => Promise<void>;
+  markArticleRead: (articleId: string) => Promise<void>;
   markAllRead: () => Promise<void>;
   subscribeDiff: (listener: DiffListener) => () => void;
 }
@@ -37,25 +39,25 @@ const NotificationsContext = createContext<NotificationsContextValue | undefined
   undefined
 );
 
-function discussionGroupsOnly(
-  groups: NotificationGroup[]
-): (NotificationGroup & { root_discussion_id: string })[] {
-  return groups.filter(
-    (g): g is NotificationGroup & { root_discussion_id: string } =>
-      g.kind === "discussion" &&
-      typeof g.root_discussion_id === "string"
-  );
+function keyedGroups(groups: NotificationGroup[]): Array<{
+  key: string;
+  group: NotificationGroup;
+}> {
+  const out: Array<{ key: string; group: NotificationGroup }> = [];
+  for (const g of groups) {
+    const key = groupKey(g);
+    if (key) out.push({ key, group: g });
+  }
+  return out;
 }
 
-function diffActiveRoots(
+function diffActiveKeys(
   prev: Set<string>,
   next: NotificationGroup[]
 ): string[] {
   const newly: string[] = [];
-  for (const g of discussionGroupsOnly(next)) {
-    if (!prev.has(g.root_discussion_id)) {
-      newly.push(g.root_discussion_id);
-    }
+  for (const { key } of keyedGroups(next)) {
+    if (!prev.has(key)) newly.push(key);
   }
   return newly;
 }
@@ -65,26 +67,26 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [summary, setSummary] = useState<NotificationSummary | null>(null);
   const [groups, setGroups] = useState<NotificationGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
-  const lastGroupRootsRef = useRef<Set<string>>(new Set());
+  const lastGroupKeysRef = useRef<Set<string>>(new Set());
   const lastGroupCountRef = useRef<number>(0);
   const listenersRef = useRef<Set<DiffListener>>(new Set());
 
   const fireDiff = useCallback((nextGroups: NotificationGroup[]) => {
-    const newlyActiveRoots = diffActiveRoots(
-      lastGroupRootsRef.current,
+    const newlyActiveKeys = diffActiveKeys(
+      lastGroupKeysRef.current,
       nextGroups
     );
-    const groupsByRoot = new Map<string, NotificationGroup>();
-    for (const g of discussionGroupsOnly(nextGroups)) {
-      groupsByRoot.set(g.root_discussion_id, g);
+    const groupsByKey = new Map<string, NotificationGroup>();
+    for (const { key, group } of keyedGroups(nextGroups)) {
+      groupsByKey.set(key, group);
     }
-    if (newlyActiveRoots.length > 0) {
+    if (newlyActiveKeys.length > 0) {
       for (const listener of listenersRef.current) {
-        listener({ newlyActiveRoots, groupsByRoot });
+        listener({ newlyActiveKeys, groupsByKey });
       }
     }
-    lastGroupRootsRef.current = new Set(
-      discussionGroupsOnly(nextGroups).map((g) => g.root_discussion_id)
+    lastGroupKeysRef.current = new Set(
+      keyedGroups(nextGroups).map(({ key }) => key)
     );
   }, []);
 
@@ -139,6 +141,17 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     [refreshSummary]
   );
 
+  const markArticleRead = useCallback(
+    async (articleId: string) => {
+      try {
+        await api.notifications.markArticleThread(articleId);
+      } finally {
+        await refreshSummary();
+      }
+    },
+    [refreshSummary]
+  );
+
   const markAllRead = useCallback(async () => {
     try {
       await api.notifications.markAllRead();
@@ -158,7 +171,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     if (!isAuthenticated) {
       setSummary(null);
       setGroups([]);
-      lastGroupRootsRef.current = new Set();
+      lastGroupKeysRef.current = new Set();
       lastGroupCountRef.current = 0;
       return;
     }
@@ -187,6 +200,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         refreshGroups,
         markThreadRead,
         markThreadByComment,
+        markArticleRead,
         markAllRead,
         subscribeDiff,
       }}

@@ -74,7 +74,9 @@ class TestDiscussionNotificationsExcludeInactiveUsers:
         return DjangoNotificationHandler()
 
     def test_reply_does_not_notify_inactive_project_owner(self, handler):
-        inactive_owner = UserFactory(is_active=False, notification_frequency=_IMMEDIATE)
+        inactive_owner = UserFactory(
+            is_active=False, discussion_email_frequency=_IMMEDIATE
+        )
         project = ProjectFactory(owner=inactive_owner, status=ProjectStatus.APPROVED)
         author = UserFactory()
         discussion = DiscussionFactory(project=project, author=author)
@@ -84,12 +86,12 @@ class TestDiscussionNotificationsExcludeInactiveUsers:
         assert_that(Notification.objects.count(), equal_to(0))
 
     def test_reply_does_not_notify_inactive_thread_participant(self, handler):
-        owner = UserFactory(notification_frequency=_IMMEDIATE)
+        owner = UserFactory(discussion_email_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
-        root_author = UserFactory(notification_frequency=_IMMEDIATE)
+        root_author = UserFactory(discussion_email_frequency=_IMMEDIATE)
         root = DiscussionFactory(project=project, author=root_author)
         inactive_participant = UserFactory(
-            is_active=False, notification_frequency=_IMMEDIATE
+            is_active=False, discussion_email_frequency=_IMMEDIATE
         )
         DiscussionFactory(project=project, author=inactive_participant, parent=root)
         replier = UserFactory()
@@ -126,7 +128,7 @@ class TestDiscussionNotificationsExcludeInactiveUsers:
             ".DjangoEmailHandler"
             ".send_discussion_digest_email"
         ) as mock_digest:
-            handler.send_batch_notifications(NotificationCadence.HOURLY)
+            handler.send_discussion_digest(NotificationCadence.HOURLY)
 
         # Only called once — for the active user
         assert_that(mock_digest.call_count, equal_to(1))

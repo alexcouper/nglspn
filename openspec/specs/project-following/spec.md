@@ -70,69 +70,59 @@ These channels SHALL be created as part of the one-shot data migration that ship
 
 ### Requirement: User can follow and unfollow a Project
 
-The platform SHALL expose two endpoints (originally introduced in `add-project-following`):
+The platform SHALL expose two endpoints:
 
-- `POST /api/projects/{slug}/follow` — authentication required. Creates a `Follow` row for the requesting user against the project identified by `slug`, with `FollowChannelPreference` rows for every Channel of that project. All `email_enabled` and `in_app_enabled` switches default to `True` on creation. The endpoint SHALL be idempotent: if a Follow already exists for `(user, project)`, no duplicate row is created and the endpoint returns the existing state. POST SHALL NOT modify the legacy `email_opt_in_*` fields (the user's existing flag values are preserved).
+- `POST /api/projects/{slug}/follow` — authentication required. Creates a `Follow` row for the requesting user against the project identified by `slug`, and creates a `FollowedChannel` row for every `Channel` currently associated with that project. The endpoint SHALL be idempotent: if a `Follow` already exists for `(user, project)`, no duplicate row is created. If the `Follow` exists but the user is missing `FollowedChannel` rows for some channels (because channels were added since the user first followed), the existing rows SHALL be left in place — POST SHALL NOT auto-enrol the user in channels they were not subscribed to.
 
-- `DELETE /api/projects/{slug}/follow` — authentication required. Hard-deletes the Follow row for the requesting user against the project. `FollowChannelPreference` rows cascade-delete. The endpoint SHALL be idempotent: deleting a non-existent Follow returns 204.
-
-  **NEW in Phase 2:** when the deleted Follow is on the house project (the one with `is_house_project = True`), the DELETE handler SHALL also set `user.email_opt_in_competition_results = False` and `user.email_opt_in_platform_updates = False`. This ensures the legacy email broadcast pipeline (which still reads those flags through Phase 2) honours the user's intent to stop receiving Naglasúpan updates. The legacy flags are NOT modified on DELETE of any non-house-project follow.
+- `DELETE /api/projects/{slug}/follow` — authentication required. Hard-deletes the Follow row for the requesting user against the project. `FollowedChannel` rows cascade-delete. The endpoint SHALL be idempotent: deleting a non-existent Follow returns 204.
 
 Anonymous (unauthenticated) requests to either endpoint SHALL return 401.
 
-#### Scenario: First follow creates the row
+#### Scenario: First follow creates the Follow and one FollowedChannel per existing channel
 
-- **GIVEN** an authenticated user with no Follow row for project P
+- **GIVEN** an authenticated user with no Follow row for project P, where P has three channels
 - **WHEN** they POST to `/api/projects/{P.slug}/follow`
 - **THEN** the response is 200
-- **AND** a Follow row exists for `(user, P)`
-- **AND** for every Channel of P, a `FollowChannelPreference` row exists with `email_enabled = True` and `in_app_enabled = True`
+- **AND** a `Follow` row exists for `(user, P)`
+- **AND** three `FollowedChannel` rows exist, one per channel of P
 
 #### Scenario: Second follow is a no-op
 
 - **GIVEN** an authenticated user who already follows project P
 - **WHEN** they POST to `/api/projects/{P.slug}/follow` again
 - **THEN** the response is 200
-- **AND** there is still exactly one Follow row for `(user, P)`
-- **AND** existing `FollowChannelPreference` rows are unchanged
+- **AND** there is still exactly one `Follow` row for `(user, P)`
+- **AND** the existing `FollowedChannel` rows are unchanged
 
-#### Scenario: POST does not modify legacy email flags
+#### Scenario: Re-POST after the project added a new channel does not enrol the user
 
-- **GIVEN** an authenticated user U with `email_opt_in_competition_results = False`, not following the house project H
-- **WHEN** U POSTs to `/api/projects/{H.slug}/follow`
-- **THEN** a Follow row is created
-- **AND** the `FollowChannelPreference` for the Competition Winners channel has `email_enabled = True` (default, regardless of legacy flag — POST does not read legacy flags)
-- **AND** `U.email_opt_in_competition_results` is unchanged (still `False`)
+- **GIVEN** an authenticated user follows project P (which then had two channels), and P later added a third channel C3
+- **WHEN** the user POSTs to `/api/projects/{P.slug}/follow` again
+- **THEN** the response is 200
+- **AND** the user's `FollowedChannel` rows still cover only the original two channels (no row for C3 is created)
 
-#### Scenario: Unfollow hard-deletes
+#### Scenario: Unfollow hard-deletes Follow and all FollowedChannels
 
-- **GIVEN** an authenticated user who follows project P, with a custom preference (e.g., `email_enabled = False` on one channel)
+- **GIVEN** an authenticated user who follows project P, with `FollowedChannel` rows for some of P's channels
 - **WHEN** they DELETE `/api/projects/{P.slug}/follow`
 - **THEN** the response is 204
-- **AND** no Follow row exists for `(user, P)`
-- **AND** no `FollowChannelPreference` rows referencing that Follow remain
+- **AND** no `Follow` row exists for `(user, P)`
+- **AND** no `FollowedChannel` rows referencing that `Follow` remain
 
-#### Scenario: Unfollowing the house project mirrors to legacy flags
+#### Scenario: Unfollow on the house project just deletes
 
-- **GIVEN** an authenticated user U with `email_opt_in_competition_results = True` and `email_opt_in_platform_updates = True`, following the house project H
+- **GIVEN** an authenticated user U following the house project H
 - **WHEN** U DELETEs `/api/projects/{H.slug}/follow`
 - **THEN** the response is 204
-- **AND** `U.email_opt_in_competition_results = False`
-- **AND** `U.email_opt_in_platform_updates = False`
+- **AND** no `Follow` row exists for `(U, H)`
+- **AND** no side-effects fire on the User row itself
 
-#### Scenario: Unfollowing a non-house project does not mirror
+#### Scenario: Re-follow after unfollow re-enrols every current channel
 
-- **GIVEN** an authenticated user U with `email_opt_in_competition_results = True`, following a non-house project P
-- **WHEN** U DELETEs `/api/projects/{P.slug}/follow`
-- **THEN** the response is 204
-- **AND** `U.email_opt_in_competition_results` is unchanged (still `True`)
-
-#### Scenario: Re-follow after unfollow is fresh
-
-- **GIVEN** an authenticated user who previously unfollowed project P
+- **GIVEN** an authenticated user who previously unfollowed project P, where P now has three channels
 - **WHEN** they POST to `/api/projects/{P.slug}/follow`
-- **THEN** a new Follow row exists
-- **AND** every per-channel preference is defaulted to `email_enabled = True`, `in_app_enabled = True`
+- **THEN** a new `Follow` row exists
+- **AND** three new `FollowedChannel` rows exist, one per current channel
 
 #### Scenario: Unfollow when not following is a no-op
 
@@ -169,9 +159,9 @@ The Pydantic schema for the project-detail response SHALL include a derived fiel
 
 ### Requirement: Auto-follow the house project on user creation
 
-When a new `User` is created (`is_active = True`, `is_system_user = False`), the platform SHALL automatically create a `Follow` row for that user against the house project (the project with `is_house_project = True`), with `FollowChannelPreference` rows for every Channel of the house project. All `email_enabled` and `in_app_enabled` switches SHALL default to `True`.
+When a new `User` is created (`is_active = True`, `is_system_user = False`), the platform SHALL automatically create a `Follow` row for that user against the house project (the project with `is_house_project = True`), AND create a `FollowedChannel` row for every Channel of the house project.
 
-This SHALL be implemented via a `post_save` signal on User scoped to `created = True`. The signal handler SHALL silently no-op (with a logged warning) if no house project exists in the database — this is the greenfield dev/test case.
+This SHALL be implemented via a `post_save` signal on User scoped to `created = True`. The signal handler SHALL silently no-op (with a logged warning) if no house project exists in the database — this is the greenfield dev / test case.
 
 System users (`is_system_user = True`) SHALL NOT be auto-followed.
 
@@ -179,8 +169,8 @@ System users (`is_system_user = True`) SHALL NOT be auto-followed.
 
 - **GIVEN** the house project exists with three channels
 - **WHEN** a new user with `is_system_user = False` is created
-- **THEN** a Follow row exists for `(user, house_project)`
-- **AND** three `FollowChannelPreference` rows exist, all with `email_enabled = True` and `in_app_enabled = True`
+- **THEN** a `Follow` row exists for `(user, house_project)`
+- **AND** three `FollowedChannel` rows exist, one per house channel
 
 #### Scenario: System user is not auto-followed
 
@@ -196,72 +186,19 @@ System users (`is_system_user = True`) SHALL NOT be auto-followed.
 - **AND** no Follow row is created
 - **AND** a warning is logged
 
-### Requirement: Data migration seeds existing-user preferences from legacy flags
-
-A one-shot data migration SHALL backfill `Follow` rows and `FollowChannelPreference` rows for every existing active non-system User against the house project. The migration SHALL seed per-channel email switches from the legacy `User.email_opt_in_*` fields rather than defaulting to `True`:
-
-- "Competition Winners" channel → `email_enabled = user.email_opt_in_competition_results`
-- "Product Updates" channel → `email_enabled = user.email_opt_in_platform_updates`
-- "Updates" channel → `email_enabled = True` (no legacy correlate)
-
-In-app switches SHALL default to `True` for all three channels (the existing in-app system has no per-category opt-in to migrate from).
-
-The migration SHALL use `bulk_create` in batches of 1000 to keep transaction size bounded. The migration SHALL be idempotent: running it twice produces the same end-state without errors.
-
-The migration SHALL NOT modify or delete the legacy `email_opt_in_competition_results` or `email_opt_in_platform_updates` fields on User. These fields remain operational and continue to drive the existing email broadcast pipeline (which is unchanged by this change).
-
-#### Scenario: Opted-out user has email switch off
-
-- **GIVEN** an existing user U with `email_opt_in_competition_results = False` and `email_opt_in_platform_updates = True`
-- **WHEN** the data migration runs
-- **THEN** U has a Follow row against the house project
-- **AND** the "Competition Winners" preference has `email_enabled = False`
-- **AND** the "Product Updates" preference has `email_enabled = True`
-- **AND** the "Updates" preference has `email_enabled = True`
-- **AND** all three preferences have `in_app_enabled = True`
-
-#### Scenario: Inactive users skipped
-
-- **GIVEN** an existing user U with `is_active = False`
-- **WHEN** the data migration runs
-- **THEN** no Follow row is created for U
-
-#### Scenario: System users skipped
-
-- **GIVEN** an existing user U with `is_system_user = True`
-- **WHEN** the data migration runs
-- **THEN** no Follow row is created for U
-
-#### Scenario: Re-running the migration is idempotent
-
-- **GIVEN** the migration has already run
-- **WHEN** the migration is forced to run again (developer scenario)
-- **THEN** no duplicate Follow or `FollowChannelPreference` rows are created
-- **AND** existing preference values are not clobbered
-
-### Requirement: Legacy email opt-in flags are untouched in Phase 1
-
-The User-model fields `email_opt_in_competition_results` and `email_opt_in_platform_updates` SHALL remain in place after this change, with their existing default of `True`. No endpoint or signal in this change writes to them. The existing email broadcast pipeline (`services/email/django_impl/query.py::list_opted_in_for_broadcast_type`) SHALL continue to read them unchanged.
-
-#### Scenario: Broadcast recipient resolution is unchanged
-
-- **GIVEN** a `BroadcastEmail` with `email_type = "platform_updates"` and a population of users with mixed opt-in states
-- **WHEN** `resolve_broadcast_recipients` is called
-- **THEN** the resulting QuerySet SHALL match the result returned before this change ships
-
 ### Requirement: Endpoint to list the authenticated user's follows
 
-The platform SHALL expose `GET /api/follows`, authentication required. The endpoint SHALL return the requesting user's full set of follows. Each follow SHALL include enough information to render a list item without further requests: the project's slug, title, and hero/icon image URL (nullable), the follow's `created_at`, and the list of channels with their per-channel preference values (`email_enabled`, `in_app_enabled`).
+The platform SHALL expose `GET /api/follows`, authentication required. The endpoint SHALL return the requesting user's full set of follows. Each follow SHALL include: the project's slug, title, hero/icon image URL (nullable), the follow's `created_at`, and the list of channels on that project annotated with whether the user is following each one (`{id, name, followed: bool}`).
 
 The endpoint SHALL return an empty list for an authenticated user with no follows. The endpoint SHALL return 401 for unauthenticated requests.
 
-#### Scenario: User with multiple follows gets all of them
+#### Scenario: User with multiple follows gets all of them with channel follow state
 
 - **GIVEN** an authenticated user U following projects P1, P2, and P3
 - **WHEN** U fetches `GET /api/follows`
 - **THEN** the response is 200
 - **AND** the response contains three entries, one per followed project
-- **AND** each entry includes its project's slug, title, hero image URL, and a list of channels with `email_enabled` / `in_app_enabled` values
+- **AND** each entry includes its project's slug, title, hero image URL, and a list of every channel on the project with a `followed: bool` flag derived from `FollowedChannel` existence
 
 #### Scenario: User with no follows
 
@@ -277,18 +214,20 @@ The endpoint SHALL return an empty list for an authenticated user with no follow
 
 ### Requirement: Endpoint to read a single project's follow preferences
 
-The platform SHALL expose `GET /api/projects/{slug}/follow/preferences`, authentication required. The endpoint SHALL return the requesting user's per-channel preferences for the specified project's follow.
+The platform SHALL expose `GET /api/projects/{slug}/follow/preferences`, authentication required. The endpoint SHALL return the requesting user's follow state for the specified project.
 
-The response SHALL include the project's slug and title, and the list of channels with `email_enabled` and `in_app_enabled` values for each.
+The response SHALL include the project's slug and title and the list of channels on the project annotated with the user's follow state per channel (`{id, name, followed: bool}`).
 
-The endpoint SHALL return 404 if the requesting user is not following the project (i.e., no Follow row exists). The endpoint SHALL return 401 for unauthenticated requests.
+The endpoint SHALL return 404 if the requesting user is not following the project (i.e., no `Follow` row exists). The endpoint SHALL return 401 for unauthenticated requests.
 
-#### Scenario: Followed project returns preferences
+#### Scenario: Followed project returns channel follow states
 
-- **GIVEN** an authenticated user U following project P with three channels
+- **GIVEN** an authenticated user U following project P with three channels, with `FollowedChannel` rows for two of them
 - **WHEN** U fetches `GET /api/projects/{P.slug}/follow/preferences`
 - **THEN** the response is 200
-- **AND** the response contains three channel entries with current `email_enabled` and `in_app_enabled` values
+- **AND** the response contains three channel entries
+- **AND** two channels have `followed: true`
+- **AND** one channel has `followed: false`
 
 #### Scenario: Not following returns 404
 
@@ -301,82 +240,152 @@ The endpoint SHALL return 404 if the requesting user is not following the projec
 - **WHEN** an unauthenticated client fetches `GET /api/projects/{P.slug}/follow/preferences`
 - **THEN** the response is 401
 
-### Requirement: Endpoint to update a single channel preference
+### Requirement: FollowedChannel model replaces FollowChannelPreference
 
-The platform SHALL expose `PATCH /api/projects/{slug}/follow/channels/{channel_id}`, authentication required. The endpoint SHALL update the requesting user's `FollowChannelPreference` row for the specified project + channel.
+The system SHALL provide a `FollowedChannel` model whose row identity (`follow`, `channel`) records that the user follows the named channel. The model SHALL replace `FollowChannelPreference` from earlier phases. It SHALL pin its database table name to `follow_channel_preferences` via `Meta.db_table` so the migration is a pure column-drop on the existing table.
 
-The request body SHALL accept `email_enabled` and/or `in_app_enabled` (both optional, but at least one MUST be provided). If neither field is provided, the endpoint SHALL return 400.
+The model SHALL have no `email_enabled` or `in_app_enabled` columns. *Existence* of the row is the followed signal; per-medium gating is owned by the `notifications` capability through the User-level cadence settings.
 
-The endpoint SHALL return 404 if any of the following hold: the project doesn't exist; the channel doesn't belong to the project; the user is not following the project; the `FollowChannelPreference` row doesn't exist. The endpoint SHALL return 401 for unauthenticated requests.
+The `(follow, channel)` pair SHALL be unique. Deleting a `Follow` SHALL cascade-delete every `FollowedChannel` row referencing it.
 
-The endpoint SHALL return 200 with the updated preference values on success.
+#### Scenario: FollowedChannel row identity drives "is followed"
 
-When the request modifies `email_enabled`, the endpoint SHALL invoke the mirror-write helper (see "Mirror legacy email flag" requirement below).
+- **WHEN** code asks whether user U follows channel C on project P
+- **THEN** the answer SHALL be: `FollowedChannel.objects.filter(follow__user=U, follow__project=P, channel=C).exists()`
 
-#### Scenario: Toggling email off succeeds
+#### Scenario: Cascade delete from Follow
 
-- **GIVEN** an authenticated user U following project P with channel C, where `email_enabled = True`
-- **WHEN** U PATCHes `{"email_enabled": false}` to `/api/projects/{P.slug}/follow/channels/{C.id}`
+- **GIVEN** user U follows project P with three `FollowedChannel` rows
+- **WHEN** the underlying `Follow` row is deleted
+- **THEN** all three `FollowedChannel` rows SHALL also be deleted
+
+### Requirement: Endpoint to follow a single channel
+
+The platform SHALL expose `POST /api/projects/{slug}/follow/channels/{channel_id}`, authentication required. The endpoint SHALL create a `FollowedChannel` row for the requesting user's `Follow` on the specified project and the specified channel.
+
+The endpoint SHALL return 404 if any of the following hold: the project doesn't exist; the channel doesn't belong to the project; the user is not following the project. The endpoint SHALL return 401 for unauthenticated requests. The endpoint SHALL be idempotent: if the `FollowedChannel` row already exists, the endpoint SHALL return 200 without creating a duplicate.
+
+The endpoint SHALL return 200 with the channel's current `followed: true` state on success.
+
+#### Scenario: Follow a channel the user wasn't following
+
+- **GIVEN** an authenticated user U following project P with channel C, with no `FollowedChannel(follow, C)` row
+- **WHEN** U POSTs to `/api/projects/{P.slug}/follow/channels/{C.id}`
 - **THEN** the response is 200
-- **AND** the `FollowChannelPreference` row has `email_enabled = False` after the request
+- **AND** a `FollowedChannel` row exists for `(U's Follow on P, C)`
 
-#### Scenario: Empty body returns 400
+#### Scenario: Re-following a channel is idempotent
 
-- **WHEN** U PATCHes an empty body `{}` to a valid channel preference endpoint
-- **THEN** the response is 400
-- **AND** no rows are modified
+- **GIVEN** the user already has a `FollowedChannel` row for `(Follow, C)`
+- **WHEN** U POSTs to the same endpoint
+- **THEN** the response is 200
+- **AND** there is still exactly one `FollowedChannel` row
 
 #### Scenario: Channel does not belong to the project returns 404
 
 - **GIVEN** a channel C' that belongs to project P' (not P)
-- **WHEN** U PATCHes `/api/projects/{P.slug}/follow/channels/{C'.id}`
+- **WHEN** U POSTs to `/api/projects/{P.slug}/follow/channels/{C'.id}`
 - **THEN** the response is 404
 
-#### Scenario: Not following returns 404
+#### Scenario: Not following the project returns 404
 
 - **GIVEN** U is not following project P
-- **WHEN** U PATCHes `/api/projects/{P.slug}/follow/channels/{any_channel.id}`
+- **WHEN** U POSTs to `/api/projects/{P.slug}/follow/channels/{any_channel.id}`
 - **THEN** the response is 404
 
-### Requirement: Mirror legacy email flag for the house project's named channels
+### Requirement: Endpoint to unfollow a single channel
 
-When a `PATCH` modifies `email_enabled` on a `FollowChannelPreference` whose channel is on the house project (`channel.project.is_house_project = True`) AND whose channel name is "Competition Winners" or "Product Updates", the platform SHALL set the corresponding legacy field on the user to the same value:
+The platform SHALL expose `DELETE /api/projects/{slug}/follow/channels/{channel_id}`, authentication required. The endpoint SHALL hard-delete the `FollowedChannel` row for the requesting user's `Follow` on the project and the specified channel.
 
-- "Competition Winners" → `user.email_opt_in_competition_results`
-- "Product Updates" → `user.email_opt_in_platform_updates`
+When the delete leaves the `Follow` with no `FollowedChannel` rows, the endpoint SHALL delete the `Follow` as well: the user has just asked to stop, so dropping the last channel is a full unfollow rather than a silently inert follow that still reports `is_following = true`.
 
-The mirror SHALL NOT fire for: the house project's "Updates" channel; any channel of any non-house project; PATCHes that only modify `in_app_enabled`.
+This is a rule about this endpoint, not an invariant on the table. A `Follow` with no `FollowedChannel` rows is a tolerated state and arrives by other routes — see "Data migration sweeps existing FollowChannelPreference rows" below.
 
-The mirror SHALL save with `update_fields=[…]` to avoid touching other User columns.
+The endpoint SHALL return `200` with a `FollowStateResponse` rather than `204`, so the caller learns the resulting project-level state instead of re-deriving the last-channel rule client-side.
 
-#### Scenario: Mirror fires for Competition Winners email
+The endpoint SHALL be idempotent while other channels remain: deleting a non-existent `FollowedChannel` on a `Follow` that still has others SHALL return `200` with `is_followed = true`. Once the `Follow` itself is gone, a repeat SHALL return 404.
 
-- **GIVEN** an authenticated user U with `email_opt_in_competition_results = True`, following the house project H
-- **WHEN** U PATCHes `{"email_enabled": false}` to the Competition Winners channel preference
-- **THEN** `U.email_opt_in_competition_results` is `False` after the request
+The endpoint SHALL return 404 if the project doesn't exist, the channel doesn't belong to the project, or the user is not following the project. The endpoint SHALL return 401 for unauthenticated requests.
 
-#### Scenario: Mirror fires for Product Updates email
+#### Scenario: Unfollow an individually-followed channel
 
-- **GIVEN** an authenticated user U with `email_opt_in_platform_updates = True`, following the house project H
-- **WHEN** U PATCHes `{"email_enabled": false}` to the Product Updates channel preference
-- **THEN** `U.email_opt_in_platform_updates` is `False` after the request
+- **GIVEN** an authenticated user U following project P with `FollowedChannel` rows for channels C and D
+- **WHEN** U DELETEs `/api/projects/{P.slug}/follow/channels/{C.id}`
+- **THEN** the response is `200` with `is_followed = true`
+- **AND** no `FollowedChannel` row exists for `(U's Follow on P, C)`
+- **AND** the `Follow` row for `(U, P)` is unchanged
 
-#### Scenario: Mirror does not fire for house project's Updates channel
+#### Scenario: Unfollowing the last channel unfollows the project
 
-- **GIVEN** an authenticated user U with `email_opt_in_competition_results = True` and `email_opt_in_platform_updates = True`, following the house project H
-- **WHEN** U PATCHes `{"email_enabled": false}` to the "Updates" channel preference on H
-- **THEN** both `email_opt_in_*` flags on U remain `True`
+- **GIVEN** an authenticated user U following project P with `FollowedChannel` rows for exactly one channel C
+- **WHEN** U DELETEs `/api/projects/{P.slug}/follow/channels/{C.id}`
+- **THEN** the response is `200` with `is_followed = false`
+- **AND** no `FollowedChannel` row remains
+- **AND** the `Follow` row for `(U, P)` is deleted
 
-#### Scenario: Mirror does not fire for non-house projects
+#### Scenario: Unfollow a channel that is already not followed
 
-- **GIVEN** an authenticated user U with `email_opt_in_competition_results = True`, following a non-house project P
-- **WHEN** U PATCHes `{"email_enabled": false}` to any channel preference on P
-- **THEN** `U.email_opt_in_competition_results` remains `True`
+- **GIVEN** an authenticated user U following project P with a `FollowedChannel` row for channel D but none for channel C
+- **WHEN** U DELETEs `/api/projects/{P.slug}/follow/channels/{C.id}`
+- **THEN** the response is `200` with `is_followed = true`
 
-#### Scenario: PATCH that only changes in_app does not mirror
+#### Scenario: Repeating the last-channel unfollow is a 404
 
-- **GIVEN** an authenticated user U with `email_opt_in_competition_results = True`, following the house project H
-- **WHEN** U PATCHes `{"in_app_enabled": false}` to the Competition Winners channel preference
-- **THEN** `U.email_opt_in_competition_results` remains `True`
-- **AND** the `FollowChannelPreference.in_app_enabled` is `False`
+- **GIVEN** an authenticated user U who has just unfollowed their last channel on project P, so no `Follow` row remains
+- **WHEN** U DELETEs `/api/projects/{P.slug}/follow/channels/{C.id}` again
+- **THEN** the response is 404
+
+### Requirement: Data migration sweeps existing FollowChannelPreference rows
+
+A one-shot data migration SHALL collapse every existing `FollowChannelPreference` row to a `FollowedChannel` row based on the prior `email_enabled` boolean:
+
+- A row with `email_enabled = True` SHALL survive as a `FollowedChannel` row (the booleans are subsequently dropped as columns by a follow-up schema migration).
+- A row with `email_enabled = False` SHALL be deleted before the booleans are dropped, whatever `in_app_enabled` holds.
+
+`in_app_enabled` SHALL NOT be consulted. Rows seeded by `follows/0002` carry `in_app_enabled = True` unconditionally — a value that migration wrote, not one the user chose — so any rule that ORs the two booleans matches every legacy row and discards the email opt-out it was meant to preserve.
+
+The migration SHALL NOT delete any `Follow` row, even when the sweep removes the last `FollowedChannel` underneath it.
+
+This is a deliberate divergence from the unfollow-channel endpoint, which *does* unfollow the project when a user drops their last channel (see "Endpoint to unfollow a single channel"). Unfollowing in bulk from a migration is a larger action than the sweep is willing to take, and the affected users receive nothing from the project either way.
+
+The consequence is a `Follow` with no channels. That is a state the platform tolerates rather than one it prevents, and the sweep is not the only source of it. It also arises when a project owner deletes a channel (`FollowedChannel.channel` is `CASCADE`, and `DELETE /api/projects/{slug}/channels/{id}` refuses only a channel with articles or the last channel on a project), when a staff user deletes a `Channel` or a `FollowedChannel` in the Django admin, and when two `DELETE /api/projects/{slug}/follow/channels/{id}` requests race.
+
+Everything that notifies keys on `FollowedChannel` — the article fan-out selects it directly, and the digest runs off `Notification` rows — so such a `Follow` correctly delivers nothing. The reads key on `Follow` instead: `is_followed`, `get_state` and `_follow_queryset` (`services/follows/django_impl/query.py`) all report `is_following = true`, so the project still shows as "Following" with no channels ticked, on the project page and on `/profile/following`. `POST /follow` does not repair it — the handler enrols channels only when it creates the `Follow` — but re-enrolling a channel from the popover does, because `follow_channel` only needs the `Follow` to exist.
+
+Expect this cohort to be small: `follows/0002` seeds the house project's `Updates` channel with `email_enabled = True` unconditionally, so no house-project `Follow` can be emptied by the sweep, and `POST /follow` creates channels with `email_enabled` defaulting to `True`. Only a user who deliberately turned email off on *every* channel of a project can land here.
+
+The migration SHALL NOT add any `Follow` rows. Users who explicitly unfollowed a project pre-migration (no `Follow` row exists) stay unfollowed — this includes users who explicitly unfollowed the house project. The sweep operates purely on `FollowChannelPreference` rows that already exist; the new-user auto-follow signal handles future signups.
+
+#### Scenario: All-True row survives
+
+- **GIVEN** a `FollowChannelPreference(follow=F, channel=C, email_enabled=True, in_app_enabled=True)`
+- **WHEN** the migration runs
+- **THEN** a `FollowedChannel(follow=F, channel=C)` row exists
+
+#### Scenario: Email-off row deleted even though in-app was on
+
+- **GIVEN** a `FollowChannelPreference(follow=F, channel=C, email_enabled=False, in_app_enabled=True)`
+- **WHEN** the migration runs
+- **THEN** no `FollowedChannel(follow=F, channel=C)` row exists
+- **AND** the underlying `Follow=F` row SHALL be retained
+
+#### Scenario: Both-off row deleted
+
+- **GIVEN** a `FollowChannelPreference(follow=F, channel=C, email_enabled=False, in_app_enabled=False)`
+- **WHEN** the migration runs
+- **THEN** no `FollowedChannel(follow=F, channel=C)` row exists
+- **AND** the underlying `Follow=F` row SHALL be retained
+
+#### Scenario: In-app-off row survives on the strength of email
+
+- **GIVEN** a `FollowChannelPreference(follow=F, channel=C, email_enabled=True, in_app_enabled=False)`
+- **WHEN** the migration runs
+- **THEN** a `FollowedChannel(follow=F, channel=C)` row exists
+
+#### Scenario: User without house-project Follow stays unfollowed
+
+- **GIVEN** an existing active non-system user U with no `Follow` row on the house project
+- **WHEN** the migration runs
+- **THEN** no `Follow` row is created for U on the house project
+- **AND** no `FollowedChannel` rows are created for U on the house project's channels
 

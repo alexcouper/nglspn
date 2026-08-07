@@ -5,7 +5,9 @@ export { api, API } from "./api";
 export { APIClient, API_BASE_URL, ApiRequestError } from "./base";
 
 // Sub-clients
+export { ArticlesClient } from "./articles";
 export { AuthClient } from "./auth";
+export { ChannelsClient } from "./channels";
 export { CompetitionsClient } from "./competitions";
 export { DiscoverClient } from "./discover";
 export { DiscussionsClient } from "./discussions";
@@ -33,15 +35,34 @@ export type {
   CompetitionHighlightsResponse,
 } from "./competitions";
 
+// Types - Articles
+export type {
+  Article,
+  ArticleListItem,
+  ArticleCreate,
+  ArticleUpdate,
+  ArticlePublish,
+  ListingImageMode,
+} from "./articles";
+
+// Types - Channels
+export type {
+  Channel,
+  ChannelCreate,
+  ChannelRename,
+  ChannelReassign,
+  ChannelConflictResponse,
+  ChannelReassignResponse,
+} from "./channels";
+
 // Types - Discussions
 export type { Discussion, Reply, DiscussionAuthor } from "./discussions";
 
 // Types - Follows
 export type {
   FollowState,
-  FollowChannelPreference,
+  ChannelFollowState,
   FollowWithPreferences,
-  FollowChannelPreferencePatch,
 } from "./follows";
 
 // Types - Discover

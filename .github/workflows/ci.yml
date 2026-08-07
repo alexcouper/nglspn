@@ -16,6 +16,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - run: make install-deps
       - run: make lint
+      - run: make extra-tests
       - run: make test
 
   web-ui:
@@ -34,4 +35,7 @@ jobs:
       - run: npm ci
       - run: npm run generate-types
       - run: make lint
+      - run: make test
       - run: make build-app
+      # After build-app: the bundle-budget check measures the build output.
+      - run: make extra-tests

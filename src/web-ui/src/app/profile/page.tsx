@@ -6,6 +6,7 @@ import { ArrowPathIcon } from "@heroicons/react/24/solid";
 import { useAuth } from "@/contexts/auth";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
+import { describeApiError } from "@/lib/api/errors";
 import { EditProfile, type ProfileFormData } from "./EditProfile";
 import { ReadOnlyProfile } from "./ReadOnlyProfile";
 import { Settings } from "./Settings";
@@ -61,7 +62,7 @@ export default function ProfilePage() {
       setSuccessMessage("Profile updated successfully!");
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to update profile");
+      setError(describeApiError(err, "Couldn't save your profile."));
     } finally {
       setIsSaving(false);
     }
@@ -189,7 +190,8 @@ export default function ProfilePage() {
 
           <Settings
             optInToExternalPromotions={user.opt_in_to_external_promotions}
-            notificationFrequency={user.notification_frequency}
+            discussionEmailFrequency={user.discussion_email_frequency}
+            articleEmailFrequency={user.article_email_frequency}
           />
         </div>
       </section>

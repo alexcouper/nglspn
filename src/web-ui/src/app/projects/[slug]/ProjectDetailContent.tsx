@@ -10,9 +10,10 @@ import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from "@heroicons/react/24/solid";
-import type { Project } from "@/lib/api";
+import type { ArticleListItem, Project } from "@/lib/api";
 import { TagGroup } from "@/components/TagBadge";
 import { InlineDiscussions } from "@/components/InlineDiscussions";
+import { ArticlesList } from "./ArticlesList";
 import { ProjectPageLayout } from "@/components/ProjectPageLayout";
 import { ProjectTitleBanner } from "@/components/ProjectTitleBanner";
 import { CreatorCredit } from "@/components/CreatorCredit";
@@ -21,9 +22,13 @@ import { pickVariant, groupTagsByCategory } from "@/lib/utils";
 interface Props {
   project: Project;
   projectId: string;
+  // Fetched by the server component that renders the public page. Omitted by
+  // the my-projects preview, which is a client component and has nothing to
+  // hand over.
+  articles?: ArticleListItem[] | null;
 }
 
-export function ProjectDetailContent({ project, projectId }: Props) {
+export function ProjectDetailContent({ project, projectId, articles }: Props) {
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const tagsByCategory = useMemo(
@@ -216,6 +221,16 @@ export function ProjectDetailContent({ project, projectId }: Props) {
         <article className="markdown">
           <ReactMarkdown>{project.description}</ReactMarkdown>
         </article>
+      ),
+    },
+    {
+      id: "articles",
+      label: "Articles",
+      content: (
+        <ArticlesList
+          projectSlug={project.slug ?? project.id}
+          initialArticles={articles}
+        />
       ),
     },
     {

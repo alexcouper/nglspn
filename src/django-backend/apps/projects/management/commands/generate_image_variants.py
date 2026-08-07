@@ -7,7 +7,6 @@ from django.db.models import Count
 
 from apps.projects.models import (
     ProjectImage,
-    UploadStatus,
     VariantSize,
 )
 from services import HANDLERS
@@ -28,7 +27,7 @@ class Command(BaseCommand):
         # the max possible variants and let the handler skip sizes that don't
         # apply (>= original width) or already exist.
         images = (
-            ProjectImage.objects.filter(upload_status=UploadStatus.UPLOADED)
+            ProjectImage.objects.uploaded()
             .annotate(variant_count=Count("variants"))
             .filter(variant_count__lt=expected_count)
             .order_by("created_at")
@@ -43,7 +42,7 @@ class Command(BaseCommand):
 
         for i, image in enumerate(images, start=1):
             try:
-                HANDLERS.image.generate_variants(str(image.id))
+                HANDLERS.images.generate_variants(str(image.id))
             except Exception:
                 logger.exception("Failed to process image %s", image.id)
 

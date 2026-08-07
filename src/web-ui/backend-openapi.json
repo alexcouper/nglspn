@@ -1347,9 +1347,9 @@
       }
     },
     "/api/projects/{slug}/follow/channels/{channel_id}": {
-      "patch": {
-        "operationId": "api_routers_follows_patch_follow_channel",
-        "summary": "Patch Follow Channel",
+      "post": {
+        "operationId": "api_routers_follows_follow_channel",
+        "summary": "Follow Channel",
         "parameters": [
           {
             "in": "path",
@@ -1377,17 +1377,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/FollowChannelPreferenceResponse"
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "Bad Request",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
+                  "$ref": "#/components/schemas/ChannelFollowStateResponse"
                 }
               }
             }
@@ -1406,16 +1396,61 @@
         "tags": [
           "Follows"
         ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FollowChannelPreferencePatch"
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "api_routers_follows_unfollow_channel",
+        "summary": "Unfollow Channel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "channel_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Channel Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowStateResponse"
+                }
               }
             }
           },
-          "required": true
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
         },
+        "tags": [
+          "Follows"
+        ],
         "security": [
           {
             "JWTAuth": []
@@ -1935,6 +1970,290 @@
           },
           "required": true
         },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/projects/{slug}/articles/{article_id}/images/upload-url": {
+      "post": {
+        "operationId": "api_routers_articles_get_article_image_upload_url",
+        "summary": "Get Article Image Upload Url",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "article_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Article Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Article Images"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ArticleImageUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/projects/{slug}/articles/{article_id}/images/{image_id}/complete": {
+      "post": {
+        "operationId": "api_routers_articles_complete_article_image_upload",
+        "summary": "Complete Article Image Upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "article_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Article Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "image_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectImageResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Article Images"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageUploadCompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/projects/{slug}/articles/{article_id}/images/{image_id}": {
+      "delete": {
+        "operationId": "api_routers_articles_delete_article_image",
+        "summary": "Delete Article Image",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "slug",
+            "schema": {
+              "title": "Slug",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "article_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Article Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "image_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Article Images"
+        ],
         "security": [
           {
             "JWTAuth": []
@@ -4088,8 +4407,12 @@
             "title": "Opt In To External Promotions",
             "type": "boolean"
           },
-          "notification_frequency": {
-            "title": "Notification Frequency",
+          "discussion_email_frequency": {
+            "title": "Discussion Email Frequency",
+            "type": "string"
+          },
+          "article_email_frequency": {
+            "title": "Article Email Frequency",
             "type": "string"
           },
           "pending_onboarding_steps": {
@@ -4110,7 +4433,8 @@
           "created_at",
           "groups",
           "opt_in_to_external_promotions",
-          "notification_frequency",
+          "discussion_email_frequency",
+          "article_email_frequency",
           "pending_onboarding_steps"
         ],
         "title": "UserResponse",
@@ -4239,14 +4563,24 @@
         "title": "RefreshRequest",
         "type": "object"
       },
-      "NotificationCadence": {
+      "ArticleEmailFrequency": {
+        "enum": [
+          "hourly",
+          "daily",
+          "weekly",
+          "never"
+        ],
+        "title": "ArticleEmailFrequency",
+        "type": "string"
+      },
+      "DiscussionEmailFrequency": {
         "enum": [
           "immediate",
           "hourly",
           "daily",
           "never"
         ],
-        "title": "NotificationCadence",
+        "title": "DiscussionEmailFrequency",
         "type": "string"
       },
       "UserUpdate": {
@@ -4295,10 +4629,20 @@
             ],
             "title": "Opt In To External Promotions"
           },
-          "notification_frequency": {
+          "discussion_email_frequency": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/NotificationCadence"
+                "$ref": "#/components/schemas/DiscussionEmailFrequency"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "article_email_frequency": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArticleEmailFrequency"
               },
               {
                 "type": "null"
@@ -5422,7 +5766,7 @@
         "title": "FollowStateResponse",
         "type": "object"
       },
-      "FollowChannelPreferenceResponse": {
+      "ChannelFollowStateResponse": {
         "properties": {
           "channel_id": {
             "format": "uuid",
@@ -5433,22 +5777,17 @@
             "title": "Channel Name",
             "type": "string"
           },
-          "email_enabled": {
-            "title": "Email Enabled",
-            "type": "boolean"
-          },
-          "in_app_enabled": {
-            "title": "In App Enabled",
+          "followed": {
+            "title": "Followed",
             "type": "boolean"
           }
         },
         "required": [
           "channel_id",
           "channel_name",
-          "email_enabled",
-          "in_app_enabled"
+          "followed"
         ],
-        "title": "FollowChannelPreferenceResponse",
+        "title": "ChannelFollowStateResponse",
         "type": "object"
       },
       "FollowResponse": {
@@ -5479,7 +5818,7 @@
           },
           "channels": {
             "items": {
-              "$ref": "#/components/schemas/FollowChannelPreferenceResponse"
+              "$ref": "#/components/schemas/ChannelFollowStateResponse"
             },
             "title": "Channels",
             "type": "array"
@@ -5492,34 +5831,6 @@
           "channels"
         ],
         "title": "FollowResponse",
-        "type": "object"
-      },
-      "FollowChannelPreferencePatch": {
-        "properties": {
-          "email_enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Email Enabled"
-          },
-          "in_app_enabled": {
-            "anyOf": [
-              {
-                "type": "boolean"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "In App Enabled"
-          }
-        },
-        "title": "FollowChannelPreferencePatch",
         "type": "object"
       },
       "ArticleChannelRef": {
@@ -5572,7 +5883,15 @@
             "title": "Body",
             "type": "string"
           },
-          "hero_image_id": {
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "summary_display": {
+            "title": "Summary Display",
+            "type": "string"
+          },
+          "listing_image_id": {
             "anyOf": [
               {
                 "format": "uuid",
@@ -5582,9 +5901,9 @@
                 "type": "null"
               }
             ],
-            "title": "Hero Image Id"
+            "title": "Listing Image Id"
           },
-          "hero_image_url": {
+          "listing_image_url": {
             "anyOf": [
               {
                 "type": "string"
@@ -5593,7 +5912,37 @@
                 "type": "null"
               }
             ],
-            "title": "Hero Image Url"
+            "title": "Listing Image Url"
+          },
+          "listing_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listing_image_mode": {
+            "$ref": "#/components/schemas/ListingImageMode"
+          },
+          "listing_image": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ProjectImageResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ProjectImageResponse"
+            },
+            "title": "Images",
+            "type": "array"
           },
           "slug": {
             "anyOf": [
@@ -5663,8 +6012,14 @@
           "author",
           "title",
           "body",
-          "hero_image_id",
-          "hero_image_url",
+          "summary",
+          "summary_display",
+          "listing_image_id",
+          "listing_image_url",
+          "listing_crop",
+          "listing_image_mode",
+          "listing_image",
+          "images",
           "slug",
           "source",
           "external_url",
@@ -5709,6 +6064,50 @@
         "title": "ArticleProjectRef",
         "type": "object"
       },
+      "CropRect": {
+        "description": "A crop rectangle normalised 0-1 against the source image.",
+        "properties": {
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          },
+          "w": {
+            "title": "W",
+            "type": "number"
+          },
+          "h": {
+            "title": "H",
+            "type": "number"
+          },
+          "ratio": {
+            "title": "Ratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "w",
+          "h",
+          "ratio"
+        ],
+        "title": "CropRect",
+        "type": "object"
+      },
+      "ListingImageMode": {
+        "description": "How an article's listing image was decided.\n\nA nullable ``listing_image`` cannot tell \"not chosen yet\" from \"deliberately\nremoved\", so removal would not survive the next save.",
+        "enum": [
+          "auto",
+          "chosen",
+          "none"
+        ],
+        "title": "ListingImageMode",
+        "type": "string"
+      },
       "ArticleCreate": {
         "properties": {
           "channel_id": {
@@ -5725,18 +6124,6 @@
             "default": "",
             "title": "Body",
             "type": "string"
-          },
-          "hero_image_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Hero Image Id"
           }
         },
         "required": [
@@ -5754,6 +6141,10 @@
           },
           "title": {
             "title": "Title",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
             "type": "string"
           },
           "slug": {
@@ -5790,7 +6181,7 @@
           "channel": {
             "$ref": "#/components/schemas/ArticleChannelRef"
           },
-          "hero_image_url": {
+          "listing_image_url": {
             "anyOf": [
               {
                 "type": "string"
@@ -5799,18 +6190,30 @@
                 "type": "null"
               }
             ],
-            "title": "Hero Image Url"
+            "title": "Listing Image Url"
+          },
+          "listing_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
           "id",
           "title",
+          "summary",
           "slug",
           "state",
           "published_at",
           "global_visibility",
           "channel",
-          "hero_image_url"
+          "listing_image_url",
+          "listing_crop"
         ],
         "title": "ArticleListItem",
         "type": "object"
@@ -5839,7 +6242,18 @@
             ],
             "title": "Body"
           },
-          "hero_image_id": {
+          "summary": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Summary"
+          },
+          "listing_image_id": {
             "anyOf": [
               {
                 "format": "uuid",
@@ -5849,7 +6263,27 @@
                 "type": "null"
               }
             ],
-            "title": "Hero Image Id"
+            "title": "Listing Image Id"
+          },
+          "listing_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listing_image_mode": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ListingImageMode"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "channel_id": {
             "anyOf": [
@@ -5895,6 +6329,95 @@
           }
         },
         "title": "ArticlePublish",
+        "type": "object"
+      },
+      "PresignedUploadResponse": {
+        "properties": {
+          "image_id": {
+            "format": "uuid",
+            "title": "Image Id",
+            "type": "string"
+          },
+          "upload_url": {
+            "title": "Upload Url",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "storage_key": {
+            "title": "Storage Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_id",
+          "upload_url",
+          "method",
+          "headers",
+          "storage_key"
+        ],
+        "title": "PresignedUploadResponse",
+        "type": "object"
+      },
+      "ArticleImageUploadRequest": {
+        "description": "An article upload names only the file.\n\nThe article it belongs to is in the path, so there is no `source` /\n`source_id` pair here that could disagree with which article the row is\nstored against.",
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "file_size": {
+            "title": "File Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "content_type",
+          "file_size"
+        ],
+        "title": "ArticleImageUploadRequest",
+        "type": "object"
+      },
+      "ImageUploadCompleteRequest": {
+        "properties": {
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          }
+        },
+        "title": "ImageUploadCompleteRequest",
         "type": "object"
       },
       "ChannelResponse": {
@@ -6127,43 +6650,6 @@
         "title": "PublishMissingFieldsResponse",
         "type": "object"
       },
-      "PresignedUploadResponse": {
-        "properties": {
-          "image_id": {
-            "format": "uuid",
-            "title": "Image Id",
-            "type": "string"
-          },
-          "upload_url": {
-            "title": "Upload Url",
-            "type": "string"
-          },
-          "method": {
-            "title": "Method",
-            "type": "string"
-          },
-          "headers": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Headers",
-            "type": "object"
-          },
-          "storage_key": {
-            "title": "Storage Key",
-            "type": "string"
-          }
-        },
-        "required": [
-          "image_id",
-          "upload_url",
-          "method",
-          "headers",
-          "storage_key"
-        ],
-        "title": "PresignedUploadResponse",
-        "type": "object"
-      },
       "PresignedUploadRequest": {
         "properties": {
           "filename": {
@@ -6190,34 +6676,6 @@
           "file_size"
         ],
         "title": "PresignedUploadRequest",
-        "type": "object"
-      },
-      "ImageUploadCompleteRequest": {
-        "properties": {
-          "width": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Width"
-          },
-          "height": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Height"
-          }
-        },
-        "title": "ImageUploadCompleteRequest",
         "type": "object"
       },
       "UpdateImageRolesRequest": {
@@ -7423,6 +7881,17 @@
               }
             ],
             "title": "Channel Name"
+          },
+          "article_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Article Image Url"
           }
         },
         "required": [

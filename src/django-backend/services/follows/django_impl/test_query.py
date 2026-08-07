@@ -1,9 +1,19 @@
-import pytest
+from collections.abc import Callable
 
-from apps.follows.models import Channel, Follow, FollowChannelPreference
+import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+
+from apps.follows.models import Channel, Follow, FollowedChannel
 from services.follows.django_impl.query import DjangoFollowQuery
 from services.follows.query_interface import FollowState
-from tests.factories import ProjectFactory, UserFactory
+from tests.factories import (
+    ArticleFactory,
+    ProjectFactory,
+    ProjectImageFactory,
+    UserFactory,
+    article_image,
+)
 
 
 @pytest.mark.django_db
@@ -34,13 +44,21 @@ def _make_follow(user, project, channel_names):
     follow = Follow.objects.create(user=user, project=project)
     for name in channel_names:
         channel, _ = Channel.objects.get_or_create(project=project, name=name)
-        FollowChannelPreference.objects.create(
-            follow=follow,
-            channel=channel,
-            email_enabled=True,
-            in_app_enabled=True,
-        )
+        FollowedChannel.objects.create(follow=follow, channel=channel)
     return follow
+
+
+def _follow_projects_with_a_hero(user, count):
+    for _ in range(count):
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, is_hero=True)
+        _make_follow(user, project, ["Updates", "Releases"])
+
+
+def _count_queries(work: Callable[[], object]) -> int:
+    with CaptureQueriesContext(connection) as queries:
+        work()
+    return len(queries)
 
 
 @pytest.mark.django_db
@@ -76,6 +94,58 @@ class TestListUserFollows:
 
         slugs = [r.project_slug for r in result]
         assert slugs == ["b", "a"]
+
+
+@pytest.mark.django_db
+class TestListUserFollowsQueryCount:
+    def setup_method(self):
+        self.query = DjangoFollowQuery()
+
+    def test_does_not_query_per_followed_project(self):
+        user = UserFactory()
+        _follow_projects_with_a_hero(user, count=1)
+        one_follow = _count_queries(lambda: self.query.list_user_follows(user.id))
+
+        _follow_projects_with_a_hero(user, count=3)
+        four_follows = _count_queries(lambda: self.query.list_user_follows(user.id))
+
+        assert four_follows == one_follow
+
+
+@pytest.mark.django_db
+class TestListUserFollowsHeroImage:
+    def setup_method(self):
+        self.query = DjangoFollowQuery()
+
+    def test_uses_the_projects_hero_image(self):
+        user = UserFactory()
+        project = ProjectFactory()
+        hero = ProjectImageFactory(project=project, is_hero=True)
+        _make_follow(user, project, ["Updates"])
+
+        (item,) = self.query.list_user_follows(user.id)
+
+        assert item.project_hero_image_url == hero.url
+
+    def test_ignores_images_uploaded_for_an_article(self):
+        user = UserFactory()
+        project = ProjectFactory()
+        article_image(ArticleFactory(project=project))
+        _make_follow(user, project, ["Updates"])
+
+        (item,) = self.query.list_user_follows(user.id)
+
+        assert item.project_hero_image_url is None
+
+    def test_ignores_an_upload_that_never_completed(self):
+        user = UserFactory()
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, is_hero=True, upload_status="pending")
+        _make_follow(user, project, ["Updates"])
+
+        (item,) = self.query.list_user_follows(user.id)
+
+        assert item.project_hero_image_url is None
 
 
 @pytest.mark.django_db

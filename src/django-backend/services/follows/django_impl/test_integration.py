@@ -1,13 +1,15 @@
-"""Integration: follow + per-channel email preference drive the broadcast set.
+"""Integration: follow + per-channel follow drive the broadcast set.
 
 The async-broadcast-send pipeline resolves recipients from Follow +
-FollowChannelPreference on the house project's named channels. These tests
-exercise the follow / unfollow / patch handlers together with that resolver.
+FollowedChannel on the house project's named channels. These tests
+exercise the follow / unfollow / per-channel handlers together with that
+resolver.
 """
 
 import pytest
 
 from apps.follows.models import Channel
+from apps.users.models import ArticleEmailFrequency
 from services.follows.django_impl.handler import DjangoFollowHandler
 from services.users.django_impl.query import DjangoUserQuery
 from tests.factories import ProjectFactory, UserFactory
@@ -26,7 +28,7 @@ class TestBroadcastRecipientResolution:
         self.handler = DjangoFollowHandler()
         self.user_query = DjangoUserQuery()
 
-    def test_disabling_channel_email_excludes_from_competition_results(self):
+    def test_unfollowing_a_channel_excludes_from_that_broadcast_type(self):
         user = UserFactory()
         house, cw, _ = _seed_house_with_channels()
         self.handler.follow(user.id, house)
@@ -36,33 +38,28 @@ class TestBroadcastRecipientResolution:
         )
         assert recipients.filter(pk=user.pk).exists()
 
-        self.handler.set_channel_preference(
-            user.id, "naglasupan", cw.id, email_enabled=False
-        )
+        self.handler.unfollow_channel(user.id, "naglasupan", cw.id)
 
         recipients = self.user_query.list_opted_in_for_broadcast_type(
             "competition_results"
         )
         assert not recipients.filter(pk=user.pk).exists()
 
-    def test_disabling_channel_email_excludes_from_platform_updates(self):
+    def test_unfollowing_one_channel_does_not_affect_the_other(self):
         user = UserFactory()
-        house, _, pu = _seed_house_with_channels()
+        house, _cw, pu = _seed_house_with_channels()
         self.handler.follow(user.id, house)
 
-        self.handler.set_channel_preference(
-            user.id, "naglasupan", pu.id, email_enabled=False
-        )
+        self.handler.unfollow_channel(user.id, "naglasupan", pu.id)
 
         platform = self.user_query.list_opted_in_for_broadcast_type("platform_updates")
         assert not platform.filter(pk=user.pk).exists()
-        # The other channel still includes them.
         competition = self.user_query.list_opted_in_for_broadcast_type(
             "competition_results"
         )
         assert competition.filter(pk=user.pk).exists()
 
-    def test_unfollow_excludes_from_both_types(self):
+    def test_unfollow_project_excludes_from_both_types(self):
         user = UserFactory()
         house, _, _ = _seed_house_with_channels()
         self.handler.follow(user.id, house)
@@ -72,3 +69,13 @@ class TestBroadcastRecipientResolution:
         for email_type in ("competition_results", "platform_updates"):
             recipients = self.user_query.list_opted_in_for_broadcast_type(email_type)
             assert not recipients.filter(pk=user.pk).exists()
+
+    def test_article_email_frequency_never_excludes_user(self):
+        user = UserFactory(article_email_frequency=ArticleEmailFrequency.NEVER)
+        house, _, _ = _seed_house_with_channels()
+        self.handler.follow(user.id, house)
+
+        recipients = self.user_query.list_opted_in_for_broadcast_type(
+            "platform_updates"
+        )
+        assert not recipients.filter(pk=user.pk).exists()

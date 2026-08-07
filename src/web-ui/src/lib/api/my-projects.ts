@@ -52,6 +52,9 @@ export class MyProjectsClient {
     });
   }
 
+  // The project's own gallery only. Article images are uploaded through
+  // `api.articles.getImageUploadUrl`, which addresses them by the article that
+  // owns them.
   async getImageUploadUrl(
     projectId: string,
     filename: string,
@@ -75,13 +78,18 @@ export class MyProjectsClient {
 
   async completeImageUpload(
     projectId: string,
-    imageId: string
+    imageId: string,
+    // Measured client-side. Without these the row's dimensions stay null until
+    // the async variant job backfills them, and anything that needs to know the
+    // image's shape straight away — the hero crop dialog — has nothing to work
+    // with.
+    dimensions: { width: number; height: number } | null = null
   ): Promise<ProjectImage> {
     return this.client.request<ProjectImage>(
       `/api/my/projects/${projectId}/images/${imageId}/complete`,
       {
         method: "POST",
-        body: JSON.stringify({}),
+        body: JSON.stringify(dimensions ?? {}),
       }
     );
   }

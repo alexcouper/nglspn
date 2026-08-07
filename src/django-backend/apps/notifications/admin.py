@@ -6,13 +6,16 @@ from typing import TYPE_CHECKING
 from django.conf import settings
 from django.contrib import admin
 from django.db.models import QuerySet
-from django.http import HttpResponse
+from django.http import Http404, HttpResponse
 from django.shortcuts import render
 from django.urls import path, reverse
 from django.utils import timezone
 
 from services.email.django_impl import render_email
-from services.email.django_impl.handler import build_digest_groups
+from services.email.django_impl.handler import (
+    build_article_digest_entries,
+    build_digest_groups,
+)
 
 from .models import Notification
 
@@ -20,6 +23,9 @@ if TYPE_CHECKING:
     from uuid import UUID
 
     from django.http import HttpRequest
+
+
+DIGEST_KINDS = ("discussion", "article")
 
 
 @admin.register(Notification)
@@ -62,7 +68,7 @@ class NotificationAdmin(admin.ModelAdmin):
                 name="notifications_notification_preview_digest",
             ),
             path(
-                "preview-digest/<uuid:recipient_id>/",
+                "preview-digest/<str:kind>/<uuid:recipient_id>/",
                 self.admin_site.admin_view(self.preview_digest_detail_view),
                 name="notifications_notification_preview_digest_detail",
             ),
@@ -81,10 +87,7 @@ class NotificationAdmin(admin.ModelAdmin):
         return super().changelist_view(request, extra_context=extra_context)
 
     def preview_digest_list_view(self, request: HttpRequest) -> HttpResponse:
-        # Discussion-only preview — the digest view here renders the
-        # comment-shaped template. Article-row previews will be added
-        # alongside the mixed-content digest work.
-        unsent = (
+        discussion_unsent = (
             Notification.objects.filter(email_sent=False, discussion__isnull=False)
             .select_related(
                 "recipient",
@@ -94,28 +97,65 @@ class NotificationAdmin(admin.ModelAdmin):
             )
             .order_by("recipient_id", "created_at")
         )
+        article_unsent = (
+            Notification.objects.filter(email_sent=False, article__isnull=False)
+            .select_related(
+                "recipient",
+                "article",
+                "article__project",
+                "article__channel",
+            )
+            .order_by("recipient_id", "created_at")
+        )
 
         by_recipient: defaultdict[UUID, dict] = defaultdict(
-            lambda: {"recipient": None, "projects": defaultdict(int), "count": 0}
+            lambda: {
+                "recipient": None,
+                "discussion_projects": defaultdict(int),
+                "article_projects": defaultdict(int),
+                "discussion_count": 0,
+                "article_count": 0,
+            }
         )
-        for n in unsent:
+        for n in discussion_unsent:
             entry = by_recipient[n.recipient_id]
             entry["recipient"] = n.recipient
-            entry["projects"][n.discussion.project.title] += 1
-            entry["count"] += 1
+            entry["discussion_projects"][n.discussion.project.title] += 1
+            entry["discussion_count"] += 1
+        for n in article_unsent:
+            entry = by_recipient[n.recipient_id]
+            entry["recipient"] = n.recipient
+            entry["article_projects"][n.article.project.title] += 1
+            entry["article_count"] += 1
 
         recipients_data = []
         for recipient_id, data in sorted(
-            by_recipient.items(), key=lambda x: x[1]["count"], reverse=True
+            by_recipient.items(),
+            key=lambda x: x[1]["discussion_count"] + x[1]["article_count"],
+            reverse=True,
         ):
             recipients_data.append(
                 {
                     "recipient": data["recipient"],
-                    "count": data["count"],
-                    "projects": dict(data["projects"]),
-                    "preview_url": reverse(
-                        "admin:notifications_notification_preview_digest_detail",
-                        args=[recipient_id],
+                    "discussion_count": data["discussion_count"],
+                    "article_count": data["article_count"],
+                    "discussion_projects": dict(data["discussion_projects"]),
+                    "article_projects": dict(data["article_projects"]),
+                    "discussion_preview_url": (
+                        reverse(
+                            "admin:notifications_notification_preview_digest_detail",
+                            args=["discussion", recipient_id],
+                        )
+                        if data["discussion_count"]
+                        else ""
+                    ),
+                    "article_preview_url": (
+                        reverse(
+                            "admin:notifications_notification_preview_digest_detail",
+                            args=["article", recipient_id],
+                        )
+                        if data["article_count"]
+                        else ""
                     ),
                 }
             )
@@ -123,7 +163,7 @@ class NotificationAdmin(admin.ModelAdmin):
         context = {
             **self.admin_site.each_context(request),
             "recipients": recipients_data,
-            "total_unsent": unsent.count(),
+            "total_unsent": discussion_unsent.count() + article_unsent.count(),
             "opts": self.model._meta,  # noqa: SLF001
         }
         return render(
@@ -133,46 +173,73 @@ class NotificationAdmin(admin.ModelAdmin):
         )
 
     def preview_digest_detail_view(
-        self, request: HttpRequest, recipient_id: str
+        self, request: HttpRequest, kind: str, recipient_id: str
     ) -> HttpResponse:
-        unsent = (
-            Notification.objects.filter(
-                recipient_id=recipient_id,
-                email_sent=False,
-                discussion__isnull=False,
-            )
-            .select_related(
-                "recipient",
-                "discussion",
-                "discussion__project",
-                "discussion__author",
-            )
-            .order_by("created_at")
-        )
+        if kind not in DIGEST_KINDS:
+            raise Http404
 
-        notifications = list(unsent)
+        if kind == "discussion":
+            notifications = list(
+                Notification.objects.filter(
+                    recipient_id=recipient_id,
+                    email_sent=False,
+                    discussion__isnull=False,
+                )
+                .select_related(
+                    "recipient",
+                    "discussion",
+                    "discussion__project",
+                    "discussion__author",
+                )
+                .order_by("created_at")
+            )
+        else:
+            notifications = list(
+                Notification.objects.filter(
+                    recipient_id=recipient_id,
+                    email_sent=False,
+                    article__isnull=False,
+                )
+                .select_related(
+                    "recipient",
+                    "article",
+                    "article__project",
+                    "article__channel",
+                )
+                .order_by("created_at")
+            )
+
         if not notifications:
             return HttpResponse(
-                "<p>No unsent notifications for this recipient.</p>",
+                f"<p>No unsent {kind} notifications for this recipient.</p>",
                 content_type="text/html",
             )
 
         recipient = notifications[0].recipient
-
-        context = {
+        base_context = {
             "recipient_name": recipient.first_name or "there",
-            "groups": build_digest_groups(notifications),
             "site_url": settings.FRONTEND_URL,
             "profile_url": f"{settings.FRONTEND_URL}/profile",
             "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
             "current_year": timezone.now().year,
         }
-        html, _text = render_email("discussion_digest", context)
+
+        if kind == "discussion":
+            context = {**base_context, "groups": build_digest_groups(notifications)}
+            template_name = "discussion_digest"
+        else:
+            context = {
+                **base_context,
+                "entries": build_article_digest_entries(notifications),
+            }
+            template_name = "article_digest"
+
+        html, text = render_email(template_name, context)
 
         if request.GET.get("format") == "text":
             return HttpResponse(
                 f"<pre style='max-width:600px;margin:40px auto;"
-                f"font-family:monospace;white-space:pre-wrap;'>{_text}</pre>",
+                f"font-family:monospace;white-space:pre-wrap;'>{text}</pre>",
                 content_type="text/html",
             )
         return HttpResponse(html)

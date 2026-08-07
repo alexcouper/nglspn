@@ -26,7 +26,7 @@ def handler():
 @pytest.mark.django_db
 class TestRecipientDetermination:
     def test_root_discussion_notifies_project_owner(self, handler) -> None:
-        owner = UserFactory(notification_frequency=_IMMEDIATE)
+        owner = UserFactory(discussion_email_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
         author = UserFactory()
         discussion = DiscussionFactory(project=project, author=author)
@@ -40,7 +40,7 @@ class TestRecipientDetermination:
 
     def test_system_user_contributor_is_not_notified(self, handler) -> None:
         # Community tip-off project: seed user is OWNER, real user is TIPSTER.
-        tipster = UserFactory(notification_frequency=_IMMEDIATE)
+        tipster = UserFactory(discussion_email_frequency=_IMMEDIATE)
         project = ProjectFactory(
             creator=tipster,
             status=ProjectStatus.APPROVED,
@@ -76,9 +76,9 @@ class TestRecipientDetermination:
         assert_that(Notification.objects.count(), equal_to(0))
 
     def test_reply_notifies_project_owner_and_discussion_creator(self, handler) -> None:
-        owner = UserFactory(notification_frequency=_IMMEDIATE)
+        owner = UserFactory(discussion_email_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
-        discussion_author = UserFactory(notification_frequency=_IMMEDIATE)
+        discussion_author = UserFactory(discussion_email_frequency=_IMMEDIATE)
         root = DiscussionFactory(project=project, author=discussion_author)
         replier = UserFactory()
         reply = DiscussionFactory(project=project, author=replier, parent=root)
@@ -90,13 +90,13 @@ class TestRecipientDetermination:
         assert_that(recipient_ids, equal_to({owner.id, discussion_author.id}))
 
     def test_reply_notifies_previous_participants(self, handler) -> None:
-        owner = UserFactory(notification_frequency=_IMMEDIATE)
+        owner = UserFactory(discussion_email_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
-        root_author = UserFactory(notification_frequency=_IMMEDIATE)
+        root_author = UserFactory(discussion_email_frequency=_IMMEDIATE)
         root = DiscussionFactory(project=project, author=root_author)
-        participant_a = UserFactory(notification_frequency=_IMMEDIATE)
+        participant_a = UserFactory(discussion_email_frequency=_IMMEDIATE)
         DiscussionFactory(project=project, author=participant_a, parent=root)
-        participant_b = UserFactory(notification_frequency=_IMMEDIATE)
+        participant_b = UserFactory(discussion_email_frequency=_IMMEDIATE)
         DiscussionFactory(project=project, author=participant_b, parent=root)
         new_replier = UserFactory()
         reply = DiscussionFactory(project=project, author=new_replier, parent=root)
@@ -109,7 +109,7 @@ class TestRecipientDetermination:
         assert_that(recipient_ids, equal_to(expected))
 
     def test_deduplication_when_owner_is_also_discussion_creator(self, handler) -> None:
-        owner = UserFactory(notification_frequency=_IMMEDIATE)
+        owner = UserFactory(discussion_email_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
         root = DiscussionFactory(project=project, author=owner)
         replier = UserFactory()
@@ -122,9 +122,9 @@ class TestRecipientDetermination:
         assert_that(owner_notifications.count(), equal_to(1))
 
     def test_excludes_comment_author_from_notifications(self, handler) -> None:
-        owner = UserFactory(notification_frequency=_IMMEDIATE)
+        owner = UserFactory(discussion_email_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
-        author = UserFactory(notification_frequency=_IMMEDIATE)
+        author = UserFactory(discussion_email_frequency=_IMMEDIATE)
         discussion = DiscussionFactory(project=project, author=author)
 
         with patch(_SEND_EMAIL):
@@ -134,7 +134,7 @@ class TestRecipientDetermination:
         assert_that(author_notifications.count(), equal_to(0))
 
     def test_never_cadence_creates_row_but_no_email(self, handler) -> None:
-        owner = UserFactory(notification_frequency=NotificationCadence.NEVER)
+        owner = UserFactory(discussion_email_frequency=NotificationCadence.NEVER)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
         author = UserFactory()
         discussion = DiscussionFactory(project=project, author=author)
@@ -150,7 +150,7 @@ class TestRecipientDetermination:
         assert_that(send.called, equal_to(False))
 
     def test_snapshots_user_cadence_at_creation_time(self, handler) -> None:
-        owner = UserFactory(notification_frequency=NotificationCadence.HOURLY)
+        owner = UserFactory(discussion_email_frequency=NotificationCadence.HOURLY)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
         author = UserFactory()
         discussion = DiscussionFactory(project=project, author=author)
@@ -161,9 +161,9 @@ class TestRecipientDetermination:
         assert_that(notification.email_cadence, equal_to(NotificationCadence.HOURLY))
 
     def test_notifies_all_full_edit_contributors(self, handler) -> None:
-        creator = UserFactory(notification_frequency=_IMMEDIATE)
+        creator = UserFactory(discussion_email_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=creator, status=ProjectStatus.APPROVED)
-        extra_full_edit = UserFactory(notification_frequency=_IMMEDIATE)
+        extra_full_edit = UserFactory(discussion_email_frequency=_IMMEDIATE)
         ProjectContributor.objects.create(
             project=project,
             user=extra_full_edit,
@@ -180,7 +180,7 @@ class TestRecipientDetermination:
         assert_that(recipient_ids, equal_to({creator.id, extra_full_edit.id}))
 
     def test_idempotent_on_repeat_invocation(self, handler) -> None:
-        owner = UserFactory(notification_frequency=_IMMEDIATE)
+        owner = UserFactory(discussion_email_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
         author = UserFactory()
         discussion = DiscussionFactory(project=project, author=author)
@@ -193,9 +193,9 @@ class TestRecipientDetermination:
         assert_that(send.call_count, equal_to(1))
 
     def test_excludes_contributors_without_full_edit(self, handler) -> None:
-        creator = UserFactory(notification_frequency=_IMMEDIATE)
+        creator = UserFactory(discussion_email_frequency=_IMMEDIATE)
         project = ProjectFactory(owner=creator, status=ProjectStatus.APPROVED)
-        no_edit = UserFactory(notification_frequency=_IMMEDIATE)
+        no_edit = UserFactory(discussion_email_frequency=_IMMEDIATE)
         ProjectContributor.objects.create(
             project=project,
             user=no_edit,

@@ -1,4 +1,3 @@
-from django.db.models import Prefetch
 from django.http import HttpRequest
 from ninja import Router
 
@@ -19,7 +18,6 @@ from apps.projects.models import (
     Competition,
     CompetitionReviewer,
     Project,
-    ProjectImage,
 )
 from services import HANDLERS, REPO
 from services.review.eligibility import EXCLUDED_PROJECT_STATUSES
@@ -213,12 +211,7 @@ def get_review_project(
                 "tags",
                 "tags__category",
                 "contributors__user",
-                Prefetch(
-                    "images",
-                    queryset=ProjectImage.objects.filter(
-                        upload_status="uploaded"
-                    ).prefetch_related("variants"),
-                ),
+                REPO.images.gallery_prefetch(),
                 "won_competitions",
             )
             .exclude(status__in=EXCLUDED_PROJECT_STATUSES)

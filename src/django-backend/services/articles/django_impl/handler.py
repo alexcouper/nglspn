@@ -12,10 +12,13 @@ from apps.articles.models import (
     ArticleGlobalVisibility,
     ArticleSource,
     ArticleState,
+    ListingImageMode,
 )
 from apps.articles.slugs import assign_unique_article_slug
 from apps.follows.models import Channel
 from apps.projects.models import ProjectImage
+from services.articles import crop
+from services.articles.django_impl.query import article_detail_queryset
 from services.articles.exceptions import (
     ArticleNotFoundError,
     ArticleNotPublishableError,
@@ -23,10 +26,16 @@ from services.articles.exceptions import (
     ChannelNotFoundError,
     ChannelOnWrongProjectError,
     DuplicateChannelNameError,
-    HeroImageOnWrongProjectError,
+    InvalidCropError,
     LastChannelError,
+    ListingImageNotUploadedError,
+    ListingImageOnWrongProjectError,
 )
-from services.articles.handler_interface import ArticleHandlerInterface
+from services.articles.handler_interface import (
+    UNSET,
+    ArticleHandlerInterface,
+    UnsetType,
+)
 
 if TYPE_CHECKING:
     from datetime import datetime
@@ -66,17 +75,17 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         author_id: UUID,
         title: str = "",
         body: str = "",
-        hero_image_id: UUID | None = None,
     ) -> Article:
         channel = self._resolve_channel_on_project(channel_id, project_id)
-        hero_image = self._resolve_hero_image(hero_image_id, project_id)
+        # No listing image on create: an image cannot be uploaded against an
+        # article that does not exist yet, so `auto` has nothing to resolve to.
         article = Article(
             project_id=project_id,
             channel=channel,
             author_id=author_id,
             title=title,
             body=body,
-            hero_image=hero_image,
+            listing_image_mode=ListingImageMode.AUTO,
             source=ArticleSource.INTERNAL,
             state=ArticleState.DRAFT,
         )
@@ -89,7 +98,10 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         *,
         title: str | None = None,
         body: str | None = None,
-        hero_image_id: UUID | None = None,
+        summary: str | None = None,
+        listing_image_id: UUID | None | UnsetType = UNSET,
+        listing_crop: dict[str, float] | None | UnsetType = UNSET,
+        listing_image_mode: str | None = None,
         channel_id: UUID | None = None,
         published_at: datetime | None = None,
     ) -> Article:
@@ -102,11 +114,15 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         if body is not None and body != article.body:
             article.body = body
             update_fields.append("body")
-        if hero_image_id is not None:
-            hero_image = self._resolve_hero_image(hero_image_id, article.project_id)
-            if hero_image and hero_image.pk != article.hero_image_id:
-                article.hero_image = hero_image
-                update_fields.append("hero_image")
+        if summary is not None and summary != article.summary:
+            article.summary = summary
+            update_fields.append("summary")
+        update_fields += self._apply_listing_image(
+            article,
+            listing_image_id=listing_image_id,
+            listing_crop=listing_crop,
+            listing_image_mode=listing_image_mode,
+        )
         if channel_id is not None and channel_id != article.channel_id:
             channel = self._resolve_channel_on_project(channel_id, article.project_id)
             article.channel = channel
@@ -129,7 +145,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
     ) -> Article:
         article = self._get_article(article_id)
 
-        if not article.title or not article.body or article.hero_image_id is None:
+        if not article.title or not article.body:
             raise ArticleNotPublishableError
 
         effective_published_at = published_at or timezone.now()
@@ -141,13 +157,23 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             article.save(update_fields=["state", "published_at", "global_visibility"])
             if article.slug is None:
                 assign_unique_article_slug(article)
+            if not _is_backdated(effective_published_at):
+                # Fan-out is ~2N queries on a house-channel publish, so it goes
+                # to the worker rather than the request. Enqueued *inside* the
+                # transaction on purpose: the queue is a table
+                # (django-tasks-db), so the task row and the PUBLISHED write
+                # commit together — a worker cannot see the task before the
+                # article, and a crash cannot lose the enqueue. `on_commit`
+                # would reopen that window.
+                #
+                # The backdating guard stays here: the task only gets an id,
+                # and from the row alone a backdated publish and a live publish
+                # the worker was slow to reach look identical.
+                from api.tasks.notifications import (  # noqa: PLC0415
+                    create_article_notifications,
+                )
 
-        if not _is_backdated(effective_published_at):
-            # Notification fan-out is owned by the notifications service so
-            # the same trigger drives email + in-app paths consistently.
-            from services import HANDLERS  # noqa: PLC0415
-
-            HANDLERS.notifications.create_notifications_for_article(article.id)
+                create_article_notifications.enqueue(str(article.id))
 
         return article
 
@@ -225,11 +251,132 @@ class DjangoArticleHandler(ArticleHandlerInterface):
     # Helpers
     # ------------------------------------------------------------------
 
+    def _apply_listing_image(
+        self,
+        article: Article,
+        *,
+        listing_image_id: UUID | None | UnsetType,
+        listing_crop: dict[str, float] | None | UnsetType,
+        listing_image_mode: str | None,
+    ) -> list[str]:
+        """Settle the listing image, its crop and its mode; return fields touched.
+
+        Called on every update, because ``auto`` is resolved on save rather than
+        on read — a listing card is then a plain FK join instead of a per-card
+        subquery.
+        """
+        mode = self._resolve_mode(
+            article,
+            listing_image_id=listing_image_id,
+            listing_crop=listing_crop,
+            listing_image_mode=listing_image_mode,
+        )
+
+        if mode == ListingImageMode.NONE:
+            image: ProjectImage | None = None
+            rect: dict[str, float] | None = None
+        elif mode == ListingImageMode.AUTO:
+            # Read off the prefetch: `.uploaded()` on the related manager would
+            # issue a fresh query and throw the prefetch away. `is_uploaded` is
+            # the documented in-memory twin of `.uploaded()`, and this is the
+            # same filter and sort `ArticleOut.resolve_images` applies, so the
+            # wizard's list and `auto`'s pick stay in the same order.
+            # `ProjectImage.Meta.ordering` leads with display_order, which is
+            # identical across an article's uploads, so order explicitly.
+            image = next(
+                iter(
+                    sorted(
+                        (img for img in article.images.all() if img.is_uploaded),
+                        key=lambda img: img.created_at,
+                    )
+                ),
+                None,
+            )
+            rect = None
+        else:
+            image = self._chosen_image(article, listing_image_id)
+            rect = self._chosen_crop(
+                article,
+                image,
+                listing_crop=listing_crop,
+                image_changed=(image.pk if image else None) != article.listing_image_id,
+            )
+
+        touched: list[str] = []
+        if (image.pk if image else None) != article.listing_image_id:
+            article.listing_image = image
+            touched.append("listing_image")
+        if rect != article.listing_crop:
+            article.listing_crop = rect
+            touched.append("listing_crop")
+        if mode != article.listing_image_mode:
+            article.listing_image_mode = mode
+            touched.append("listing_image_mode")
+        return touched
+
+    def _resolve_mode(
+        self,
+        article: Article,
+        *,
+        listing_image_id: UUID | None | UnsetType,
+        listing_crop: dict[str, float] | None | UnsetType,
+        listing_image_mode: str | None,
+    ) -> str:
+        """An explicit mode wins; otherwise touching the image or its framing
+        commits the author's choice, so the next save does not re-derive the
+        image out from under a rectangle they just drew.
+        """
+        if listing_image_mode is not None:
+            return listing_image_mode
+        if listing_image_id is not UNSET or listing_crop is not UNSET:
+            return ListingImageMode.CHOSEN
+        return article.listing_image_mode
+
+    def _chosen_image(
+        self,
+        article: Article,
+        listing_image_id: UUID | None | UnsetType,
+    ) -> ProjectImage | None:
+        if listing_image_id is UNSET:
+            return article.listing_image
+        return self._resolve_listing_image(listing_image_id, article.project_id)
+
+    def _chosen_crop(
+        self,
+        article: Article,
+        image: ProjectImage | None,
+        *,
+        listing_crop: dict[str, float] | None | UnsetType,
+        image_changed: bool,
+    ) -> dict[str, float] | None:
+        if listing_crop is not UNSET:
+            return self._validated_crop(listing_crop, image)
+        # A rectangle drawn on one image means nothing on another, so an image
+        # that changed or went away takes its framing with it.
+        if image_changed:
+            return None
+        return article.listing_crop
+
+    def _validated_crop(
+        self,
+        value: dict[str, float] | None,
+        image: ProjectImage | None,
+    ) -> dict[str, float] | None:
+        """Normalise an incoming crop, or raise ``InvalidCropError``."""
+        if value is None:
+            return None
+        if image is None:
+            raise InvalidCropError(crop.NO_LISTING_IMAGE)
+
+        rect = crop.parse_crop(value)
+        if rect is None:
+            raise InvalidCropError(crop.MALFORMED)
+        crop.validate_crop(rect, width=image.width, height=image.height)
+        return rect.to_dict()
+
     def _get_article(self, article_id: UUID) -> Article:
         try:
-            return Article.objects.select_related(
-                "project", "channel", "author", "hero_image"
-            ).get(pk=article_id)
+            return article_detail_queryset().get(pk=article_id)
         except Article.DoesNotExist as exc:
             raise ArticleNotFoundError from exc
 
@@ -244,15 +391,20 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             raise ChannelOnWrongProjectError
         return channel
 
-    def _resolve_hero_image(
-        self, hero_image_id: UUID | None, project_id: UUID
+    def _resolve_listing_image(
+        self, listing_image_id: UUID | None, project_id: UUID
     ) -> ProjectImage | None:
-        if hero_image_id is None:
+        if listing_image_id is None:
             return None
         try:
-            image = ProjectImage.objects.get(pk=hero_image_id)
+            image = ProjectImage.objects.get(pk=listing_image_id)
         except ProjectImage.DoesNotExist as exc:
-            raise HeroImageOnWrongProjectError from exc
+            raise ListingImageOnWrongProjectError from exc
         if image.project_id != project_id:
-            raise HeroImageOnWrongProjectError
+            raise ListingImageOnWrongProjectError
+        if not image.is_uploaded:
+            # Distinct from the wrong-project case: the id is one the client
+            # legitimately holds — it comes back from `upload-url` — but the
+            # PUT behind it never landed, so the card would render broken.
+            raise ListingImageNotUploadedError
         return image

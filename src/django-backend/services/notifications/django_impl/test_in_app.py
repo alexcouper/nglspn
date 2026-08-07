@@ -5,13 +5,18 @@ import pytest
 from django.utils import timezone
 from hamcrest import assert_that, contains_inanyorder, equal_to, has_length
 
+from api.schemas.article import ArticleOut
 from apps.notifications.models import Notification, NotificationCadence
 from services.notifications.django_impl.handler import DjangoNotificationHandler
 from tests.factories import (
+    ArticleFactory,
     DiscussionFactory,
     NotificationFactory,
     ProjectFactory,
+    ProjectImageFactory,
+    PublishedArticleFactory,
     UserFactory,
+    article_image,
 )
 
 _SEND_EMAIL = (
@@ -100,6 +105,151 @@ class TestListUnreadGroupsForUser:
         NotificationFactory(recipient=other, discussion=d)
 
         assert_that(handler.list_unread_groups_for_user(user.id), equal_to([]))
+
+
+def _group_icon_url(handler, user):
+    (group,) = handler.list_unread_groups_for_user(user.id)
+    return group.project.image_url
+
+
+@pytest.mark.django_db
+class TestGroupProjectIcon:
+    """`resolve_image_by_purpose` filters nothing, so the bell's prefetch is
+    the only thing keeping an article figure or an abandoned upload out of the
+    project icon."""
+
+    def test_discussion_group_uses_the_projects_own_image(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        icon = ProjectImageFactory(project=project, is_icon=True)
+        NotificationFactory(
+            recipient=user, discussion=DiscussionFactory(project=project)
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(icon.url))
+
+    def test_discussion_group_icon_ignores_article_uploads(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        article_image(ArticleFactory(project=project))
+        NotificationFactory(
+            recipient=user, discussion=DiscussionFactory(project=project)
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(None))
+
+    def test_discussion_group_icon_ignores_an_upload_that_never_completed(
+        self, handler
+    ) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, upload_status="pending")
+        NotificationFactory(
+            recipient=user, discussion=DiscussionFactory(project=project)
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(None))
+
+    def test_article_group_uses_the_projects_own_image(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        icon = ProjectImageFactory(project=project, is_icon=True)
+        NotificationFactory(
+            recipient=user,
+            discussion=None,
+            article=PublishedArticleFactory(project=project),
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(icon.url))
+
+    def test_article_group_icon_ignores_article_uploads(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        article_image(ArticleFactory(project=project))
+        NotificationFactory(
+            recipient=user,
+            discussion=None,
+            article=PublishedArticleFactory(project=project),
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(None))
+
+    def test_article_group_icon_ignores_an_upload_that_never_completed(
+        self, handler
+    ) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, upload_status="pending")
+        NotificationFactory(
+            recipient=user,
+            discussion=None,
+            article=PublishedArticleFactory(project=project),
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(None))
+
+
+def _article_group_excerpt(handler, user, article) -> str:
+    NotificationFactory(recipient=user, discussion=None, article=article)
+    [group] = handler.list_unread_groups_for_user(user.id)
+    return group.latest_body_excerpt
+
+
+@pytest.mark.django_db
+class TestArticleGroupExcerpt:
+    def test_prefers_the_authored_summary(self, handler) -> None:
+        article = PublishedArticleFactory(
+            body="## Ignored\n\nDerived from the body.",
+            summary="The authored summary.",
+        )
+
+        excerpt = _article_group_excerpt(handler, UserFactory(), article)
+
+        assert_that(excerpt, equal_to("The authored summary."))
+
+    def test_flattens_markdown_when_there_is_no_summary(self, handler) -> None:
+        article = PublishedArticleFactory(
+            body=(
+                "# Why we rewrote the indexer\n\n"
+                "![diagram](https://cdn.example.com/x.png)\n\n"
+                "We replaced the crawler."
+            ),
+        )
+
+        excerpt = _article_group_excerpt(handler, UserFactory(), article)
+
+        assert_that(excerpt, equal_to("We replaced the crawler."))
+
+    @pytest.mark.parametrize(
+        ("body", "summary"),
+        [
+            ("## Ignored\n\nDerived from the body.", "The authored summary."),
+            ("# A heading\n\n![x](https://cdn.example.com/x.png)\n\nReal text.", ""),
+            ("Plain [link](https://example.com) and `code`.", ""),
+        ],
+    )
+    def test_matches_the_article_detail_summary(self, handler, body, summary) -> None:
+        # The bell and the article detail must not grow two spellings of the
+        # same rule again. Bodies here are short enough that the differing
+        # `limit` values cannot mask a divergence in the derivation itself.
+        article = PublishedArticleFactory(body=body, summary=summary)
+
+        excerpt = _article_group_excerpt(handler, UserFactory(), article)
+
+        assert_that(excerpt, equal_to(ArticleOut.resolve_summary_display(article)))
+
+    def test_a_discussion_excerpt_keeps_literal_markdown_characters(
+        self, handler
+    ) -> None:
+        user = UserFactory()
+        discussion = DiscussionFactory(body="Try [this](that) with <T> please")
+        NotificationFactory(recipient=user, discussion=discussion)
+
+        [group] = handler.list_unread_groups_for_user(user.id)
+
+        assert_that(
+            group.latest_body_excerpt, equal_to("Try [this](that) with <T> please")
+        )
 
 
 @pytest.mark.django_db
@@ -292,7 +442,7 @@ class TestNeverCadenceCreatesRowNoEmail:
     def test_in_app_delivery_works_for_never(self, handler) -> None:
         from apps.projects.models import ProjectStatus  # noqa: PLC0415
 
-        owner = UserFactory(notification_frequency=NotificationCadence.NEVER)
+        owner = UserFactory(discussion_email_frequency=NotificationCadence.NEVER)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)
         author = UserFactory()
         discussion = DiscussionFactory(project=project, author=author)
@@ -328,7 +478,7 @@ class TestBatchDigestExcludesReadInApp:
             ".DjangoEmailHandler"
             ".send_discussion_digest_email"
         ) as mock_digest:
-            handler.send_batch_notifications(cadence)
+            handler.send_discussion_digest(cadence)
 
         sent = mock_digest.call_args[1]["notifications"]
         assert_that([n.id for n in sent], equal_to([unread_n.id]))

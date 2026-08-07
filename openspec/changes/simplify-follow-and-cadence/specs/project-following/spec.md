@@ -209,31 +209,41 @@ The endpoint SHALL return 200 with the channel's current `followed: true` state 
 
 The platform SHALL expose `DELETE /api/projects/{slug}/follow/channels/{channel_id}`, authentication required. The endpoint SHALL hard-delete the `FollowedChannel` row for the requesting user's `Follow` on the project and the specified channel.
 
-The endpoint SHALL be idempotent: deleting a non-existent `FollowedChannel` SHALL return 204. The endpoint SHALL NOT delete the user's `Follow` row, even when the deleted `FollowedChannel` was the user's last followed channel on the project — an empty-channels-followed `Follow` is a valid state (the user can re-enrol channels via the popover).
+When the delete leaves the `Follow` with no `FollowedChannel` rows, the endpoint SHALL delete the `Follow` as well. A `Follow` with no channels notifies about nothing, so dropping the last channel is a full unfollow rather than a silently inert follow that still reports `is_following = true`.
+
+The endpoint SHALL return `200` with a `FollowStateResponse` rather than `204`, so the caller learns the resulting project-level state instead of re-deriving the last-channel rule client-side.
+
+The endpoint SHALL be idempotent while other channels remain: deleting a non-existent `FollowedChannel` on a `Follow` that still has others SHALL return `200` with `is_followed = true`. Once the `Follow` itself is gone, a repeat SHALL return 404.
 
 The endpoint SHALL return 404 if the project doesn't exist, the channel doesn't belong to the project, or the user is not following the project. The endpoint SHALL return 401 for unauthenticated requests.
 
 #### Scenario: Unfollow an individually-followed channel
 
-- **GIVEN** an authenticated user U following project P with a `FollowedChannel` row for channel C
+- **GIVEN** an authenticated user U following project P with `FollowedChannel` rows for channels C and D
 - **WHEN** U DELETEs `/api/projects/{P.slug}/follow/channels/{C.id}`
-- **THEN** the response is 204
+- **THEN** the response is `200` with `is_followed = true`
 - **AND** no `FollowedChannel` row exists for `(U's Follow on P, C)`
 - **AND** the `Follow` row for `(U, P)` is unchanged
 
-#### Scenario: Unfollow the last channel keeps the Follow
+#### Scenario: Unfollowing the last channel unfollows the project
 
 - **GIVEN** an authenticated user U following project P with `FollowedChannel` rows for exactly one channel C
 - **WHEN** U DELETEs `/api/projects/{P.slug}/follow/channels/{C.id}`
-- **THEN** the response is 204
+- **THEN** the response is `200` with `is_followed = false`
 - **AND** no `FollowedChannel` row remains
-- **AND** the `Follow` row for `(U, P)` is unchanged (still present, no children)
+- **AND** the `Follow` row for `(U, P)` is deleted
 
-#### Scenario: Unfollow when not followed is a no-op
+#### Scenario: Unfollow a channel that is already not followed
 
-- **GIVEN** an authenticated user U following project P, with no `FollowedChannel` row for channel C
+- **GIVEN** an authenticated user U following project P with a `FollowedChannel` row for channel D but none for channel C
 - **WHEN** U DELETEs `/api/projects/{P.slug}/follow/channels/{C.id}`
-- **THEN** the response is 204
+- **THEN** the response is `200` with `is_followed = true`
+
+#### Scenario: Repeating the last-channel unfollow is a 404
+
+- **GIVEN** an authenticated user U who has just unfollowed their last channel on project P, so no `Follow` row remains
+- **WHEN** U DELETEs `/api/projects/{P.slug}/follow/channels/{C.id}` again
+- **THEN** the response is 404
 
 ### Requirement: Data migration sweeps existing FollowChannelPreference rows
 
@@ -244,7 +254,11 @@ A one-shot data migration SHALL collapse every existing `FollowChannelPreference
 
 `in_app_enabled` SHALL NOT be consulted. Rows seeded by `follows/0002` carry `in_app_enabled = True` unconditionally — a value that migration wrote, not one the user chose — so any rule that ORs the two booleans matches every legacy row and discards the email opt-out it was meant to preserve.
 
-The migration SHALL NOT delete any `Follow` row, even when the sweep removes the last `FollowedChannel` underneath it — that's a valid (if uncommon) "I follow this project, currently subscribed to none of its channels" state. The user can re-enrol via the popover.
+The migration SHALL NOT delete any `Follow` row, even when the sweep removes the last `FollowedChannel` underneath it.
+
+This is a deliberate divergence from the API, which *does* unfollow the project when a user drops their last channel (see "Endpoint to unfollow a single channel"). Unfollowing in bulk from a migration is a larger action than the sweep is willing to take, and the affected users receive nothing from the project either way. The consequence is a `Follow` with no channels — a state the API will no longer produce, so any such row is legacy by definition. It reports `is_following = true` (`services/follows/django_impl/query.py:49`) and so still shows as "Following" on the project page and on `/profile/following`, while delivering nothing. The user can repair it by re-enrolling a channel from the popover, which works because `follow_channel` only needs the `Follow` to exist.
+
+Expect this cohort to be small: `follows/0002` seeds the house project's `Updates` channel with `email_enabled = True` unconditionally, so no house-project `Follow` can be emptied by the sweep, and `POST /follow` creates channels with `email_enabled` defaulting to `True`. Only a user who deliberately turned email off on *every* channel of a project can land here.
 
 The migration SHALL NOT add any `Follow` rows. Users who explicitly unfollowed a project pre-migration (no `Follow` row exists) stay unfollowed — this includes users who explicitly unfollowed the house project. The sweep operates purely on `FollowChannelPreference` rows that already exist; the new-user auto-follow signal handles future signups.
 

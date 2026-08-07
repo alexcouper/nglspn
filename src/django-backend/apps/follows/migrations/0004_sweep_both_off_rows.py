@@ -26,9 +26,17 @@ def sweep_email_disabled(apps, schema_editor):
 
     Rows where the user asked for in-app but not email are lost to the
     collapse — that state is not expressible once the booleans are gone, and
-    erring toward a quiet inbox is the safer direction. Leaves Follow rows
-    untouched: a Follow with no channels is a valid "following, no channels"
-    state (see design decision 6).
+    erring toward a quiet inbox is the safer direction.
+
+    Leaves Follow rows untouched, including any this empties. Note that the API
+    does the opposite: `unfollow_channel` deletes the Follow when it removes the
+    last FollowedChannel. Unfollowing in bulk from a migration is a bigger
+    action than this sweep wants, and the users concerned receive nothing from
+    the project either way — but the consequence is that an emptied Follow is a
+    legacy-only state that still reports `is_following = true`. Small by
+    construction: 0002 seeds the house project's Updates channel with
+    email_enabled=True unconditionally, so no house Follow can be emptied here.
+    See design decision 6.
     """
     FollowedChannel = apps.get_model("follows", "FollowedChannel")
     qs = FollowedChannel.objects.filter(email_enabled=False)

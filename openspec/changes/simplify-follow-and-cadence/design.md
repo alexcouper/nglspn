@@ -94,7 +94,11 @@ What the narrower rule costs: a user who wanted in-app but not email on a channe
 
 Users with no `Follow(user, house_project)` row stay unfollowed. That's an explicit choice — if they didn't follow the house project pre-change, they don't get auto-subscribed by the migration. This is the "respect the user's choice" interpretation we agreed to.
 
-A `Follow` row whose `FollowedChannel` set becomes empty after the sweep is **left in place**. It's a "you follow this project but currently follow none of its channels" state — the popover still works, and the user can re-enable channels. Deleting the empty `Follow` would silently change the "I am a follower" semantic; better to leave it.
+A `Follow` row whose `FollowedChannel` set becomes empty after the sweep is **left in place** — the popover still works, and the user can re-enable channels.
+
+**This no longer matches the API.** `unfollow_channel` deletes the `Follow` when it removes the last `FollowedChannel`, because a `Follow` with no channels notifies about nothing and reporting it as "Following" is a lie. The divergence is deliberate but narrow: a migration unfollowing people in bulk is a larger action than this sweep is willing to take, and the users concerned get nothing from the project either way. It does mean an emptied `Follow` is a legacy-only state — the API will not create another one, and nothing cleans up the existing ones.
+
+If that proves untidy, the fix is to make the sweep delete the `Follow` too, not to reinstate the inert-follow semantics on the endpoint.
 
 ### 7. Auto-follow on Follow creation
 

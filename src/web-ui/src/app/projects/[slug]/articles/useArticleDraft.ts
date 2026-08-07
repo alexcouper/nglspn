@@ -3,158 +3,117 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import type {
-  Article,
-  Channel,
-  ListingImageMode,
-  Project,
-  ProjectImage,
-} from "@/lib/api";
-import { ApiRequestError } from "@/lib/api/base";
+import type { Article, Project, ProjectImage } from "@/lib/api";
 import type { CropRect } from "@/components/CroppedImage";
-
-export interface ArticleFormState {
-  title: string;
-  body: string;
-  channel_id: string;
-  // The authored standfirst. "" is meaningful: it clears the override and
-  // returns the card to the summary derived server-side from the body.
-  summary: string;
-  listing_image_id: string | null;
-  // The author's 16:9 framing of the listing image. Null renders as 16:9
-  // centred, which is what `auto` always gets.
-  listing_crop: CropRect | null;
-  listing_image_mode: ListingImageMode;
-}
+import {
+  type ArticleFormFields,
+  shouldDiscardDraft,
+} from "./articleDraftState";
+import { useArticleForm } from "./useArticleForm";
+import { useArticleImages } from "./useArticleImages";
+import { useArticleLoad } from "./useArticleLoad";
+import { useArticleMutations } from "./useArticleMutations";
+import { useLeaveGuard } from "./useLeaveGuard";
 
 interface Options {
   project: Project;
   // Present → editing an existing article. Absent → the /new route, which
-  // creates a draft immediately (see below) rather than waiting for a save.
+  // creates a draft immediately (see `useArticleLoad`) rather than waiting for
+  // a save.
   articleId?: string;
 }
 
-// True when nothing has been written to this draft. Used to sweep up the empty
-// draft that opening /new creates when the author leaves without editing.
+// Everything the article authoring page needs, assembled from one unit per
+// concern: form state, images, the initial load, persistence and the leave
+// guard. This is the only thing the page imports — the units below it are an
+// implementation detail, so they can be re-cut without touching consumers.
 //
-// Reads the live form rather than the last-saved article for the fields the
-// author can edit without a save: typing only a headline and leaving used to
-// delete the draft and the headline with it.
-function isUntouched(
-  article: Article,
-  form: ArticleFormState | null,
-  body: string,
-): boolean {
-  return (
-    !(form?.title ?? article.title).trim() &&
-    !body.trim() &&
-    !(form?.listing_image_id ?? article.listing_image_id) &&
-    article.images.length === 0
-  );
-}
-
-// Form + persistence state for the article authoring page.
-//
-// Separated from the page component so the component is mostly layout/wiring.
-// Owns: the eager draft creation on /new, initial load (channels + article),
-// form snapshot (form fields plus the uncontrolled MDXEditor body held in a
-// ref), and save/publish/delete.
+// What is left here is what genuinely spans them: the shared error message, the
+// article's routing decisions, and the sweep that reads the last committed
+// state at unmount.
 export function useArticleDraft({ project, articleId }: Options) {
   const router = useRouter();
   const projectRef = project.slug ?? project.id;
 
-  const [channels, setChannels] = useState<Channel[]>([]);
-  const [article, setArticle] = useState<Article | null>(null);
-  const [form, setForm] = useState<ArticleFormState | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  // One message, whatever produced it: the page has a single place to show it.
   const [error, setError] = useState("");
-  const [successMessage, setSuccessMessage] = useState("");
-  const [isSaving, setIsSaving] = useState(false);
-  const [isPublishing, setIsPublishing] = useState(false);
-  const [isDeleting, setIsDeleting] = useState(false);
 
-  // Track the in-memory body separately from the article form to avoid
-  // MDXEditor re-keying on every keystroke (it is uncontrolled internally).
-  const bodyRef = useRef<string>("");
-  // React StrictMode runs effects twice in development. Without this guard
-  // opening /new would create two drafts per visit.
-  const creatingRef = useRef(false);
+  const {
+    fields,
+    getBody,
+    reset,
+    updateFields,
+    handleBodyChange,
+    snapshot,
+    applySaved,
+    isDirty: fieldsAreDirty,
+  } = useArticleForm();
+
   // Read by the unmount cleanup, which cannot see current state.
   const latestRef = useRef<{
     article: Article | null;
-    form: ArticleFormState | null;
+    fields: ArticleFormFields | null;
     leaving: boolean;
   }>({
     article: null,
-    form: null,
+    fields: null,
     leaving: false,
   });
 
-  const isEditing = !!articleId;
+  const handleCreated = useCallback(
+    (created: Article) => {
+      // /new and /edit are different routes, so the replace unmounts this page.
+      // Without this the untouched-draft sweep below would delete the draft we
+      // are navigating to.
+      latestRef.current.leaving = true;
+      router.replace(`/projects/${projectRef}/articles/edit/${created.id}`);
+    },
+    [projectRef, router],
+  );
 
-  useEffect(() => {
-    let cancelled = false;
+  const { channels, article, setArticle, isLoading } = useArticleLoad({
+    projectRef,
+    articleId,
+    onLoaded: reset,
+    onCreated: handleCreated,
+    onError: setError,
+  });
 
-    async function load() {
-      try {
-        const channelList = await api.channels.list(projectRef);
-        if (cancelled) return;
-        setChannels(channelList);
+  const { images, listingImage, adoptImage } = useArticleImages(
+    article,
+    setArticle,
+    fields?.listing_image_id ?? null,
+  );
 
-        // An upload cannot name an article that does not exist yet, so /new
-        // creates an empty draft up front and swaps the URL to /edit/<id> —
-        // the same swap that used to happen on first save, moved earlier.
-        let loaded: Article;
-        if (isEditing) {
-          loaded = await api.articles.get(projectRef, articleId!);
-        } else {
-          if (creatingRef.current) return;
-          creatingRef.current = true;
-          loaded = await api.articles.create(projectRef, {
-            channel_id: channelList[0]?.id ?? "",
-            title: "",
-            body: "",
-          });
-          if (cancelled) return;
-          // /new and /edit are different routes, so the replace unmounts this
-          // page. Without this the untouched-draft sweep below would delete
-          // the draft we are navigating to.
-          latestRef.current.leaving = true;
-          router.replace(`/projects/${projectRef}/articles/edit/${loaded.id}`);
-        }
-        if (cancelled) return;
+  const handlePersisted = useCallback(
+    (updated: Article) => {
+      setArticle(updated);
+      applySaved(updated);
+    },
+    [setArticle, applySaved],
+  );
 
-        setArticle(loaded);
-        bodyRef.current = loaded.body;
-        setForm({
-          title: loaded.title,
-          body: loaded.body,
-          channel_id: loaded.channel.id,
-          summary: loaded.summary,
-          listing_image_id: loaded.listing_image_id,
-          listing_crop: loaded.listing_crop,
-          listing_image_mode: loaded.listing_image_mode,
-        });
-        setIsLoading(false);
-      } catch (err) {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to load article");
-        setIsLoading(false);
-      }
-    }
-
-    load();
-    return () => {
-      cancelled = true;
-    };
-  }, [isEditing, articleId, projectRef, router]);
+  const {
+    save: persist,
+    publish: persistAndPublish,
+    remove: deleteArticle,
+    isSaving,
+    isPublishing,
+    isDeleting,
+    successMessage,
+  } = useArticleMutations({
+    projectRef,
+    article,
+    onPersisted: handlePersisted,
+    onError: setError,
+  });
 
   // Kept in an effect, not written during render: the cleanup below is the
   // only reader, and it runs after the last commit.
   useEffect(() => {
     latestRef.current.article = article;
-    latestRef.current.form = form;
-  }, [article, form]);
+    latestRef.current.fields = fields;
+  }, [article, fields]);
 
   // Best-effort sweep of the draft /new created when the author leaves without
   // writing anything. What survives it is a draft in the author's own list,
@@ -164,207 +123,78 @@ export function useArticleDraft({ project, articleId }: Options) {
     return () => {
       const current = state.article;
       if (state.leaving || !current) return;
-      if (!isUntouched(current, state.form, bodyRef.current)) return;
+      if (
+        !shouldDiscardDraft({
+          article: current,
+          fields: state.fields,
+          body: getBody(),
+        })
+      )
+        return;
       api.articles.delete(projectRef, current.id).catch(() => {});
     };
-  }, [projectRef]);
+  }, [projectRef, getBody]);
 
-  const handleBodyChange = useCallback((markdown: string) => {
-    bodyRef.current = markdown;
-  }, []);
-
-  const updateForm = useCallback((patch: Partial<ArticleFormState>) => {
-    setForm((prev) => (prev ? { ...prev, ...patch } : prev));
-  }, []);
-
-  // Merge the current form fields with the live MDXEditor body. Used by every
-  // handler that hits the network so they never persist stale body text.
-  const snapshotForm = useCallback((): ArticleFormState | null => {
-    if (!form) return null;
-    const current: ArticleFormState = { ...form, body: bodyRef.current };
-    setForm(current);
-    return current;
-  }, [form]);
-
-  // Whether anything would be lost by leaving now. The body is the reason this
-  // has to exist at all: it lives in `bodyRef` until a save, so nothing outside
-  // this hook can tell that it has moved on from what the server holds.
-  const isDirty = useCallback((): boolean => {
-    if (!article || !form) return false;
-    return (
-      bodyRef.current !== article.body ||
-      form.title !== article.title ||
-      form.summary !== article.summary ||
-      form.channel_id !== article.channel.id ||
-      form.listing_image_id !== article.listing_image_id ||
-      form.listing_image_mode !== article.listing_image_mode ||
-      JSON.stringify(form.listing_crop) !== JSON.stringify(article.listing_crop)
-    );
-  }, [article, form]);
-
-  // Covers browser navigation only — a closed tab, a reload, a typed URL.
-  // In-app navigation never fires this, so the links that leave the editor
-  // confirm for themselves.
-  useEffect(() => {
-    const warn = (event: BeforeUnloadEvent) => {
-      if (!isDirty()) return;
-      event.preventDefault();
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [isDirty]);
+  const isDirty = useCallback(
+    () => fieldsAreDirty(article),
+    [fieldsAreDirty, article],
+  );
+  const confirmLeave = useLeaveGuard(isDirty);
 
   // The wizard's outcome: an image and the rectangle the author drew on it.
   // Any choice commits the mode, so the next save does not re-derive the image
   // out from under a rectangle they just drew.
   const chooseListingImage = useCallback(
     (image: ProjectImage, crop: CropRect | null) => {
-      // The wizard can hand back an image it uploaded itself, which the loaded
-      // article knows nothing about. Both `images` and `listingImage` are
-      // derived from `article.images`, so without adopting it here the panel
-      // would show "No image" next to "Your choice." until the next save wrote
-      // the server's copy back.
-      setArticle((prev) =>
-        prev && !prev.images.some((existing) => existing.id === image.id)
-          ? { ...prev, images: [...prev.images, image] }
-          : prev,
-      );
-      setForm((prev) =>
-        prev
-          ? {
-              ...prev,
-              listing_image_id: image.id,
-              listing_crop: crop,
-              listing_image_mode: "chosen",
-            }
-          : prev,
-      );
+      adoptImage(image);
+      updateFields({
+        listing_image_id: image.id,
+        listing_crop: crop,
+        listing_image_mode: "chosen",
+      });
     },
-    [],
+    [adoptImage, updateFields],
   );
 
   const removeListingImage = useCallback(() => {
-    setForm((prev) =>
-      prev
-        ? {
-            ...prev,
-            listing_image_id: null,
-            listing_crop: null,
-            listing_image_mode: "none",
-          }
-        : prev,
-    );
-  }, []);
-
-  const persistDraft = useCallback(
-    async (current: ArticleFormState): Promise<Article | null> => {
-      if (!article) return null;
-      try {
-        const updated = await api.articles.update(projectRef, article.id, {
-          title: current.title,
-          body: current.body,
-          channel_id: current.channel_id,
-          summary: current.summary,
-          listing_image_id: current.listing_image_id,
-          listing_crop: current.listing_crop,
-          listing_image_mode: current.listing_image_mode,
-        });
-        setArticle(updated);
-        // `auto` is resolved server-side on every save, so the response is the
-        // only place the resolved image id exists.
-        setForm((prev) =>
-          prev
-            ? {
-                ...prev,
-                listing_image_id: updated.listing_image_id,
-                listing_crop: updated.listing_crop,
-                listing_image_mode: updated.listing_image_mode,
-              }
-            : prev,
-        );
-        return updated;
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to save article");
-        return null;
-      }
-    },
-    [article, projectRef],
-  );
+    updateFields({
+      listing_image_id: null,
+      listing_crop: null,
+      listing_image_mode: "none",
+    });
+  }, [updateFields]);
 
   const save = useCallback(async (): Promise<Article | null> => {
-    const current = snapshotForm();
-    if (!current) return null;
-    setError("");
-    setSuccessMessage("");
-    setIsSaving(true);
-    const saved = await persistDraft(current);
-    setIsSaving(false);
-    if (saved) {
-      setSuccessMessage(saved.state === "published" ? "Saved" : "Draft saved");
-      setTimeout(() => setSuccessMessage(""), 2500);
-    }
-    return saved;
-  }, [snapshotForm, persistDraft]);
+    const payload = snapshot();
+    if (!payload) return null;
+    return persist(payload);
+  }, [snapshot, persist]);
 
+  // The two mutations that end the session: the page they were performed on is
+  // gone, so the hook takes itself off the screen. `leaving` suppresses the
+  // sweep for the unmount that follows.
   const publish = useCallback(async () => {
-    const current = snapshotForm();
-    if (!current) return;
-    setError("");
-    setIsPublishing(true);
-    const saved = await persistDraft(current);
-    if (!saved) {
-      setIsPublishing(false);
-      return;
-    }
-    try {
-      await api.articles.publish(projectRef, saved.id, { published_at: null });
-      latestRef.current.leaving = true;
-      router.push(`/projects/${projectRef}`);
-    } catch (err) {
-      if (err instanceof ApiRequestError && err.status === 422) {
-        const detail =
-          typeof err.body.detail === "string"
-            ? err.body.detail
-            : "Article is not ready to publish.";
-        setError(detail);
-      } else {
-        setError(
-          err instanceof Error ? err.message : "Failed to publish article",
-        );
-      }
-      setIsPublishing(false);
-    }
-  }, [snapshotForm, persistDraft, projectRef, router]);
+    const payload = snapshot();
+    if (!payload) return;
+    const published = await persistAndPublish(payload);
+    if (!published) return;
+    latestRef.current.leaving = true;
+    router.push(`/projects/${projectRef}`);
+  }, [snapshot, persistAndPublish, projectRef, router]);
 
   const remove = useCallback(async () => {
-    if (!article) return;
-    setIsDeleting(true);
-    try {
-      await api.articles.delete(projectRef, article.id);
-      latestRef.current.leaving = true;
-      router.push(`/projects/${projectRef}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to delete article");
-      setIsDeleting(false);
-    }
-  }, [article, projectRef, router]);
+    const deleted = await deleteArticle();
+    if (!deleted) return;
+    latestRef.current.leaving = true;
+    router.push(`/projects/${projectRef}`);
+  }, [deleteArticle, projectRef, router]);
 
   return {
     channels,
     article,
-    form,
-    // The article's own uploads — the wizard's selection list. Comes off the
-    // image-article link, so it holds whatever was uploaded for this article
-    // whether or not it is in the body.
-    images: article?.images ?? [],
-    // The image the form currently points at, not the last-saved one: the
-    // panel must show what the wizard just picked, before any save.
-    listingImage:
-      article?.images.find((image) => image.id === form?.listing_image_id) ??
-      (form?.listing_image_id &&
-      form.listing_image_id === article?.listing_image_id
-        ? article.listing_image
-        : null),
+    form: fields,
+    images,
+    listingImage,
     isLoading,
     error,
     setError,
@@ -374,9 +204,10 @@ export function useArticleDraft({ project, articleId }: Options) {
     isDeleting,
     isPublished: article?.state === "published",
     handleBodyChange,
-    updateForm,
-    snapshotForm,
+    updateForm: updateFields,
+    snapshotForm: snapshot,
     isDirty,
+    confirmLeave,
     chooseListingImage,
     removeListingImage,
     save,

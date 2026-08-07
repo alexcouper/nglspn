@@ -34,6 +34,13 @@ vi.mock("@/lib/api", () => ({
 // After the mock, so the tests read the stubs rather than the real client.
 const { api } = await import("@/lib/api");
 
+// From "@/lib/api/base", never from the mocked "@/lib/api" barrel: the error
+// mapping narrows with `instanceof`, and a second copy of these classes would
+// make every narrowing silently fall through to the fallback sentence.
+const { ApiRequestError, AuthExpiredError, AuthTransientError } = await import(
+  "@/lib/api/base"
+);
+
 const channels = api.channels.list as ReturnType<typeof vi.fn>;
 const articles = api.articles as unknown as Record<
   "get" | "create" | "update" | "delete" | "publish",
@@ -193,14 +200,30 @@ describe("opening /new", () => {
 });
 
 describe("a load that fails", () => {
-  it("reports the error rather than leaving the page with nothing", async () => {
-    articles.get.mockRejectedValue(new Error("Article not found"));
+  it("reports the backend's reason rather than leaving the page with nothing", async () => {
+    articles.get.mockRejectedValue(
+      new ApiRequestError(
+        "Article not found",
+        { detail: "Article not found" },
+        404,
+      ),
+    );
 
     const harness = await mountDraft({ articleId: "article-1" });
 
     expect(harness.draft().error).toBe("Article not found");
     expect(harness.draft().isLoading).toBe(false);
     expect(harness.draft().form).toBeNull();
+
+    await harness.unmount();
+  });
+
+  it("says it couldn't open the article when the failure has no reason to give", async () => {
+    articles.get.mockRejectedValue(new Error("kaboom"));
+
+    const harness = await mountDraft({ articleId: "article-1" });
+
+    expect(harness.draft().error).toBe("Couldn't open this article.");
 
     await harness.unmount();
   });
@@ -345,15 +368,55 @@ describe("saving", () => {
   });
 
   it("surfaces a failure instead of claiming the draft was saved", async () => {
-    articles.update.mockRejectedValue(new Error("Service unavailable"));
+    articles.update.mockRejectedValue(
+      new ApiRequestError(
+        "Service Unavailable",
+        { detail: "Service Unavailable" },
+        503,
+      ),
+    );
     const harness = await mountDraft({ articleId: "article-1" });
 
     await harness.act(async () => {
       await harness.draft().save();
     });
 
-    expect(harness.draft().error).toBe("Service unavailable");
+    expect(harness.draft().error).toBe(
+      "Something went wrong at our end. Nothing was saved — try again in a moment.",
+    );
     expect(harness.draft().successMessage).toBe("");
+
+    await harness.unmount();
+  });
+
+  it("does not tell the author they are logged out when the refresh blipped", async () => {
+    // base.ts keeps the tokens on a transient refresh failure — the author is
+    // still signed in and the retry will work.
+    articles.update.mockRejectedValue(new AuthTransientError());
+    const harness = await mountDraft({ articleId: "article-1" });
+
+    await harness.act(async () => {
+      await harness.draft().save();
+    });
+
+    expect(harness.draft().error).toBe(
+      "Couldn't reach the server. Nothing was sent — your work is still here. Try again.",
+    );
+
+    await harness.unmount();
+  });
+
+  it("says the session ended only when the credentials were actually rejected", async () => {
+    articles.update.mockRejectedValue(new AuthExpiredError());
+    const harness = await mountDraft({ articleId: "article-1" });
+
+    await harness.act(async () => {
+      await harness.draft().save();
+    });
+
+    expect(harness.draft().error).toBe(
+      "Your session has ended. Sign in again to continue.",
+    );
 
     await harness.unmount();
   });

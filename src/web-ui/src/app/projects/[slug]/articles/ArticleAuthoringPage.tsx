@@ -25,9 +25,6 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "listing", label: "Listing settings" },
 ];
 
-const LEAVE_PROMPT =
-  "You have unsaved changes to this article. Leave without saving?";
-
 interface Props {
   project: Project;
   // Present → editing an existing article; absent → the /new route, which
@@ -151,9 +148,7 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
               onClick={(e) => {
                 // The body is only in memory until a save, so leaving by the
                 // breadcrumb is as lossy as closing the tab.
-                if (draft.isDirty() && !window.confirm(LEAVE_PROMPT)) {
-                  e.preventDefault();
-                }
+                if (!draft.confirmLeave()) e.preventDefault();
               }}
             >
               {project.title}
@@ -261,7 +256,7 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
           <ArticleEditor
             projectRef={projectRef}
             articleId={article.id}
-            initialMarkdown={form.body}
+            initialMarkdown={article.body}
             onChange={draft.handleBodyChange}
           />
         </div>

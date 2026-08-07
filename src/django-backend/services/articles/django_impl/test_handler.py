@@ -1,12 +1,17 @@
 from __future__ import annotations
 
 import uuid
+from contextlib import contextmanager
 from datetime import timedelta
+from typing import TYPE_CHECKING
 from unittest.mock import patch
 
 import pytest
+from django.db import IntegrityError, connection
+from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
+from api.schemas.article import ArticleOut
 from apps.articles.models import (
     Article,
     ArticleGlobalVisibility,
@@ -38,10 +43,51 @@ from tests.factories import (
     article_image,
 )
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
 
 def _crop(x: float = 0.1, y: float = 0.2, w: float = 0.6) -> dict[str, float]:
     """A 16:9 crop of a square source."""
     return {"x": x, "y": y, "w": w, "h": w / CARD_RATIO, "ratio": CARD_RATIO}
+
+
+@contextmanager
+def _patched_enqueue():
+    """Stop the fan-out task at the queue boundary, yielding its `enqueue` mock.
+
+    The test settings pin `ImmediateBackend`, which runs the task body inline,
+    so without this a query count over `publish` measures the fan-out too. The
+    whole `Task` is replaced rather than its `enqueue` attribute because `Task`
+    is a frozen dataclass and `patch` cannot unset an attribute on one.
+    """
+    with patch("api.tasks.notifications.create_article_notifications") as fan_out_task:
+        yield fan_out_task.enqueue
+
+
+def _follow_channel_from_new_users(project, channel, *, count: int) -> None:
+    for _ in range(count):
+        follow = Follow.objects.create(user=UserFactory(), project=project)
+        FollowedChannel.objects.create(follow=follow, channel=channel)
+
+
+def _count_queries(work: Callable[[], object]) -> int:
+    with CaptureQueriesContext(connection) as queries:
+        work()
+    return len(queries)
+
+
+def _article_with_figures(count: int) -> Article:
+    article = ArticleFactory()
+    for _ in range(count):
+        article_image(article)
+    return article
+
+
+def _save_and_serialise(handler: DjangoArticleHandler, article_id) -> None:
+    """What a *Save draft* actually costs: the write plus the response body."""
+    article = handler.update_article(article_id, title="Edited")
+    ArticleOut.from_orm(article)
 
 
 @pytest.mark.django_db
@@ -136,6 +182,26 @@ class TestUpdateArticle:
     def test_unknown_article_raises(self):
         with pytest.raises(ArticleNotFoundError):
             self.handler.update_article(uuid.uuid4(), title="x")
+
+
+@pytest.mark.django_db
+class TestSaveDraftQueryCount:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_does_not_query_per_article_figure(self):
+        # `ArticleOut.from_orm` is the load-bearing half: the cost is in
+        # serialising `images` and their variants, not in the handler, so a
+        # count over `update_article` alone would pass without the prefetch.
+        one = _article_with_figures(1)
+        twelve = _article_with_figures(12)
+
+        one_figure = _count_queries(lambda: _save_and_serialise(self.handler, one.id))
+        twelve_figures = _count_queries(
+            lambda: _save_and_serialise(self.handler, twelve.id)
+        )
+
+        assert twelve_figures == one_figure
 
 
 @pytest.mark.django_db
@@ -264,16 +330,62 @@ class TestPublish:
 
         assert not Notification.objects.filter(recipient=follower).exists()
 
-    def test_live_publish_invokes_notification_handler(self):
+    def test_live_publish_enqueues_the_fan_out_task(self):
         article = ArticleFactory()
 
-        with patch(
-            "services.notifications.django_impl.handler"
-            ".DjangoNotificationHandler.create_notifications_for_article"
-        ) as fan_out:
+        with _patched_enqueue() as enqueue:
             self.handler.publish(article.id)
 
-        fan_out.assert_called_once_with(article.id)
+        # `str`, not `UUID`: the DatabaseBackend serialises task arguments
+        # through `normalize_json` and a bare UUID does not survive it. The
+        # ImmediateBackend used in tests would accept one silently.
+        enqueue.assert_called_once_with(str(article.id))
+
+    def test_backdated_publish_enqueues_nothing(self):
+        article = ArticleFactory()
+
+        with _patched_enqueue() as enqueue:
+            self.handler.publish(
+                article.id, published_at=timezone.now() - timedelta(days=7)
+            )
+
+        enqueue.assert_not_called()
+
+    def test_a_failed_publish_write_enqueues_nothing(self):
+        article = ArticleFactory()
+
+        with (
+            _patched_enqueue() as enqueue,
+            patch.object(Article, "save", side_effect=IntegrityError),
+            pytest.raises(IntegrityError),
+        ):
+            self.handler.publish(article.id)
+
+        enqueue.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestPublishQueryCount:
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def test_does_not_query_per_follower(self):
+        """The fan-out is O(N) by nature, so publish itself must not carry it."""
+        project = ProjectFactory()
+        channel = ChannelFactory(project=project, name="Updates")
+        _follow_channel_from_new_users(project, channel, count=1)
+        # Distinct titles: two articles sharing one would differ by the extra
+        # `.exists()` the slug collision loop costs, which is not what this
+        # test is about.
+        one = ArticleFactory(project=project, channel=channel, title="First")
+        twenty = ArticleFactory(project=project, channel=channel, title="Second")
+
+        with _patched_enqueue():
+            one_follower = _count_queries(lambda: self.handler.publish(one.id))
+            _follow_channel_from_new_users(project, channel, count=19)
+            twenty_followers = _count_queries(lambda: self.handler.publish(twenty.id))
+
+        assert twenty_followers == one_follower
 
 
 @pytest.mark.django_db

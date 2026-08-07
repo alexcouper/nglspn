@@ -18,6 +18,7 @@ from apps.articles.slugs import assign_unique_article_slug
 from apps.follows.models import Channel
 from apps.projects.models import ProjectImage
 from services.articles import crop
+from services.articles.django_impl.query import article_detail_queryset
 from services.articles.exceptions import (
     ArticleNotFoundError,
     ArticleNotPublishableError,
@@ -156,13 +157,23 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             article.save(update_fields=["state", "published_at", "global_visibility"])
             if article.slug is None:
                 assign_unique_article_slug(article)
+            if not _is_backdated(effective_published_at):
+                # Fan-out is ~2N queries on a house-channel publish, so it goes
+                # to the worker rather than the request. Enqueued *inside* the
+                # transaction on purpose: the queue is a table
+                # (django-tasks-db), so the task row and the PUBLISHED write
+                # commit together — a worker cannot see the task before the
+                # article, and a crash cannot lose the enqueue. `on_commit`
+                # would reopen that window.
+                #
+                # The backdating guard stays here: the task only gets an id,
+                # and from the row alone a backdated publish and a live publish
+                # the worker was slow to reach look identical.
+                from api.tasks.notifications import (  # noqa: PLC0415
+                    create_article_notifications,
+                )
 
-        if not _is_backdated(effective_published_at):
-            # Notification fan-out is owned by the notifications service so
-            # the same trigger drives email + in-app paths consistently.
-            from services import HANDLERS  # noqa: PLC0415
-
-            HANDLERS.notifications.create_notifications_for_article(article.id)
+                create_article_notifications.enqueue(str(article.id))
 
         return article
 
@@ -265,9 +276,22 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             image: ProjectImage | None = None
             rect: dict[str, float] | None = None
         elif mode == ListingImageMode.AUTO:
+            # Read off the prefetch: `.uploaded()` on the related manager would
+            # issue a fresh query and throw the prefetch away. `is_uploaded` is
+            # the documented in-memory twin of `.uploaded()`, and this is the
+            # same filter and sort `ArticleOut.resolve_images` applies, so the
+            # wizard's list and `auto`'s pick stay in the same order.
             # `ProjectImage.Meta.ordering` leads with display_order, which is
             # identical across an article's uploads, so order explicitly.
-            image = article.images.uploaded().order_by("created_at").first()
+            image = next(
+                iter(
+                    sorted(
+                        (img for img in article.images.all() if img.is_uploaded),
+                        key=lambda img: img.created_at,
+                    )
+                ),
+                None,
+            )
             rect = None
         else:
             image = self._chosen_image(article, listing_image_id)
@@ -352,13 +376,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
 
     def _get_article(self, article_id: UUID) -> Article:
         try:
-            return (
-                Article.objects.select_related(
-                    "project", "channel", "author", "listing_image"
-                )
-                .prefetch_related("listing_image__variants")
-                .get(pk=article_id)
-            )
+            return article_detail_queryset().get(pk=article_id)
         except Article.DoesNotExist as exc:
             raise ArticleNotFoundError from exc
 

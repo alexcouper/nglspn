@@ -14,17 +14,23 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
 
+def article_detail_queryset() -> QuerySet[Article]:
+    """Everything `ArticleOut` reads, without a query per figure.
+
+    `images` is the listing-image wizard's selection list on `ArticleOut`, and
+    each of those serialises its variants — so an article with N figures costs
+    1 + N extra queries to serialise without this. Used by the read path and by
+    the write handler's re-read, because `PATCH` and `publish` return
+    `ArticleOut` too and a second prefetch list would drift from this one.
+    """
+    return Article.objects.select_related(
+        "project", "channel", "author", "listing_image"
+    ).prefetch_related("listing_image__variants", "images__variants")
+
+
 class DjangoArticleQuery(ArticleQueryInterface):
     def get_by_id(self, article_id: UUID) -> Article | None:
-        return (
-            Article.objects.select_related(
-                "project", "channel", "author", "listing_image"
-            )
-            # `images` is the listing-image wizard's selection list on ArticleOut.
-            .prefetch_related("listing_image__variants", "images__variants")
-            .filter(pk=article_id)
-            .first()
-        )
+        return article_detail_queryset().filter(pk=article_id).first()
 
     def get_by_project_and_slug(
         self,
@@ -32,11 +38,7 @@ class DjangoArticleQuery(ArticleQueryInterface):
         article_slug: str,
     ) -> Article | None:
         return (
-            Article.objects.select_related(
-                "project", "channel", "author", "listing_image"
-            )
-            # `images` is the listing-image wizard's selection list on ArticleOut.
-            .prefetch_related("listing_image__variants", "images__variants")
+            article_detail_queryset()
             .filter(project__slug=project_slug, slug=article_slug)
             .first()
         )

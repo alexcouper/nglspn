@@ -15,6 +15,22 @@ def create_discussion_notifications(discussion_id: str) -> None:
     HANDLERS.notifications.create_notifications_for_discussion(UUID(discussion_id))
 
 
+@task()
+def create_article_notifications(article_id: str) -> None:
+    from services import HANDLERS  # noqa: PLC0415
+
+    try:
+        HANDLERS.notifications.create_notifications_for_article(UUID(article_id))
+    except Exception:
+        # django-tasks-db does not retry: `db_worker.run_task` marks the row
+        # FAILED and moves on. A FAILED row is not something anyone watches, so
+        # name the article in the log before letting it become one.
+        logger.exception(
+            "create_article_notifications failed: article_id=%s", article_id
+        )
+        raise
+
+
 # Per-kind digest tasks. Nothing in this repo enqueues them: the schedule is a
 # set of Kubernetes CronJobs in the naglasupan-hq infra repo
 # (`k8s/base/notifications/`), each running

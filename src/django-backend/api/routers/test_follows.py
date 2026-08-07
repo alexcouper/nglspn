@@ -203,32 +203,73 @@ class TestFollowChannelEndpoint:
         p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
         follow = Follow.objects.create(user=user, project=p)
         c = Channel.objects.get(project=p, name="Updates")
+        other = Channel.objects.create(project=p, name="Releases")
+        FollowedChannel.objects.create(follow=follow, channel=c)
+        FollowedChannel.objects.create(follow=follow, channel=other)
+
+        response = client.delete(
+            f"/api/projects/{p.slug}/follow/channels/{c.id}", **auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["is_followed"], is_(True))
+        assert_that(
+            FollowedChannel.objects.filter(follow=follow, channel=c).exists(),
+            is_(False),
+        )
+        # Another channel is still followed, so the Follow row stays.
+        assert_that(Follow.objects.filter(user=user, project=p).exists(), is_(True))
+
+    def test_delete_of_last_channel_unfollows_the_project(
+        self, client, user, auth_headers
+    ):
+        Follow.objects.filter(user=user).delete()
+        p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
+        follow = Follow.objects.create(user=user, project=p)
+        c = Channel.objects.get(project=p, name="Updates")
         FollowedChannel.objects.create(follow=follow, channel=c)
 
         response = client.delete(
             f"/api/projects/{p.slug}/follow/channels/{c.id}", **auth_headers
         )
 
-        assert_that(response.status_code, equal_to(204))
-        assert_that(
-            FollowedChannel.objects.filter(follow=follow, channel=c).exists(),
-            is_(False),
-        )
-        # Underlying Follow row stays.
-        assert_that(Follow.objects.filter(user=user, project=p).exists(), is_(True))
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["is_followed"], is_(False))
+        assert_that(Follow.objects.filter(user=user, project=p).exists(), is_(False))
 
-    def test_delete_is_idempotent(self, client, user, auth_headers):
+    def test_delete_is_idempotent_while_other_channels_remain(
+        self, client, user, auth_headers
+    ):
         Follow.objects.filter(user=user).delete()
         p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
-        Follow.objects.create(user=user, project=p)
+        follow = Follow.objects.create(user=user, project=p)
         c = Channel.objects.get(project=p, name="Updates")
+        other = Channel.objects.create(project=p, name="Releases")
+        FollowedChannel.objects.create(follow=follow, channel=other)
 
         client.delete(f"/api/projects/{p.slug}/follow/channels/{c.id}", **auth_headers)
         response = client.delete(
             f"/api/projects/{p.slug}/follow/channels/{c.id}", **auth_headers
         )
 
-        assert_that(response.status_code, equal_to(204))
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["is_followed"], is_(True))
+
+    def test_delete_after_project_unfollowed_returns_404(
+        self, client, user, auth_headers
+    ):
+        Follow.objects.filter(user=user).delete()
+        p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
+        follow = Follow.objects.create(user=user, project=p)
+        c = Channel.objects.get(project=p, name="Updates")
+        FollowedChannel.objects.create(follow=follow, channel=c)
+
+        client.delete(f"/api/projects/{p.slug}/follow/channels/{c.id}", **auth_headers)
+        response = client.delete(
+            f"/api/projects/{p.slug}/follow/channels/{c.id}", **auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(404))
 
     def test_post_when_not_following_returns_404(self, client, user, auth_headers):
         Follow.objects.filter(user=user).delete()

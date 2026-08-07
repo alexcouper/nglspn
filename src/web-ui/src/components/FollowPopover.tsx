@@ -1,12 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { api } from "@/lib/api";
-import type {
-  ChannelFollowState,
-  FollowWithPreferences,
-} from "@/lib/api/follows";
+import type { ChannelFollowState, FollowWithPreferences } from "@/lib/api/follows";
 import { useToasts } from "@/contexts/toasts";
+import { ChannelToggleList } from "@/components/ChannelToggleList";
+import { useChannelToggle } from "@/hooks/useChannelToggle";
 
 interface FollowPopoverProps {
   projectSlug: string;
@@ -54,37 +53,25 @@ export function FollowPopover({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [onClose]);
 
-  const toggleChannel = async (channel: ChannelFollowState) => {
-    if (!follow) return;
-    const next: ChannelFollowState = { ...channel, followed: !channel.followed };
-    // Optimistic update.
-    setFollow({
-      ...follow,
-      channels: follow.channels.map((c) =>
-        c.channel_id === channel.channel_id ? next : c
-      ),
-    });
-    try {
-      if (next.followed) {
-        await api.follows.followChannel(projectSlug, channel.channel_id);
-      } else {
-        await api.follows.unfollowChannel(projectSlug, channel.channel_id);
-      }
-    } catch {
-      // Revert.
-      setFollow({
-        ...follow,
-        channels: follow.channels.map((c) =>
-          c.channel_id === channel.channel_id ? channel : c
-        ),
-      });
-      showToast({
-        kind: "error",
-        title: "Couldn't update channel",
-        ttlMs: 5_000,
-      });
-    }
-  };
+  const setChannels = useCallback(
+    (update: (channels: ChannelFollowState[]) => ChannelFollowState[]) => {
+      setFollow((prev) =>
+        prev === null ? prev : { ...prev, channels: update(prev.channels) }
+      );
+    },
+    []
+  );
+
+  const handleProjectUnfollowed = useCallback(() => {
+    onUnfollow();
+    onClose();
+  }, [onUnfollow, onClose]);
+
+  const toggleChannel = useChannelToggle({
+    projectSlug,
+    setChannels,
+    onProjectUnfollowed: handleProjectUnfollowed,
+  });
 
   const handleUnfollow = async () => {
     try {
@@ -119,19 +106,12 @@ export function FollowPopover({
             Loading…
           </div>
         )}
-        {follow?.channels.map((channel) => (
-          <label
-            key={channel.channel_id}
-            className="flex items-center gap-2 px-3 py-2 border-b border-border/50 last:border-0 cursor-pointer text-sm"
-          >
-            <input
-              type="checkbox"
-              checked={channel.followed}
-              onChange={() => toggleChannel(channel)}
-            />
-            <span className="text-foreground">{channel.channel_name}</span>
-          </label>
-        ))}
+        {follow && (
+          <ChannelToggleList
+            channels={follow.channels}
+            onToggle={toggleChannel}
+          />
+        )}
       </div>
       <div className="px-3 py-2 border-t border-border">
         <button

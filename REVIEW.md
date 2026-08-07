@@ -122,7 +122,7 @@ go through it; no `upload_status=UPLOADED` literal remains outside the model.
 holds that id — `upload-url` returned it.
 
 Orphaned `PENDING` rows are now inert but still accumulate; logged as
-`FOLLOW_UPS.md` item 3.
+`FOLLOW_UPS.md` item 5.
 
 ### 4. N+1 on the Following page — Open
 

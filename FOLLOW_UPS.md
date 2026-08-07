@@ -1,48 +1,44 @@
 # Follow-ups
 
-Small gaps found while reviewing. None blocks anything.
+Gaps found while reviewing. None blocks anything.
 
-Items 1 and 2 are frontend-only, on `/profile/following`.
+Items 1–4 are frontend fixes on `/profile/following` and are resolved. Items 5
+and 6 are open, and unrelated to that page.
 
-## 1. No way to unfollow a single channel from the following page
+## 1. No way to unfollow a single channel from the following page — done
 
-`src/web-ui/src/app/profile/following/page.tsx:168`
+Expanding a row listed the project's channels as static `Followed` /
+`Not followed` badges, so narrowing a subscription meant visiting each project
+page and using the follow popover there.
 
-Expanding a row lists the project's channels, but each one renders as a static
-`Followed` / `Not followed` badge. The only mutation on the page is the
-whole-project `Unfollow` button (`page.tsx:150`), so narrowing a subscription —
-the common case once you follow more than a handful of projects — means visiting
-each project page and using the follow popover there. The page header says as
-much (`page.tsx:60`: "Manage per-channel subscriptions from each project's
-page"), so this is a deliberate limitation rather than an oversight, but it makes
-the one screen that shows every subscription the one screen where you can't
-adjust them.
+The badges are now checkboxes. The toggle logic that `FollowPopover` had is
+extracted to `src/web-ui/src/hooks/useChannelToggle.ts` and the markup to
+`src/web-ui/src/components/ChannelToggleList.tsx`, so both screens share one
+implementation. The extracted version writes state through functional updates —
+the popover's original built both the optimistic write and the rollback from a
+render-closure snapshot, so a failure could discard a concurrent toggle of a
+different channel.
 
-The plumbing already exists: `api.follows.followChannel` /
-`unfollowChannel` (`src/web-ui/src/lib/api/follows.ts:38,48`), used by
-`src/web-ui/src/components/FollowPopover.tsx:69`. The work is swapping the badge
-for a toggle and reusing the popover's optimistic-update handling — including its
-rollback on failure, since the list here is loaded once and never refetched.
+## 2. The empty-state link pointed at `/discover`, which 404s — done
 
-## 2. The empty-state link points at `/discover`, which 404s
+`href` is now `/projects`, which is where Discover lives.
 
-`src/web-ui/src/app/profile/following/page.tsx:82`
+## 3. Unfollowing the last channel unfollows the project — done
 
-```tsx
-<Link href="/discover" className="text-accent hover:underline">
-  Discover projects
-</Link>
-```
+A Follow with no followed channels notifies about nothing, so
+`DELETE /api/projects/{slug}/follow/channels/{channel_id}` now deletes the
+Follow when it removes the last `FollowedChannel`. It returns
+`200 FollowStateResponse` rather than `204` so the caller learns the resulting
+project-level state instead of duplicating the rule client-side. Idempotent
+while other channels remain; once the Follow is gone a repeat is a 404.
 
-There is no `/discover` route and no redirect or rewrite for it in
-`src/web-ui/next.config.ts`. Discover lives at `/projects` — that's what the
-"Discover" tab links to (`src/web-ui/src/app/projects/CategoryTabs.tsx:17`).
+## 4. Nested interactive elements in the row header — done
 
-So a user with no follows sees the empty state and the single call to action on
-it is dead. Fix is `href="/projects"`. This is the only `/discover` reference in
-`src/web-ui/src`.
+The row header put the project `<Link>` inside the expand `<button>`. The
+chevron is now its own button with `aria-expanded` / `aria-controls`, and the
+link sits outside it.
 
-## 3. Nothing garbage-collects abandoned image uploads
+## 5. Nothing garbage-collects abandoned image uploads
 
 `services/images/django_impl/handler.py:151`, `src/web-ui/src/lib/uploadImage.ts:86`
 
@@ -63,7 +59,7 @@ Worth a periodic task that deletes `PENDING` rows older than some threshold,
 attempting the storage delete first. Sizing it needs a count from prod — the
 table may well be tiny, in which case this stays a note.
 
-## 4. The dev task-checker still reads `django_tasks`' table directly
+## 6. The dev task-checker still reads `django_tasks`' table directly
 
 `naglasupan-hq:infra/modules/services/backend-task-checker/function/backend-task-checker/handler.py:106`
 

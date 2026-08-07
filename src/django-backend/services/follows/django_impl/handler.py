@@ -63,6 +63,13 @@ class DjangoFollowHandler(FollowHandlerInterface):
 
     def unfollow_channel(
         self, user_id: UUID, project_slug: str, channel_id: UUID
-    ) -> None:
-        follow, channel = self._resolve(user_id, project_slug, channel_id)
-        FollowedChannel.objects.filter(follow=follow, channel=channel).delete()
+    ) -> FollowState:
+        # A Follow with no channels notifies about nothing, so dropping the
+        # last one is a full unfollow rather than a silently inert follow.
+        with transaction.atomic():
+            follow, channel = self._resolve(user_id, project_slug, channel_id)
+            FollowedChannel.objects.filter(follow=follow, channel=channel).delete()
+            if not FollowedChannel.objects.filter(follow=follow).exists():
+                follow.delete()
+                return FollowState(is_followed=False)
+        return FollowState(is_followed=True, created_at=follow.created_at)

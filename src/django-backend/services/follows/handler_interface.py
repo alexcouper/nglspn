@@ -34,5 +34,12 @@ class FollowHandlerInterface(ABC):
     @abstractmethod
     def unfollow_channel(
         self, user_id: UUID, project_slug: str, channel_id: UUID
-    ) -> None:
-        """Hard-delete a FollowedChannel row. Idempotent — silent on absent."""
+    ) -> FollowState:
+        """Hard-delete a FollowedChannel row, returning the project's state.
+
+        When no followed channels remain the project Follow is deleted too —
+        a follow that notifies about nothing is not a state we keep — and the
+        returned state has ``is_followed=False``. Idempotent while other
+        channels remain; once the Follow is gone a repeat raises
+        ``NotFollowingError``.
+        """

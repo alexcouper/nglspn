@@ -45,8 +45,13 @@ export class FollowsClient {
     );
   }
 
-  async unfollowChannel(slug: string, channelId: string): Promise<void> {
-    await this.client.request<void>(
+  /** Returns the project-level state: unfollowing the last channel
+   *  unfollows the project itself. */
+  async unfollowChannel(
+    slug: string,
+    channelId: string
+  ): Promise<FollowState> {
+    return this.client.request<FollowState>(
       `/api/projects/${slug}/follow/channels/${channelId}`,
       { method: "DELETE" }
     );

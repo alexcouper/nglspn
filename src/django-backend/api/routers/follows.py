@@ -138,7 +138,7 @@ def follow_channel(
 
 @router.delete(
     "/{slug}/follow/channels/{channel_id}",
-    response={204: None, 404: Error},
+    response={200: FollowStateResponse, 404: Error},
     auth=auth,
     tags=["Follows"],
 )
@@ -146,13 +146,18 @@ def unfollow_channel(
     request: HttpRequest,
     slug: str,
     channel_id: UUID,
-) -> tuple[int, None] | tuple[int, dict[str, str]]:
+) -> FollowStateResponse | tuple[int, dict[str, str]]:
     try:
-        HANDLERS.follows.unfollow_channel(request.auth.id, slug, channel_id)
+        state = HANDLERS.follows.unfollow_channel(request.auth.id, slug, channel_id)
     except (
         ProjectNotFoundError,
         ChannelNotOnProjectError,
         NotFollowingError,
     ):
         return 404, {"detail": "Not found"}
-    return 204, None
+
+    # Dropping the last channel unfollows the project, so the caller needs the
+    # resulting project-level state, not just an empty 204.
+    return FollowStateResponse(
+        is_followed=state.is_followed, created_at=state.created_at
+    )

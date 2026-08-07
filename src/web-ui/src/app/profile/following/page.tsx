@@ -1,11 +1,16 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { useChannelToggle } from "@/hooks/useChannelToggle";
 import { api } from "@/lib/api";
-import type { FollowWithPreferences } from "@/lib/api/follows";
+import type {
+  ChannelFollowState,
+  FollowWithPreferences,
+} from "@/lib/api/follows";
+import { ChannelToggleList } from "@/components/ChannelToggleList";
 import { useToasts } from "@/contexts/toasts";
 
 export default function FollowedProjectsPage() {
@@ -32,11 +37,17 @@ export default function FollowedProjectsPage() {
     };
   }, [authLoading]);
 
+  const removeRow = useCallback((projectSlug: string) => {
+    setFollows((prev) =>
+      prev === null ? prev : prev.filter((f) => f.project_slug !== projectSlug)
+    );
+  }, []);
+
   const handleUnfollow = async (projectSlug: string) => {
     if (!follows) return;
     const previous = follows;
     // Optimistic remove.
-    setFollows(follows.filter((f) => f.project_slug !== projectSlug));
+    removeRow(projectSlug);
     try {
       await api.follows.unfollow(projectSlug);
     } catch {
@@ -57,8 +68,9 @@ export default function FollowedProjectsPage() {
             Following
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Projects you follow and their channels. Manage per-channel
-            subscriptions from each project&apos;s page.
+            Projects you follow and their channels. Expand a project to change
+            which channels you&apos;re subscribed to; dropping the last one
+            unfollows the project.
           </p>
         </div>
       </section>
@@ -79,7 +91,7 @@ export default function FollowedProjectsPage() {
           {follows?.length === 0 && (
             <div className="bg-white rounded-xl border border-border p-6 text-sm text-muted-foreground">
               You aren&apos;t following any projects yet.{" "}
-              <Link href="/discover" className="text-accent hover:underline">
+              <Link href="/projects" className="text-accent hover:underline">
                 Discover projects
               </Link>
               .
@@ -92,6 +104,7 @@ export default function FollowedProjectsPage() {
                   key={follow.project_slug}
                   follow={follow}
                   onUnfollow={() => handleUnfollow(follow.project_slug)}
+                  onProjectUnfollowed={removeRow}
                 />
               ))}
             </ul>
@@ -105,44 +118,66 @@ export default function FollowedProjectsPage() {
 interface FollowRowProps {
   follow: FollowWithPreferences;
   onUnfollow: () => void;
+  onProjectUnfollowed: (projectSlug: string) => void;
 }
 
-function FollowRow({ follow, onUnfollow }: FollowRowProps) {
+function FollowRow({
+  follow,
+  onUnfollow,
+  onProjectUnfollowed,
+}: FollowRowProps) {
   const [isExpanded, setIsExpanded] = useState(false);
-  const followedCount = follow.channels.filter((c) => c.followed).length;
+  // The list is fetched once, so channel state lives here and is mutated in
+  // place rather than refetched.
+  const [channels, setChannels] = useState<ChannelFollowState[]>(
+    follow.channels
+  );
+  const panelId = useId();
+  const followedCount = channels.filter((c) => c.followed).length;
+
+  const handleProjectUnfollowed = useCallback(() => {
+    onProjectUnfollowed(follow.project_slug);
+  }, [onProjectUnfollowed, follow.project_slug]);
+
+  const toggleChannel = useChannelToggle({
+    projectSlug: follow.project_slug,
+    setChannels,
+    onProjectUnfollowed: handleProjectUnfollowed,
+  });
 
   return (
     <li className="bg-white rounded-xl border border-border overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4">
+      <div className="flex items-center gap-3 px-5 py-4">
+        {follow.project_hero_image_url && (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={follow.project_hero_image_url}
+            alt=""
+            className="w-10 h-10 rounded-lg object-cover border border-border shrink-0"
+          />
+        )}
+        <div className="min-w-0 flex-1">
+          <Link
+            href={`/projects/${follow.project_slug}`}
+            className="text-sm font-medium text-foreground hover:text-accent transition-colors block truncate"
+          >
+            {follow.project_title}
+          </Link>
+          <div className="text-xs text-muted-foreground">
+            {followedCount} of {channels.length}{" "}
+            {channels.length === 1 ? "channel" : "channels"}
+          </div>
+        </div>
         <button
           type="button"
           onClick={() => setIsExpanded((open) => !open)}
-          className="flex items-center gap-3 flex-1 text-left"
+          className="p-1 text-muted-foreground hover:text-foreground transition-colors"
           aria-expanded={isExpanded}
+          aria-controls={panelId}
+          aria-label={`Channels for ${follow.project_title}`}
         >
-          {follow.project_hero_image_url && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={follow.project_hero_image_url}
-              alt=""
-              className="w-10 h-10 rounded-lg object-cover border border-border shrink-0"
-            />
-          )}
-          <div className="min-w-0">
-            <Link
-              href={`/projects/${follow.project_slug}`}
-              className="text-sm font-medium text-foreground hover:text-accent transition-colors block truncate"
-              onClick={(e) => e.stopPropagation()}
-            >
-              {follow.project_title}
-            </Link>
-            <div className="text-xs text-muted-foreground">
-              {followedCount} of {follow.channels.length}{" "}
-              {follow.channels.length === 1 ? "channel" : "channels"}
-            </div>
-          </div>
           <ChevronDownIcon
-            className={`w-4 h-4 text-muted-foreground transition-transform ${
+            className={`w-4 h-4 transition-transform ${
               isExpanded ? "rotate-180" : ""
             }`}
           />
@@ -150,32 +185,14 @@ function FollowRow({ follow, onUnfollow }: FollowRowProps) {
         <button
           type="button"
           onClick={onUnfollow}
-          className="ml-3 text-sm text-red-600 hover:text-red-700 transition-colors"
+          className="ml-1 text-sm text-red-600 hover:text-red-700 transition-colors"
         >
           Unfollow
         </button>
       </div>
       {isExpanded && (
-        <div className="border-t border-border px-5 py-3 space-y-2">
-          {follow.channels.map((channel) => (
-            <div
-              key={channel.channel_id}
-              className="flex items-center justify-between py-1"
-            >
-              <div className="text-sm text-foreground">
-                {channel.channel_name}
-              </div>
-              <span
-                className={`text-xs px-2 py-0.5 rounded-full border ${
-                  channel.followed
-                    ? "border-accent/30 bg-accent/10 text-accent"
-                    : "border-border bg-muted text-muted-foreground"
-                }`}
-              >
-                {channel.followed ? "Followed" : "Not followed"}
-              </span>
-            </div>
-          ))}
+        <div id={panelId} className="border-t border-border px-2 py-1">
+          <ChannelToggleList channels={channels} onToggle={toggleChannel} />
         </div>
       )}
     </li>

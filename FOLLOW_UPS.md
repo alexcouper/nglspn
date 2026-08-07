@@ -3,7 +3,7 @@
 Gaps found while reviewing.
 
 Items 1–4 are frontend fixes on `/profile/following` and are resolved. Item 5's
-code has landed but nothing schedules it yet. Items 6 to 16 are open. Items 8
+code has landed but nothing schedules it yet. Items 6 to 18 are open. Items 8
 to 11 come from the article-authoring review and were deferred deliberately
 rather than fixed; **item 8 is live data loss and ships unfixed**, so it is not
 in the "blocks nothing" category the rest are. Items 13 to 16 are spillover
@@ -568,3 +568,42 @@ rather than a find-and-replace.
 Both define their own `_count_queries`. A third copy is one prefetch regression
 away. Lifting it needs a shared test-support module, which does not exist yet —
 that decision is the actual work, not the move.
+
+## 17. Article excerpts share a derivation rule but not a length
+
+`services/articles/summary.py`, `services/notifications/django_impl/handler.py`
+
+The bell and the article detail now derive an excerpt the same way, so a body
+starting with a heading no longer shows `## ` in the notification list. The
+truncation limit is still per-surface: the bell derives at 240 characters, the
+article detail at 200, the digest at 500.
+
+So for any body over 200 characters the same article still produces different
+strings on different surfaces — the drift the original finding was about,
+narrowed rather than closed. The equivalence test uses short bodies deliberately,
+so it pins the rule and says nothing about the limit.
+
+Unifying them is a visible change on three surfaces and wants a decision about
+what each is for, which is why it was left. A bell line and a digest entry
+plausibly *should* differ; the bell and the detail probably should not.
+
+## 18. The repo's own skills still describe the repo finding 19 corrected
+
+`.claude/skills/nglspn-code-review/SKILL.md:37-38`,
+`.claude/skills/nglspn-docs/SKILL.md:31-32,98`
+
+Both are tracked, and both still say Terraform lives at `infra/prod/app/` — it
+lives in the separate `naglasupan-hq` repo, and `infra/` here holds one Grafana
+dashboard export.
+
+More consequential: both assert user-facing strings are Icelandic, and
+`nglspn-docs:98` says outright "Don't write English user-facing product
+strings". That is backwards. There is no i18n infrastructure in `src/web-ui`,
+and the only Icelandic in `src/web-ui/src` is the wordmark and the `layout.tsx`
+tagline. Everything else is English. The kennitala guidance elsewhere in the
+review skill is correct and unrelated — it is the UI-copy claim that is wrong.
+
+These files are instructions, so they re-inject the drift on every session that
+loads them, which is how it survived a CLAUDE.md correction. Fixing them changes
+how future sessions behave, so it wants a deliberate decision rather than being
+folded into an unrelated change.

@@ -11,25 +11,70 @@ Verified before reviewing:
 - `cd src/django-backend && make extract-openapi` — no diff, so
   `backend-openapi.json` is in sync with the routers/schemas in this change
 
+## Status
+
+| # | Finding | State |
+|---|---------|-------|
+| 1 | Notification opt-out lost in migration | **Done** — `xzpr 33b4`, but not as reviewed (see below) |
+| 2 | Digest cron broken by the task rename | Open |
+| 3 | `auto` mode adopts an incomplete upload | Open |
+| 4 | N+1 on the Following page | Open |
+| 5 | Fresh upload leaves the panel saying "No image" | Open |
+| 6 | `listing_image_mode` unvalidated | Open |
+| 7–12 | Nits | Open |
+| — | Design: article images onto the articles router | **Done** — `99d24cf2` |
+
+Each finding is verified against the code before anything is changed. Finding 1
+did not survive that — the bug was real but in a different file, with a
+different cause and fix.
+
 ## Blockers
 
-### 1. Users who opted out of all notification email are silently re-subscribed
+### 1. Users who opted out of broadcast email are silently re-subscribed — **Done** (`xzpr 33b4`)
 
-`src/django-backend/apps/users/migrations/0018_user_article_email_frequency_and_more.py:25`
+The consent bug is real. The diagnosis in the original review was not.
 
-The RunPython step copies `notification_frequency` into
-`discussion_email_frequency` only. `article_email_frequency` takes the column
-default `"hourly"` for every row — including users who had explicitly set
-`notification_frequency = "never"`. Every user is auto-enrolled in the house
-project's channels (`apps/follows/services.py::create_house_project_follow`), so
-the next house-channel article puts those people back in the mail.
+**As reviewed:** `users/0018`'s RunPython leaves `article_email_frequency` at its
+`"hourly"` default for users who had set `notification_frequency = "never"`, so
+carry `never` across.
 
-`openspec/changes/simplify-follow-and-cadence/design.md:169` says "the resolver
-excludes `article_email_frequency = never` (so the global opt-out is honoured)"
-— but nothing ever sets anyone to `never`. Fix is one line in the same
-RunPython: carry `never` across.
+**Why that's wrong:** `notification_frequency` was never a global email
+opt-out. The pre-change UI labels it *"Notifications — How often you receive
+discussion notifications"*
+(`origin/main:src/web-ui/src/app/profile/Settings.tsx:98-101`). `never` there
+means "don't mail me about comments"; copying it into article cadence invents a
+preference the user never expressed. The design line the review quotes
+(`design.md:169`) is about the *broadcast* resolver, a different path.
 
-### 2. The digest cron is broken by the task rename, and the stated safety net doesn't exist
+**Where the opt-out actually lived:** `email_opt_in_competition_results` /
+`email_opt_in_platform_updates` → migrated into
+`FollowChannelPreference.email_enabled` by `follows/0002` (lines 76, 84), which
+has been the live source of truth since the Phase-2 mirror was removed in
+`89b9b66e`.
+
+**The real defect:** this branch collapses that boolean into row existence, and
+`follows/0004` swept on `email_enabled = False AND in_app_enabled = False`. But
+`follows/0002` writes `in_app_enabled = True` unconditionally (lines 77, 85, 91),
+so no legacy row can match — the sweep deletes nothing, and every historical
+email opt-out survives as a `FollowedChannel`, i.e. a subscription. The rule was
+documented as agreed in `design.md` decision 6, so the migration was faithful to
+a design that was itself wrong.
+
+**Fix:** sweep on `email_enabled` alone; `in_app_enabled` carries no user intent
+for these rows, since the two checkboxes it was seeded alongside predate the
+in-app bell entirely. `design.md`, `proposal.md`, the delta spec and `tasks.md`
+updated to match. Cost: a user who wanted in-app-but-not-email on a channel is
+unfollowed — unrepresentable after the column drop either way, and the quiet
+side to err on.
+
+**Left open:** task 3.2 claimed a regression test for the sweep; none exists and
+none is writable without a migration-state harness (`django-test-migrations` or
+equivalent), since `0005` drops `email_enabled` from the live model. Unticked
+rather than quietly dropped. Task 16.2's acceptance criterion was inverted too —
+it asked to confirm the deleted-row count is *small*, when under the corrected
+rule a near-zero count is the signal the sweep is missing its cohort.
+
+### 2. The digest cron is broken by the task rename, and the stated safety net doesn't exist — Open
 
 `src/django-backend/api/tasks/notifications.py:26`,
 `src/django-backend/services/notifications/django_impl/handler.py:265`
@@ -51,7 +96,7 @@ only produced a comment block; there is no schedule config anywhere, and the new
 
 ## Important
 
-### 3. `auto` mode can adopt an upload that never completed
+### 3. `auto` mode can adopt an upload that never completed — Open
 
 `src/django-backend/services/articles/django_impl/handler.py:269`
 
@@ -65,7 +110,7 @@ exist. Every listing card for that article then shows a broken image.
 
 Filter on `upload_status=UploadStatus.UPLOADED`.
 
-### 4. N+1 on the Following page
+### 4. N+1 on the Following page — Open
 
 `src/django-backend/services/follows/django_impl/query.py:32`
 
@@ -75,7 +120,7 @@ it from `prefetch_related("preferences__channel")`. A user following 20 projects
 goes from 3 queries to 23. Prefetch `project__channels` on the outer queryset
 instead.
 
-### 5. Picking a freshly-uploaded image in the wizard leaves the panel saying "No image"
+### 5. Picking a freshly-uploaded image in the wizard leaves the panel saying "No image" — Open
 
 `src/web-ui/src/app/projects/[slug]/articles/useArticleDraft.ts:310`
 
@@ -91,7 +136,7 @@ Images picked from the body (already in `article.images`) are fine, which is why
 the e2e — which picks index 1 of two body images — doesn't catch it. Push the
 confirmed image into `article.images` via the already-exposed `setArticle`.
 
-### 6. `listing_image_mode` is an unvalidated string all the way to the column
+### 6. `listing_image_mode` is an unvalidated string all the way to the column — Open
 
 `src/django-backend/api/schemas/article.py:49`
 
@@ -145,7 +190,12 @@ Address the two blockers before this ships — the opt-out reset is a consent
 problem you can't undo after the first send, and the scheduler rename will take
 digests down silently. 3–6 are worth fixing in this change; the rest can follow.
 
-## Design — move article image upload into the articles router
+Blocker 1 is done, though the fix landed in `follows/0004`, not where the review
+pointed. Blocker 2 still stands. Its fix is partly outside this repo: no
+scheduler config exists here (no `infra/prod`, no cron files), so the task names
+have to be changed wherever the schedule actually lives.
+
+## Design — move article image upload into the articles router — **Done** (`99d24cf2`)
 
 Raised by the author during review:
 

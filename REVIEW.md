@@ -16,12 +16,13 @@ Verified before reviewing:
 | # | Finding | State |
 |---|---------|-------|
 | 1 | Notification opt-out lost in migration | **Done** — `xzpr 33b4`, but not as reviewed (see below) |
-| 2 | Digest cron broken by the task rename | Open |
-| 3 | `auto` mode adopts an incomplete upload | Open |
+| 2 | Digest cron broken by the task rename | Backend **done** — `nnkr b401`; infra repo in progress |
+| 3 | `auto` mode adopts an incomplete upload | Open — under discussion |
 | 4 | N+1 on the Following page | Open |
 | 5 | Fresh upload leaves the panel saying "No image" | Open |
 | 6 | `listing_image_mode` unvalidated | Open |
-| 7–12 | Nits | Open |
+| 7–10, 12 | Nits | Open |
+| 11 | `ArticleOut.resolve_images` returns pending uploads | **Done** — `99d24cf2` |
 | — | Design: article images onto the articles router | **Done** — `99d24cf2` |
 
 Each finding is verified against the code before anything is changed. Finding 1

@@ -10,8 +10,8 @@ from services.follows.query_interface import (
     FollowState,
     FollowWithPreferences,
 )
+from services.images.django_impl.query import gallery_prefetch
 from services.project.django_impl.query import (
-    project_gallery_images,
     resolve_image_by_purpose,
     variant_url,
 )
@@ -23,9 +23,9 @@ def _follow_queryset(user_id: UUID) -> QuerySet[Follow]:
     The project's channels and its gallery come off the prefetch rather than
     per follow — the Following page renders one row per follow, so anything
     fetched inside that loop is an N+1. The image prefetch is narrowed by
-    `project_gallery_images()` because `resolve_image_by_purpose` does no
-    filtering of its own and would otherwise fall back to an article upload or
-    a row whose PUT never landed.
+    `gallery_prefetch()` because `resolve_image_by_purpose` does no filtering
+    of its own and would otherwise fall back to an article upload or a row
+    whose PUT never landed.
     """
     return (
         Follow.objects.filter(user_id=user_id)
@@ -36,7 +36,7 @@ def _follow_queryset(user_id: UUID) -> QuerySet[Follow]:
                 "project__channels",
                 queryset=Channel.objects.order_by("created_at"),
             ),
-            Prefetch("project__images", queryset=project_gallery_images()),
+            gallery_prefetch("project__images"),
         )
     )
 
@@ -66,6 +66,16 @@ def _to_follow_with_preferences(follow: Follow) -> FollowWithPreferences:
 
 
 class DjangoFollowQuery(FollowQueryInterface):
+    """Reads that key on Follow existence, not on its channels.
+
+    A Follow with no FollowedChannel rows is a state the system tolerates —
+    channel deletion cascades them away, concurrent unfollow_channel calls can
+    both miss, and follows/0004 left some behind. These reads report such a
+    Follow as followed, so the UI shows the project as "Following" with nothing
+    ticked. Deliberate; see design decision 6 in
+    openspec/changes/simplify-follow-and-cadence/design.md.
+    """
+
     def is_followed(self, user_id: UUID | None, project: Project) -> bool:
         if user_id is None:
             return False

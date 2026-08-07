@@ -248,15 +248,13 @@ def complete_upload(
     payload: ImageUploadCompleteRequest,
 ) -> ProjectImage | tuple[int, dict[str, str]]:
     project = _get_editable_project_or_404(project_id, request.auth)
-    # `article__isnull` keeps this endpoint off article uploads: those are
+    # `get_gallery_image` keeps this endpoint off article uploads: those are
     # addressed under the articles router and completed there.
-    image = get_object_or_404(
-        ProjectImage,
-        id=image_id,
-        project=project,
-        article__isnull=True,
-        upload_status=UploadStatus.PENDING,
+    image = REPO.images.get_gallery_image(
+        project, image_id, status=UploadStatus.PENDING
     )
+    if image is None:
+        return 404, {"detail": "Image not found"}
 
     try:
         return HANDLERS.images.complete_upload(
@@ -279,12 +277,11 @@ def update_image_roles(
     payload: UpdateImageRolesRequest,
 ) -> ProjectImage | tuple[int, dict[str, str]]:
     project = _get_editable_project_or_404(project_id, request.auth)
-    image = get_object_or_404(
-        ProjectImage.objects.uploaded(),
-        id=image_id,
-        project=project,
-        article__isnull=True,
+    image = REPO.images.get_gallery_image(
+        project, image_id, status=UploadStatus.UPLOADED
     )
+    if image is None:
+        return 404, {"detail": "Image not found"}
 
     role_fields = [
         ("is_main", payload.is_main),
@@ -316,10 +313,10 @@ def delete_image(
     request: HttpRequest,
     project_id: str,
     image_id: str,
-) -> tuple[int, None]:
+) -> tuple[int, None] | tuple[int, dict[str, str]]:
     project = _get_editable_project_or_404(project_id, request.auth)
-    image = get_object_or_404(
-        ProjectImage, id=image_id, project=project, article__isnull=True
-    )
+    image = REPO.images.get_gallery_image(project, image_id)
+    if image is None:
+        return 404, {"detail": "Image not found"}
     HANDLERS.images.delete_image(image)
     return 204, None

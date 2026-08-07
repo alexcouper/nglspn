@@ -4,7 +4,7 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from django.db.models import Count, Prefetch, Q, QuerySet
+from django.db.models import Count, Q, QuerySet
 from django.db.models.functions import Coalesce, Lower
 from django.utils import timezone
 
@@ -17,6 +17,7 @@ from apps.projects.models import (
     ProjectImage,
     ProjectStatus,
 )
+from services.images.django_impl.query import gallery_prefetch
 from services.project.exceptions import ProjectNotFoundError
 from services.project.query_interface import (
     CategoryItem,
@@ -34,24 +35,10 @@ def _top_level_discussion_count() -> Count:
     return Count("discussions", filter=Q(discussions__parent__isnull=True))
 
 
-def project_gallery_images() -> QuerySet[ProjectImage]:
-    """Images that describe the project itself.
-
-    Excludes article uploads, which live on the project but belong to an
-    article. Use this for every `Prefetch("images", ...)` on a project-facing
-    query so article images never reach a project gallery, card or cover pick.
-    """
-    return (
-        ProjectImage.objects.uploaded()
-        .filter(article__isnull=True)
-        .prefetch_related("variants")
-    )
-
-
 def _discover_queryset() -> QuerySet[Project]:
     return Project.objects.select_related("creator", "category").prefetch_related(
         "won_competitions",
-        Prefetch("images", queryset=project_gallery_images()),
+        gallery_prefetch(),
     )
 
 
@@ -61,7 +48,7 @@ def _base_queryset() -> QuerySet[Project]:
         "tags__category",
         "won_competitions",
         "contributors__user",
-        Prefetch("images", queryset=project_gallery_images()),
+        gallery_prefetch(),
     )
 
 
@@ -334,7 +321,7 @@ class DjangoProjectQuery(ProjectQueryInterface):
             .select_related("winner", "winner__category")
             .prefetch_related(
                 "winner__won_competitions",
-                Prefetch("winner__images", queryset=project_gallery_images()),
+                gallery_prefetch("winner__images"),
             )
             .order_by("-submission_deadline")
         )

@@ -1,8 +1,6 @@
-from typing import Any
 from uuid import UUID
 
 from django.http import HttpRequest
-from django.shortcuts import get_object_or_404
 from ninja import Router
 
 from api.auth.security import auth
@@ -287,9 +285,12 @@ def _get_editable_article(
 
 
 def _get_article_image_or_404(
-    article: Article, image_id: UUID, **filters: Any
-) -> ProjectImage:
-    return get_object_or_404(ProjectImage, id=image_id, article=article, **filters)
+    article: Article, image_id: UUID, *, status: UploadStatus | None = None
+) -> ProjectImage | tuple[int, dict[str, str]]:
+    image = REPO.images.get_article_image(article, image_id, status=status)
+    if image is None:
+        return 404, {"detail": "Image not found"}
+    return image
 
 
 @router.post(
@@ -358,9 +359,10 @@ def complete_article_image_upload(
     if isinstance(article, tuple):
         return article
 
-    image = _get_article_image_or_404(
-        article, image_id, upload_status=UploadStatus.PENDING
-    )
+    image = _get_article_image_or_404(article, image_id, status=UploadStatus.PENDING)
+    if isinstance(image, tuple):
+        return image
+
     try:
         return HANDLERS.images.complete_upload(
             image, width=payload.width, height=payload.height
@@ -385,5 +387,9 @@ def delete_article_image(
     if isinstance(article, tuple):
         return article
 
-    HANDLERS.images.delete_image(_get_article_image_or_404(article, image_id))
+    image = _get_article_image_or_404(article, image_id)
+    if isinstance(image, tuple):
+        return image
+
+    HANDLERS.images.delete_image(image)
     return 204, None

@@ -18,8 +18,9 @@ from services.email.query_interface import EmailQueryInterface
 from services.follows.django_impl import DjangoFollowHandler, DjangoFollowQuery
 from services.follows.handler_interface import FollowHandlerInterface
 from services.follows.query_interface import FollowQueryInterface
-from services.images.django_impl import DjangoImageHandler
+from services.images.django_impl import DjangoImageHandler, DjangoImageQuery
 from services.images.handler_interface import ImageHandlerInterface
+from services.images.query_interface import ImageQueryInterface
 from services.notifications.django_impl import (
     DjangoNotificationHandler,
     DjangoNotificationQuery,
@@ -65,6 +66,7 @@ class QueryServices:
     discussions: DiscussionQueryInterface = field(default_factory=DjangoDiscussionQuery)
     email: EmailQueryInterface = field(default_factory=DjangoEmailQuery)
     follows: FollowQueryInterface = field(default_factory=DjangoFollowQuery)
+    images: ImageQueryInterface = field(default_factory=DjangoImageQuery)
     notifications: NotificationQueryInterface = field(
         default_factory=DjangoNotificationQuery
     )

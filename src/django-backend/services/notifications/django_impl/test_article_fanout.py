@@ -12,13 +12,16 @@ from apps.follows.models import Follow, FollowedChannel
 from apps.notifications.models import Notification, NotificationCadence
 from apps.users.models import ArticleEmailFrequency
 from services.articles.django_impl.handler import DjangoArticleHandler
+from services.email.django_impl.handler import build_article_digest_entries
 from services.notifications.django_impl.handler import DjangoNotificationHandler
 from tests.factories import (
     ArticleFactory,
     ChannelFactory,
     ProjectFactory,
+    ProjectImageFactory,
     PublishedArticleFactory,
     UserFactory,
+    article_image,
 )
 
 
@@ -287,6 +290,51 @@ class TestArticleDigest:
             self.handler.send_article_digest("never")
 
         send_email.assert_not_called()
+
+
+@pytest.mark.django_db
+class TestArticleDigestProjectIcon:
+    """An article with no listing image falls back to the project icon, and
+    `resolve_image_by_purpose` filters nothing — so the digest's prefetch is
+    the only thing keeping an article figure or an abandoned upload out of it.
+    """
+
+    def setup_method(self):
+        self.handler = DjangoNotificationHandler()
+
+    def _digest_image_url(self, project) -> str | None:
+        follower = UserFactory(article_email_frequency=ArticleEmailFrequency.HOURLY)
+        channel = ChannelFactory(project=project, name="Updates")
+        _follow_channel(follower, project, channel)
+        article = PublishedArticleFactory(project=project, channel=channel)
+        self.handler.create_notifications_for_article(article.id)
+
+        with patch(
+            "services.email.django_impl.handler"
+            ".DjangoEmailHandler.send_article_digest_email"
+        ) as send_email:
+            self.handler.send_article_digest("hourly")
+
+        notifications = send_email.call_args.kwargs["notifications"]
+        return build_article_digest_entries(notifications)[0]["article_image_url"]
+
+    def test_uses_the_projects_own_image(self):
+        project = ProjectFactory()
+        icon = ProjectImageFactory(project=project, is_icon=True)
+
+        assert self._digest_image_url(project) == icon.url
+
+    def test_ignores_images_uploaded_for_an_article(self):
+        project = ProjectFactory()
+        article_image(ArticleFactory(project=project))
+
+        assert self._digest_image_url(project) is None
+
+    def test_ignores_an_upload_that_never_completed(self):
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, upload_status="pending")
+
+        assert self._digest_image_url(project) is None
 
 
 @pytest.mark.django_db

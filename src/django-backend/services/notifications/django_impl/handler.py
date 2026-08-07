@@ -11,6 +11,7 @@ from apps.articles.models import Article, ArticleState
 from apps.discussions.models import Discussion
 from apps.follows.models import FollowedChannel
 from apps.notifications.models import Notification, NotificationCadence
+from services.images.django_impl.query import gallery_prefetch
 from services.notifications import (
     NotificationGroup,
     NotificationGroupKind,
@@ -325,7 +326,11 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             )
             .prefetch_related(
                 "article__listing_image__variants",
-                "article__project__images__variants",
+                # `get_project_icon_url` falls back to `images[0]` with no
+                # filtering of its own, so the prefetch is the only thing
+                # keeping an article figure or a failed upload out of the
+                # project icon.
+                gallery_prefetch("article__project__images"),
             )
             .order_by("recipient_id", "created_at")
         )
@@ -360,7 +365,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
 
         discussion_rows = list(
             REPO.notifications.list_unread_for_user(user_id).prefetch_related(
-                "discussion__project__images__variants"
+                gallery_prefetch("discussion__project__images")
             )
         )
 
@@ -374,7 +379,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             REPO.notifications.list_unread_articles_for_user(user_id)
             .select_related("article__listing_image")
             .prefetch_related(
-                "article__project__images__variants",
+                gallery_prefetch("article__project__images"),
                 "article__listing_image__variants",
             )
         )

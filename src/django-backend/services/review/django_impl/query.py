@@ -1,16 +1,14 @@
 from hashlib import sha256
 from uuid import UUID
 
-from django.db.models import Prefetch
-
 from apps.projects.models import (
     CompetitionReviewer,
     Project,
     ProjectRanking,
     ReviewStatus,
 )
+from services.images.django_impl.query import gallery_prefetch
 from services.project.django_impl.query import (
-    project_gallery_images,
     resolve_image_by_purpose,
     variant_url,
 )
@@ -91,7 +89,7 @@ class DjangoReviewQuery(ReviewQueryInterface):
             # `resolve_image_by_purpose` does none of its own filtering and
             # trusts whatever the prefetch handed it.
             .prefetch_related(
-                Prefetch("images", queryset=project_gallery_images()),
+                gallery_prefetch(),
             )
         )
 

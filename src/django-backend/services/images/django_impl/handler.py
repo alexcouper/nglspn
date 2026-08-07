@@ -180,6 +180,11 @@ class DjangoImageHandler(ImageHandlerInterface):
 
     @staticmethod
     def _gallery_queryset(project: Project) -> QuerySet[ProjectImage]:
+        # Deliberately not `query.gallery_images()`, despite the resemblance.
+        # This one answers "what counts against the cap / may become the
+        # cover", so it excludes icons. `gallery_images()` answers "what
+        # describes the project" and must include them, because
+        # `resolve_image_by_purpose` looks for `is_icon` in what it is handed.
         return (
             project.images.uploaded().exclude(is_icon=True).filter(article__isnull=True)
         )

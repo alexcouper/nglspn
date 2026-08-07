@@ -892,20 +892,28 @@ class TestDeleteArticle:
         assert_that(response.status_code, equal_to(404))
 
 
-@pytest.mark.django_db
 class TestRouterHasNoOrmAccess:
-    """Spec invariant — `api/routers/articles.py` SHALL NOT reference
-    `Article.objects`, `Channel.objects`, or `FollowedChannel.objects`
+    """Spec invariant — `api/routers/articles.py` SHALL NOT reach the database
     directly. All DB access goes through HANDLERS / REPO.
+
+    Two spellings, because banning `<Model>.objects` alone misses the one the
+    file actually used: `get_object_or_404(ProjectImage, ...)` takes the model
+    class and reaches `_default_manager` itself, writing no `.objects` at all.
+    Model names are not banned — they are legitimate return annotations.
+
+    It is a substring scan, so an alias or `_default_manager` defeats it. It
+    raises the cost of the mistake; it does not make it impossible.
     """
 
-    def test_no_orm_imports(self) -> None:
+    def test_no_direct_orm_access(self) -> None:
         src = Path(__file__).resolve().parent.parent / "routers" / "articles.py"
         text = src.read_text()
         for forbidden in (
             "Article.objects",
             "Channel.objects",
             "FollowedChannel.objects",
+            "ProjectImage.objects",
+            "get_object_or_404",
         ):
             assert forbidden not in text, (
                 f"{forbidden} must not appear in api/routers/articles.py"

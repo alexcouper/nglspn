@@ -8,10 +8,14 @@ from hamcrest import assert_that, contains_inanyorder, equal_to, has_length
 from apps.notifications.models import Notification, NotificationCadence
 from services.notifications.django_impl.handler import DjangoNotificationHandler
 from tests.factories import (
+    ArticleFactory,
     DiscussionFactory,
     NotificationFactory,
     ProjectFactory,
+    ProjectImageFactory,
+    PublishedArticleFactory,
     UserFactory,
+    article_image,
 )
 
 _SEND_EMAIL = (
@@ -100,6 +104,88 @@ class TestListUnreadGroupsForUser:
         NotificationFactory(recipient=other, discussion=d)
 
         assert_that(handler.list_unread_groups_for_user(user.id), equal_to([]))
+
+
+def _group_icon_url(handler, user):
+    (group,) = handler.list_unread_groups_for_user(user.id)
+    return group.project.image_url
+
+
+@pytest.mark.django_db
+class TestGroupProjectIcon:
+    """`resolve_image_by_purpose` filters nothing, so the bell's prefetch is
+    the only thing keeping an article figure or an abandoned upload out of the
+    project icon."""
+
+    def test_discussion_group_uses_the_projects_own_image(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        icon = ProjectImageFactory(project=project, is_icon=True)
+        NotificationFactory(
+            recipient=user, discussion=DiscussionFactory(project=project)
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(icon.url))
+
+    def test_discussion_group_icon_ignores_article_uploads(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        article_image(ArticleFactory(project=project))
+        NotificationFactory(
+            recipient=user, discussion=DiscussionFactory(project=project)
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(None))
+
+    def test_discussion_group_icon_ignores_an_upload_that_never_completed(
+        self, handler
+    ) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, upload_status="pending")
+        NotificationFactory(
+            recipient=user, discussion=DiscussionFactory(project=project)
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(None))
+
+    def test_article_group_uses_the_projects_own_image(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        icon = ProjectImageFactory(project=project, is_icon=True)
+        NotificationFactory(
+            recipient=user,
+            discussion=None,
+            article=PublishedArticleFactory(project=project),
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(icon.url))
+
+    def test_article_group_icon_ignores_article_uploads(self, handler) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        article_image(ArticleFactory(project=project))
+        NotificationFactory(
+            recipient=user,
+            discussion=None,
+            article=PublishedArticleFactory(project=project),
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(None))
+
+    def test_article_group_icon_ignores_an_upload_that_never_completed(
+        self, handler
+    ) -> None:
+        user = UserFactory()
+        project = ProjectFactory()
+        ProjectImageFactory(project=project, upload_status="pending")
+        NotificationFactory(
+            recipient=user,
+            discussion=None,
+            article=PublishedArticleFactory(project=project),
+        )
+
+        assert_that(_group_icon_url(handler, user), equal_to(None))
 
 
 @pytest.mark.django_db

@@ -43,8 +43,9 @@ export function toListItem(
       imageUrlOverride !== undefined
         ? imageUrlOverride
         : article.listing_image_url,
-    listing_crop: cropOverride !== undefined ? cropOverride : article.listing_crop,
-  } as ArticleListItem;
+    listing_crop:
+      cropOverride !== undefined ? cropOverride : article.listing_crop,
+  };
 }
 
 // One variant at a time. Stacking both showed the author the same article twice
@@ -53,7 +54,11 @@ export function ArticleCardPreview({ article, summary, imageUrl, crop }: Props) 
   const [variant, setVariant] = useState<Variant>("lead");
   const item = toListItem(article, summary, imageUrl, crop);
   const projectRef = article.project.slug ?? article.project.id;
-  const href = `/projects/${projectRef}/articles/${article.slug ?? ""}`;
+  // A draft has no slug yet, and this tab is used mostly on drafts. Linking
+  // anyway would send the author to /articles/, so the preview goes inert.
+  const href = article.slug
+    ? `/projects/${projectRef}/articles/${article.slug}`
+    : undefined;
 
   return (
     <div>

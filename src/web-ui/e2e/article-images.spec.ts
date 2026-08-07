@@ -152,6 +152,18 @@ function uploadAlert(page: Page) {
 // session rather than logging in per test.
 test.describe.configure({ mode: "serial" });
 
+// The editor guards against losing an unsaved body, so navigating away from it
+// raises a beforeunload prompt. Every navigation in these tests is deliberate.
+function allowLeavingTheEditor(page: Page) {
+  page.on("dialog", (dialog) => {
+    if (dialog.type() === "beforeunload") {
+      void dialog.accept();
+    } else {
+      void dialog.dismiss();
+    }
+  });
+}
+
 test.describe("Article inline images", () => {
   let page: Page;
   let uploadedImageIds: string[];
@@ -159,6 +171,7 @@ test.describe("Article inline images", () => {
   test.beforeAll(async ({ browser }) => {
     page = await browser.newPage();
     uploadedImageIds = trackUploadedImageIds(page);
+    allowLeavingTheEditor(page);
     await login(page);
   });
 

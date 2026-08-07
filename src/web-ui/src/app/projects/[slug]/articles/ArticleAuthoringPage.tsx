@@ -25,6 +25,9 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "listing", label: "Listing settings" },
 ];
 
+const LEAVE_PROMPT =
+  "You have unsaved changes to this article. Leave without saving?";
+
 interface Props {
   project: Project;
   // Present → editing an existing article; absent → the /new route, which
@@ -88,7 +91,30 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
     );
   }
 
-  if (!draft.form || !draft.article) return null;
+  // Nothing loaded. A deleted draft (404), a contributor who has lost full_edit
+  // between page loads (403) and a dropped connection all land here, and none
+  // of the affordances below exist yet — so this has to carry draft.error
+  // itself rather than leave the author on a blank page.
+  if (!draft.form || !draft.article) {
+    return (
+      <div className="max-w-2xl mx-auto py-12 px-4 text-center">
+        <h1 className="text-lg font-semibold text-foreground">
+          Couldn&apos;t open this article
+        </h1>
+        <p className="text-sm text-muted-foreground mt-2" role="alert">
+          {draft.error || "The article is no longer available."}
+        </p>
+        <div className="mt-6">
+          <Link
+            href={`/projects/${projectRef}`}
+            className="text-sm text-accent hover:text-accent-hover"
+          >
+            Back to project
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   const article = draft.article;
   const form = draft.form;
@@ -122,6 +148,13 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
             <Link
               href={`/my-projects/${project.id}#articles`}
               className="hover:text-foreground"
+              onClick={(e) => {
+                // The body is only in memory until a save, so leaving by the
+                // breadcrumb is as lossy as closing the tab.
+                if (draft.isDirty() && !window.confirm(LEAVE_PROMPT)) {
+                  e.preventDefault();
+                }
+              }}
             >
               {project.title}
             </Link>

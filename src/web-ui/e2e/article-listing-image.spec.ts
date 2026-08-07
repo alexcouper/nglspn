@@ -182,6 +182,18 @@ async function cleanUp(
   );
 }
 
+// The editor guards against losing an unsaved body, so navigating away from it
+// raises a beforeunload prompt. Every navigation in these tests is deliberate.
+function allowLeavingTheEditor(page: Page) {
+  page.on("dialog", (dialog) => {
+    if (dialog.type() === "beforeunload") {
+      void dialog.accept();
+    } else {
+      void dialog.dismiss();
+    }
+  });
+}
+
 test.describe("Article listing image", () => {
   let page: Page;
   let uploadedImageIds: string[];
@@ -189,6 +201,7 @@ test.describe("Article listing image", () => {
   test.beforeAll(async ({ browser }) => {
     page = await browser.newPage();
     uploadedImageIds = trackUploadedImageIds(page);
+    allowLeavingTheEditor(page);
     await login(page);
   });
 

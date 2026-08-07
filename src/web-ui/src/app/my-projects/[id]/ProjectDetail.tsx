@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -53,8 +53,19 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [images, setImages] = useState<ProjectImage[]>([]);
   const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
 
+  // Object literals here would change identity on every render, which is what
+  // useImageUpload's uploadFile memoises on.
+  const galleryTarget = useMemo(
+    () => ({ kind: "project" as const, projectId }),
+    [projectId],
+  );
+  const iconTarget = useMemo(
+    () => ({ kind: "project" as const, projectId, isIcon: true }),
+    [projectId],
+  );
+
   const { uploads, uploadFiles, isUploading } = useImageUpload({
-    target: { kind: "project", projectId },
+    target: galleryTarget,
     onUploadComplete: (image) => {
       setImages((prev) => [...prev, image]);
     },
@@ -66,7 +77,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const {
     uploadFiles: uploadIconFiles,
   } = useImageUpload({
-    target: { kind: "project", projectId, isIcon: true },
+    target: iconTarget,
     onUploadComplete: (image) => {
       setImages((prev) => {
         const withoutOldIcon = prev.filter((img) => !img.is_icon);

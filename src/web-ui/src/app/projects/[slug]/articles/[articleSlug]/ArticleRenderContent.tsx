@@ -11,8 +11,8 @@ import remarkGfm from "remark-gfm";
 import { articleSanitizeSchema } from "../sanitize-schema";
 import "../article-markdown.css";
 import { useAuth } from "@/contexts/auth";
+import { useNotifications } from "@/contexts/notifications";
 import type { Article, Project } from "@/lib/api";
-import { api } from "@/lib/api";
 import { formatDate, getAuthorName } from "@/lib/utils";
 
 interface Props {
@@ -22,6 +22,10 @@ interface Props {
 
 export function ArticleRenderContent({ project, article }: Props) {
   const { isAuthenticated } = useAuth();
+  // Through the context, not api.notifications directly: it refreshes the
+  // summary afterwards, so the bell drops its count now rather than at the
+  // next 30s poll.
+  const { markArticleRead } = useNotifications();
 
   const publishedAt = article.published_at
     ? new Date(article.published_at)
@@ -32,10 +36,10 @@ export function ArticleRenderContent({ project, article }: Props) {
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    api.notifications.markArticleThread(article.id).catch(() => {
+    markArticleRead(article.id).catch(() => {
       // Best-effort; the bell will eventually reconcile from the server.
     });
-  }, [article.id, isAuthenticated]);
+  }, [article.id, isAuthenticated, markArticleRead]);
 
   return (
     <article className="sm:py-8 sm:px-6">

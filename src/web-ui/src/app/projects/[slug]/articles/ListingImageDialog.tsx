@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ArrowPathIcon, PhotoIcon } from "@heroicons/react/24/outline";
 import { Dialog } from "@/components/Dialog";
 import { ImageCropper, defaultCrop } from "@/components/ImageCropper";
@@ -13,6 +13,8 @@ import { pickVariant } from "@/lib/utils";
 // Listing cards are always 16:9 so a grid of them stays uniform. Mirrors
 // CARD_RATIO in services/articles/crop.py.
 const CARD_RATIO = 16 / 9;
+
+const TITLE_ID = "listing-image-dialog-title";
 
 interface Props {
   // Slug or id — whatever the article editor addresses the project by. Article
@@ -54,8 +56,15 @@ export function ListingImageDialog({
   const [pendingUpload, setPendingUpload] = useState<ProjectImage | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // A fresh object literal here would change identity on every render, which
+  // is what useImageUpload's uploadFile memoises on.
+  const uploadTarget = useMemo(
+    () => ({ kind: "article" as const, projectRef, articleId }),
+    [projectRef, articleId],
+  );
+
   const { uploadFile, isUploading } = useImageUpload({
-    target: { kind: "article", projectRef, articleId },
+    target: uploadTarget,
     onUploadComplete: (image) => {
       setPendingUpload(image);
       // A fresh upload has nothing to choose between, so it continues straight
@@ -90,11 +99,13 @@ export function ListingImageDialog({
     <Dialog
       isOpen
       onClose={handleCancel}
-      // Full-screen under `sm`: a crop stage inside a padded modal on a 375px
-      // screen leaves nothing to aim at.
-      className="max-w-3xl max-h-[calc(100vh-4rem)] flex flex-col max-sm:rounded-none max-sm:max-h-screen max-sm:min-h-screen"
+      labelledBy={TITLE_ID}
+      // A crop stage inside a padded modal on a 375px screen leaves nothing to
+      // aim at.
+      fullScreenOnMobile
+      className="max-w-3xl max-h-[calc(100vh-4rem)] flex flex-col"
     >
-      <h2 className="shrink-0 text-lg font-semibold text-foreground">
+      <h2 id={TITLE_ID} className="shrink-0 text-lg font-semibold text-foreground">
         {step === "pick" ? "Choose a listing image" : "Frame the card"}
       </h2>
       <p className="mt-1 shrink-0 text-sm text-muted-foreground">
@@ -173,6 +184,11 @@ export function ListingImageDialog({
             <button
               onClick={() => {
                 if (!selected) return;
+                // Upload, Back, pick something else, confirm: the upload is
+                // now unreferenced, so it goes the same way as on Cancel.
+                if (pendingUpload && pendingUpload.id !== selected.id) {
+                  discardPendingUpload();
+                }
                 onConfirm(
                   selected,
                   crop ??

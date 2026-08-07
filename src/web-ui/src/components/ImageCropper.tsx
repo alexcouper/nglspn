@@ -8,7 +8,6 @@ import {
   useState,
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
-  type WheelEvent as ReactWheelEvent,
 } from "react";
 import { CROP_BACKGROUND, CroppedImage, type CropRect } from "./CroppedImage";
 
@@ -108,6 +107,21 @@ export function ImageCropper({
     [crop, layout.imageWidth, layout.imageHeight, onChange],
   );
 
+  // Registered by hand rather than through onWheel: React attaches `wheel` at
+  // the root as a passive listener, so preventDefault from a JSX handler is
+  // ignored and the scroll container underneath the stage — the dialog's own,
+  // when the cropper is in one — scrolls while the crop zooms.
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (!stage) return;
+    const onWheel = (event: WheelEvent) => {
+      event.preventDefault();
+      setZoom((1 / crop.w) * (event.deltaY > 0 ? 0.94 : 1.06));
+    };
+    stage.addEventListener("wheel", onWheel, { passive: false });
+    return () => stage.removeEventListener("wheel", onWheel);
+  }, [setZoom, crop.w]);
+
   const drag = useDrag(pan);
   const sourcePixelWidth = Math.round(crop.w * naturalWidth);
 
@@ -119,9 +133,6 @@ export function ImageCropper({
         onPointerMove={drag.onPointerMove}
         onPointerUp={drag.onPointerUp}
         onPointerCancel={drag.onPointerUp}
-        onWheel={(event: ReactWheelEvent) =>
-          setZoom((1 / crop.w) * (event.deltaY > 0 ? 0.94 : 1.06))
-        }
         style={{ height: layout.stageHeight, touchAction: "none" }}
         className="relative w-full select-none overflow-hidden rounded-lg bg-[#d9dee6] cursor-move"
         data-testid="crop-stage"

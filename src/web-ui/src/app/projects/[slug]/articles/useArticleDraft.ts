@@ -34,11 +34,19 @@ interface Options {
 
 // True when nothing has been written to this draft. Used to sweep up the empty
 // draft that opening /new creates when the author leaves without editing.
-function isUntouched(article: Article, body: string): boolean {
+//
+// Reads the live form rather than the last-saved article for the fields the
+// author can edit without a save: typing only a headline and leaving used to
+// delete the draft and the headline with it.
+function isUntouched(
+  article: Article,
+  form: ArticleFormState | null,
+  body: string,
+): boolean {
   return (
-    !article.title.trim() &&
+    !(form?.title ?? article.title).trim() &&
     !body.trim() &&
-    !article.listing_image_id &&
+    !(form?.listing_image_id ?? article.listing_image_id) &&
     article.images.length === 0
   );
 }
@@ -70,8 +78,13 @@ export function useArticleDraft({ project, articleId }: Options) {
   // opening /new would create two drafts per visit.
   const creatingRef = useRef(false);
   // Read by the unmount cleanup, which cannot see current state.
-  const latestRef = useRef<{ article: Article | null; leaving: boolean }>({
+  const latestRef = useRef<{
+    article: Article | null;
+    form: ArticleFormState | null;
+    leaving: boolean;
+  }>({
     article: null,
+    form: null,
     leaving: false,
   });
 
@@ -138,7 +151,8 @@ export function useArticleDraft({ project, articleId }: Options) {
   // only reader, and it runs after the last commit.
   useEffect(() => {
     latestRef.current.article = article;
-  }, [article]);
+    latestRef.current.form = form;
+  }, [article, form]);
 
   // Best-effort sweep of the draft /new created when the author leaves without
   // writing anything. What survives it is a draft in the author's own list,
@@ -148,7 +162,7 @@ export function useArticleDraft({ project, articleId }: Options) {
     return () => {
       const current = state.article;
       if (state.leaving || !current) return;
-      if (!isUntouched(current, bodyRef.current)) return;
+      if (!isUntouched(current, state.form, bodyRef.current)) return;
       api.articles.delete(projectRef, current.id).catch(() => {});
     };
   }, [projectRef]);
@@ -170,11 +184,49 @@ export function useArticleDraft({ project, articleId }: Options) {
     return current;
   }, [form]);
 
+  // Whether anything would be lost by leaving now. The body is the reason this
+  // has to exist at all: it lives in `bodyRef` until a save, so nothing outside
+  // this hook can tell that it has moved on from what the server holds.
+  const isDirty = useCallback((): boolean => {
+    if (!article || !form) return false;
+    return (
+      bodyRef.current !== article.body ||
+      form.title !== article.title ||
+      form.summary !== article.summary ||
+      form.channel_id !== article.channel.id ||
+      form.listing_image_id !== article.listing_image_id ||
+      form.listing_image_mode !== article.listing_image_mode ||
+      JSON.stringify(form.listing_crop) !== JSON.stringify(article.listing_crop)
+    );
+  }, [article, form]);
+
+  // Covers browser navigation only — a closed tab, a reload, a typed URL.
+  // In-app navigation never fires this, so the links that leave the editor
+  // confirm for themselves.
+  useEffect(() => {
+    const warn = (event: BeforeUnloadEvent) => {
+      if (!isDirty()) return;
+      event.preventDefault();
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [isDirty]);
+
   // The wizard's outcome: an image and the rectangle the author drew on it.
   // Any choice commits the mode, so the next save does not re-derive the image
   // out from under a rectangle they just drew.
   const chooseListingImage = useCallback(
     (image: ProjectImage, crop: CropRect | null) => {
+      // The wizard can hand back an image it uploaded itself, which the loaded
+      // article knows nothing about. Both `images` and `listingImage` are
+      // derived from `article.images`, so without adopting it here the panel
+      // would show "No image" next to "Your choice." until the next save wrote
+      // the server's copy back.
+      setArticle((prev) =>
+        prev && !prev.images.some((existing) => existing.id === image.id)
+          ? { ...prev, images: [...prev.images, image] }
+          : prev,
+      );
       setForm((prev) =>
         prev
           ? {
@@ -299,7 +351,6 @@ export function useArticleDraft({ project, articleId }: Options) {
   return {
     channels,
     article,
-    setArticle,
     form,
     // The article's own uploads — the wizard's selection list. Comes off the
     // image-article link, so it holds whatever was uploaded for this article
@@ -324,6 +375,7 @@ export function useArticleDraft({ project, articleId }: Options) {
     handleBodyChange,
     updateForm,
     snapshotForm,
+    isDirty,
     chooseListingImage,
     removeListingImage,
     save,

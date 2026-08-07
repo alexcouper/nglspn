@@ -19,7 +19,7 @@ Verified before reviewing:
 | 2 | Digest cron broken by the task rename | Backend **done** — `nnkr b401`; infra repo in progress |
 | 3 | `auto` mode adopts an incomplete upload | **Done** — `wvvx` |
 | 4 | N+1 on the Following page | **Done** — `tvyq`, wider than reviewed (see below) |
-| 5 | Fresh upload leaves the panel saying "No image" | Open |
+| 5 | Fresh upload leaves the panel saying "No image" | **Done** — `678dc07e`, before this review was filed |
 | 6 | `listing_image_mode` unvalidated | Open |
 | 7–10, 12 | Nits | Open |
 | 11 | `ArticleOut.resolve_images` returns pending uploads | **Done** — `99d24cf2` |
@@ -162,7 +162,22 @@ can't drift from the list path. Tests: a scaling assertion (query count for four
 follows equals the count for one), plus hero resolution ignoring article uploads
 and incomplete ones.
 
-### 5. Picking a freshly-uploaded image in the wizard leaves the panel saying "No image" — Open
+### 5. Picking a freshly-uploaded image in the wizard leaves the panel saying "No image" — **Done** (`678dc07e`)
+
+Already fixed when this finding was checked: the front-end review round
+(`FRONT_END_REVIEW.md`, landed in `678dc07e`) found the same bug and applied the
+same fix. `chooseListingImage`
+(`src/web-ui/src/app/projects/[slug]/articles/useArticleDraft.ts:218-242`) now
+merges the confirmed image into `article.images` before setting the form, so the
+`listingImage` selector hits on the first branch and both `ListingSettingsPanel`
+and the card preview it renders show the upload immediately. `setArticle` is no
+longer exported.
+
+The e2e still only picks a body image, so the coverage is a unit test —
+`use-article-draft.test.tsx`, *"shows an image uploaded in the wizard before any
+save"* — which is the cheaper place for it. 19 tests in that file pass.
+
+The original finding, for the record (line numbers as they were then):
 
 `src/web-ui/src/app/projects/[slug]/articles/useArticleDraft.ts:310`
 

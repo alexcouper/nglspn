@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 import logging
+from datetime import timedelta
 from pathlib import PurePosixPath
 from typing import TYPE_CHECKING
 
@@ -12,6 +13,7 @@ from PIL import Image
 from apps.projects.models import (
     VARIANT_SIZE_WIDTHS,
     ImageVariant,
+    OrphanedStorageObject,
     ProjectImage,
     UploadStatus,
     VariantSize,
@@ -27,9 +29,12 @@ from services.images.handler_interface import (
     MAX_FILE_SIZE,
     MAX_IMAGES_PER_ARTICLE,
     MAX_IMAGES_PER_PROJECT,
+    MAX_SWEEP_ATTEMPTS,
+    PENDING_UPLOAD_MAX_AGE_HOURS,
     FileMeta,
     ImageHandlerInterface,
     PreparedUpload,
+    StorageSweepResult,
 )
 from services.storage import storage_service
 
@@ -40,6 +45,10 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 WEBP_QUALITY = 80
+
+# Nothing in this repo can tell you the sweep's CronJob is not running — the
+# only visible symptom is a table that grows forever. So say so, once per run.
+SWEEP_BACKLOG_WARNING_HOURS = 24
 
 
 class DjangoImageHandler(ImageHandlerInterface):
@@ -121,6 +130,95 @@ class DjangoImageHandler(ImageHandlerInterface):
             if replacement:
                 replacement.is_main = True
                 replacement.save()
+
+    # ------------------------------------------------------------------
+    # Orphaned storage objects
+    # ------------------------------------------------------------------
+
+    def sweep_orphaned_objects(self, *, batch_size: int = 500) -> StorageSweepResult:
+        reaped = self._reap_abandoned_uploads(batch_size=batch_size)
+        deleted, failures = self._drain_tombstones(batch_size=batch_size)
+        self._warn_on_stale_backlog()
+
+        result = StorageSweepResult(
+            pending_uploads_reaped=reaped,
+            objects_deleted=deleted,
+            failures=failures,
+        )
+        logger.info(
+            "Storage sweep: reaped %d abandoned uploads, deleted %d objects, "
+            "%d failures",
+            result.pending_uploads_reaped,
+            result.objects_deleted,
+            result.failures,
+        )
+        return result
+
+    @staticmethod
+    def _reap_abandoned_uploads(*, batch_size: int) -> int:
+        """Delete `PENDING` rows whose presigned PUT can no longer be completed.
+
+        No storage call here on purpose: deleting the row fires the `pre_delete`
+        receiver, which tombstones the key, and `_drain_tombstones` — which runs
+        next, in this same sweep — is what talks to S3. `PENDING` means "we
+        never heard back", not "there is nothing there", so the object may or
+        may not exist and the delete has to be attempted either way.
+        """
+        cutoff = timezone.now() - timedelta(hours=PENDING_UPLOAD_MAX_AGE_HOURS)
+        stale_ids = list(
+            ProjectImage.objects.filter(
+                upload_status=UploadStatus.PENDING, created_at__lt=cutoff
+            ).values_list("pk", flat=True)[:batch_size]
+        )
+        if not stale_ids:
+            return 0
+        ProjectImage.objects.filter(pk__in=stale_ids).delete()
+        return len(stale_ids)
+
+    @staticmethod
+    def _drain_tombstones(*, batch_size: int) -> tuple[int, int]:
+        rows = list(
+            OrphanedStorageObject.objects.filter(
+                attempts__lt=MAX_SWEEP_ATTEMPTS
+            ).order_by("created_at")[:batch_size]
+        )
+        deleted = 0
+        failures = 0
+        for row in rows:
+            try:
+                storage_service.delete_object(row.storage_key)
+            except Exception as exc:
+                failures += 1
+                row.attempts += 1
+                row.last_error = f"{type(exc).__name__}: {exc}"[:2000]
+                row.save(update_fields=["attempts", "last_error"])
+                logger.exception(
+                    "Failed to delete orphaned object %s (attempt %d)",
+                    row.storage_key,
+                    row.attempts,
+                )
+            else:
+                row.delete()
+                deleted += 1
+        return deleted, failures
+
+    @staticmethod
+    def _warn_on_stale_backlog() -> None:
+        oldest = (
+            OrphanedStorageObject.objects.filter(attempts__lt=MAX_SWEEP_ATTEMPTS)
+            .order_by("created_at")
+            .first()
+        )
+        if oldest is None:
+            return
+        age = timezone.now() - oldest.created_at
+        if age > timedelta(hours=SWEEP_BACKLOG_WARNING_HOURS):
+            logger.warning(
+                "Oldest undrained storage tombstone is %d hours old (%s) — "
+                "the sweep is falling behind or was not running",
+                int(age.total_seconds() // 3600),
+                oldest.storage_key,
+            )
 
     # ------------------------------------------------------------------
     # Shared mechanics

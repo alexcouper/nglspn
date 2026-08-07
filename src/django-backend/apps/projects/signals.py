@@ -1,9 +1,15 @@
 from typing import Any
 
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import post_delete, post_save, pre_delete
 from django.dispatch import receiver
 
-from apps.projects.models import Project, ProjectContributor
+from apps.projects.models import (
+    ImageVariant,
+    OrphanedStorageObject,
+    Project,
+    ProjectContributor,
+    ProjectImage,
+)
 
 DEFAULT_CHANNEL_NAME = "Updates"
 
@@ -44,3 +50,40 @@ def recompute_on_contributor_delete(
     except Project.DoesNotExist:
         return
     project.recompute_community_tipoff()
+
+
+# ----------------------------------------------------------------------
+# Storage tombstones
+# ----------------------------------------------------------------------
+#
+# DO NOT REMOVE THESE TWO RECEIVERS, and do not "optimise" them away.
+#
+# Django's deletion collector fast-deletes cascaded rows with a single
+# `DELETE ... WHERE` and no signals, but it only takes that path when the model
+# has no `pre_delete`/`post_delete` receiver. Registering these disables
+# fast-delete for `ProjectImage` and `ImageVariant`, which is the only reason
+# cascades from `Article` and from `Project` record their keys at all — and
+# those cascades, not `delete_image`, are how most objects are orphaned.
+#
+# `pre_delete`, not `post_delete`: the row (and its `storage_key`) must still be
+# readable. Both run inside the deletion transaction, so a tombstone cannot
+# survive a rolled-back delete, nor a delete outlive its tombstone.
+#
+# Keys are also recorded for rows deleted through
+# `HANDLERS.images.delete_image`, which deletes the objects synchronously first.
+# The duplicate work is a no-op (S3 `DeleteObject` on a missing key succeeds)
+# and it buys a retry for the variant deletes that method swallows.
+
+
+@receiver(pre_delete, sender=ProjectImage)
+def record_orphaned_image_object(
+    sender: Any, instance: ProjectImage, **kwargs: Any
+) -> None:
+    OrphanedStorageObject.objects.get_or_create(storage_key=instance.storage_key)
+
+
+@receiver(pre_delete, sender=ImageVariant)
+def record_orphaned_variant_object(
+    sender: Any, instance: ImageVariant, **kwargs: Any
+) -> None:
+    OrphanedStorageObject.objects.get_or_create(storage_key=instance.storage_key)

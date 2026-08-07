@@ -335,6 +335,33 @@ class ImageVariant(models.Model):
         return f"{settings.S3_PUBLIC_URL_BASE}/{self.storage_key}"
 
 
+class OrphanedStorageObject(models.Model):
+    """A storage key whose owning row is gone.
+
+    Written by a `pre_delete` receiver (`apps/projects/signals.py`) rather than
+    by each delete path, because `ProjectImage` rows disappear by cascade from
+    `Article` and `Project` as well as by explicit deletion, and a caller that
+    forgets is exactly how the keys were lost in the first place. The receiver
+    runs inside Django's deletion transaction, so the tombstone and the row
+    deletion commit or roll back together.
+
+    Drained by `HANDLERS.images.sweep_orphaned_objects()`.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    storage_key = models.CharField(max_length=500, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    attempts = models.PositiveSmallIntegerField(default=0)
+    last_error = models.TextField(blank=True, default="")
+
+    class Meta:
+        db_table = "orphaned_storage_objects"
+        indexes = [models.Index(fields=["attempts", "created_at"])]
+
+    def __str__(self) -> str:
+        return self.storage_key
+
+
 class CompetitionStatus(models.TextChoices):
     PENDING = "pending", "Pending"
     ACCEPTING_APPLICATIONS = "accepting_applications", "Accepting Applications"

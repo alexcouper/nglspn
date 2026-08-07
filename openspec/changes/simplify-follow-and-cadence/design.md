@@ -79,12 +79,18 @@ Each digest fetches all `Notification` rows for the user in the relevant kind th
 
 Article fan-out drops `_send_immediate` entirely — there is no `IMMEDIATE` value in `ArticleEmailFrequency`.
 
-### 6. Existing-user sweep is "any switch was on → row stays; both off → drop"
+### 6. Existing-user sweep is "email was off → drop the row"
 
-The Phase-1 → Phase-2 mirror left every existing user with `FollowChannelPreference` rows on the house project. Most have at least one boolean `True`. The migration computes a single boolean per row (`email_enabled OR in_app_enabled`) and:
+The Phase-1 → Phase-2 mirror left every existing user with `FollowChannelPreference` rows on the house project. The migration keys on `email_enabled` alone:
 
 - `True` → row stays (becomes a `FollowedChannel` row with no booleans after the column drop).
 - `False` → row deleted before the column drop runs.
+
+`in_app_enabled` is deliberately not consulted. Once the booleans are gone the row *is* the subscription — following a channel means its articles reach you at your `article_email_frequency` — so `email_enabled` is the only pre-change signal the new model can still carry.
+
+An earlier draft of this decision used `email_enabled OR in_app_enabled`. That rule is wrong for the cohort it was written for: `0002_seed_channels_and_house_follows` writes `in_app_enabled=True` on every row it seeds, unconditionally. Those rows came from two checkboxes (`email_opt_in_competition_results`, `email_opt_in_platform_updates`) that predate the in-app bell, so their `in_app_enabled` is a migration default, not a user choice. OR-ing against a constant `True` matches every legacy row regardless of the opt-out — the sweep would delete none of them, and everyone who had unticked those boxes would be resubscribed to exactly those broadcasts.
+
+What the narrower rule costs: a user who wanted in-app but not email on a channel is unfollowed rather than kept. That state is not expressible after the column drop either way, and a quiet inbox is the safer side to land on.
 
 Users with no `Follow(user, house_project)` row stay unfollowed. That's an explicit choice — if they didn't follow the house project pre-change, they don't get auto-subscribed by the migration. This is the "respect the user's choice" interpretation we agreed to.
 

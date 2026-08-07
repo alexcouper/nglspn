@@ -237,10 +237,12 @@ The endpoint SHALL return 404 if the project doesn't exist, the channel doesn't 
 
 ### Requirement: Data migration sweeps existing FollowChannelPreference rows
 
-A one-shot data migration SHALL collapse every existing `FollowChannelPreference` row to a `FollowedChannel` row based on the prior booleans:
+A one-shot data migration SHALL collapse every existing `FollowChannelPreference` row to a `FollowedChannel` row based on the prior `email_enabled` boolean:
 
-- A row with `email_enabled = True` OR `in_app_enabled = True` SHALL survive as a `FollowedChannel` row (the booleans are subsequently dropped as columns by a follow-up schema migration).
-- A row with both `email_enabled = False` AND `in_app_enabled = False` SHALL be deleted before the booleans are dropped.
+- A row with `email_enabled = True` SHALL survive as a `FollowedChannel` row (the booleans are subsequently dropped as columns by a follow-up schema migration).
+- A row with `email_enabled = False` SHALL be deleted before the booleans are dropped, whatever `in_app_enabled` holds.
+
+`in_app_enabled` SHALL NOT be consulted. Rows seeded by `follows/0002` carry `in_app_enabled = True` unconditionally — a value that migration wrote, not one the user chose — so any rule that ORs the two booleans matches every legacy row and discards the email opt-out it was meant to preserve.
 
 The migration SHALL NOT delete any `Follow` row, even when the sweep removes the last `FollowedChannel` underneath it — that's a valid (if uncommon) "I follow this project, currently subscribed to none of its channels" state. The user can re-enrol via the popover.
 
@@ -251,13 +253,13 @@ The migration SHALL NOT add any `Follow` rows. Users who explicitly unfollowed a
 - **GIVEN** a `FollowChannelPreference(follow=F, channel=C, email_enabled=True, in_app_enabled=True)`
 - **WHEN** the migration runs
 - **THEN** a `FollowedChannel(follow=F, channel=C)` row exists
-- **AND** no row with both booleans `False` referencing `(F, C)` exists
 
-#### Scenario: Either-on row survives
+#### Scenario: Email-off row deleted even though in-app was on
 
 - **GIVEN** a `FollowChannelPreference(follow=F, channel=C, email_enabled=False, in_app_enabled=True)`
 - **WHEN** the migration runs
-- **THEN** a `FollowedChannel(follow=F, channel=C)` row exists
+- **THEN** no `FollowedChannel(follow=F, channel=C)` row exists
+- **AND** the underlying `Follow=F` row SHALL be retained
 
 #### Scenario: Both-off row deleted
 
@@ -265,6 +267,12 @@ The migration SHALL NOT add any `Follow` rows. Users who explicitly unfollowed a
 - **WHEN** the migration runs
 - **THEN** no `FollowedChannel(follow=F, channel=C)` row exists
 - **AND** the underlying `Follow=F` row SHALL be retained
+
+#### Scenario: In-app-off row survives on the strength of email
+
+- **GIVEN** a `FollowChannelPreference(follow=F, channel=C, email_enabled=True, in_app_enabled=False)`
+- **WHEN** the migration runs
+- **THEN** a `FollowedChannel(follow=F, channel=C)` row exists
 
 #### Scenario: User without house-project Follow stays unfollowed
 

@@ -25,6 +25,10 @@ class ListingImageOnWrongProjectError(ArticleError):
     """The referenced ProjectImage does not belong to the Article's project."""
 
 
+class ListingImageNotUploadedError(ArticleError):
+    """The referenced ProjectImage exists but its upload never completed."""
+
+
 class InvalidCropError(ArticleError):
     """A crop rectangle is out of bounds, or its ratio does not match its rect."""
 

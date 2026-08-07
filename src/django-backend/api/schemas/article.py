@@ -4,7 +4,6 @@ from uuid import UUID
 
 from ninja import Schema
 
-from apps.projects.models import UploadStatus
 from services.articles.summary import derive_summary
 
 from .project import ProjectImageResponse
@@ -151,11 +150,7 @@ class ArticleOut(Schema):
         # the wizard lists them in the same order the default was chosen from.
         # Filtered in Python so a prefetched relation is not thrown away.
         return sorted(
-            (
-                img
-                for img in obj.images.all()
-                if img.upload_status == UploadStatus.UPLOADED
-            ),
+            (img for img in obj.images.all() if img.is_uploaded),
             key=lambda img: img.created_at,
         )
 

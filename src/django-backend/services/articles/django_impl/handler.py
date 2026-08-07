@@ -27,6 +27,7 @@ from services.articles.exceptions import (
     DuplicateChannelNameError,
     InvalidCropError,
     LastChannelError,
+    ListingImageNotUploadedError,
     ListingImageOnWrongProjectError,
 )
 from services.articles.handler_interface import (
@@ -266,7 +267,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         elif mode == ListingImageMode.AUTO:
             # `ProjectImage.Meta.ordering` leads with display_order, which is
             # identical across an article's uploads, so order explicitly.
-            image = article.images.order_by("created_at").first()
+            image = article.images.uploaded().order_by("created_at").first()
             rect = None
         else:
             image = self._chosen_image(article, listing_image_id)
@@ -383,4 +384,9 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             raise ListingImageOnWrongProjectError from exc
         if image.project_id != project_id:
             raise ListingImageOnWrongProjectError
+        if not image.is_uploaded:
+            # Distinct from the wrong-project case: the id is one the client
+            # legitimately holds — it comes back from `upload-url` — but the
+            # PUT behind it never landed, so the card would render broken.
+            raise ListingImageNotUploadedError
         return image

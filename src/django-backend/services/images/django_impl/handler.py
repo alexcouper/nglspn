@@ -66,9 +66,7 @@ class DjangoImageHandler(ImageHandlerInterface):
 
     def create_article_upload(self, article: Article, meta: FileMeta) -> PreparedUpload:
         self._validate(meta)
-        article_count = article.images.filter(
-            upload_status=UploadStatus.UPLOADED
-        ).count()
+        article_count = article.images.uploaded().count()
         if article_count >= MAX_IMAGES_PER_ARTICLE:
             raise ImageCapReachedError(MAX_IMAGES_PER_ARTICLE, "article")
         return self._reserve(
@@ -183,9 +181,7 @@ class DjangoImageHandler(ImageHandlerInterface):
     @staticmethod
     def _gallery_queryset(project: Project) -> QuerySet[ProjectImage]:
         return (
-            project.images.filter(upload_status=UploadStatus.UPLOADED)
-            .exclude(is_icon=True)
-            .filter(article__isnull=True)
+            project.images.uploaded().exclude(is_icon=True).filter(article__isnull=True)
         )
 
     def _gallery_count(self, project: Project) -> int:
@@ -201,9 +197,7 @@ class DjangoImageHandler(ImageHandlerInterface):
 
     def generate_variants(self, image_id: str) -> None:
         try:
-            image = ProjectImage.objects.get(
-                id=image_id, upload_status=UploadStatus.UPLOADED
-            )
+            image = ProjectImage.objects.uploaded().get(id=image_id)
         except ProjectImage.DoesNotExist:
             logger.warning(
                 "Image %s not found or not uploaded, skipping",

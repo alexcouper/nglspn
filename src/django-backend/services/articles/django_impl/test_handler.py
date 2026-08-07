@@ -16,7 +16,7 @@ from apps.articles.models import (
 )
 from apps.follows.models import Follow, FollowedChannel
 from apps.notifications.models import Notification
-from apps.projects.models import ProjectImage
+from apps.projects.models import ProjectImage, UploadStatus
 from apps.users.models import ArticleEmailFrequency
 from services.articles.crop import CARD_RATIO
 from services.articles.django_impl.handler import DjangoArticleHandler
@@ -25,6 +25,7 @@ from services.articles.exceptions import (
     ArticleNotPublishableError,
     ChannelNotFoundError,
     ChannelOnWrongProjectError,
+    ListingImageNotUploadedError,
     ListingImageOnWrongProjectError,
 )
 from tests.factories import (
@@ -483,6 +484,34 @@ class TestListingImageAutoMode:
         assert updated.listing_image_id is None
         assert updated.listing_image_mode == ListingImageMode.AUTO
 
+    def test_skips_an_upload_that_never_completed(self):
+        # The row is created before the S3 PUT and nothing deletes it when the
+        # PUT fails, so the earliest row is not necessarily a usable image.
+        article = ArticleFactory()
+        article_image(article, upload_status=UploadStatus.PENDING)
+        completed = article_image(article)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id == completed.id
+
+    def test_skips_a_failed_upload(self):
+        article = ArticleFactory()
+        article_image(article, upload_status=UploadStatus.FAILED)
+        completed = article_image(article)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id == completed.id
+
+    def test_stays_null_when_every_upload_is_incomplete(self):
+        article = ArticleFactory()
+        article_image(article, upload_status=UploadStatus.PENDING)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id is None
+
 
 @pytest.mark.django_db
 class TestListingImageChoice:
@@ -541,6 +570,20 @@ class TestListingImageChoice:
 
         with pytest.raises(ListingImageOnWrongProjectError):
             self.handler.update_article(article.id, listing_image_id=foreign.id)
+
+    def test_rejects_an_upload_that_never_completed(self):
+        article = ArticleFactory()
+        pending = article_image(article, upload_status=UploadStatus.PENDING)
+
+        with pytest.raises(ListingImageNotUploadedError):
+            self.handler.update_article(article.id, listing_image_id=pending.id)
+
+    def test_rejects_a_failed_upload(self):
+        article = ArticleFactory()
+        failed = article_image(article, upload_status=UploadStatus.FAILED)
+
+        with pytest.raises(ListingImageNotUploadedError):
+            self.handler.update_article(article.id, listing_image_id=failed.id)
 
     def test_clearing_the_image_on_a_published_article_is_allowed(self):
         article = PublishedArticleFactory(slug="a-post")

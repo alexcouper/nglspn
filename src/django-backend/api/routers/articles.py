@@ -36,6 +36,7 @@ from services.articles.exceptions import (
     ChannelNotFoundError,
     ChannelOnWrongProjectError,
     InvalidCropError,
+    ListingImageNotUploadedError,
     ListingImageOnWrongProjectError,
 )
 from services.articles.handler_interface import UNSET
@@ -164,6 +165,10 @@ _PATCH_ARTICLE_ERRORS: dict[type[ArticleError], tuple[int, str]] = {
     ListingImageOnWrongProjectError: (
         422,
         "Listing image must belong to this project",
+    ),
+    ListingImageNotUploadedError: (
+        422,
+        "Listing image upload has not completed",
     ),
     InvalidCropError: (422, "Image framing is not a valid crop of this image"),
 }

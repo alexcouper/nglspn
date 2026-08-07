@@ -208,6 +208,19 @@ class UploadStatus(models.TextChoices):
     FAILED = "failed", "Upload Failed"
 
 
+class ProjectImageQuerySet(models.QuerySet):
+    def uploaded(self) -> "ProjectImageQuerySet":
+        """Rows whose object actually exists in storage.
+
+        A row is created `PENDING` before the client PUTs to S3 and nothing
+        deletes it when that PUT fails, so "a linked image" and "an image that
+        will render" are different sets. Anything that picks an image for
+        display goes through here (or `ProjectImage.is_uploaded`, its in-memory
+        twin for prefetched relations) so the rule has one home.
+        """
+        return self.filter(upload_status=UploadStatus.UPLOADED)
+
+
 class ProjectImage(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
@@ -256,6 +269,8 @@ class ProjectImage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     uploaded_at = models.DateTimeField(null=True, blank=True)
 
+    objects = ProjectImageQuerySet.as_manager()
+
     class Meta:
         db_table = "project_images"
         ordering = ["display_order", "created_at"]
@@ -264,8 +279,19 @@ class ProjectImage(models.Model):
         return f"{self.project.title} - {self.original_filename}"
 
     @property
+    def is_uploaded(self) -> bool:
+        """In-memory form of `ProjectImageQuerySet.uploaded()`.
+
+        For callers holding a prefetched relation, where filtering in the
+        database would throw the prefetch away.
+        """
+        return self.upload_status == UploadStatus.UPLOADED
+
+    @property
     def url(self) -> str:
-        """Returns the public URL for this image."""
+        """Public URL. Says nothing about whether the object is there —
+        see `is_uploaded`.
+        """
         return f"{settings.S3_PUBLIC_URL_BASE}/{self.storage_key}"
 
 

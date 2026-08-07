@@ -16,7 +16,6 @@ from apps.projects.models import (
     ProjectContributor,
     ProjectImage,
     ProjectStatus,
-    UploadStatus,
 )
 from services.project.exceptions import ProjectNotFoundError
 from services.project.query_interface import (
@@ -43,7 +42,7 @@ def project_gallery_images() -> QuerySet[ProjectImage]:
     query so article images never reach a project gallery, card or cover pick.
     """
     return (
-        ProjectImage.objects.filter(upload_status=UploadStatus.UPLOADED)
+        ProjectImage.objects.uploaded()
         .filter(article__isnull=True)
         .prefetch_related("variants")
     )

@@ -1,7 +1,8 @@
-# Follow-ups — following page
+# Follow-ups
 
-Small UX gaps found on `/profile/following`. Neither blocks anything; both are
-frontend-only.
+Small gaps found while reviewing. None blocks anything.
+
+Items 1 and 2 are frontend-only, on `/profile/following`.
 
 ## 1. No way to unfollow a single channel from the following page
 
@@ -40,3 +41,24 @@ There is no `/discover` route and no redirect or rewrite for it in
 So a user with no follows sees the empty state and the single call to action on
 it is dead. Fix is `href="/projects"`. This is the only `/discover` reference in
 `src/web-ui/src`.
+
+## 3. Nothing garbage-collects abandoned image uploads
+
+`services/images/django_impl/handler.py:151`, `src/web-ui/src/lib/uploadImage.ts:86`
+
+`ProjectImage` rows are created `PENDING` before the client PUTs to S3. If the
+PUT fails, `uploadImage` throws and the row is left behind — no client-side
+cleanup, no server-side sweep. `grep` finds nothing that deletes on
+`upload_status`.
+
+Reading them is now handled: `ProjectImageQuerySet.uploaded()` /
+`ProjectImage.is_uploaded` gate every display path (review finding 3). So these
+rows are inert rather than harmful. But they still accumulate, one per failed
+upload, each holding a `storage_key` for an object that may or may not exist —
+`PENDING` means "we never heard back", not "there is nothing there", so a PUT
+that succeeded while the completion call failed leaves an orphaned S3 object
+with no row that admits to owning it.
+
+Worth a periodic task that deletes `PENDING` rows older than some threshold,
+attempting the storage delete first. Sizing it needs a count from prod — the
+table may well be tiny, in which case this stays a note.

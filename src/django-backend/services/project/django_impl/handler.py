@@ -15,7 +15,6 @@ from apps.projects.models import (
     ProjectContributor,
     ProjectImage,
     ProjectStatus,
-    UploadStatus,
 )
 from apps.projects.slugs import assign_unique_slug
 from apps.tags.models import Tag, TagStatus
@@ -235,11 +234,9 @@ def _publish_preconditions_missing(project: Project) -> list[str]:
         missing.append("title")
     if not (project.description and project.description.strip()):
         missing.append("description")
-    has_main_image = ProjectImage.objects.filter(
-        project=project,
-        is_main=True,
-        upload_status=UploadStatus.UPLOADED,
-    ).exists()
+    has_main_image = (
+        ProjectImage.objects.uploaded().filter(project=project, is_main=True).exists()
+    )
     if not has_main_image:
         missing.append("main_image")
     return missing

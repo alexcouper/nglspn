@@ -17,7 +17,7 @@ Verified before reviewing:
 |---|---------|-------|
 | 1 | Notification opt-out lost in migration | **Done** — `xzpr 33b4`, but not as reviewed (see below) |
 | 2 | Digest cron broken by the task rename | Backend **done** — `nnkr b401`; infra repo in progress |
-| 3 | `auto` mode adopts an incomplete upload | Open — under discussion |
+| 3 | `auto` mode adopts an incomplete upload | **Done** — `wvvx` |
 | 4 | N+1 on the Following page | Open |
 | 5 | Fresh upload leaves the panel saying "No image" | Open |
 | 6 | `listing_image_mode` unvalidated | Open |
@@ -97,7 +97,7 @@ only produced a comment block; there is no schedule config anywhere, and the new
 
 ## Important
 
-### 3. `auto` mode can adopt an upload that never completed — Open
+### 3. `auto` mode can adopt an upload that never completed — **Done**
 
 `src/django-backend/services/articles/django_impl/handler.py:269`
 
@@ -110,6 +110,19 @@ that works → save → the listing image is the dead row, and `listing_image_ur
 exist. Every listing card for that article then shows a broken image.
 
 Filter on `upload_status=UploadStatus.UPLOADED`.
+
+**Resolution.** Confirmed, and wider than written: `_resolve_listing_image`
+(`handler.py:375`) had the same hole, so `PATCH {"listing_image_id": <pending>}`
+was accepted too. Rather than filtering at each site, the rule got one home —
+`ProjectImageQuerySet.uploaded()` plus `ProjectImage.is_uploaded` for callers
+holding a prefetch (`apps/projects/models.py:216,286`). All ten read sites now
+go through it; no `upload_status=UPLOADED` literal remains outside the model.
+`chosen` on an incomplete upload raises the new `ListingImageNotUploadedError`
+→ 422, kept distinct from the wrong-project case because the client legitimately
+holds that id — `upload-url` returned it.
+
+Orphaned `PENDING` rows are now inert but still accumulate; logged as
+`FOLLOW_UPS.md` item 3.
 
 ### 4. N+1 on the Following page — Open
 

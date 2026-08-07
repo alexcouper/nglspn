@@ -280,11 +280,10 @@ def update_image_roles(
 ) -> ProjectImage | tuple[int, dict[str, str]]:
     project = _get_editable_project_or_404(project_id, request.auth)
     image = get_object_or_404(
-        ProjectImage,
+        ProjectImage.objects.uploaded(),
         id=image_id,
         project=project,
         article__isnull=True,
-        upload_status=UploadStatus.UPLOADED,
     )
 
     role_fields = [

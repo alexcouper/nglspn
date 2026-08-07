@@ -19,7 +19,7 @@ class FollowHandlerInterface(ABC):
         ``unfollow_channel``): re-following writes nothing, so the user stays
         followed-with-nothing-ticked until they tick a channel themselves.
         Accepted; see design decision 6 in
-        openspec/changes/simplify-follow-and-cadence/design.md.
+        openspec/changes/archive/2026-08-07-simplify-follow-and-cadence/design.md.
         """
 
     @abstractmethod
@@ -55,5 +55,5 @@ class FollowHandlerInterface(ABC):
         emptied rows behind on purpose. A Follow with no channels is tolerated:
         it notifies about nothing (every actor selects FollowedChannel), but
         the reads still report it as followed. See design decision 6 in
-        openspec/changes/simplify-follow-and-cadence/design.md.
+        openspec/changes/archive/2026-08-07-simplify-follow-and-cadence/design.md.
         """

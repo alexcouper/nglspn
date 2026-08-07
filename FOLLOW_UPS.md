@@ -3,7 +3,7 @@
 Gaps found while reviewing.
 
 Items 1–4 are frontend fixes on `/profile/following` and are resolved. Item 5's
-code has landed but nothing schedules it yet. Items 6 to 18 are open. Items 8
+code has landed but nothing schedules it yet. Items 6 to 19 are open. Items 8
 to 11 come from the article-authoring review and were deferred deliberately
 rather than fixed; **item 8 is live data loss and ships unfixed**, so it is not
 in the "blocks nothing" category the rest are. Items 13 to 16 are spillover
@@ -44,7 +44,7 @@ on purpose. Such a `Follow` notifies about nothing, but `is_followed` still
 reports it as followed, so the project shows as "Following" with no channels
 ticked and pressing Follow again writes nothing — the user re-ticks a channel in
 the popover to recover. Accepted; see design decision 6 in
-`openspec/changes/simplify-follow-and-cadence/design.md`.
+`openspec/changes/archive/2026-08-07-simplify-follow-and-cadence/design.md`.
 
 ## 4. Nested interactive elements in the row header — done
 
@@ -607,3 +607,27 @@ These files are instructions, so they re-inject the drift on every session that
 loads them, which is how it survived a CLAUDE.md correction. Fixing them changes
 how future sessions behave, so it wants a deliberate decision rather than being
 folded into an unrelated change.
+
+## 19. A recipient with both comments and articles pending gets two emails
+
+`services/notifications/django_impl/handler.py:280,323`
+
+`send_discussion_digest` and `send_article_digest` are the same shape — take one
+cadence, collect unsent unread notifications of their own kind, group by
+recipient, hand each group to its own template
+(`templates/email/discussion_digest.mjml`, `article_digest.mjml`). They never
+meet, and `enqueue_digest` runs them as separate jobs. So a follower with a
+comment and an article waiting in the same hourly window gets one email of each.
+
+`add-article-authoring` tasks 5.4 and 5.5 asked for a single per-recipient
+digest covering both kinds; the split shipped instead so that article rows
+couldn't crash the discussion path. Carried here because those tasks are now
+archived.
+
+`simplify-follow-and-cadence` made merging harder rather than easier: cadence is
+per kind now (`article_email_frequency`, `discussion_email_frequency` —
+`apps/users/models.py:81,86`), so the two halves of one email can be scheduled
+differently. Merging needs a rule for `hourly` articles against `daily`
+comments — hold the faster half, send it early, or keep two emails whenever the
+cadences disagree. That decision is the work; the grouping code is
+straightforward once it exists.

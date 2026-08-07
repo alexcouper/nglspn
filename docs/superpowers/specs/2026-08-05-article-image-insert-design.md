@@ -12,7 +12,7 @@ button. Upload progress and failures get a visible home, which they do not have
 today.
 
 Addresses "The select image dialog that appears from the library is ugly" in
-`openspec/changes/add-article-authoring/feedback.md`.
+`openspec/changes/archive/2026-08-07-add-article-authoring/feedback.md`.
 
 Frontend only. No backend change, so no OpenAPI regeneration and no migration.
 

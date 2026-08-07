@@ -73,7 +73,7 @@ class DjangoFollowQuery(FollowQueryInterface):
     both miss, and follows/0004 left some behind. These reads report such a
     Follow as followed, so the UI shows the project as "Following" with nothing
     ticked. Deliberate; see design decision 6 in
-    openspec/changes/simplify-follow-and-cadence/design.md.
+    openspec/changes/archive/2026-08-07-simplify-follow-and-cadence/design.md.
     """
 
     def is_followed(self, user_id: UUID | None, project: Project) -> bool:

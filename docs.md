@@ -41,7 +41,7 @@ from the more general one, rather than copying the content.
   `2026-05-11-rework-voting-ux.md`. The date is when the doc was written, not a
   deadline.
 - **OpenSpec changes** use a verb-led kebab name describing the change:
-  `add-article-authoring`, `moderator-project-approval`.
+  `add-article-authoring`, `simplify-follow-and-cadence`.
 - **Skills** are prefixed `nglspn-` to mark them as repo-local:
   `nglspn-code-review`, `nglspn-docs`.
 

@@ -17,7 +17,7 @@ derived fallback, and rebuilds the project's Articles tab as a lead story
 followed by a two-column card grid. A card preview dialog in the editor is where
 the summary is written.
 
-Addresses these items in `openspec/changes/add-article-authoring/feedback.md`:
+Addresses these items in `openspec/changes/archive/2026-08-07-add-article-authoring/feedback.md`:
 
 - "Hero image doesn't get removed - click remove and save and it remains"
 - "If we're going to select large wide images to represent the article, we

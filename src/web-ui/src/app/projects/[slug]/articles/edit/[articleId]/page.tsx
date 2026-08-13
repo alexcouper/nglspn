@@ -4,8 +4,8 @@ interface PageProps {
   params: Promise<{ slug: string; articleId: string }>;
 }
 
-// No server-side project fetch — see the sibling /new route and
-// ArticleAuthoringRoute for why.
+// No server-side project fetch: it would be anonymous, and the backend 404s an
+// unapproved project for an anonymous caller. See ArticleAuthoringRoute.
 export default async function EditArticlePage({ params }: PageProps) {
   const { slug, articleId } = await params;
 

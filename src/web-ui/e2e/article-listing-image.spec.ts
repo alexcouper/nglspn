@@ -25,8 +25,8 @@ async function login(page: Page) {
 }
 
 // Walks from the project list to a blank article editor, so the test doesn't
-// hard-code a project slug. /new creates the draft immediately and swaps the
-// URL, so this returns both ids.
+// hard-code a project slug. The New article button creates the draft and routes
+// straight to its editor, so this returns both ids.
 async function openBlankArticleEditor(
   page: Page,
 ): Promise<{ projectId: string; articleId: string }> {
@@ -35,15 +35,13 @@ async function openBlankArticleEditor(
   await expect(page).toHaveURL(/\/my-projects\/[0-9a-f-]+$/);
   const projectId = page.url().split("/").pop()!;
 
-  // The link lives behind a tab, so read the route off it rather than clicking.
-  const newArticleHref = await page
-    .locator('a[href$="/articles/new"]')
-    .first()
-    .getAttribute("href");
-  await page.goto(newArticleHref!);
+  // The button lives behind a tab, and it is the thing that creates the draft —
+  // there is no route to navigate to instead.
+  await page.getByRole("button", { name: "Articles", exact: true }).click();
+  await page.getByRole("button", { name: "New article" }).click();
 
-  // The draft is created on mount, so the URL becomes /edit/<id> before the
-  // author types anything.
+  // The draft is created by the click, so the editor opens on /edit/<id>
+  // before the author types anything.
   await expect(page).toHaveURL(/\/articles\/edit\/[0-9a-f-]+$/);
   await expect(page.locator('input[placeholder="Article title"]')).toBeVisible();
 

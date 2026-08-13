@@ -24,10 +24,10 @@ vi.mock("./ArticleAuthoringPage", () => ({
     articleId,
   }: {
     project: Project;
-    articleId?: string;
+    articleId: string;
   }) => (
     <div data-testid="authoring-page">
-      {project.title} / {articleId ?? "new"}
+      {project.title} / {articleId}
     </div>
   ),
 }));
@@ -61,12 +61,17 @@ function notFound() {
 
 // ------------------------------------------------------------------- mounting
 
-async function mount(element: React.ReactElement) {
+async function mountRoute({
+  projectRef = "a-project",
+  articleId = "article-1",
+} = {}) {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
   await act(async () => {
-    root.render(element);
+    root.render(
+      <ArticleAuthoringRoute projectRef={projectRef} articleId={articleId} />,
+    );
   });
   return { container, unmount: () => unmount(root, container) };
 }
@@ -101,20 +106,9 @@ beforeEach(() => {
 
 describe("ArticleAuthoringRoute", () => {
   it("renders the authoring page for an unapproved project", async () => {
-    const { container, unmount } = await mount(
-      <ArticleAuthoringRoute projectRef="a-project" />,
-    );
+    const { container, unmount } = await mountRoute();
 
     expect(getProject).toHaveBeenCalledWith("a-project");
-    expectAuthoringPage(container, "A project / new");
-    unmount();
-  });
-
-  it("passes the article id through when editing", async () => {
-    const { container, unmount } = await mount(
-      <ArticleAuthoringRoute projectRef="a-project" articleId="article-1" />,
-    );
-
     expectAuthoringPage(container, "A project / article-1");
     unmount();
   });
@@ -122,9 +116,7 @@ describe("ArticleAuthoringRoute", () => {
   it("shows the skeleton while the project is in flight", async () => {
     getProject.mockReturnValue(new Promise(() => {}));
 
-    const { container, unmount } = await mount(
-      <ArticleAuthoringRoute projectRef="a-project" />,
-    );
+    const { container, unmount } = await mountRoute();
 
     expectSkeleton(container);
     expectNoAuthoringPage(container);
@@ -134,9 +126,7 @@ describe("ArticleAuthoringRoute", () => {
   it("shows an in-page error with a way back when the project 404s", async () => {
     getProject.mockRejectedValue(notFound());
 
-    const { container, unmount } = await mount(
-      <ArticleAuthoringRoute projectRef="a-project" />,
-    );
+    const { container, unmount } = await mountRoute();
 
     expect(container.textContent).toContain("Couldn't open this project");
     expect(container.querySelector("[role='alert']")?.textContent).toBe(
@@ -152,9 +142,7 @@ describe("ArticleAuthoringRoute", () => {
   it("does not request the project before auth is ready", async () => {
     authState.isReady = false;
 
-    const { container, unmount } = await mount(
-      <ArticleAuthoringRoute projectRef="a-project" />,
-    );
+    const { container, unmount } = await mountRoute();
 
     expect(getProject).not.toHaveBeenCalled();
     expectSkeleton(container);

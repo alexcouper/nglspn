@@ -13,6 +13,11 @@ import { ListingImageDialog } from "./ListingImageDialog";
 import { ListingSettingsPanel } from "./ListingSettingsPanel";
 import { useArticleDraft } from "./useArticleDraft";
 
+// The import stays inline: next/dynamic's compile-time transform has to see the
+// literal `import()` to register the chunk in the loadable manifest. Hoisting
+// it behind a named function still code-splits, but drops it off the manifest —
+// which is what the per-route lazy bundle budget measures, so the budget would
+// silently start guarding nothing.
 const ArticleEditor = dynamic(
   () => import("./ArticleEditor").then((m) => m.ArticleEditor),
   { ssr: false, loading: () => <div className="skeleton h-[60vh] w-full" /> },
@@ -27,9 +32,9 @@ const TABS: { key: Tab; label: string }[] = [
 
 interface Props {
   project: Project;
-  // Present → editing an existing article; absent → the /new route, which
-  // creates a draft on mount and swaps the URL to /edit/<id>.
-  articleId?: string;
+  // Always an existing article: the New article button creates the draft and
+  // routes here, so there is no "unsaved article" state to represent.
+  articleId: string;
 }
 
 export function ArticleAuthoringPage({ project, articleId }: Props) {
@@ -56,9 +61,6 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
       (c) => c.user.id === user.id && c.full_edit,
     );
   }, [project.contributors, user]);
-
-  const isEditing = !!articleId;
-  const mode = isEditing ? "Edit article" : "New article";
 
   if (authLoading || draft.isLoading) {
     return <ArticleAuthoringSkeleton />;
@@ -110,6 +112,10 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
 
   const article = draft.article;
   const form = draft.form;
+  // The /new route is gone, so the old "New article" / "Edit article" split has
+  // nothing left to say. What still distinguishes two of these pages is whether
+  // readers can see the thing yet.
+  const mode = draft.isPublished ? "Edit article" : "Edit draft";
 
   const handleDeleteClick = async () => {
     if (!window.confirm("Delete this article? This cannot be undone.")) return;

@@ -62,7 +62,7 @@ export interface LeaveState {
 }
 
 // True when nothing has been written to this draft. Used to sweep up the empty
-// draft that opening /new creates when the author leaves without editing.
+// draft the New article button creates when the author leaves without editing.
 //
 // Reads the live fields rather than the last-saved article for everything the
 // author can edit without a save: typing only a headline and leaving used to

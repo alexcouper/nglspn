@@ -892,6 +892,81 @@ class TestDeleteArticle:
         assert_that(response.status_code, equal_to(404))
 
 
+# Every article endpoint gates on `require_full_edit`, which checks project
+# membership and never `status` — so a team can write launch content while their
+# project is still in review. That has always been true and was never asserted,
+# which made it look like an oversight rather than the rule. Parametrised over
+# an approved project too, so "the same as when approved" is literal.
+@pytest.mark.django_db
+@pytest.mark.parametrize(
+    "status",
+    [ProjectStatus.DRAFT, ProjectStatus.PENDING, ProjectStatus.APPROVED],
+)
+class TestArticleEndpointsIgnoreProjectStatus:
+    def test_full_edit_contributor_can_create_draft(
+        self, client, user, auth_headers, status
+    ) -> None:
+        project = ProjectFactory(owner=user, status=status)
+        channel = ChannelFactory(project=project, name="Updates")
+
+        response = _post(
+            client,
+            f"/api/projects/{project.id}/articles",
+            {"channel_id": str(channel.id), "title": "Launch post", "body": "Text"},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(201))
+        assert_that(response.json(), has_entries(title="Launch post", state="draft"))
+
+    def test_full_edit_contributor_can_patch(
+        self, client, user, auth_headers, status
+    ) -> None:
+        project = ProjectFactory(owner=user, status=status)
+        article = ArticleFactory(project=project)
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}",
+            {"title": "Edited"},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(title="Edited"))
+
+    def test_full_edit_contributor_can_publish(
+        self, client, user, auth_headers, status
+    ) -> None:
+        project = ProjectFactory(owner=user, status=status)
+        article = ArticleFactory(project=project)
+
+        response = _post(
+            client,
+            f"/api/projects/{project.id}/articles/{article.id}/publish",
+            {},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        article.refresh_from_db()
+        assert_that(article.state, equal_to(ArticleState.PUBLISHED))
+
+    def test_full_edit_contributor_can_delete(
+        self, client, user, auth_headers, status
+    ) -> None:
+        project = ProjectFactory(owner=user, status=status)
+        article = ArticleFactory(project=project)
+
+        response = client.delete(
+            f"/api/projects/{project.id}/articles/{article.id}",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(204))
+        assert not Article.objects.filter(pk=article.id).exists()
+
+
 class TestRouterHasNoOrmAccess:
     """Spec invariant — `api/routers/articles.py` SHALL NOT reach the database
     directly. All DB access goes through HANDLERS / REPO.

@@ -8,10 +8,9 @@ import { useArticleDraft } from "./useArticleDraft";
 // One router object for the whole file. The hook lists `router` in the deps of
 // its load effect, so handing back a fresh object per render would re-run the
 // load on every state update.
-const { replace, router } = vi.hoisted(() => {
-  const replace = vi.fn();
+const { router } = vi.hoisted(() => {
   const push = vi.fn();
-  return { replace, router: { replace, push } };
+  return { router: { push, replace: vi.fn() } };
 });
 
 vi.mock("next/navigation", () => ({
@@ -113,7 +112,7 @@ function Harness({
   articleId,
   report,
 }: {
-  articleId?: string;
+  articleId: string;
   report: (draft: Draft) => void;
 }) {
   report(useArticleDraft({ project: PROJECT, articleId }));
@@ -123,7 +122,10 @@ function Harness({
 async function mountDraft({
   articleId,
   strict = false,
-}: { articleId?: string; strict?: boolean } = {}) {
+}: {
+  articleId: string;
+  strict?: boolean;
+}) {
   let latest: Draft | null = null;
   const container = document.createElement("div");
   document.body.appendChild(container);
@@ -170,32 +172,47 @@ beforeEach(() => {
   articles.publish.mockResolvedValue(undefined);
 });
 
-describe("opening /new", () => {
-  it("creates a draft up front and swaps the URL to its edit route", async () => {
-    const harness = await mountDraft();
+describe("opening an article", () => {
+  it("never creates one — the New article button already did", async () => {
+    const harness = await mountDraft({ articleId: "article-1" });
 
-    expect(articles.create).toHaveBeenCalledOnce();
-    expect(replace).toHaveBeenCalledWith(
-      "/projects/a-project/articles/edit/article-1",
-    );
+    expect(articles.create).not.toHaveBeenCalled();
+    expect(articles.get).toHaveBeenCalledWith("a-project", "article-1");
 
     await harness.unmount();
   });
 
-  it("creates one draft per visit when effects run twice", async () => {
-    const harness = await mountDraft({ strict: true });
+  // The old create-on-mount path needed a ref guard here, because creating
+  // twice left two rows behind. A GET has nothing to guard, so what is worth
+  // pinning is only that the discarded first run does not win the race.
+  it("settles on the article when effects run twice", async () => {
+    const harness = await mountDraft({ articleId: "article-1", strict: true });
 
-    expect(articles.create).toHaveBeenCalledOnce();
+    expect(harness.draft().isLoading).toBe(false);
+    expect(harness.draft().article?.id).toBe("article-1");
+    expect(harness.draft().error).toBe("");
 
     await harness.unmount();
   });
 
-  it("leaves the draft it is navigating to alone", async () => {
-    const harness = await mountDraft();
+  it("does not queue the article behind the channel list", async () => {
+    let channelsSettled = false;
+    channels.mockImplementation(async () => {
+      channelsSettled = true;
+      return [channel()];
+    });
+    articles.get.mockImplementation(async () => {
+      // The article request has to have been made before the channel list came
+      // back, or the two are still sequential.
+      expect(channelsSettled).toBe(false);
+      return article();
+    });
+
+    const harness = await mountDraft({ articleId: "article-1" });
+
+    expect(harness.draft().isLoading).toBe(false);
 
     await harness.unmount();
-
-    expect(articles.delete).not.toHaveBeenCalled();
   });
 });
 

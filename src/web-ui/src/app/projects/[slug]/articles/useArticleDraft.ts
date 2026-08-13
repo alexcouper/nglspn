@@ -17,10 +17,9 @@ import { useLeaveGuard } from "./useLeaveGuard";
 
 interface Options {
   project: Project;
-  // Present → editing an existing article. Absent → the /new route, which
-  // creates a draft immediately (see `useArticleLoad`) rather than waiting for
-  // a save.
-  articleId?: string;
+  // Always an existing article: the draft is created by the New article button
+  // before this page is routed to, because images upload against an article id.
+  articleId: string;
 }
 
 // Everything the article authoring page needs, assembled from one unit per
@@ -60,22 +59,10 @@ export function useArticleDraft({ project, articleId }: Options) {
     leaving: false,
   });
 
-  const handleCreated = useCallback(
-    (created: Article) => {
-      // /new and /edit are different routes, so the replace unmounts this page.
-      // Without this the untouched-draft sweep below would delete the draft we
-      // are navigating to.
-      latestRef.current.leaving = true;
-      router.replace(`/projects/${projectRef}/articles/edit/${created.id}`);
-    },
-    [projectRef, router],
-  );
-
   const { channels, article, setArticle, isLoading } = useArticleLoad({
     projectRef,
     articleId,
     onLoaded: reset,
-    onCreated: handleCreated,
     onError: setError,
   });
 
@@ -115,9 +102,9 @@ export function useArticleDraft({ project, articleId }: Options) {
     latestRef.current.fields = fields;
   }, [article, fields]);
 
-  // Best-effort sweep of the draft /new created when the author leaves without
-  // writing anything. What survives it is a draft in the author's own list,
-  // invisible to readers, with a delete button next to it.
+  // Best-effort sweep of the draft the New article button created when the
+  // author leaves without writing anything. What survives it is a draft in the
+  // author's own list, invisible to readers, with a delete button next to it.
   useEffect(() => {
     const state = latestRef.current;
     return () => {

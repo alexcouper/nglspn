@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { useRouter } from "next/navigation";
+import { ArrowPathIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { ArticleListingImage } from "@/components/ArticleListingImage";
-import type { ArticleListItem } from "@/lib/api";
+import type { ArticleListItem, Channel } from "@/lib/api";
 import { api } from "@/lib/api";
+import { describeApiError } from "@/lib/api/errors";
 import { formatDate } from "@/lib/utils";
 
 interface Props {
@@ -32,7 +34,12 @@ function sortDraftsFirst(
 }
 
 export function MyProjectArticles({ projectSlugOrId }: Props) {
+  const router = useRouter();
   const [articles, setArticles] = useState<ArticleListItem[] | null>(null);
+  // Null until the lookup settles. Only the New article button reads it, so a
+  // failure here disables that button rather than taking the list down with it.
+  const [channels, setChannels] = useState<Channel[] | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
   const [error, setError] = useState("");
 
   useEffect(() => {
@@ -47,10 +54,49 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "Failed to load articles");
       });
+    // Fetched here, next to the list, because this is where a draft is created:
+    // `ArticleCreate.channel_id` is required, so the button cannot act until a
+    // channel is known. Settled separately from the list so neither waits on
+    // the other.
+    api.channels
+      .list(projectSlugOrId)
+      .then((data) => {
+        if (cancelled) return;
+        setChannels(data);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setChannels([]);
+      });
     return () => {
       cancelled = true;
     };
   }, [projectSlugOrId]);
+
+  // The draft is created here rather than on a /new route: an article has to
+  // exist before the editor opens (images are uploaded against it), and a route
+  // that creates on mount then rewrites the URL makes the author sit through
+  // two page loads. Creating on the click costs one navigation, onto a page
+  // that already has its article.
+  const handleNewArticle = useCallback(async () => {
+    const channelId = channels?.[0]?.id;
+    if (!channelId || isCreating) return;
+    setIsCreating(true);
+    setError("");
+    try {
+      const created = await api.articles.create(projectSlugOrId, {
+        channel_id: channelId,
+        title: "",
+        body: "",
+      });
+      router.push(`/projects/${projectSlugOrId}/articles/edit/${created.id}`);
+    } catch (err) {
+      setError(describeApiError(err, "Couldn't start a new article."));
+      setIsCreating(false);
+    }
+  }, [channels, isCreating, projectSlugOrId, router]);
+
+  const canCreate = !!channels?.length && !isCreating;
 
   return (
     <div className="space-y-4">
@@ -58,13 +104,24 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
         <p className="text-sm text-muted-foreground">
           Drafts are listed first, then published articles, newest first.
         </p>
-        <Link
-          href={`/projects/${projectSlugOrId}/articles/new`}
-          className="btn-primary text-sm py-2 px-3 inline-flex items-center gap-1.5"
+        <button
+          type="button"
+          onClick={handleNewArticle}
+          disabled={!canCreate}
+          title={
+            channels?.length === 0
+              ? "This project has no channel to publish an article into."
+              : undefined
+          }
+          className="btn-primary text-sm py-2 px-3 inline-flex items-center gap-1.5 disabled:opacity-60"
         >
-          <PlusIcon className="w-4 h-4" />
+          {isCreating ? (
+            <ArrowPathIcon className="w-4 h-4 animate-spin" />
+          ) : (
+            <PlusIcon className="w-4 h-4" />
+          )}
           New article
-        </Link>
+        </button>
       </div>
 
       {error && (

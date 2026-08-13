@@ -114,6 +114,19 @@ describe("GFM construct parity (react-markdown + remark-gfm)", () => {
     const html = render("Check the [docs](https://example.com/docs).");
     expect(html).toContain('<a href="https://example.com/docs">docs</a>');
   });
+
+  it("renders a blockquote, including one spanning several lines", () => {
+    expect(render("> quoted\n")).toContain("<blockquote>");
+
+    const multiline = render("> first line\n> second line\n");
+    expect(multiline).toContain("<blockquote>");
+    expect(multiline).toContain("first line");
+    expect(multiline).toContain("second line");
+  });
+
+  it("keeps blockquotes through sanitisation", () => {
+    expect(renderArticle("> quoted\n")).toContain("<blockquote>");
+  });
 });
 
 describe("Raw HTML round-trip (rehype-raw + sanitize)", () => {

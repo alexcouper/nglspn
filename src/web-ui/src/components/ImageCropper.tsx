@@ -188,6 +188,17 @@ export function ImageCropper({
         >
           {sourcePixelWidth}px
         </span>
+        {/* Disabled rather than hidden while there is nothing to undo: a
+            control that comes and goes as you drag reads as a glitch. */}
+        <button
+          type="button"
+          onClick={() => onChange(defaultCrop(source))}
+          disabled={isDefaultCrop(crop, source)}
+          className="text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:hover:text-muted-foreground"
+          data-testid="crop-reset"
+        >
+          Reset
+        </button>
       </div>
 
       <div className="flex items-start gap-3">
@@ -240,6 +251,17 @@ interface Layout {
 export function defaultCrop(source: Source): CropRect {
   const zoom = coveringZoom(source.lockRatio, source);
   return centred(1 / zoom, source.lockRatio, source);
+}
+
+// Whether the crop is where `defaultCrop` would put it. Compared with a
+// tolerance because the crop that comes back from a round trip through the
+// slider, or from the stored value on a saved article, is the same framing to
+// the pixel but not to the last float.
+function isDefaultCrop(crop: CropRect, source: Source): boolean {
+  const target = defaultCrop(source);
+  return (["x", "y", "w", "h"] as const).every(
+    (key) => Math.abs(crop[key] - target[key]) < 1e-6,
+  );
 }
 
 // Below this the crop box reaches past the image on one axis. Not a limit —

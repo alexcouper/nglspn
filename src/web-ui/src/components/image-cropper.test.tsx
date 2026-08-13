@@ -126,6 +126,12 @@ async function setZoom(
   });
 }
 
+async function click(target: HTMLElement) {
+  await act(async () => {
+    target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+  });
+}
+
 function centreOf(crop: CropRect) {
   return { x: crop.x + crop.w / 2, y: crop.y + crop.h / 2 };
 }
@@ -267,6 +273,44 @@ describe("ImageCropper", () => {
     const { container, unmount: cleanup } = await mountCropper();
 
     expect(container.textContent).not.toContain("will look soft");
+
+    cleanup();
+  });
+
+  it("restores the default framing when reset, whatever was zoomed and panned", async () => {
+    const { container, latest, unmount: cleanup } = await mountCropper();
+
+    await setZoom(container, 4);
+    await drag(byTestId(container, "crop-stage"), { x: 300, y: 200 }, { x: 380, y: 260 });
+    await click(byTestId(container, "crop-reset"));
+
+    expect(latest()).toEqual(defaultCrop(source()));
+
+    cleanup();
+  });
+
+  it("offers no reset until the crop has been changed", async () => {
+    const { container, unmount: cleanup } = await mountCropper();
+    const reset = byTestId(container, "crop-reset") as HTMLButtonElement;
+
+    expect(reset.disabled).toBe(true);
+    await setZoom(container, 2);
+
+    expect((byTestId(container, "crop-reset") as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+
+    cleanup();
+  });
+
+  it("offers no reset for a stored crop that already matches the default", async () => {
+    const { container, unmount: cleanup } = await mountCropper({
+      value: defaultCrop(source()),
+    });
+
+    expect((byTestId(container, "crop-reset") as HTMLButtonElement).disabled).toBe(
+      true,
+    );
 
     cleanup();
   });

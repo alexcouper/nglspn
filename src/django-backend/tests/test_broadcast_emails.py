@@ -120,9 +120,9 @@ class TestBroadcastEmailAdminViews:
         assert b"Hello **preview**!" in response.content
 
     def test_send_view_shows_confirmation(self, admin_client):
-        make_broadcast_follower("platform_updates")
+        make_broadcast_follower("competition_results")
         broadcast = BroadcastEmailFactory(
-            email_type="platform_updates",
+            email_type="competition_results",
             created_by=UserFactory(),
         )
 
@@ -136,9 +136,9 @@ class TestBroadcastEmailAdminViews:
         assert b"Confirm" in response.content
 
     def test_send_view_post_enqueues_and_redirects(self, admin_client):
-        make_broadcast_follower("platform_updates")
+        make_broadcast_follower("competition_results")
         broadcast = BroadcastEmailFactory(
-            email_type="platform_updates",
+            email_type="competition_results",
             created_by=UserFactory(),
         )
 
@@ -158,7 +158,7 @@ class TestBroadcastEmailAdminViews:
         )
 
     def test_send_view_rejects_already_sent(self, admin_client):
-        broadcast = BroadcastEmailFactory(email_type="platform_updates")
+        broadcast = BroadcastEmailFactory(email_type="competition_results")
         broadcast.status = BroadcastEmailStatus.SENT
         broadcast.sent_at = timezone.now()
         broadcast.save()
@@ -280,7 +280,7 @@ class TestSendBroadcastEmailTask:
     def _create_queued_broadcast(self):
         user = UserFactory(is_staff=True, is_superuser=True)
         broadcast = BroadcastEmailFactory(
-            email_type="platform_updates",
+            email_type="competition_results",
             created_by=user,
         )
         broadcast.status = BroadcastEmailStatus.QUEUED_FOR_SENDING
@@ -289,9 +289,9 @@ class TestSendBroadcastEmailTask:
 
     def test_send_view_enqueues_task_and_sets_queued(self, admin_client):
         """5.1 - Send view enqueues task and sets status to queued_for_sending."""
-        make_broadcast_follower("platform_updates")
+        make_broadcast_follower("competition_results")
         broadcast = BroadcastEmailFactory(
-            email_type="platform_updates",
+            email_type="competition_results",
             created_by=UserFactory(),
         )
 
@@ -312,7 +312,7 @@ class TestSendBroadcastEmailTask:
 
     def test_send_view_rejects_non_draft_broadcast(self, admin_client):
         """5.2 - Send view rejects non-draft broadcasts."""
-        broadcast = BroadcastEmailFactory(email_type="platform_updates")
+        broadcast = BroadcastEmailFactory(email_type="competition_results")
         for status in [
             BroadcastEmailStatus.QUEUED_FOR_SENDING,
             BroadcastEmailStatus.SENDING,
@@ -333,7 +333,7 @@ class TestSendBroadcastEmailTask:
         """5.3 - Task transitions queued_for_sending -> sending -> sent."""
 
         broadcast, user = self._create_queued_broadcast()
-        make_broadcast_follower("platform_updates")
+        make_broadcast_follower("competition_results")
 
         send_broadcast_email.call(str(broadcast.pk), str(user.pk))
 

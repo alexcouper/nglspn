@@ -366,7 +366,7 @@ class TestHouseChannelLogging:
         from tests.factories import ensure_house_project  # noqa: PLC0415
 
         house = ensure_house_project()
-        channel = ChannelFactory(project=house, name="Product Updates")
+        channel = ChannelFactory(project=house, name="Updates")
         follower = UserFactory(article_email_frequency=ArticleEmailFrequency.NEVER)
         _follow_channel(follower, house, channel)
         article = PublishedArticleFactory(project=house, channel=channel)

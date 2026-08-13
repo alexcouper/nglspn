@@ -27,20 +27,6 @@ _IMMEDIATE = NotificationCadence.IMMEDIATE
 
 @pytest.mark.django_db
 class TestBroadcastExcludesInactiveUsers:
-    def test_platform_update_excludes_inactive_users(self):
-        active = make_broadcast_follower("platform_updates")
-        inactive = make_broadcast_follower("platform_updates", is_active=False)
-
-        broadcast = BroadcastEmailFactory(
-            email_type="platform_updates",
-            created_by=UserFactory(is_staff=True, is_superuser=True),
-        )
-        recipients = DjangoEmailQuery().resolve_broadcast_recipients(broadcast)
-        recipient_ids = set(recipients.values_list("id", flat=True))
-
-        assert_that(active.id in recipient_ids, equal_to(True))
-        assert_that(inactive.id in recipient_ids, equal_to(False))
-
     def test_competition_results_excludes_inactive_users(self):
         active = make_broadcast_follower("competition_results")
         inactive = make_broadcast_follower("competition_results", is_active=False)

@@ -14,7 +14,6 @@ from services.users.query_interface import UserQueryInterface
 # User.email_opt_in_* flags (dropped in add-article-authoring §9).
 BROADCAST_CHANNEL_BY_EMAIL_TYPE = {
     "competition_results": "Competition Winners",
-    "platform_updates": "Product Updates",
 }
 
 if TYPE_CHECKING:

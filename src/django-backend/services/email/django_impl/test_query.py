@@ -62,21 +62,8 @@ class TestRenderBroadcastEmail:
 
 @pytest.mark.django_db
 class TestResolveBroadcastRecipients:
-    def test_platform_updates_returns_channel_followers(self):
-        # Followed channel = included; never-cadence opts out.
-        included = make_broadcast_follower("platform_updates")
-        excluded_by_cadence = make_broadcast_follower(
-            "platform_updates",
-            article_email_frequency=ArticleEmailFrequency.NEVER,
-        )
-
-        broadcast = BroadcastEmailFactory(email_type="platform_updates")
-        recipients = set(query.resolve_broadcast_recipients(broadcast))
-
-        assert included in recipients
-        assert excluded_by_cadence not in recipients
-
     def test_competition_results_returns_channel_followers(self):
+        # Followed channel = included; never-cadence opts out.
         included = make_broadcast_follower("competition_results")
         excluded_by_cadence = make_broadcast_follower(
             "competition_results",
@@ -101,14 +88,6 @@ class TestResolveBroadcastRecipients:
         recipients = query.resolve_broadcast_recipients(broadcast)
 
         assert set(recipients) == {user1, user2}
-
-    def test_inactive_users_excluded_from_platform_updates(self):
-        inactive = make_broadcast_follower("platform_updates", is_active=False)
-
-        broadcast = BroadcastEmailFactory(email_type="platform_updates")
-        recipients = set(query.resolve_broadcast_recipients(broadcast))
-
-        assert inactive not in recipients
 
     def test_inactive_users_excluded_from_competition_results(self):
         inactive = make_broadcast_follower("competition_results", is_active=False)
@@ -141,17 +120,31 @@ class TestResolveBroadcastRecipients:
 
         assert set(recipients) == {real_user}
 
-    def test_system_users_excluded_from_platform_updates(self):
+    def test_system_users_excluded_from_competition_results(self):
         system_follower = make_broadcast_follower(
-            "platform_updates", is_system_user=True
+            "competition_results", is_system_user=True
         )
-        real_user = make_broadcast_follower("platform_updates")
+        real_user = make_broadcast_follower("competition_results")
 
-        broadcast = BroadcastEmailFactory(email_type="platform_updates")
+        broadcast = BroadcastEmailFactory(email_type="competition_results")
         recipients = set(query.resolve_broadcast_recipients(broadcast))
 
         assert real_user in recipients
         assert system_follower not in recipients
+
+    def test_retired_platform_updates_type_resolves_to_nobody(self):
+        # Must not fall through to the individual-recipients branch: a retired
+        # type is still a typed broadcast, and typed broadcasts never send to
+        # the individual-recipient list.
+        recipient = UserFactory()
+        broadcast = BroadcastEmailFactory(
+            email_type="platform_updates",
+            individual_recipients=[recipient],
+        )
+
+        recipients = query.resolve_broadcast_recipients(broadcast)
+
+        assert recipients.count() == 0
 
 
 class TestRenderProjectApprovedEmail:

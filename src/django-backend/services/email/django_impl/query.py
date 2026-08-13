@@ -35,7 +35,11 @@ class DjangoEmailQuery(EmailQueryInterface):
         return render_email("broadcast", context)
 
     def resolve_broadcast_recipients(self, broadcast: BroadcastEmail) -> QuerySet:
-        if broadcast.email_type in ("platform_updates", "competition_results"):
+        # A set email_type targets a channel; blank means individual recipients.
+        # Retired types (platform_updates) stay on the typed branch, where
+        # list_opted_in_for_broadcast_type resolves them to nobody — falling
+        # through would silently reinterpret them as individual-recipient sends.
+        if broadcast.email_type:
             return DjangoUserQuery().list_opted_in_for_broadcast_type(
                 broadcast.email_type
             )

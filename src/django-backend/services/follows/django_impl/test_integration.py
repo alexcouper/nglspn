@@ -8,7 +8,7 @@ resolver.
 
 import pytest
 
-from apps.follows.models import Channel
+from apps.follows.models import Channel, FollowedChannel
 from apps.users.models import ArticleEmailFrequency
 from services.follows.django_impl.handler import DjangoFollowHandler
 from services.users.django_impl.query import DjangoUserQuery
@@ -16,10 +16,15 @@ from tests.factories import ProjectFactory, UserFactory
 
 
 def _seed_house_with_channels():
+    """House project with its two channels; ProjectFactory seeds "Updates"."""
     house = ProjectFactory(slug="naglasupan", title="Naglasúpan", is_house_project=True)
     cw, _ = Channel.objects.get_or_create(project=house, name="Competition Winners")
-    pu, _ = Channel.objects.get_or_create(project=house, name="Product Updates")
-    return house, cw, pu
+    updates, _ = Channel.objects.get_or_create(project=house, name="Updates")
+    return house, cw, updates
+
+
+def _follows_channel(user, channel) -> bool:
+    return FollowedChannel.objects.filter(follow__user=user, channel=channel).exists()
 
 
 @pytest.mark.django_db
@@ -47,28 +52,30 @@ class TestBroadcastRecipientResolution:
 
     def test_unfollowing_one_channel_does_not_affect_the_other(self):
         user = UserFactory()
-        house, _cw, pu = _seed_house_with_channels()
+        house, _cw, updates = _seed_house_with_channels()
         self.handler.follow(user.id, house)
 
-        self.handler.unfollow_channel(user.id, "naglasupan", pu.id)
+        self.handler.unfollow_channel(user.id, "naglasupan", updates.id)
 
-        platform = self.user_query.list_opted_in_for_broadcast_type("platform_updates")
-        assert not platform.filter(pk=user.pk).exists()
+        assert not _follows_channel(user, updates)
         competition = self.user_query.list_opted_in_for_broadcast_type(
             "competition_results"
         )
         assert competition.filter(pk=user.pk).exists()
 
-    def test_unfollow_project_excludes_from_both_types(self):
+    def test_unfollow_project_excludes_from_every_channel(self):
         user = UserFactory()
-        house, _, _ = _seed_house_with_channels()
+        house, cw, updates = _seed_house_with_channels()
         self.handler.follow(user.id, house)
 
         self.handler.unfollow(user.id, house)
 
-        for email_type in ("competition_results", "platform_updates"):
-            recipients = self.user_query.list_opted_in_for_broadcast_type(email_type)
-            assert not recipients.filter(pk=user.pk).exists()
+        assert not _follows_channel(user, cw)
+        assert not _follows_channel(user, updates)
+        recipients = self.user_query.list_opted_in_for_broadcast_type(
+            "competition_results"
+        )
+        assert not recipients.filter(pk=user.pk).exists()
 
     def test_article_email_frequency_never_excludes_user(self):
         user = UserFactory(article_email_frequency=ArticleEmailFrequency.NEVER)
@@ -76,6 +83,6 @@ class TestBroadcastRecipientResolution:
         self.handler.follow(user.id, house)
 
         recipients = self.user_query.list_opted_in_for_broadcast_type(
-            "platform_updates"
+            "competition_results"
         )
         assert not recipients.filter(pk=user.pk).exists()

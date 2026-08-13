@@ -211,9 +211,9 @@ class TestSendNewProjectNotification:
 class TestSendBroadcast:
     def _make_broadcast_with_recipients(self, count=2, **kwargs):
         admin = UserFactory(is_staff=True, is_superuser=True)
-        users = [make_broadcast_follower("platform_updates") for _ in range(count)]
+        users = [make_broadcast_follower("competition_results") for _ in range(count)]
         broadcast = BroadcastEmailFactory(
-            email_type="platform_updates",
+            email_type="competition_results",
             created_by=admin,
             **kwargs,
         )

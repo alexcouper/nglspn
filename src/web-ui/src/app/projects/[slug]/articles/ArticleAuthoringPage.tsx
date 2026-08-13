@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/auth";
 import type { Project } from "@/lib/api";
@@ -13,10 +13,49 @@ import { ListingImageDialog } from "./ListingImageDialog";
 import { ListingSettingsPanel } from "./ListingSettingsPanel";
 import { useArticleDraft } from "./useArticleDraft";
 
+// The import stays inline: next/dynamic's compile-time transform has to see the
+// literal `import()` to register the chunk in the loadable manifest. Hoisting
+// it behind a named function still code-splits, but drops it off the manifest —
+// which is what the per-route lazy bundle budget measures, so the budget would
+// silently start guarding nothing.
 const ArticleEditor = dynamic(
   () => import("./ArticleEditor").then((m) => m.ArticleEditor),
   { ssr: false, loading: () => <div className="skeleton h-[60vh] w-full" /> },
 );
+
+// Deliberately the same boxes, in the same places, at the same heights as the
+// loaded page below — the previous skeleton was a plain white card, so the
+// handover moved every control on the page and read as a second page load.
+// Its editor slot is the same `h-[60vh]` block next/dynamic falls back to, so
+// the editor's own arrival does not move anything either.
+function AuthoringSkeleton() {
+  return (
+    <>
+      <div className="sticky top-14 z-30 bg-white border-b border-border">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 flex items-center justify-between py-2">
+          <div className="skeleton h-5 w-48" />
+          <div className="flex items-center gap-2">
+            <div className="skeleton h-9 w-24 rounded-lg" />
+            <div className="skeleton h-9 w-20 rounded-lg" />
+            <div className="skeleton h-9 w-9 rounded-lg" />
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+        <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 sm:items-center">
+          <div className="skeleton h-[50px] w-full rounded-lg" />
+          <div className="skeleton h-[50px] w-40 rounded-lg" />
+        </div>
+        <div className="flex gap-1">
+          <div className="skeleton h-[38px] w-20" />
+          <div className="skeleton h-[38px] w-32" />
+        </div>
+        <div className="skeleton h-[60vh] w-full" />
+      </div>
+    </>
+  );
+}
 
 type Tab = "content" | "listing";
 
@@ -27,14 +66,25 @@ const TABS: { key: Tab; label: string }[] = [
 
 interface Props {
   project: Project;
-  // Present → editing an existing article; absent → the /new route, which
-  // creates a draft on mount and swaps the URL to /edit/<id>.
-  articleId?: string;
+  // Always an existing article: the New article button creates the draft and
+  // routes here, so there is no "unsaved article" state to represent.
+  articleId: string;
 }
 
 export function ArticleAuthoringPage({ project, articleId }: Props) {
   const { user } = useAuth();
   const { isReady, isLoading: authLoading } = useRequireAuth();
+
+  // The editor is by far the largest thing on this route — the bundle budget
+  // gives it 400 kB against 40 kB for everything else. next/dynamic only starts
+  // its import when the component first renders, which is behind the loading
+  // gate below, so the biggest download used to queue behind the auth check and
+  // the article fetch. Nothing in it depends on their results, so warm it here
+  // and it downloads alongside them. Same specifier as the dynamic() above, so
+  // this is the same chunk, not a second copy.
+  useEffect(() => {
+    void import("./ArticleEditor");
+  }, []);
 
   // One reference to the project for everything under the article editor.
   // Article images are addressed by the article that owns them, so the editor
@@ -54,19 +104,8 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
     );
   }, [project.contributors, user]);
 
-  const isEditing = !!articleId;
-  const mode = isEditing ? "Edit article" : "New article";
-
   if (!isReady || authLoading || draft.isLoading) {
-    return (
-      <div className="py-8 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto bg-white rounded-xl border border-border p-8">
-          <div className="skeleton h-6 w-1/3 mb-4" />
-          <div className="skeleton h-48 w-full mb-4 rounded-lg" />
-          <div className="skeleton h-4 w-2/3 mb-2" />
-        </div>
-      </div>
-    );
+    return <AuthoringSkeleton />;
   }
 
   if (!canEdit) {
@@ -115,6 +154,10 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
 
   const article = draft.article;
   const form = draft.form;
+  // The /new route is gone, so the old "New article" / "Edit article" split has
+  // nothing left to say. What still distinguishes two of these pages is whether
+  // readers can see the thing yet.
+  const mode = draft.isPublished ? "Edit article" : "Edit draft";
 
   const handleDeleteClick = async () => {
     if (!window.confirm("Delete this article? This cannot be undone.")) return;

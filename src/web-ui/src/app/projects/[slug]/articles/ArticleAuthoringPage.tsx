@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/auth";
 import type { Project } from "@/lib/api";
-import { useRequireAuth } from "@/hooks/useRequireAuth";
+import { ArticleAuthoringSkeleton } from "./ArticleAuthoringSkeleton";
 import { PublishDialog } from "./PublishDialog";
 import { ChannelDropdown } from "./ChannelDropdown";
 import { ListingImageDialog } from "./ListingImageDialog";
@@ -33,8 +33,11 @@ interface Props {
 }
 
 export function ArticleAuthoringPage({ project, articleId }: Props) {
-  const { user } = useAuth();
-  const { isReady, isLoading: authLoading } = useRequireAuth();
+  // `useRequireAuth` lives in ArticleAuthoringRoute, which will not render this
+  // until a signed-in caller has a project. `authLoading` still matters here
+  // though: `canEdit` below reads `user`, and a null user mid-load would render
+  // "Not allowed" at someone who is allowed.
+  const { user, isLoading: authLoading } = useAuth();
 
   // One reference to the project for everything under the article editor.
   // Article images are addressed by the article that owns them, so the editor
@@ -57,16 +60,8 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
   const isEditing = !!articleId;
   const mode = isEditing ? "Edit article" : "New article";
 
-  if (!isReady || authLoading || draft.isLoading) {
-    return (
-      <div className="py-8 px-4 sm:px-6">
-        <div className="max-w-4xl mx-auto bg-white rounded-xl border border-border p-8">
-          <div className="skeleton h-6 w-1/3 mb-4" />
-          <div className="skeleton h-48 w-full mb-4 rounded-lg" />
-          <div className="skeleton h-4 w-2/3 mb-2" />
-        </div>
-      </div>
-    );
+  if (authLoading || draft.isLoading) {
+    return <ArticleAuthoringSkeleton />;
   }
 
   if (!canEdit) {

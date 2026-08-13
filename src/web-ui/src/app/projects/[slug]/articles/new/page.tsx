@@ -1,17 +1,17 @@
-import { ArticleAuthoringPage } from "../ArticleAuthoringPage";
-import { getProjectOr404 } from "@/lib/api/server";
+import { ArticleAuthoringRoute } from "../ArticleAuthoringRoute";
 
 interface PageProps {
   params: Promise<{ slug: string }>;
 }
 
+// No server-side project fetch: it would be anonymous, and the backend 404s an
+// unapproved project for an anonymous caller. See ArticleAuthoringRoute.
 export default async function NewArticlePage({ params }: PageProps) {
   const { slug } = await params;
-  const project = await getProjectOr404(slug);
 
   return (
     <main className="min-h-screen bg-muted pt-14">
-      <ArticleAuthoringPage project={project} />
+      <ArticleAuthoringRoute projectRef={slug} />
     </main>
   );
 }

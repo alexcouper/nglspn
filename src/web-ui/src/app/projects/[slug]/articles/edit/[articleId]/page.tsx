@@ -1,17 +1,17 @@
-import { ArticleAuthoringPage } from "../../ArticleAuthoringPage";
-import { getProjectOr404 } from "@/lib/api/server";
+import { ArticleAuthoringRoute } from "../../ArticleAuthoringRoute";
 
 interface PageProps {
   params: Promise<{ slug: string; articleId: string }>;
 }
 
+// No server-side project fetch — see the sibling /new route and
+// ArticleAuthoringRoute for why.
 export default async function EditArticlePage({ params }: PageProps) {
   const { slug, articleId } = await params;
-  const project = await getProjectOr404(slug);
 
   return (
     <main className="min-h-screen bg-muted pt-14">
-      <ArticleAuthoringPage project={project} articleId={articleId} />
+      <ArticleAuthoringRoute projectRef={slug} articleId={articleId} />
     </main>
   );
 }

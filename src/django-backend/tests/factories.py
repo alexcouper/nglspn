@@ -163,8 +163,8 @@ def make_followed_channel(user, project, channel) -> FollowedChannel:
     return fc
 
 
-def make_broadcast_follower(email_type: str, **user_kwargs):
-    """Create a user following the house project's broadcast-`email_type` channel.
+def make_house_channel_follower(channel_name: str, **user_kwargs):
+    """Create a user following `channel_name` on the house project.
 
     The collapsed model: existence of the FollowedChannel row IS the follow.
     Callers that previously passed `email_enabled=False` should instead delete
@@ -172,12 +172,21 @@ def make_broadcast_follower(email_type: str, **user_kwargs):
     opt-out is global).
     """
     house = ensure_house_project()
-    channel, _ = Channel.objects.get_or_create(
-        project=house, name=BROADCAST_CHANNEL_BY_EMAIL_TYPE[email_type]
-    )
+    channel, _ = Channel.objects.get_or_create(project=house, name=channel_name)
     user = UserFactory(**user_kwargs)
     make_followed_channel(user, house, channel)
     return user
+
+
+def make_broadcast_follower(email_type: str, **user_kwargs):
+    """Create a user the `email_type` broadcast resolver will select.
+
+    Only live broadcast types are resolvable; `platform_updates` was retired in
+    merge-product-updates-into-updates and raises KeyError here by design.
+    """
+    return make_house_channel_follower(
+        BROADCAST_CHANNEL_BY_EMAIL_TYPE[email_type], **user_kwargs
+    )
 
 
 class DiscussionFactory(factory.django.DjangoModelFactory):

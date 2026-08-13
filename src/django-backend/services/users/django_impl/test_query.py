@@ -4,7 +4,11 @@ import pytest
 
 from services.users.django_impl import DjangoUserQuery
 from services.users.exceptions import UserNotFoundError
-from tests.factories import UserFactory, make_broadcast_follower
+from tests.factories import (
+    UserFactory,
+    make_broadcast_follower,
+    make_house_channel_follower,
+)
 
 query = DjangoUserQuery()
 
@@ -71,17 +75,9 @@ class TestKennitalaExists:
 
 @pytest.mark.django_db
 class TestListOptedInForBroadcastType:
-    def test_returns_channel_followers_for_platform_updates(self):
-        follower = make_broadcast_follower("platform_updates")
-        # System user — auto-follow signal skips them.
-        UserFactory(is_system_user=True)
-
-        result = query.list_opted_in_for_broadcast_type("platform_updates")
-
-        assert list(result) == [follower]
-
     def test_returns_channel_followers_for_competition_results(self):
         follower = make_broadcast_follower("competition_results")
+        # System user — auto-follow signal skips them.
         UserFactory(is_system_user=True)
 
         result = query.list_opted_in_for_broadcast_type("competition_results")
@@ -92,38 +88,45 @@ class TestListOptedInForBroadcastType:
         from apps.users.models import ArticleEmailFrequency  # noqa: PLC0415
 
         make_broadcast_follower(
-            "platform_updates",
+            "competition_results",
             article_email_frequency=ArticleEmailFrequency.NEVER,
         )
 
-        result = query.list_opted_in_for_broadcast_type("platform_updates")
+        result = query.list_opted_in_for_broadcast_type("competition_results")
 
         assert result.count() == 0
 
     def test_returns_empty_for_unknown_type(self):
-        make_broadcast_follower("platform_updates")
+        make_broadcast_follower("competition_results")
 
         result = query.list_opted_in_for_broadcast_type("unknown_type")
+
+        assert result.count() == 0
+
+    def test_returns_empty_for_retired_platform_updates_type(self):
+        make_house_channel_follower("Updates")
+
+        result = query.list_opted_in_for_broadcast_type("platform_updates")
 
         assert result.count() == 0
 
     def test_returns_empty_when_no_house_project(self):
         UserFactory()
 
-        result = query.list_opted_in_for_broadcast_type("platform_updates")
+        result = query.list_opted_in_for_broadcast_type("competition_results")
 
         assert result.count() == 0
 
     def test_excludes_inactive_users(self):
-        make_broadcast_follower("platform_updates", is_active=False)
+        make_broadcast_follower("competition_results", is_active=False)
 
-        result = query.list_opted_in_for_broadcast_type("platform_updates")
+        result = query.list_opted_in_for_broadcast_type("competition_results")
 
         assert result.count() == 0
 
     def test_excludes_system_users(self):
-        make_broadcast_follower("platform_updates", is_system_user=True)
+        make_broadcast_follower("competition_results", is_system_user=True)
 
-        result = query.list_opted_in_for_broadcast_type("platform_updates")
+        result = query.list_opted_in_for_broadcast_type("competition_results")
 
         assert result.count() == 0

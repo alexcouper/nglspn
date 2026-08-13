@@ -8,23 +8,22 @@ from tests.factories import ProjectFactory, UserFactory
 
 
 @pytest.fixture
-def house_project_with_three_channels(db):
+def house_project_with_channels(db):
     project = ProjectFactory(is_house_project=True)
-    # "Updates" already created by the post_save signal; add the two named ones.
+    # "Updates" already created by the post_save signal; add the named one.
     Channel.objects.get_or_create(project=project, name="Competition Winners")
-    Channel.objects.get_or_create(project=project, name="Product Updates")
     return project
 
 
 @pytest.mark.django_db
 class TestAutoFollowOnUserCreate:
-    def test_new_user_is_auto_followed(self, house_project_with_three_channels):
-        house_project = house_project_with_three_channels
+    def test_new_user_is_auto_followed(self, house_project_with_channels):
+        house_project = house_project_with_channels
         user = UserFactory()
         follow = Follow.objects.get(user=user, project=house_project)
-        assert FollowedChannel.objects.filter(follow=follow).count() == 3
+        assert FollowedChannel.objects.filter(follow=follow).count() == 2
 
-    def test_system_user_not_auto_followed(self, house_project_with_three_channels):
+    def test_system_user_not_auto_followed(self, house_project_with_channels):
         user = UserFactory(is_system_user=True)
         assert not Follow.objects.filter(user=user).exists()
 
@@ -36,9 +35,9 @@ class TestAutoFollowOnUserCreate:
             "no house project exists" in record.message for record in caplog.records
         )
 
-    def test_helper_is_idempotent(self, house_project_with_three_channels):
+    def test_helper_is_idempotent(self, house_project_with_channels):
         user = UserFactory()
         # Re-call the helper directly; should not duplicate rows.
         create_house_project_follow(user)
         assert Follow.objects.filter(user=user).count() == 1
-        assert FollowedChannel.objects.filter(follow__user=user).count() == 3
+        assert FollowedChannel.objects.filter(follow__user=user).count() == 2

@@ -6,7 +6,9 @@ from django.db import models
 
 
 class BroadcastEmailType(models.TextChoices):
-    PLATFORM_UPDATES = "platform_updates", "Platform Updates"
+    # `platform_updates` was removed in merge-product-updates-into-updates.
+    # Historic rows keep the string in the column; house announcements now go
+    # out as Articles on the house project's Updates channel.
     COMPETITION_RESULTS = "competition_results", "Competition Results"
 
 

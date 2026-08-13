@@ -4,7 +4,7 @@ from apps.follows.models import Follow, FollowedChannel
 from apps.follows.services import anoint_house_project
 from tests.factories import ProjectFactory, UserFactory
 
-HOUSE_CHANNELS = {"Updates", "Competition Winners", "Product Updates"}
+HOUSE_CHANNELS = {"Updates", "Competition Winners"}
 
 
 def _channel_names(project):

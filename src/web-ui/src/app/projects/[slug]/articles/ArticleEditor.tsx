@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  BlockTypeSelect,
   BoldItalicUnderlineToggles,
   ConditionalContents,
   CreateLink,
@@ -107,6 +108,11 @@ export function ArticleEditor({
                   {
                     fallback: () => (
                       <>
+                        {/* Paragraph / Quote / Heading 1-6. The only route to
+                            a blockquote besides typing `> `, and the only
+                            heading control the toolbar has. */}
+                        <BlockTypeSelect />
+                        <Separator />
                         <UndoRedo />
                         <Separator />
                         <BoldItalicUnderlineToggles options={["Bold", "Italic"]} />

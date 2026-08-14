@@ -153,6 +153,17 @@ class Article(models.Model):
         choices=ArticleGlobalVisibility.choices,
         default=ArticleGlobalVisibility.AUTO,
     )
+    # When this article became visible to everyone — the same instant as
+    # `published_at` for an author the site already trusts, and the moment an
+    # admin approved it for one it does not.
+    #
+    # It exists because the two are not interchangeable for deciding whether to
+    # notify followers. `published_at` answers "when does this article claim to
+    # be from", which an importer backdates freely; only this answers "how long
+    # ago did this become news", which is the question the fan-out asks. Reset
+    # on each transition into visibility, so a re-approval after a demotion is
+    # judged on when it came back rather than when it first went out.
+    approved_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

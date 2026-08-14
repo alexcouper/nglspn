@@ -260,7 +260,9 @@ Supersession is the exception, because it is a claim about *another* entry. `lin
 
 Publishing an Article SHALL enqueue the notification fan-out only when the Article is globally visible on publish. An Article held for review has no readable page, so notifying its followers would deliver a link that 404s for every recipient.
 
-`set_global_visibility` SHALL enqueue the fan-out when it moves a published Article from a non-visible state into `auto` or `approved`. The existing backdating suppression applies to that path too, for the same reason it applies on publish.
+`set_global_visibility` SHALL enqueue the fan-out when it moves a published Article from a non-visible state into `auto` or `approved`, and SHALL stamp `approved_at` with that moment.
+
+The backdating suppression SHALL be measured against `approved_at` — when the Article became visible to everyone — and never against `published_at`. The two agree on a straight publish by a trusted author and nowhere else: an Article held for review accumulates an old `published_at` by waiting in the queue, so measuring against it suppressed the fan-out for every Article an admin took longer than a minute to approve. An import that should notify nobody arrives already visible and carries a backdated `approved_at` from the publish path.
 
 The fan-out SHALL remain safe to re-run: it creates notifications with `get_or_create` per `(recipient, article)`, so a demote followed by a second approval delivers nothing twice.
 
@@ -273,6 +275,16 @@ The fan-out SHALL remain safe to re-run: it creates notifications with `get_or_c
 - **GIVEN** a published Article A with `global_visibility = pending` and a live `published_at`
 - **WHEN** an admin sets `global_visibility = approved`
 - **THEN** the fan-out task SHALL be enqueued for A
+
+#### Scenario: A slow review still delivers the article
+- **GIVEN** a published Article A with `global_visibility = pending`, published a week ago
+- **WHEN** an admin sets `global_visibility = approved`
+- **THEN** the fan-out task SHALL be enqueued for A, because A becomes visible now
+
+#### Scenario: An import that was already visible elsewhere notifies nobody
+- **GIVEN** an Article published as globally visible with a `published_at` a week in the past
+- **WHEN** the publish completes
+- **THEN** `approved_at` SHALL be that same past instant and no fan-out task SHALL be enqueued
 
 #### Scenario: Demoting an article enqueues nothing
 - **GIVEN** a published, globally visible Article A

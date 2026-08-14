@@ -500,6 +500,47 @@ class TestFanOutOnApproval:
 
         enqueue.assert_called_once_with(str(article.id))
 
+    def test_approving_long_after_the_publish_still_fans_out(self):
+        """Review takes as long as it takes, and the article is news when it
+        clears — measuring its age from `published_at` suppressed the fan-out
+        for anything an admin did not get to within a minute, which is all of
+        them.
+        """
+        article = self._publish_awaiting_review()
+        Article.objects.filter(pk=article.pk).update(
+            published_at=timezone.now() - timedelta(days=7)
+        )
+
+        with _patched_enqueue() as enqueue:
+            self.handler.set_global_visibility(
+                article.id, ArticleGlobalVisibility.APPROVED
+            )
+
+        enqueue.assert_called_once_with(str(article.id))
+
+    def test_approving_stamps_the_approval_time(self):
+        article = self._publish_awaiting_review()
+        assert article.approved_at is None
+        before = timezone.now()
+
+        approved = self.handler.set_global_visibility(
+            article.id, ArticleGlobalVisibility.APPROVED
+        )
+
+        assert before <= approved.approved_at <= timezone.now()
+
+    def test_demoting_leaves_the_approval_time_alone(self):
+        article = ArticleFactory()
+        with _patched_enqueue():
+            published = self.handler.publish(article.id)
+        approved_at = published.approved_at
+
+        demoted = self.handler.set_global_visibility(
+            article.id, ArticleGlobalVisibility.DEMOTED
+        )
+
+        assert demoted.approved_at == approved_at
+
     def test_demoting_enqueues_nothing(self):
         article = ArticleFactory()
         with _patched_enqueue():
@@ -525,8 +566,16 @@ class TestFanOutOnApproval:
 
         enqueue.assert_not_called()
 
-    def test_approving_a_backdated_publish_enqueues_nothing(self):
-        """Same reason publish suppresses it: a historical row is not news."""
+    def test_a_backdated_article_approved_now_is_news_now(self):
+        """The one case that changed hands when the clock moved to `approved_at`.
+
+        A seven-day-old `published_at` used to suppress this. It no longer does,
+        and should not: an admin approving today is publishing it today, and the
+        date on the article says only what it is about. An import that genuinely
+        should notify nobody arrives already visible and is suppressed on the
+        publish path, where its old `approved_at` is set — see
+        `TestPublishFanOut.test_backdated_publish_enqueues_nothing`.
+        """
         author = UserFactory(article_trust=False)
         article = ArticleFactory(project=ProjectFactory(owner=author), author=author)
         with _patched_enqueue():
@@ -539,7 +588,7 @@ class TestFanOutOnApproval:
                 article.id, ArticleGlobalVisibility.APPROVED
             )
 
-        enqueue.assert_not_called()
+        enqueue.assert_called_once_with(str(article.id))
 
     def test_re_approving_notifies_each_follower_once(self):
         """The fan-out is idempotent per (recipient, article), so a demote and a

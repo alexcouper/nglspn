@@ -44,11 +44,19 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _is_backdated(published_at: datetime | None) -> bool:
-    """A publish is backdated if its published_at is more than 60s in the past."""
-    if published_at is None:
+def _is_backdated(approved_at: datetime | None) -> bool:
+    """True when an article became visible more than 60s ago.
+
+    Reads `approved_at`, not `published_at`. The two agree on a straight publish
+    by a trusted author, but nowhere else: an importer sets `published_at` to
+    whenever the article is from, and an article held for review carries a
+    `published_at` as old as the admin's queue. Measuring the fan-out against
+    that suppressed the notification for every article a human took longer than
+    a minute to approve — which is all of them.
+    """
+    if approved_at is None:
         return False
-    return published_at < timezone.now() - timedelta(seconds=60)
+    return approved_at < timezone.now() - timedelta(seconds=60)
 
 
 def _enqueue_fan_out(article: Article) -> None:
@@ -165,12 +173,23 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             article.state = ArticleState.PUBLISHED
             article.published_at = effective_published_at
             article.global_visibility = _resolve_visibility_on_publish(article)
-            article.save(update_fields=["state", "published_at", "global_visibility"])
+            # A publish that is visible immediately is its own approval, and it
+            # takes the publish time rather than `now` so a backdated import
+            # stays backdated: the fan-out reads this field. An article held for
+            # review is not approved yet and keeps a null until an admin says so.
+            if article.is_globally_visible:
+                article.approved_at = effective_published_at
+            article.save(
+                update_fields=[
+                    "state",
+                    "published_at",
+                    "global_visibility",
+                    "approved_at",
+                ]
+            )
             if article.slug is None:
                 assign_unique_article_slug(article)
-            if article.is_globally_visible and not _is_backdated(
-                effective_published_at
-            ):
+            if article.is_globally_visible and not _is_backdated(article.approved_at):
                 # Fan-out is ~2N queries on a house-channel publish, so it goes
                 # to the worker rather than the request. Enqueued *inside* the
                 # transaction on purpose: the queue is a table
@@ -206,7 +225,16 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         was_visible = article.is_globally_visible
         with transaction.atomic():
             article.global_visibility = value
-            article.save(update_fields=["global_visibility"])
+            fields = ["global_visibility"]
+            # Approval is the moment the article becomes news, whatever date it
+            # carries, so the clock the fan-out reads starts here. Stamped only
+            # on the transition into visibility — a demotion leaves the last
+            # approval where it was rather than pretending it never happened.
+            became_visible = not was_visible and article.is_globally_visible
+            if became_visible:
+                article.approved_at = timezone.now()
+                fields.append("approved_at")
+            article.save(update_fields=fields)
             # Becoming visible is when this article's followers can finally read
             # it, so it is where the fan-out publish held back happens. Safe to
             # re-run: the fan-out is get_or_create per (recipient, article), so a
@@ -214,11 +242,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             #
             # The feed needs no equivalent hook — its read filter reads the same
             # visibility, in both directions.
-            if (
-                not was_visible
-                and article.is_globally_visible
-                and not _is_backdated(article.published_at)
-            ):
+            if became_visible and not _is_backdated(article.approved_at):
                 _enqueue_fan_out(article)
         return article
 

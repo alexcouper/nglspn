@@ -5,6 +5,7 @@ from uuid import UUID
 from ninja import Schema
 
 from services.articles.summary import derive_summary
+from services.project.django_impl.query import resolve_image_by_purpose, variant_url
 
 from .article import CropRect
 
@@ -15,6 +16,7 @@ class FeedProjectRef(Schema):
     title: str
     tagline: str
     category_name: str | None
+    icon_url: str | None
 
 
 class FeedCompetitionRef(Schema):
@@ -141,6 +143,10 @@ def _project_ref(project: Any) -> dict[str, Any] | None:
         "title": project.title,
         "tagline": project.tagline,
         "category_name": project.category.name if project.category else None,
+        # Same resolution and size Discover's cards use, so a project looks the
+        # same in both places. Reads the prefetched gallery — never call this
+        # without FeedEvent.objects.with_sources().
+        "icon_url": variant_url(resolve_image_by_purpose(project, "icon"), "thumb"),
     }
 
 

@@ -9,7 +9,12 @@ from apps.articles.models import ArticleState
 from apps.feed.models import FeedEvent, FeedEventKind
 from apps.projects.models import ProjectStatus
 from services import HANDLERS
-from tests.factories import ArticleFactory, CompetitionFactory, ProjectFactory
+from tests.factories import (
+    ArticleFactory,
+    CompetitionFactory,
+    ProjectFactory,
+    ProjectImageFactory,
+)
 
 FEED_URL = "/api/feed"
 
@@ -168,10 +173,39 @@ class TestFeedEntryShape:
         kinds = [entry["kind"] for entry in get_feed(client)["entries"]]
         assert kinds == [FeedEventKind.PROJECT_TIPOFF]
 
+    def test_project_entry_carries_the_project_icon(self, client):
+        project = approved_project()
+        ProjectImageFactory(project=project, is_icon=True)
+
+        entry = get_feed(client)["entries"][0]
+
+        assert entry["project"]["icon_url"] is not None
+
+    def test_tipoff_entry_carries_the_icon_too(self, client):
+        project = approved_project(is_community_tipoff=True)
+        ProjectImageFactory(project=project, is_icon=True)
+
+        entry = get_feed(client)["entries"][0]
+
+        assert entry["kind"] == FeedEventKind.PROJECT_TIPOFF
+        assert entry["project"]["icon_url"] is not None
+
+    def test_project_without_images_serves_a_null_icon(self, client):
+        approved_project()
+
+        assert get_feed(client)["entries"][0]["project"]["icon_url"] is None
+
     def test_article_without_an_image_serves_a_null_image_url(self, client):
         published_article()
 
         assert get_feed(client)["lead"]["article"]["listing_image_url"] is None
+
+
+def seed_one_of_each() -> None:
+    published_article()
+    ProjectImageFactory(project=approved_project(), is_icon=True)
+    approved_project(is_community_tipoff=True)
+    CompetitionFactory(winner=ProjectFactory())
 
 
 def count_feed_queries(client) -> int:
@@ -194,12 +228,27 @@ class TestFeedQueryCount:
 
         assert with_fifteen == with_three
 
-    def test_mixed_entry_kinds_do_not_cost_more_queries(self, client):
-        approved_project()
+    def test_more_of_every_kind_does_not_cost_more_queries(self, client):
+        """Holds the mix constant and grows it.
+
+        Comparing across different mixes would be the wrong test: Django skips a
+        nested prefetch when its parent relation is empty, so the count varies
+        with which relations have rows. Only growth at a fixed shape is an N+1.
+        """
+        seed_one_of_each()
         baseline = count_feed_queries(client)
 
-        published_article()
-        approved_project(is_community_tipoff=True)
-        CompetitionFactory(winner=ProjectFactory())
+        for _ in range(4):
+            seed_one_of_each()
+
+        assert count_feed_queries(client) == baseline
+
+    def test_project_icons_do_not_cost_a_query_each(self, client):
+        """The icons are prefetched — adding more must not add round trips."""
+        ProjectImageFactory(project=approved_project(), is_icon=True)
+        baseline = count_feed_queries(client)
+
+        for _ in range(8):
+            ProjectImageFactory(project=approved_project(), is_icon=True)
 
         assert count_feed_queries(client) == baseline

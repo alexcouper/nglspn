@@ -28,6 +28,8 @@ export interface RenderedEntry {
   meta: string;
   imageUrl: string | null;
   crop: ListingCrop;
+  /** Project icons are square; article listing images are 16:9. */
+  imageShape: "square" | "listing";
   occurredAt: string;
   /** Article-led rows get the richer treatment; bare events stay compact. */
   hasArticle: boolean;
@@ -61,6 +63,7 @@ export function renderEntry(entry: FeedEntry): RenderedEntry {
         .join(" · "),
       imageUrl: article.listing_image_url ?? null,
       crop: article.listing_crop ?? null,
+      imageShape: "listing",
       occurredAt: entry.occurred_at,
       hasArticle: true,
     };
@@ -73,8 +76,11 @@ export function renderEntry(entry: FeedEntry): RenderedEntry {
     summary: "",
     href: bareHref(entry),
     meta: bareMeta(entry),
-    imageUrl: null,
+    // A bare project row shows the project's icon — the same image and size
+    // Discover's cards use, so a project looks the same in both places.
+    imageUrl: entry.project?.icon_url ?? null,
     crop: null,
+    imageShape: "square",
     occurredAt: entry.occurred_at,
     hasArticle: false,
   };

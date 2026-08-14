@@ -44,15 +44,27 @@ export function FeedRow({ entry, variant }: Props) {
     </>
   ) : (
     <div className="flex gap-4 p-4">
-      {rendered.imageUrl && (
-        <div className="w-28 shrink-0 sm:w-36">
-          <ArticleListingImage
-            src={rendered.imageUrl}
-            alt=""
-            crop={rendered.crop}
-          />
-        </div>
-      )}
+      {rendered.imageUrl &&
+        (rendered.imageShape === "square" ? (
+          // A project icon, not a listing image: square, small, and never
+          // cropped — it is already the shape it was uploaded as.
+          <div className="app-icon w-12 h-12 shrink-0">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={rendered.imageUrl}
+              alt=""
+              className="object-cover w-full h-full"
+            />
+          </div>
+        ) : (
+          <div className="w-28 shrink-0 sm:w-36">
+            <ArticleListingImage
+              src={rendered.imageUrl}
+              alt=""
+              crop={rendered.crop}
+            />
+          </div>
+        ))}
       <div className="min-w-0 flex-1">
         <Flag>{rendered.flag}</Flag>
         <h3 className="mt-0.5 font-semibold text-foreground line-clamp-2">

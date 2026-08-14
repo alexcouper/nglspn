@@ -44,6 +44,7 @@ function projectRef(overrides = {}) {
     title: "Hverfið",
     tagline: "Borrow a drill instead of buying one",
     category_name: "Community & Public Good",
+    icon_url: "https://example.test/icon.png",
     ...overrides,
   };
 }
@@ -186,6 +187,34 @@ describe("FeedRow", () => {
       container.querySelector('[data-testid="article-listing-image"]'),
     ).toBeNull();
     expect(container.textContent).toContain("How Broadside won Chili");
+    cleanup();
+  });
+
+  it("renders the project icon on a new-project row", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <FeedRow
+        entry={entry({ kind: "project_published", project: projectRef() })}
+        variant="row"
+      />,
+    );
+
+    const img = container.querySelector("img");
+    expect(img?.getAttribute("src")).toBe("https://example.test/icon.png");
+    cleanup();
+  });
+
+  it("renders no image for a project that has none", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <FeedRow
+        entry={entry({
+          kind: "project_published",
+          project: projectRef({ icon_url: null }),
+        })}
+        variant="row"
+      />,
+    );
+
+    expect(container.querySelector("img")).toBeNull();
     cleanup();
   });
 

@@ -7250,6 +7250,17 @@
               }
             ],
             "title": "Category Name"
+          },
+          "icon_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Icon Url"
           }
         },
         "required": [
@@ -7257,7 +7268,8 @@
           "slug",
           "title",
           "tagline",
-          "category_name"
+          "category_name",
+          "icon_url"
         ],
         "title": "FeedProjectRef",
         "type": "object"

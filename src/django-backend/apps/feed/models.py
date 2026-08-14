@@ -24,6 +24,10 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
         A feed page mixes kinds, so there is no single shape to select; joining
         all four is still one round trip and cheaper than resolving per row.
         """
+        # Local import: `services` builds the whole handler registry on import,
+        # and that registry reaches back into this module.
+        from services.images.django_impl.query import gallery_prefetch  # noqa: PLC0415
+
         return self.select_related(
             "project",
             "project__category",
@@ -36,6 +40,12 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
             "discussion",
             "discussion__project",
         ).prefetch_related(
+            # Project rows show the project's icon. gallery_prefetch rather than
+            # a plain prefetch: it filters to the project's own uploaded gallery,
+            # without which the fallback chain can land on an article figure or
+            # a row whose upload never completed.
+            gallery_prefetch("project__images"),
+            "project__images__variants",
             # An article-led row renders the flag of the event it took the place
             # of, so the reverse side is needed too — prefetched rather than
             # walked per row.

@@ -115,6 +115,27 @@ section already demonstrates what an unattended curated slot looks like. A
 freshness-gated promotion expires by itself, so neglect produces a plain feed
 rather than a stale headline.
 
+### Competition gains a winner-announced timestamp
+
+**Decision:** add `winner_announced_at` to Competition, set when a winner is
+first assigned, and backfill it from `voting_end_date`.
+
+Found while implementing. `Competition` carries `start_date`,
+`submission_deadline` and `voting_end_date` as `DateField`s, and assigning a
+winner flips `status` to `CLOSED` in `save()` without recording a time. The feed
+needs a timestamp for its headline event type and there was none.
+
+*Alternatives considered.* Deriving the event time from `voting_end_date`
+directly needs no migration, but places the announcement on the voting deadline
+rather than when it happened — often days apart, and wrong in a feed whose whole
+premise is chronology. `updated_at` is closer for recent competitions but moves
+on any edit, so a re-run of the idempotent backfill after an unrelated tweak
+would relocate the event.
+
+Date fields convert to datetimes at midnight for event purposes. That is
+imprecise for backfilled history and exact for anything announced from here on,
+which is the right way round.
+
 ### Copy stays English
 
 Labels are English, matching the rest of the web UI — "New Arrivals",

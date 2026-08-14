@@ -45,6 +45,9 @@ behaviour.
   both `/latest` and `/projects` rather than by `ProjectsPage` alone.
 - `articles`: the publish flow gains an optional link from the article to the
   feed event it is about, which is what makes superseding possible.
+- `competition-lifecycle-dates`: Competition gains `winner_announced_at`.
+  Assigning a winner previously recorded no time, leaving the feed with no
+  honest timestamp for its headline event type.
 
 ## Impact
 

@@ -10,6 +10,16 @@
 - [ ] 1.4 Add a `services/feed/` handler + repo pair following the existing
       `HANDLERS`/`REPO` layering; no ORM access from routers
 
+## 1a. Competition winner timestamp
+
+- [ ] 1a.1 Add nullable `winner_announced_at` to Competition; set it in `save()`
+      the first time a winner is assigned, leave it on re-assignment, clear it
+      when the winner is cleared
+- [ ] 1a.2 Data migration backfilling it from `voting_end_date`, falling back to
+      `submission_deadline`, only for competitions that have a winner
+- [ ] 1a.3 Tests for first assignment, re-assignment, clear-then-reassign, and
+      the migration's two backfill paths
+
 ## 2. Appending events
 
 - [ ] 2.1 Append on article publish, at the article's `published_at`, including

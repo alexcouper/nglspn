@@ -489,11 +489,13 @@ def _opportunity(
     competition: Competition,
     blocking_by_series: dict[str, Competition],
 ) -> CompetitionOpportunity:
-    """The four ordered rules, first match wins."""
+    """The ordered rules, first match wins."""
     if project.is_community_tipoff:
         reason, blocking = IneligibleReason.COMMUNITY_PROJECT, None
     elif project.status in (ProjectStatus.REJECTED, ProjectStatus.ICE_BOX):
         reason, blocking = IneligibleReason.PROJECT_STATUS, None
+    elif project.status == ProjectStatus.DRAFT:
+        reason, blocking = IneligibleReason.PROJECT_DRAFT, None
     elif competition.entry_series in blocking_by_series:
         reason = IneligibleReason.ALREADY_IN_SERIES
         blocking = blocking_by_series[competition.entry_series]

@@ -28,10 +28,10 @@ export function CategoryTabs({ categories, activeCategory }: CategoryTabsProps) 
           ))}
         </nav>
         <Link
-          href="/submit"
+          href="/create"
           className="hidden sm:inline-block shrink-0 text-sm font-medium bg-accent hover:bg-accent-hover text-white px-3.5 py-1.5 rounded-md transition-colors duration-150"
         >
-          Submit a project
+          Create a project
         </Link>
       </div>
     </div>

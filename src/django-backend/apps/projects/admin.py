@@ -134,6 +134,25 @@ class ProjectViewInline(admin.TabularInline):
         return False
 
 
+class ProjectCompetitionEntryInline(admin.TabularInline):
+    """Which rounds this project is in, read only. Editing them here would be a
+    second write path into the same rows; `CompetitionEntryAdmin` does it
+    properly and is one click away."""
+
+    model = CompetitionEntry
+    extra = 0
+    readonly_fields = ("competition", "entered_at", "entered_via", "entered_by")
+    can_delete = False
+    verbose_name_plural = "Competitions entered"
+
+    def has_add_permission(
+        self,
+        request: HttpRequest,
+        obj: Project | None = None,
+    ) -> bool:
+        return False
+
+
 @admin.register(Project)
 class ProjectAdmin(admin.ModelAdmin):
     change_form_template = "admin/projects/project/change_form.html"
@@ -179,7 +198,7 @@ class ProjectAdmin(admin.ModelAdmin):
         "is_community_tipoff",
     )
     filter_horizontal = ("tags",)
-    inlines = [ProjectImageInline, ProjectViewInline]
+    inlines = [ProjectImageInline, ProjectCompetitionEntryInline, ProjectViewInline]
 
     fieldsets = (
         (
@@ -946,6 +965,48 @@ class CompetitionReviewerAdmin(admin.ModelAdmin):
     )
     autocomplete_fields = ("user", "competition")
     ordering = ("-assigned_at",)
+
+
+@admin.register(CompetitionEntry)
+class CompetitionEntryAdmin(admin.ModelAdmin):
+    """The view of entries the inline on `CompetitionAdmin` cannot be: a round
+    with twenty entrants is twenty autocomplete widgets on that form, and
+    nothing there answers "which rounds is this project in"."""
+
+    list_display = (
+        "competition",
+        "project",
+        "entered_at",
+        "entered_via",
+        "entered_by",
+    )
+    list_filter = ("competition", "competition__entry_series", "entered_via")
+    search_fields = ("project__title", "competition__name")
+    autocomplete_fields = ("competition", "project")
+    # Provenance that can be typed cannot be trusted, so it is stamped in
+    # `save_model` rather than offered on the form — the same rule
+    # `CompetitionAdmin.save_formset` applies to the inline.
+    readonly_fields = ("entered_at", "entered_via", "entered_by")
+    ordering = ("-entered_at",)
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[CompetitionEntry]:
+        return (
+            super()
+            .get_queryset(request)
+            .select_related("competition", "project", "entered_by")
+        )
+
+    def save_model(
+        self,
+        request: HttpRequest,
+        obj: CompetitionEntry,
+        form: Any,
+        change: bool,  # noqa: FBT001 — Django's signature, not ours
+    ) -> None:
+        if not change:
+            obj.entered_via = EntrySource.ADMIN
+            obj.entered_by = request.user
+        super().save_model(request, obj, form, change)
 
 
 @admin.register(ProjectRanking)

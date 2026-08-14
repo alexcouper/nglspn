@@ -18,6 +18,7 @@ import type {
 // outright rather than listing rounds it can never enter.
 const PROJECT_WIDE_REASONS: Record<string, string> = {
   project_status: "This project can't enter competitions while it's not live.",
+  project_draft: "Publish this project before it can enter a competition.",
 };
 
 function projectWideReason(
@@ -65,9 +66,12 @@ export function ProjectCompetitions({
   // they're out of reach is noise on a page about somebody else's project.
   if (isCommunityTipoff) return null;
 
+  // No card chrome: this renders inside the Settings tab panel, which is
+  // already a card. Nesting one in the other reads as an afterthought bolted
+  // on, which is what it used to be.
   return (
-    <section className="bg-white border border-border rounded-xl p-5 sm:p-6">
-      <h2 className="text-foreground font-semibold">Competitions</h2>
+    <section>
+      <h3 className="text-foreground font-medium">Competitions</h3>
 
       {error && (
         <p role="alert" className="text-red-600 text-sm mt-3">
@@ -113,9 +117,9 @@ export function ProjectCompetitions({
 
       {opportunities.length > 0 && (
         <>
-          <h3 className="text-muted-foreground text-xs font-medium uppercase tracking-wide mt-5">
+          <h4 className="text-muted-foreground text-xs font-medium uppercase tracking-wide mt-5">
             Open now
-          </h3>
+          </h4>
           {collapsedReason && (
             <p className="text-muted-foreground text-sm mt-2">
               {collapsedReason}

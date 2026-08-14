@@ -54,6 +54,9 @@ class IneligibleReason(str, Enum):
 
     COMMUNITY_PROJECT = "community_project"
     PROJECT_STATUS = "project_status"
+    # Distinct from PROJECT_STATUS: a draft is one publish away from eligible,
+    # where a rejected project is not. The UI says different things about them.
+    PROJECT_DRAFT = "project_draft"
     ALREADY_IN_SERIES = "already_in_series"
 
 

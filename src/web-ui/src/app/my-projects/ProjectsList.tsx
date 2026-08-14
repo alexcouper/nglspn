@@ -28,32 +28,6 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-// Read-only: entering needs a round picked per project, which is the project
-// page's job.
-function CompetitionSummaryLine({ project }: { project: Project }) {
-  const standing = project.competition_standing;
-  if (!standing || project.is_community_tipoff) return null;
-
-  if (standing.entries.length > 0) {
-    return (
-      <p className="text-muted-foreground text-xs mt-2">
-        In {standing.entries.map((entry) => entry.competition.name).join(", ")}
-      </p>
-    );
-  }
-
-  const open = standing.opportunities.filter(
-    (opportunity) => opportunity.eligible
-  );
-  if (open.length === 0) return null;
-
-  return (
-    <p className="text-muted-foreground text-xs mt-2">
-      Can enter {open.map((opportunity) => opportunity.competition.name).join(", ")}
-    </p>
-  );
-}
-
 function ProjectCard({ project }: { project: Project }) {
   const mainImage =
     project.images?.find((img) => img.is_main) || project.images?.[0];
@@ -105,7 +79,6 @@ function ProjectCard({ project }: { project: Project }) {
               {project.description}
             </p>
           )}
-          <CompetitionSummaryLine project={project} />
         </div>
       </div>
     </Link>
@@ -209,8 +182,8 @@ export function ProjectsList() {
       )}
 
       <div className="mt-8 text-center">
-        <Link href="/submit" className="btn-primary">
-          {projects.length === 0 ? "Submit your first project" : "Submit a new project"}
+        <Link href="/create" className="btn-primary">
+          {projects.length === 0 ? "Create your first project" : "Create a project"}
         </Link>
       </div>
     </>

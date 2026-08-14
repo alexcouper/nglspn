@@ -6,6 +6,8 @@ import { ImageDropZone, UploadProgress } from "@/components/ImageUpload";
 import { ImageRoleDialog } from "@/components/ImageRoleDialog";
 import { TagSidebarSelector } from "@/components/TagSidebarSelector";
 import { ProjectPageLayout } from "@/components/ProjectPageLayout";
+import { ProjectCompetitions } from "@/components/ProjectCompetitions";
+import type { CompetitionStanding } from "@/lib/api/my-projects";
 import type { SelectedTag } from "@/components/TagSelector";
 import type { ProjectFormData } from "./ProjectDetail";
 import { EditableProjectBanner } from "./EditableProjectBanner";
@@ -37,6 +39,11 @@ interface EditProjectContentProps {
   iconImage: ProjectImage | null;
   onIconFilesSelected: (files: FileList) => void;
   onDeleteIcon: (imageId: string) => void;
+  // Competitions live under Settings, so the standing has to come this far
+  // down. Read-only data and one callback — not worth a context.
+  competitionStanding: CompetitionStanding | null;
+  competitionError: string;
+  onEnterCompetition: (competitionId: string) => Promise<void>;
 }
 
 const MAX_IMAGES = 10;
@@ -98,6 +105,9 @@ export function EditProjectContent({
   iconImage,
   onIconFilesSelected,
   onDeleteIcon,
+  competitionStanding,
+  competitionError,
+  onEnterCompetition,
 }: EditProjectContentProps) {
   const authorName = getAuthorName(project.creator);
   const [roleDialogImage, setRoleDialogImage] = useState<ProjectImage | null>(
@@ -213,19 +223,33 @@ export function EditProjectContent({
       id: "settings",
       label: "Settings",
       content: (
-        <div className="space-y-4">
-          <div className="flex items-center gap-3">
-            <span className="text-sm text-muted-foreground">Status:</span>
-            <StatusBadge status={project.status} />
+        <div className="space-y-6" data-testid="settings-tab">
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">Status:</span>
+              <StatusBadge status={project.status} />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              Submitted{" "}
+              {new Date(project.created_at).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </div>
           </div>
-          <div className="text-sm text-muted-foreground">
-            Submitted{" "}
-            {new Date(project.created_at).toLocaleDateString("en-US", {
-              year: "numeric",
-              month: "long",
-              day: "numeric",
-            })}
-          </div>
+
+          {competitionStanding && (
+            <ProjectCompetitions
+              standing={competitionStanding}
+              wonCompetitionSlugs={(project.won_competitions ?? []).map(
+                (won) => won.slug
+              )}
+              isCommunityTipoff={project.is_community_tipoff}
+              onEnter={onEnterCompetition}
+              error={competitionError}
+            />
+          )}
         </div>
       ),
     },

@@ -20,7 +20,6 @@ import { EditProjectContent } from "./EditProjectContent";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { PublishDialog } from "./PublishDialog";
 import { EnterCompetitionDialog } from "./EnterCompetitionDialog";
-import { ProjectCompetitions } from "@/components/ProjectCompetitions";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import type { SelectedTag } from "@/components/TagSelector";
 
@@ -468,6 +467,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           iconImage={images.find((img) => img.is_icon) ?? null}
           onIconFilesSelected={(files) => uploadIconFiles(files)}
           onDeleteIcon={handleDeleteIcon}
+          competitionStanding={project.competition_standing ?? null}
+          competitionError={competitionError}
+          onEnterCompetition={async (competitionId) => {
+            await handleEnterCompetition(competitionId);
+          }}
         />
       ) : (
         previewProject && (
@@ -476,22 +480,6 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             projectId={projectId}
           />
         )
-      )}
-
-      {project.competition_standing && (
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
-          <ProjectCompetitions
-            standing={project.competition_standing}
-            wonCompetitionSlugs={(project.won_competitions ?? []).map(
-              (won) => won.slug
-            )}
-            isCommunityTipoff={project.is_community_tipoff}
-            onEnter={async (competitionId) => {
-              await handleEnterCompetition(competitionId);
-            }}
-            error={competitionError}
-          />
-        </div>
       )}
 
       <div className="py-6 text-center">

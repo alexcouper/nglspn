@@ -62,13 +62,19 @@ class WonCompetitionInfo(Schema):
 
 
 class CompetitionSummary(Schema):
-    """Enough of a competition to render and link to it without a second call."""
+    """Enough of a competition to render and link to it without a second call.
+
+    `image_url` reads a field already loaded on the instance, so carrying it
+    costs no query — which is what lets the entry dialogs show a round as a row
+    with its image.
+    """
 
     id: UUID
     name: str
     slug: str
     status: str
     submission_deadline: date
+    image_url: str | None = None
 
 
 class ProjectEntryResponse(Schema):
@@ -81,7 +87,13 @@ class CompetitionOpportunityResponse(Schema):
     competition: CompetitionSummary
     eligible: bool
     reason: (
-        Literal["community_project", "project_status", "already_in_series"] | None
+        Literal[
+            "community_project",
+            "project_status",
+            "project_draft",
+            "already_in_series",
+        ]
+        | None
     ) = None
     blocking_entry: CompetitionSummary | None = None
 

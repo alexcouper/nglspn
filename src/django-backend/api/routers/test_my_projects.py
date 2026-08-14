@@ -1,5 +1,5 @@
 import json
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from hamcrest import (
     assert_that,
@@ -13,6 +13,7 @@ from hamcrest import (
 )
 
 from apps.projects.models import (
+    Competition,
     CompetitionEntry,
     CompetitionStatus,
     ContributorRole,
@@ -980,3 +981,46 @@ class TestCompetitionStandingOnResponses:
 
         assert_that(_standing(response)["opportunities"], equal_to([]))
         assert_that(_standing(response)["entries"], equal_to([]))
+
+    def test_a_named_competition_carries_its_image(
+        self, client, user, auth_headers
+    ) -> None:
+        """The dialogs render a round as a row with its image, so the standing
+        has to carry one without a second request."""
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        entered = CompetitionFactory(
+            entry_series="summer", status=CompetitionStatus.CLOSED
+        )
+        CompetitionEntryFactory(project=project, competition=entered)
+        _open_competition(entry_series="monthly")
+
+        with patch.object(
+            Competition,
+            "image_url",
+            new_callable=PropertyMock,
+            return_value="https://example.com/round.jpg",
+        ):
+            response = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+
+        standing = _standing(response)
+        assert_that(
+            standing["entries"][0]["competition"]["image_url"],
+            equal_to("https://example.com/round.jpg"),
+        )
+        assert_that(
+            standing["opportunities"][0]["competition"]["image_url"],
+            equal_to("https://example.com/round.jpg"),
+        )
+
+    def test_a_competition_without_an_image_reports_null(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        competition = _open_competition()
+
+        response = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+
+        assert_that(
+            _opportunity_for(response, competition)["competition"]["image_url"],
+            is_(none()),
+        )

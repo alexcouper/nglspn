@@ -75,14 +75,27 @@ class TestOpportunities:
 
         assert_eligible_for(standing, competition)
 
-    def test_draft_is_evaluated_like_any_other_project(self):
+    def test_a_draft_cannot_enter_until_it_is_published(self):
+        """The endpoint refuses a draft, so the standing has to say so too —
+        otherwise every surface offers a control that 400s."""
         competition = open_competition()
 
         standing = query.competition_standing(
             ProjectFactory(status=ProjectStatus.DRAFT)
         )
 
-        assert_eligible_for(standing, competition)
+        assert_blocked_for(standing, competition, IneligibleReason.PROJECT_DRAFT)
+
+    def test_a_tipoff_draft_reports_the_tipoff_reason(self):
+        """Rule order: being somebody else's project outranks being unpublished."""
+        competition = open_competition()
+        project = community_tipoff()
+        project.status = ProjectStatus.DRAFT
+        project.save(update_fields=["status"])
+
+        standing = query.competition_standing(project)
+
+        assert_blocked_for(standing, competition, IneligibleReason.COMMUNITY_PROJECT)
 
     def test_every_open_competition_gets_its_own_opportunity(self):
         monthly = open_competition(entry_series="monthly")

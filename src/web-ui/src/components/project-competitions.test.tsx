@@ -194,6 +194,30 @@ describe("ProjectCompetitions", () => {
     cleanup();
   });
 
+  it("tells a draft to publish first and offers no control", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <ProjectCompetitions
+        standing={standing({
+          opportunities: [
+            opportunity({ eligible: false, reason: "project_draft" }),
+            opportunity({
+              competition: competition({ id: "competition-2", name: "Summer" }),
+              eligible: false,
+              reason: "project_draft",
+            }),
+          ],
+        })}
+        onEnter={vi.fn()}
+      />,
+    );
+
+    expect(enterButtons(container)).toHaveLength(0);
+    const mentions =
+      container.textContent?.match(/Publish this project before/g) ?? [];
+    expect(mentions).toHaveLength(1);
+    cleanup();
+  });
+
   it("renders nothing at all for a community tipoff", async () => {
     const { container, unmount: cleanup } = await mount(
       <ProjectCompetitions

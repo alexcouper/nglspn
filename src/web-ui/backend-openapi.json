@@ -5349,6 +5349,7 @@
                 "enum": [
                   "community_project",
                   "project_status",
+                  "project_draft",
                   "already_in_series"
                 ],
                 "type": "string"
@@ -5401,7 +5402,7 @@
         "type": "object"
       },
       "CompetitionSummary": {
-        "description": "Enough of a competition to render and link to it without a second call.",
+        "description": "Enough of a competition to render and link to it without a second call.\n\n`image_url` reads a field already loaded on the instance, so carrying it\ncosts no query — which is what lets the entry dialogs show a round as a row\nwith its image.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -5424,6 +5425,17 @@
             "format": "date",
             "title": "Submission Deadline",
             "type": "string"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
           }
         },
         "required": [

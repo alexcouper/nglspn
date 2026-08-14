@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { TrophyIcon, RocketLaunchIcon } from "@heroicons/react/24/solid";
 import { api, type Competition, type CompetitionProject } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
@@ -10,6 +11,7 @@ import { formatDateRange, pickVariant } from "@/lib/utils";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
 import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
 import { MyRanking } from "./MyRanking";
+import { EnterProjectDialog } from "./EnterProjectDialog";
 import type { ReviewState } from "./types";
 
 function formatPrize(amount: string): string {
@@ -23,9 +25,15 @@ interface CompetitionRevealProps {
 }
 
 export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps) {
-  const [competition] = useState<Competition>(initialCompetition);
+  // Read the prop rather than seeding state from it: this was a `useState` with
+  // no setter, which pinned the first server render forever and made
+  // `router.refresh()` after an entry a no-op — the round's project count never
+  // moved.
+  const competition = initialCompetition;
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const router = useRouter();
   const [fetchedState, setFetchedState] = useState<ReviewState>({ kind: "loading" });
+  const [showProjectChooser, setShowProjectChooser] = useState(false);
 
   const isOpen = competition.status === "accepting_applications";
   const isVoting = competition.status === "voting";
@@ -130,24 +138,45 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
             </h2>
             <p className="text-muted-foreground text-sm mt-1">
               {isAuthenticated
-                ? `Enter one you've already added, or start a new one, and compete in ${competition.name}`
+                ? `Enter one you've already added and compete in ${competition.name}`
                 : `Share your project with the community and compete in ${competition.name}`}
             </p>
           </div>
-          <Link
-            /* Signed in, the chooser is the useful landing: it lists projects
-               eligible for this round above the new-project form. */
-            href={
-              isAuthenticated
-                ? `/submit?competition=${competition.id}`
-                : "/submit"
-            }
-            className="btn-primary flex-shrink-0 inline-flex items-center gap-2"
-          >
-            <RocketLaunchIcon className="w-4 h-4" />
-            Submit a Project
-          </Link>
+          {isAuthenticated ? (
+            /* The user is already on the round they want. Picking a project
+               happens here rather than on another page and back. */
+            <button
+              type="button"
+              onClick={() => setShowProjectChooser(true)}
+              className="btn-primary flex-shrink-0 inline-flex items-center gap-2"
+            >
+              <RocketLaunchIcon className="w-4 h-4" />
+              Submit a Project
+            </button>
+          ) : (
+            <Link
+              href="/create"
+              className="btn-primary flex-shrink-0 inline-flex items-center gap-2"
+            >
+              <RocketLaunchIcon className="w-4 h-4" />
+              Submit a Project
+            </Link>
+          )}
         </div>
+      )}
+
+      {isOpen && isAuthenticated && (
+        <EnterProjectDialog
+          competition={competition}
+          isOpen={showProjectChooser}
+          onClose={() => setShowProjectChooser(false)}
+          onEntered={() => {
+            setShowProjectChooser(false);
+            // The round's project count is server-rendered, so it only moves
+            // on a refresh.
+            router.refresh();
+          }}
+        />
       )}
 
       {/* Voting banner */}

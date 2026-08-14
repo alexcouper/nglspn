@@ -5,9 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
-import { EligibleProjectChooser } from "./EligibleProjectChooser";
 
-export default function SubmitPage() {
+/**
+ * Creating a project, and nothing else. Entering a competition is a separate
+ * act on a published project — this page deliberately knows nothing about
+ * rounds, and takes no competition parameter.
+ */
+export default function CreateProjectPage() {
   const router = useRouter();
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [url, setUrl] = useState("");
@@ -54,18 +58,16 @@ export default function SubmitPage() {
       <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
         <div className="max-w-lg mx-auto">
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            Submit a Project
+            Create a project
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Enter one you&apos;ve already added, or start something new.
+            Add it as a draft, then publish it when it&apos;s ready.
           </p>
         </div>
       </section>
 
       <section className="py-8 px-4 sm:px-6">
         <div className="max-w-lg mx-auto">
-          <EligibleProjectChooser />
-
           <div className="bg-white border border-border rounded-xl p-6">
             <h2 className="text-foreground font-semibold mb-4">
               Start a new project

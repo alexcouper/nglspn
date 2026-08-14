@@ -32,6 +32,7 @@ function competition(
     slug: "june-round",
     status: "accepting_applications",
     submission_deadline: "2026-06-30",
+    image_url: "https://example.com/june.jpg",
     ...overrides,
   } as CompetitionSummary;
 }
@@ -54,20 +55,28 @@ function buttonLabelled(container: HTMLElement, label: string) {
   ) as HTMLButtonElement | undefined;
 }
 
+function radios(container: HTMLElement): HTMLInputElement[] {
+  return [
+    ...container.querySelectorAll('input[type="radio"]'),
+  ] as HTMLInputElement[];
+}
+
+const TWO_ROUNDS = [
+  opportunity(),
+  opportunity({
+    competition: competition({
+      id: "competition-2",
+      name: "Summer hackathon",
+      submission_deadline: "2026-07-15",
+    }),
+  }),
+];
+
 describe("EnterCompetitionDialog", () => {
   it("lists every open round with its deadline", async () => {
     const { container, unmount: cleanup } = await mount(
       <EnterCompetitionDialog
-        opportunities={[
-          opportunity(),
-          opportunity({
-            competition: competition({
-              id: "competition-2",
-              name: "Summer hackathon",
-              submission_deadline: "2026-07-15",
-            }),
-          }),
-        ]}
+        opportunities={TWO_ROUNDS}
         onEnter={vi.fn()}
         onDismiss={vi.fn()}
       />,
@@ -88,32 +97,66 @@ describe("EnterCompetitionDialog", () => {
       />,
     );
 
-    expect(container.querySelector('[role="dialog"]')).toBeNull();
+    expect(container.querySelector("dialog")).toBeNull();
     cleanup();
   });
 
-  it("enters the round whose button was pressed", async () => {
+  it("enters a lone round without asking which", async () => {
     const onEnter = vi.fn().mockResolvedValue(undefined);
     const { container, unmount: cleanup } = await mount(
       <EnterCompetitionDialog
-        opportunities={[
-          opportunity(),
-          opportunity({
-            competition: competition({ id: "competition-2", name: "Summer" }),
-          }),
-        ]}
+        opportunities={[opportunity()]}
+        onEnter={onEnter}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    expect(radios(container)).toHaveLength(0);
+    await act(async () => {
+      buttonLabelled(container, "Enter")?.click();
+    });
+
+    expect(onEnter).toHaveBeenCalledWith("competition-1");
+    cleanup();
+  });
+
+  it("enters the selected round rather than the first", async () => {
+    const onEnter = vi.fn().mockResolvedValue(undefined);
+    const { container, unmount: cleanup } = await mount(
+      <EnterCompetitionDialog
+        opportunities={TWO_ROUNDS}
         onEnter={onEnter}
         onDismiss={vi.fn()}
       />,
     );
 
     await act(async () => {
-      [...container.querySelectorAll("button")]
-        .filter((button) => button.textContent === "Enter")[1]
-        .click();
+      radios(container)[1].click();
+    });
+    await act(async () => {
+      buttonLabelled(container, "Enter")?.click();
     });
 
     expect(onEnter).toHaveBeenCalledWith("competition-2");
+    expect(onEnter).toHaveBeenCalledTimes(1);
+    cleanup();
+  });
+
+  it("enters the first round when the offer is taken as it stands", async () => {
+    const onEnter = vi.fn().mockResolvedValue(undefined);
+    const { container, unmount: cleanup } = await mount(
+      <EnterCompetitionDialog
+        opportunities={TWO_ROUNDS}
+        onEnter={onEnter}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      buttonLabelled(container, "Enter")?.click();
+    });
+
+    expect(onEnter).toHaveBeenCalledWith("competition-1");
     cleanup();
   });
 
@@ -134,6 +177,22 @@ describe("EnterCompetitionDialog", () => {
 
     expect(onDismiss).toHaveBeenCalled();
     expect(onEnter).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it("puts the two actions side by side in one footer", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <EnterCompetitionDialog
+        opportunities={[opportunity()]}
+        onEnter={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    const enter = buttonLabelled(container, "Enter");
+    const notNow = buttonLabelled(container, "Not now");
+
+    expect(enter?.parentElement).toBe(notNow?.parentElement);
     cleanup();
   });
 });

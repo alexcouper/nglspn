@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 from django.utils import timezone
 
-from apps.feed.models import FeedEvent
+from apps.feed.models import FeedEvent, FeedEventKind
 from services.feed.query_interface import FeedQueryInterface
 
 if TYPE_CHECKING:
@@ -14,7 +14,10 @@ if TYPE_CHECKING:
 
     from django.db.models import QuerySet
 
+    from apps.articles.models import Article
+
 MAX_PAGE_SIZE = 50
+SUGGESTION_LIMIT = 10
 
 
 class DjangoFeedQuery(FeedQueryInterface):
@@ -52,3 +55,20 @@ class DjangoFeedQuery(FeedQueryInterface):
 
     def live_event_for_article(self, article_id: UUID) -> FeedEvent | None:
         return FeedEvent.objects.renderable().filter(article_id=article_id).first()
+
+    def suggest_events_for_article(self, article: Article) -> list[FeedEvent]:
+        candidates = list(
+            FeedEvent.objects.renderable()
+            .with_sources()
+            .filter(kind=FeedEventKind.COMPETITION_WINNER)[:SUGGESTION_LIMIT]
+        )
+        # Naming the competition is the strongest signal an author gives us, so
+        # a title match outranks recency. Everything else stays in stream order.
+        title = (article.title or "").casefold()
+        named = [
+            event
+            for event in candidates
+            if event.competition and event.competition.name.casefold() in title
+        ]
+        rest = [event for event in candidates if event not in named]
+        return named + rest

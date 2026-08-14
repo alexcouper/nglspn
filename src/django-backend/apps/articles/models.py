@@ -81,6 +81,17 @@ class Article(models.Model):
         choices=ListingImageMode.choices,
         default=ListingImageMode.AUTO,
     )
+    # The platform event this article is written about, if any. Publishing a
+    # linked article supersedes that event so the feed shows one entry, not the
+    # bare event and its write-up side by side. SET_NULL rather than CASCADE:
+    # losing the event should orphan the link, not delete the article.
+    about_feed_event = models.ForeignKey(
+        "feed.FeedEvent",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="written_up_by",
+    )
     slug = models.SlugField(max_length=200, null=True, blank=True)
     source = models.CharField(
         max_length=20,

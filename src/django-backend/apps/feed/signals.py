@@ -30,8 +30,12 @@ def _handler() -> "FeedHandlerInterface":
 def append_on_article_publish(sender: Any, instance: Article, **kwargs: Any) -> None:
     if instance.state != ArticleState.PUBLISHED:
         return
+    handler = _handler()
     # Idempotent on the article, so an edit-after-publish adds nothing.
-    _handler().append_article_published(instance)
+    handler.append_article_published(instance)
+    # Supersede whatever the article is a write-up of. Also idempotent: the
+    # target is only taken if it has not been superseded already.
+    handler.link_article_to_event(instance, instance.about_feed_event_id)
 
 
 @receiver(post_save, sender=Project)

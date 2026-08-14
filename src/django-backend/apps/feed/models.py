@@ -35,6 +35,15 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
             "article__listing_image",
             "discussion",
             "discussion__project",
+        ).prefetch_related(
+            # An article-led row renders the flag of the event it took the place
+            # of, so the reverse side is needed too — prefetched rather than
+            # walked per row.
+            "supersedes",
+            "supersedes__competition",
+            "supersedes__competition__winner",
+            "supersedes__project",
+            "supersedes__project__category",
         )
 
 

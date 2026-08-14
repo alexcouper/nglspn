@@ -33,29 +33,29 @@
 
 ## 3. Article ↔ event link and superseding
 
-- [ ] 3.1 Add the optional event reference to Article and its migration
-- [ ] 3.2 Retire the referenced event when a linked article publishes; render one
+- [x] 3.1 Add the optional event reference to Article and its migration
+- [x] 3.2 Retire the referenced event when a linked article publishes; render one
       entry carrying the event's flag and the article's headline
-- [ ] 3.3 Enforce one-shot superseding — a second article referencing an already
+- [x] 3.3 Enforce one-shot superseding — a second article referencing an already
       superseded event becomes its own entry
-- [ ] 3.4 Restore the bare event to rendering when a superseding article is
+- [x] 3.4 Restore the bare event to rendering when a superseding article is
       deleted
 - [ ] 3.5 Offer the inferable event as the publish dialog's default where the
       article is on the house project's Competition Winners channel
-- [ ] 3.6 Tests: supersede, one-shot, unlinked duplicate renders both, delete
+- [x] 3.6 Tests: supersede, one-shot, unlinked duplicate renders both, delete
       restores
 
 ## 4. Read API
 
-- [ ] 4.1 Cursor-paginated feed endpoint ordered by `occurred_at` descending,
+- [x] 4.1 Cursor-paginated feed endpoint ordered by `occurred_at` descending,
       excluding retired events
-- [ ] 4.2 Resolve each entry to its render shape — flag, title, link target, and
+- [x] 4.2 Resolve each entry to its render shape — flag, title, link target, and
       where an article is attached its listing image, crop and summary
-- [ ] 4.3 Expose the lead separately from the list, gated on the configurable
+- [x] 4.3 Expose the lead separately from the list, gated on the configurable
       freshness window (default 7 days) and on an admin pin
-- [ ] 4.4 Tests: paging serves each entry exactly once; a stale newest article
+- [x] 4.4 Tests: paging serves each entry exactly once; a stale newest article
       produces no lead; a bare newest event produces no lead; a pin overrides
-- [ ] 4.5 Regenerate and commit the contract:
+- [x] 4.5 Regenerate and commit the contract:
       `cd src/django-backend && make extract-openapi`
 
 ## 5. Admin surfaces

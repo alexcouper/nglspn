@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
     from django.db.models import QuerySet
 
+    from apps.articles.models import Article
     from apps.feed.models import FeedEvent
 
 
@@ -42,3 +43,12 @@ class FeedQueryInterface(ABC):
 
     @abstractmethod
     def live_event_for_article(self, article_id: UUID) -> FeedEvent | None: ...
+
+    @abstractmethod
+    def suggest_events_for_article(self, article: Article) -> list[FeedEvent]:
+        """Events this article could plausibly be the write-up of.
+
+        Best guess first, so a publish dialog can default to the head of the
+        list. Only events that have not already been superseded are offered —
+        superseding is one-shot, so the rest are not linkable.
+        """

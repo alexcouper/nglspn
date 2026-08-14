@@ -2664,6 +2664,57 @@
         ]
       }
     },
+    "/api/feed": {
+      "get": {
+        "operationId": "api_routers_feed_list_feed",
+        "summary": "List Feed",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "before",
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date-time",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Before"
+            },
+            "required": false
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 20,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FeedPageResponse"
+                }
+              }
+            }
+          }
+        },
+        "description": "The Latest feed, newest first.\n\n`before` is an event time, not an offset: the stream is append-only, so a\nrow never crosses a page boundary between requests.\n\nThe lead is only sent on the first page — it is the top of the feed, and\nrepeating it under every page of results would render it twice.",
+        "tags": [
+          "Feed"
+        ]
+      }
+    },
     "/api/follows": {
       "get": {
         "operationId": "api_routers_follows_list_follows",
@@ -6757,6 +6808,369 @@
           "target_channel_id"
         ],
         "title": "ChannelReassign",
+        "type": "object"
+      },
+      "FeedArticleRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "channel_name": {
+            "title": "Channel Name",
+            "type": "string"
+          },
+          "project_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Slug"
+          },
+          "project_title": {
+            "title": "Project Title",
+            "type": "string"
+          },
+          "listing_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Image Url"
+          },
+          "listing_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "summary",
+          "channel_name",
+          "project_slug",
+          "project_title",
+          "listing_image_url",
+          "listing_crop"
+        ],
+        "title": "FeedArticleRef",
+        "type": "object"
+      },
+      "FeedCompetitionRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "winner_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Winner Slug"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "name",
+          "winner_slug"
+        ],
+        "title": "FeedCompetitionRef",
+        "type": "object"
+      },
+      "FeedDiscussionRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "project_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Slug"
+          },
+          "project_title": {
+            "title": "Project Title",
+            "type": "string"
+          },
+          "excerpt": {
+            "title": "Excerpt",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project_slug",
+          "project_title",
+          "excerpt"
+        ],
+        "title": "FeedDiscussionRef",
+        "type": "object"
+      },
+      "FeedEntryResponse": {
+        "description": "One row of the feed.\n\nDeliberately structured rather than pre-rendered: no display copy crosses\nthe wire, so the labels stay where the rest of the UI's wording lives.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "occurred_at": {
+            "format": "date-time",
+            "title": "Occurred At",
+            "type": "string"
+          },
+          "is_pinned": {
+            "title": "Is Pinned",
+            "type": "boolean"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedProjectRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "competition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedCompetitionRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "article": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedArticleRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "discussion": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedDiscussionRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "supersedes": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedSupersededRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "occurred_at",
+          "is_pinned",
+          "project",
+          "competition",
+          "article",
+          "discussion",
+          "supersedes"
+        ],
+        "title": "FeedEntryResponse",
+        "type": "object"
+      },
+      "FeedPageResponse": {
+        "properties": {
+          "entries": {
+            "items": {
+              "$ref": "#/components/schemas/FeedEntryResponse"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "next_cursor": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Next Cursor"
+          },
+          "lead": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedEntryResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "entries",
+          "next_cursor",
+          "lead"
+        ],
+        "title": "FeedPageResponse",
+        "type": "object"
+      },
+      "FeedProjectRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          },
+          "category_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Name"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "tagline",
+          "category_name"
+        ],
+        "title": "FeedProjectRef",
+        "type": "object"
+      },
+      "FeedSupersededRef": {
+        "description": "What the entry took the place of.\n\nCarries the flag an article-led entry renders above its headline: a winner\nwrite-up still reads as a competition winner, because that is what gives it\nits context.",
+        "properties": {
+          "kind": {
+            "title": "Kind",
+            "type": "string"
+          },
+          "competition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedCompetitionRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FeedProjectRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "kind",
+          "competition",
+          "project"
+        ],
+        "title": "FeedSupersededRef",
         "type": "object"
       },
       "ProjectCreate": {

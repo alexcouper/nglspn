@@ -9,6 +9,7 @@ from apps.articles.models import ArticleGlobalVisibility, ArticleState
 from apps.feed.models import FeedEvent, FeedEventKind
 from apps.projects.models import ProjectStatus
 from services import HANDLERS
+from services.feed.django_impl.query import MAX_PAGE_SIZE
 from tests.factories import (
     ArticleFactory,
     CompetitionFactory,
@@ -126,6 +127,47 @@ class TestFeedPaging:
 
         assert response.status_code == 422
 
+    @pytest.mark.parametrize(
+        "before",
+        [
+            "not-a-cursor",
+            "|",
+            # Shaped like a cursor and impossible. `parse_datetime` reads this
+            # far enough to try building a date and then raises rather than
+            # returning None, which is a 500 if nothing catches it.
+            "2026-13-45T00:00:00|2026-01-01T00:00:00",
+            "2026-01-01T00:00:00|2026-02-30T00:00:00",
+        ],
+    )
+    def test_a_malformed_cursor_is_a_422_not_a_crash(self, client, before):
+        response = client.get(FEED_URL, {"before": before})
+
+        assert response.status_code == 422
+
+    def test_paging_continues_at_the_largest_page_size(self, client):
+        """The page size the API advertises has to be one you can page past.
+
+        The look-ahead row that tells the router a next page exists is fetched
+        by the same query as the page, so a cap applied to both reports the
+        stream as exhausted at exactly the maximum limit.
+        """
+        for day in range(MAX_PAGE_SIZE + 5):
+            approved_project(approved_at=timezone.now() - timedelta(days=day + 1))
+
+        payload = get_feed(client, limit=MAX_PAGE_SIZE)
+
+        assert len(payload["entries"]) == MAX_PAGE_SIZE
+        assert payload["next_cursor"] is not None
+
+    def test_paging_at_the_largest_page_size_serves_everything(self, client):
+        total = MAX_PAGE_SIZE + 5
+        for day in range(total):
+            approved_project(approved_at=timezone.now() - timedelta(days=day + 1))
+
+        seen = page_through(client, limit=MAX_PAGE_SIZE)
+
+        assert len(seen) == len(set(seen)) == total
+
     def test_retired_entries_are_not_served(self, client):
         project = approved_project()
         event = FeedEvent.objects.get(project=project)
@@ -156,6 +198,23 @@ class TestFeedSubjectVisibility:
         project.save(update_fields=["status"])
 
         assert entry_ids(get_feed(client)) == []
+
+    def test_a_write_up_stops_carrying_a_hidden_projects_details(self, client):
+        """The superseded side is served too, and it is a whole project ref.
+
+        Hiding the project has to reach it, or the feed keeps publishing the
+        title, tagline and icon of something the rest of the site 404s.
+        """
+        project = approved_project()
+        published_article(
+            about=FeedEvent.objects.get(project=project), title="How it was built"
+        )
+        assert get_feed(client)["lead"]["supersedes"] is not None
+
+        project.status = ProjectStatus.ICE_BOX
+        project.save(update_fields=["status"])
+
+        assert get_feed(client)["lead"]["supersedes"] is None
 
     def test_article_entry_disappears_with_its_project(self, client):
         article = published_article()
@@ -336,11 +395,27 @@ class TestFeedEntryShape:
         assert get_feed(client)["lead"]["article"]["listing_image_url"] is None
 
 
+def write_up_of_a_project() -> None:
+    """A write-up whose superseded event carries a project, icon and all.
+
+    The superseded side is serialised by the same code as a top-level entry, so
+    it needs the same prefetching. Kept in this fixture because a mix without it
+    cannot tell whether `supersedes` costs a query per row.
+    """
+    project = approved_project()
+    ProjectImageFactory(project=project, is_icon=True)
+    published_article(
+        about=FeedEvent.objects.get(project=project),
+        title=f"How {project.title} was built",
+    )
+
+
 def seed_one_of_each() -> None:
     published_article()
     ProjectImageFactory(project=approved_project(), is_icon=True)
     approved_project(is_community_tipoff=True)
     CompetitionFactory(winner=ProjectFactory())
+    write_up_of_a_project()
 
 
 def count_feed_queries(client) -> int:

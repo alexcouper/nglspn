@@ -73,15 +73,6 @@ class DjangoFeedHandler(FeedHandlerInterface):
             project=project,
         )
 
-    def append_project_tipoff(self, project: Project) -> FeedEvent | None:
-        if project.status != ProjectStatus.APPROVED:
-            return None
-        return self._append(
-            FeedEventKind.PROJECT_TIPOFF,
-            occurred_at=as_datetime(project.approved_at or project.created_at),
-            project=project,
-        )
-
     def append_competition_opened(self, competition: Competition) -> FeedEvent | None:
         # A competition can be created weeks before it opens. Appending then
         # would put a future-dated row at the top of the feed, so the event

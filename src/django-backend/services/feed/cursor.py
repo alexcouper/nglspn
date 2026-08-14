@@ -41,12 +41,23 @@ class FeedCursor:
 
     @classmethod
     def decode(cls, raw: str) -> FeedCursor | None:
-        """Parse a cursor, or None if it did not come from `encode`."""
+        """Parse a cursor, or None if it did not come from `encode`.
+
+        Every rejection is a None, never an exception: the cursor arrives as a
+        query parameter on a public endpoint, so a caller typing nonsense is a
+        422 and not a 500.
+        """
         occurred_at, separator, created_at = raw.partition(SEPARATOR)
         if not separator:
             return None
-        parsed_occurred = parse_datetime(occurred_at)
-        parsed_created = parse_datetime(created_at)
+        # `parse_datetime` returns None for a string it cannot read at all, but
+        # *raises* ValueError for one that is shaped right and impossible —
+        # "2026-13-45T00:00:00" parses as a date and then fails on the month.
+        try:
+            parsed_occurred = parse_datetime(occurred_at)
+            parsed_created = parse_datetime(created_at)
+        except ValueError:
+            return None
         if parsed_occurred is None or parsed_created is None:
             return None
         return cls(occurred_at=parsed_occurred, created_at=parsed_created)

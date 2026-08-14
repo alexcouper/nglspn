@@ -19,16 +19,23 @@ export function LatestFeed({ initialEntries, initialCursor, lead }: Props) {
   const [entries, setEntries] = useState(initialEntries);
   const [cursor, setCursor] = useState(initialCursor);
   const [loading, setLoading] = useState(false);
+  const [failed, setFailed] = useState(false);
 
   async function loadMore() {
     if (!cursor || loading) return;
     setLoading(true);
+    setFailed(false);
     try {
       const page = await api.feed.page({ before: cursor });
       // The cursor marks a position in an append-only stream and entries never
       // move, so appending is safe: nothing already shown can arrive again.
       setEntries((current) => [...current, ...page.entries]);
       setCursor(page.next_cursor);
+    } catch {
+      // The cursor is deliberately left where it was: a failed page is a
+      // transient thing to retry, not the end of the stream, so the button
+      // stays and nothing already shown is disturbed.
+      setFailed(true);
     } finally {
       setLoading(false);
     }
@@ -64,14 +71,19 @@ export function LatestFeed({ initialEntries, initialCursor, lead }: Props) {
       ))}
 
       {cursor && (
-        <div className="flex justify-center">
+        <div className="flex flex-col items-center gap-2">
+          {failed && (
+            <p role="alert" className="text-sm text-muted-foreground">
+              That didn&apos;t load. Try again.
+            </p>
+          )}
           <button
             type="button"
             onClick={loadMore}
             disabled={loading}
             className="text-sm font-medium border border-border rounded-md px-4 py-2 hover:border-accent disabled:opacity-60"
           >
-            {loading ? "Loading…" : "Show more"}
+            {loading ? "Loading…" : failed ? "Retry" : "Show more"}
           </button>
         </div>
       )}

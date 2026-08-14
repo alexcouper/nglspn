@@ -62,6 +62,16 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
         # and that registry reaches back into this module.
         from services.images.django_impl.query import gallery_prefetch  # noqa: PLC0415
 
+        # The superseded side goes through the same visibility rule as the rows
+        # themselves. Without it a write-up keeps publishing the title, tagline
+        # and icon of the project whose entry it replaced, long after that
+        # project was rejected or iced — `renderable()` only reaches the row's
+        # own subject, not the one hanging off `supersedes`.
+        superseded = models.Prefetch(
+            "supersedes",
+            queryset=FeedEvent.objects.visible_subject(),
+        )
+
         return self.select_related(
             "project",
             "project__category",
@@ -83,11 +93,17 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
             # An article-led row renders the flag of the event it took the place
             # of, so the reverse side is needed too — prefetched rather than
             # walked per row.
-            "supersedes",
+            superseded,
             "supersedes__competition",
             "supersedes__competition__winner",
             "supersedes__project",
             "supersedes__project__category",
+            # The superseded project is serialised by the same `_project_ref`
+            # as a top-level one, icon and all, so it needs the same gallery
+            # prefetch — otherwise every write-up of a project costs two extra
+            # queries and the page's cost stops being flat in the row count.
+            gallery_prefetch("supersedes__project__images"),
+            "supersedes__project__images__variants",
         )
 
 

@@ -16,7 +16,16 @@ if TYPE_CHECKING:
 
     from services.feed.cursor import FeedCursor
 
+# The largest page the read API will serve. Declared here rather than in the
+# router because the cap has to be enforced where the rows are fetched; the
+# router imports it so there is one number.
 MAX_PAGE_SIZE = 50
+
+# Callers detect a further page by asking for one row beyond the page they will
+# serve. Clamping at MAX_PAGE_SIZE would eat that row at the largest page size,
+# and the caller would read "no extra row" as "stream exhausted" and stop paging
+# with entries still to come.
+FETCH_CEILING = MAX_PAGE_SIZE + 1
 
 
 class DjangoFeedQuery(FeedQueryInterface):
@@ -47,7 +56,7 @@ class DjangoFeedQuery(FeedQueryInterface):
                     created_at__lt=before.created_at,
                 )
             )
-        return list(qs[: min(limit, MAX_PAGE_SIZE)])
+        return list(qs[: min(limit, FETCH_CEILING)])
 
     def lead(self, *, freshness_days: int) -> FeedEvent | None:
         pinned = self.renderable().filter(is_pinned=True).first()

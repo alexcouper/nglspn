@@ -27,9 +27,6 @@ class FeedHandlerInterface(ABC):
     def append_project_published(self, project: Project) -> FeedEvent | None: ...
 
     @abstractmethod
-    def append_project_tipoff(self, project: Project) -> FeedEvent | None: ...
-
-    @abstractmethod
     def append_competition_opened(
         self, competition: Competition
     ) -> FeedEvent | None: ...

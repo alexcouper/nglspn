@@ -6,11 +6,11 @@ from api.schemas.errors import Error
 from api.schemas.feed import FeedPageResponse
 from services import REPO
 from services.feed.cursor import FeedCursor
+from services.feed.django_impl.query import MAX_PAGE_SIZE
 
 router = Router()
 
 DEFAULT_PAGE_SIZE = 20
-MAX_PAGE_SIZE = 50
 
 # How recent an article must be for its entry to lead the page. A single value
 # rather than a constant threaded through the components that read it, because

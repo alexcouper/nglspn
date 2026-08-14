@@ -158,10 +158,20 @@ reviewable.
   if the table becomes a problem, which at this event rate is years away.
 
 - **Backfill is a judgement call.** An empty stream on launch shows nothing at
-  all. → Seed from existing projects, tipoffs, competitions and published
-  articles at their original timestamps, so the tab has history on day one. This
-  must not fire notifications — the same constraint that governed the Phase 4
-  content backfill.
+  all. → Seed from existing projects, tipoffs and competitions at their original
+  timestamps, so the tab has history on day one. This must not fire
+  notifications — the same constraint that governed the Phase 4 content
+  backfill.
+
+- **Articles are out of the backfill's scope.** The two articles waiting to be
+  published go out *after* the feed ships, so they arrive through the normal
+  publish path and the backfill never has to reason about article state. The
+  exposure: any article already published when the feed ships will not appear
+  until something new is published. House announcements go out as articles on
+  the house project's Updates channel (`apps/emails/models.py:11`), so this is
+  worth confirming against real data before launch rather than assuming. →
+  Because the backfill is idempotent, widening its scope to articles and
+  re-running is a safe correction rather than a duplicate-producing one.
 
 ## Open Questions
 

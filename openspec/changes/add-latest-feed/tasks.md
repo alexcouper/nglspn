@@ -81,9 +81,16 @@
 ## 8. Backfill
 
 - [ ] 8.1 Management command seeding events from existing published projects,
-      tipoffs, competitions and published articles at their original timestamps
-- [ ] 8.2 Assert the command fires no in-app notification and no email
-- [ ] 8.3 Decide and record how far back the launch backfill reaches
+      tipoffs and competitions at their original timestamps. Articles are out of
+      scope — they arrive through the publish path
+- [ ] 8.2 Make it idempotent: a re-run appends only what earlier runs missed and
+      duplicates nothing. Test the run-twice and run-after-new-records cases
+- [ ] 8.3 Assert the command fires no in-app notification and no email
+- [ ] 8.4 Decide and record how far back the launch backfill reaches
+- [ ] 8.5 Before launch, confirm against real data whether any article is already
+      published — those will not appear until the next publish (see design.md)
+- [ ] 8.6 Launch sequencing: ship the feed, run the backfill, then publish the
+      two pending articles a few days apart so each takes a turn as the lead
 
 ## 9. Verification
 

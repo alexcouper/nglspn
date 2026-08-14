@@ -212,14 +212,36 @@ of text and a link to Discover.
 - **THEN** a short message and a link to Discover are shown, with no empty
   section headings
 
-### Requirement: Launch backfill fires no notifications
+### Requirement: Launch backfill
 
-The launch backfill SHALL seed the stream from existing projects, tipoffs,
-competitions and published articles using each record's original timestamp, and
-SHALL NOT fire any notification, in-app or email.
+The launch backfill SHALL seed the stream from existing projects, tipoffs and
+competitions using each record's original timestamp. Articles are out of its
+scope: article entries enter the stream only through the publish path.
+
+The backfill SHALL be idempotent — running it more than once SHALL NOT produce
+duplicate entries, and a second run SHALL append only events its earlier runs
+did not cover.
+
+The backfill SHALL NOT fire any notification, in-app or email.
 
 #### Scenario: Backfill run
-- **GIVEN** existing published projects and articles predating this change
+- **GIVEN** existing published projects, tipoffs and competitions predating this
+  change
 - **WHEN** the backfill runs
 - **THEN** feed events exist at those records' original timestamps
 - **AND** no in-app notification and no email is generated
+
+#### Scenario: Backfill run twice
+- **GIVEN** a completed backfill run
+- **WHEN** the backfill is run again with no new source records
+- **THEN** the stream is unchanged — no entry is duplicated
+
+#### Scenario: Backfill after new records appear
+- **GIVEN** a completed backfill run, after which further projects were published
+- **WHEN** the backfill is run again
+- **THEN** events are appended only for the records not already covered
+
+#### Scenario: Articles are not backfilled
+- **GIVEN** an article published before this change shipped
+- **WHEN** the backfill runs
+- **THEN** no feed event is created for it

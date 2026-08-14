@@ -12,6 +12,15 @@ class DiscussionAdmin(admin.ModelAdmin):
     search_fields = ("body", "project__title", "author__email")
     readonly_fields = ("id", "created_at", "updated_at")
     ordering = ("-created_at",)
+    actions = ("promote_to_feed",)
+
+    @admin.action(description="Promote to the Latest feed")
+    def promote_to_feed(
+        self, request: HttpRequest, queryset: QuerySet[Discussion]
+    ) -> None:
+        from apps.feed.admin import promote_discussions  # noqa: PLC0415
+
+        promote_discussions(self, request, queryset)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Discussion]:
         return (

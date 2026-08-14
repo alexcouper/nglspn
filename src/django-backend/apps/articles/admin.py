@@ -29,7 +29,13 @@ class ArticleAdmin(admin.ModelAdmin):
         "render_link",
     )
     ordering = ("-published_at", "-created_at")
-    autocomplete_fields = ("project", "channel", "author", "listing_image")
+    autocomplete_fields = (
+        "project",
+        "channel",
+        "author",
+        "listing_image",
+        "about_feed_event",
+    )
 
     fieldsets = (
         (None, {"fields": ("id", "project", "channel", "author")}),
@@ -45,6 +51,18 @@ class ArticleAdmin(admin.ModelAdmin):
                     "state",
                     "published_at",
                     "global_visibility",
+                ),
+            },
+        ),
+        (
+            "Latest feed",
+            {
+                "fields": ("about_feed_event",),
+                "description": (
+                    "The platform event this article is a write-up of. Setting "
+                    "it retires the bare event so the feed shows one entry "
+                    "instead of two. Only takes effect while that event has "
+                    "not already been superseded."
                 ),
             },
         ),

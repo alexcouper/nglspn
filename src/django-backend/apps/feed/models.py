@@ -16,7 +16,32 @@ class FeedEventKind(models.TextChoices):
 
 class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
     def renderable(self) -> "FeedEventQuerySet":
-        return self.filter(superseded_by__isnull=True, retired_at__isnull=True)
+        return self.filter(
+            superseded_by__isnull=True,
+            retired_at__isnull=True,
+        ).visible_subject()
+
+    def visible_subject(self) -> "FeedEventQuerySet":
+        """Drop entries whose project is no longer shown on the site.
+
+        An entry is appended when a project is approved and nothing withdraws it
+        if the project is later rejected or iced. Without this the feed keeps
+        publishing that project's title, tagline and icon, and links to a page
+        that 404s for everyone but its owner — the rest of the site treats
+        anything but APPROVED as invisible.
+
+        Competition entries have no such state and are left alone.
+        """
+        # Local import: apps.projects owns the status vocabulary, and the FK is
+        # declared lazily, so this is the only place the two modules meet.
+        from apps.projects.models import ProjectStatus  # noqa: PLC0415
+
+        approved = ProjectStatus.APPROVED
+        return self.filter(
+            Q(project__isnull=True) | Q(project__status=approved),
+            Q(article__isnull=True) | Q(article__project__status=approved),
+            Q(discussion__isnull=True) | Q(discussion__project__status=approved),
+        )
 
     def with_sources(self) -> "FeedEventQuerySet":
         """Pull every entity a row can render from, in one query.

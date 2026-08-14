@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from io import StringIO
 
 import pytest
 from django.core.management import call_command
@@ -14,6 +15,12 @@ from tests.factories import ArticleFactory, CompetitionFactory, ProjectFactory
 
 def run_backfill() -> None:
     call_command("backfill_feed")
+
+
+def dry_run_backfill() -> str:
+    output = StringIO()
+    call_command("backfill_feed", "--dry-run", stdout=output)
+    return output.getvalue()
 
 
 def wipe_stream() -> None:
@@ -123,3 +130,35 @@ class TestBackfillIsSilent:
 
         assert Notification.objects.count() == notifications_before
         assert SentEmail.objects.count() == emails_before
+
+
+@pytest.mark.django_db
+class TestBackfillDryRun:
+    def test_writes_nothing(self):
+        approved_project()
+        wipe_stream()
+
+        dry_run_backfill()
+
+        assert FeedEvent.objects.count() == 0
+
+    def test_reports_what_a_real_run_would_append(self):
+        approved_project()
+        # Opened, closed and won — three milestones from the one competition.
+        CompetitionFactory(start_date=date(2025, 1, 1), winner=ProjectFactory())
+        wipe_stream()
+
+        report = dry_run_backfill()
+
+        assert "would append 1 project entries" in report
+        assert "3 competition entries" in report
+
+    def test_reports_nothing_once_the_stream_is_already_covered(self):
+        approved_project()
+        CompetitionFactory(start_date=date(2025, 1, 1), winner=ProjectFactory())
+        run_backfill()
+
+        report = dry_run_backfill()
+
+        assert "would append 0 project entries" in report
+        assert "0 competition entries" in report

@@ -128,9 +128,10 @@ class FeedEntryResponse(Schema):
 
 class FeedPageResponse(Schema):
     entries: list[FeedEntryResponse]
-    # Pass back as `before` to fetch the next page. Null when the stream is
-    # exhausted. The cursor is an event time, which never moves once written.
-    next_cursor: datetime | None
+    # Pass back as `before` to fetch the next page, untouched. Null when the
+    # stream is exhausted. Opaque: it encodes the position of the last entry,
+    # not a time to filter on.
+    next_cursor: str | None
     lead: FeedEntryResponse | None
 
 

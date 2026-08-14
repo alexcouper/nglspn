@@ -25,8 +25,8 @@ export function LatestFeed({ initialEntries, initialCursor, lead }: Props) {
     setLoading(true);
     try {
       const page = await api.feed.page({ before: cursor });
-      // The cursor is an event time and events never move, so appending is
-      // safe: nothing already shown can arrive again.
+      // The cursor marks a position in an append-only stream and entries never
+      // move, so appending is safe: nothing already shown can arrive again.
       setEntries((current) => [...current, ...page.entries]);
       setCursor(page.next_cursor);
     } finally {

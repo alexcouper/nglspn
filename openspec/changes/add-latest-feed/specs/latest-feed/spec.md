@@ -140,8 +140,12 @@ The feed SHALL be ordered strictly by descending `occurred_at`. An entry's
 position SHALL NOT change once appended, including when the article it
 references is edited.
 
-Reads SHALL be cursor-paginated on `occurred_at`, so that paging through the
-feed serves each entry exactly once.
+Reads SHALL be cursor-paginated, so that paging through the feed serves each
+entry exactly once. The cursor SHALL identify a position in the stream rather
+than a point in time: competition milestones are dates, so entries sharing an
+`occurred_at` to the microsecond are routine, and a cursor of `occurred_at`
+alone drops every entry tied with the page boundary. The cursor SHALL be opaque
+to callers, who pass back what the previous response gave them.
 
 #### Scenario: Editing an article does not move its entry
 - **GIVEN** a published article whose entry sits in last week's group
@@ -153,6 +157,12 @@ feed serves each entry exactly once.
 - **GIVEN** a feed with more entries than one page
 - **WHEN** a reader loads the first page and then the next
 - **THEN** no entry appears on both pages and none is skipped
+
+#### Scenario: Entries sharing an event time survive the page boundary
+- **GIVEN** three entries with the identical `occurred_at`, spanning a page
+  boundary
+- **WHEN** a reader pages through the feed
+- **THEN** all three are served, each exactly once
 
 #### Scenario: Entries are grouped by week
 - **WHEN** the feed renders
@@ -189,6 +199,33 @@ the freshness rule.
 - **GIVEN** an administrator has pinned an entry
 - **WHEN** the feed renders
 - **THEN** the pinned entry renders as the lead regardless of its age
+
+#### Scenario: The lead is not also served as a row
+- **GIVEN** an administrator has pinned an entry that sits deep in the stream
+- **WHEN** a reader pages all the way past that entry's position
+- **THEN** it renders once, as the lead, and not again as a row
+
+### Requirement: Entries do not outlive their subject's visibility
+
+An entry SHALL render only while the project it concerns is still shown on the
+site. A project that leaves the approved state — rejected, iced — takes its
+entry, and the entries of its articles and promoted discussions, out of the feed
+with it.
+
+Approval appends the entry and nothing withdraws it later, so the read path
+checks rather than trusting the append. Without this the feed keeps publishing a
+withdrawn project's title, tagline and icon, and links to a page that 404s for
+everyone but its owner.
+
+#### Scenario: Withdrawn project leaves the feed
+- **GIVEN** an approved project with an entry in the feed
+- **WHEN** an administrator moves it to the ice box or rejects it
+- **THEN** its entry no longer renders
+
+#### Scenario: A withdrawn project takes its articles with it
+- **GIVEN** a published article whose entry leads the feed
+- **WHEN** its project stops being approved
+- **THEN** neither the lead nor the article's row renders
 
 ### Requirement: Responsive layout
 

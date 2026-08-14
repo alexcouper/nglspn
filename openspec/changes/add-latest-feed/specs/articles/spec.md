@@ -3,22 +3,26 @@
 ### Requirement: Article links to the feed event it is about
 
 An Article SHALL be able to reference the platform event it is written about.
-The reference SHALL be settable at publish time and editable afterwards by an
-administrator. The reference is optional.
+The reference SHALL be settable by an administrator only, and SHALL NOT be
+settable through the publish API. The reference is optional.
 
-Where the reference is inferable — an article on the house project's Competition
-Winners channel naming a competition — the system SHALL offer it as the default
-rather than leaving the author to set it from scratch.
+Setting the reference hides another party's entry from a site-wide feed, which
+makes it an editorial act rather than something an author performs on their own
+article. An author offered the choice at publish time can — by accident or
+otherwise — retire an entry that is nothing to do with them, and the API would
+have to police an event id it has no way to attribute. A missed link costs one
+duplicate pair in the feed, which is visible and correctable; a wrong link is
+neither.
 
 An Article with no reference is valid; it appears in the feed as a standalone
 entry. Superseding behaviour is defined by the `latest-feed` capability.
 
-#### Scenario: Publishing with an inferable event
-- **GIVEN** a draft article on the house project's Competition Winners channel
-  naming a competition whose winners have been announced
-- **WHEN** the author opens the publish dialog
-- **THEN** that competition's winner-announced event is offered as the default
-  reference
+#### Scenario: The publish API does not accept a reference
+- **GIVEN** a draft article and a live feed event
+- **WHEN** the author publishes the article
+- **THEN** the article publishes with no event reference, whatever the request
+  carries
+- **AND** the article appears in the feed as a standalone entry
 
 #### Scenario: Publishing without a reference
 - **GIVEN** a draft article about no platform event

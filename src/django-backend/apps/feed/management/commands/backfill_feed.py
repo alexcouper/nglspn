@@ -13,7 +13,9 @@ that have opened or closed since the last run.
 from typing import Any
 
 from django.core.management.base import BaseCommand
+from django.db import transaction
 
+from apps.feed.models import FeedEvent
 from apps.projects.models import Competition, Project, ProjectStatus
 from services import HANDLERS
 
@@ -30,28 +32,38 @@ class Command(BaseCommand):
 
     def handle(self, *args: Any, **options: Any) -> None:
         dry_run = options["dry_run"]
-        counts = {"projects": 0, "competitions": 0}
 
-        for project in Project.objects.filter(status=ProjectStatus.APPROVED).iterator():
+        # A dry run appends for real and rolls the transaction back. Counting
+        # candidates instead would report every project on every re-run, when
+        # the appenders are idempotent and the honest answer is usually zero.
+        with transaction.atomic():
+            counts = self._append_everything()
             if dry_run:
-                counts["projects"] += 1
-                continue
-            if HANDLERS.feed.append_project_published(project) is not None:
-                counts["projects"] += 1
+                transaction.set_rollback(True)
 
-        for competition in Competition.objects.iterator():
-            if dry_run:
-                counts["competitions"] += 1
-                continue
-            appended = [
-                HANDLERS.feed.append_competition_opened(competition),
-                HANDLERS.feed.append_competition_closed(competition),
-                HANDLERS.feed.append_competition_winner(competition),
-            ]
-            counts["competitions"] += sum(1 for event in appended if event is not None)
-
-        prefix = "would append" if dry_run else "covered"
+        prefix = "would append" if dry_run else "appended"
         self.stdout.write(
             f"backfill_feed: {prefix} {counts['projects']} project entries, "
             f"{counts['competitions']} competition entries"
         )
+
+    @staticmethod
+    def _append_everything() -> dict[str, int]:
+        # Counted by how far the stream grew, not by how many appenders
+        # returned a row: they return the existing entry when there is one, so
+        # a re-run would otherwise report the whole site as freshly appended.
+        start = FeedEvent.objects.count()
+
+        for project in Project.objects.filter(status=ProjectStatus.APPROVED).iterator():
+            HANDLERS.feed.append_project_published(project)
+        after_projects = FeedEvent.objects.count()
+
+        for competition in Competition.objects.iterator():
+            HANDLERS.feed.append_competition_opened(competition)
+            HANDLERS.feed.append_competition_closed(competition)
+            HANDLERS.feed.append_competition_winner(competition)
+
+        return {
+            "projects": after_projects - start,
+            "competitions": FeedEvent.objects.count() - after_projects,
+        }

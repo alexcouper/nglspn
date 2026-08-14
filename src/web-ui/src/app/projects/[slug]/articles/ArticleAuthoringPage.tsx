@@ -278,12 +278,10 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
 
       {showPublishDialog && (
         <PublishDialog
-          projectRef={projectRef}
-          articleId={article.id}
           onClose={() => setShowPublishDialog(false)}
-          onConfirm={(aboutFeedEventId) => {
+          onConfirm={() => {
             setShowPublishDialog(false);
-            draft.publish(aboutFeedEventId);
+            draft.publish();
           }}
           isPublishing={draft.isPublishing}
         />

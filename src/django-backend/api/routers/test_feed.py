@@ -89,6 +89,25 @@ class TestFeedPaging:
 
         assert len(seen) == len(set(seen)) == 7
 
+    def test_paging_keeps_entries_that_share_an_occurred_at(self, client):
+        """Competition milestones are dates, so exact ties are routine.
+
+        A cursor of `occurred_at` alone drops every row tied with the page
+        boundary — the rows do not reappear on the next page, they are gone.
+        """
+        at = timezone.now() - timedelta(days=1)
+        for _ in range(3):
+            approved_project(approved_at=at)
+
+        seen = page_through(client, limit=2)
+
+        assert len(seen) == len(set(seen)) == 3
+
+    def test_a_cursor_that_did_not_come_from_the_api_is_rejected(self, client):
+        response = client.get(FEED_URL, {"before": timezone.now().isoformat()})
+
+        assert response.status_code == 422
+
     def test_retired_entries_are_not_served(self, client):
         project = approved_project()
         event = FeedEvent.objects.get(project=project)
@@ -96,6 +115,40 @@ class TestFeedPaging:
         HANDLERS.feed.retire(event.id)
 
         assert entry_ids(get_feed(client)) == []
+
+
+@pytest.mark.django_db
+class TestFeedSubjectVisibility:
+    """An entry outlives nothing its subject does not.
+
+    Approval appends the entry and nothing withdraws it when a project is later
+    rejected or iced, so the feed has to check rather than trust the append.
+    """
+
+    @pytest.mark.parametrize(
+        "hidden_status", [ProjectStatus.REJECTED, ProjectStatus.ICE_BOX]
+    )
+    def test_entry_disappears_when_its_project_stops_being_approved(
+        self, client, hidden_status
+    ):
+        project = approved_project()
+        assert entry_ids(get_feed(client)) != []
+
+        project.status = hidden_status
+        project.save(update_fields=["status"])
+
+        assert entry_ids(get_feed(client)) == []
+
+    def test_article_entry_disappears_with_its_project(self, client):
+        article = published_article()
+
+        project = article.project
+        project.status = ProjectStatus.ICE_BOX
+        project.save(update_fields=["status"])
+
+        payload = get_feed(client)
+        assert payload["lead"] is None
+        assert entry_ids(payload) == []
 
 
 @pytest.mark.django_db
@@ -140,10 +193,28 @@ class TestFeedLead:
     def test_lead_is_only_sent_on_the_first_page(self, client):
         published_article()
         approved_project(approved_at=timezone.now() - timedelta(days=3))
+        approved_project(approved_at=timezone.now() - timedelta(days=4))
 
-        payload = get_feed(client, before=timezone.now().isoformat())
+        first = get_feed(client, limit=1)
+        second = get_feed(client, before=first["next_cursor"])
 
-        assert payload["lead"] is None
+        assert first["lead"] is not None
+        assert second["lead"] is None
+
+    def test_pinned_lead_is_not_repeated_on_a_later_page(self, client):
+        """A pin is the one thing that puts an old entry in the lead slot.
+
+        The first page drops the lead from its own list, so only a pinned entry
+        deep in the stream can come back around as a row.
+        """
+        for day in range(5):
+            approved_project(approved_at=timezone.now() - timedelta(days=day + 1))
+        oldest = FeedEvent.objects.order_by("occurred_at").first()
+
+        HANDLERS.feed.set_pinned(oldest.id, pinned=True)
+
+        seen = page_through(client, limit=2)
+        assert seen.count(str(oldest.id)) == 1
 
 
 @pytest.mark.django_db

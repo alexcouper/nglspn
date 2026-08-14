@@ -46,7 +46,6 @@ export type {
   ArticleCreate,
   ArticleUpdate,
   ArticlePublish,
-  FeedEventSuggestion,
   ListingImageMode,
 } from "./articles";
 

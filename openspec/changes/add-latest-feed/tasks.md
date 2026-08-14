@@ -40,8 +40,8 @@
       superseded event becomes its own entry
 - [x] 3.4 Restore the bare event to rendering when a superseding article is
       deleted
-- [x] 3.5 Offer the inferable event as the publish dialog's default where the
-      article is on the house project's Competition Winners channel
+- [x] 3.5 Keep the reference out of the publish API — admin sets it, so an
+      author cannot retire an entry belonging to someone else
 - [x] 3.6 Tests: supersede, one-shot, unlinked duplicate renders both, delete
       restores
 

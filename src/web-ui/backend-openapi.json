@@ -1977,88 +1977,6 @@
         ]
       }
     },
-    "/api/projects/{slug}/articles/{article_id}/feed-event-suggestions": {
-      "get": {
-        "operationId": "api_routers_articles_list_feed_event_suggestions",
-        "summary": "List Feed Event Suggestions",
-        "parameters": [
-          {
-            "in": "path",
-            "name": "slug",
-            "schema": {
-              "title": "Slug",
-              "type": "string"
-            },
-            "required": true
-          },
-          {
-            "in": "path",
-            "name": "article_id",
-            "schema": {
-              "format": "uuid",
-              "title": "Article Id",
-              "type": "string"
-            },
-            "required": true
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "items": {
-                    "$ref": "#/components/schemas/FeedEventSuggestion"
-                  },
-                  "title": "Response",
-                  "type": "array"
-                }
-              }
-            }
-          },
-          "401": {
-            "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "Not Found",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          }
-        },
-        "description": "Events this article could be the write-up of, best guess first.\n\nThe publish dialog defaults to the head of the list. Empty is the normal\ncase — most articles are about nothing but themselves.",
-        "tags": [
-          "Articles"
-        ],
-        "security": [
-          {
-            "JWTAuth": []
-          }
-        ]
-      }
-    },
     "/api/projects/{slug}/articles/{article_id}/images/upload-url": {
       "post": {
         "operationId": "api_routers_articles_get_article_image_upload_url",
@@ -2757,7 +2675,6 @@
             "schema": {
               "anyOf": [
                 {
-                  "format": "date-time",
                   "type": "string"
                 },
                 {
@@ -2789,9 +2706,19 @@
                 }
               }
             }
+          },
+          "422": {
+            "description": "Unprocessable Entity",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
-        "description": "The Latest feed, newest first.\n\n`before` is an event time, not an offset: the stream is append-only, so a\nrow never crosses a page boundary between requests.\n\nThe lead is only sent on the first page — it is the top of the feed, and\nrepeating it under every page of results would render it twice.",
+        "description": "The Latest feed, newest first.\n\n`before` is an opaque cursor from a previous response's `next_cursor`, not\nan offset: the stream is append-only, so a row never crosses a page boundary\nbetween requests.\n\nThe lead is only sent on the first page — it is the top of the feed, and\nrepeating it under every page of results would render it twice.",
         "tags": [
           "Feed"
         ]
@@ -6702,52 +6629,9 @@
               }
             ],
             "title": "Published At"
-          },
-          "about_feed_event_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "About Feed Event Id"
           }
         },
         "title": "ArticlePublish",
-        "type": "object"
-      },
-      "FeedEventSuggestion": {
-        "description": "A platform event this article could be the write-up of.",
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "kind": {
-            "title": "Kind",
-            "type": "string"
-          },
-          "occurred_at": {
-            "format": "date-time",
-            "title": "Occurred At",
-            "type": "string"
-          },
-          "label": {
-            "title": "Label",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "kind",
-          "occurred_at",
-          "label"
-        ],
-        "title": "FeedEventSuggestion",
         "type": "object"
       },
       "PresignedUploadResponse": {
@@ -7186,7 +7070,6 @@
           "next_cursor": {
             "anyOf": [
               {
-                "format": "date-time",
                 "type": "string"
               },
               {

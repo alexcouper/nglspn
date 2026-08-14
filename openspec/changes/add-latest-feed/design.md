@@ -154,12 +154,15 @@ reviewable.
 
 ## Risks / Trade-offs
 
-- **Superseding depends on someone linking article to event at publish time.** A
-  missed link produces exactly the duplicate pair this design exists to prevent.
-  → Default the link where it is inferable (an article on the house project's
-  Competition Winners channel naming a competition), and make the unlinked
-  duplicate correctable from admin after the fact. The failure is visible and
-  recoverable, not silent.
+- **Superseding depends on someone linking article to event, and only an admin
+  can.** A missed link produces exactly the duplicate pair this design exists to
+  prevent. → Accepted. Offering the link to authors at publish time was the
+  first plan and was dropped: superseding hides an entry from a site-wide feed,
+  so an author could retire a competition or another project's arrival, and the
+  publish API has no way to tell which events are theirs to touch. The link is
+  set from admin, before or after publish. The failure mode is two entries where
+  one would do — visible, harmless, and correctable — against a wrong link,
+  which is none of those.
 
 - **Two tabs disagree about "what's new" for one iteration**, and the newer one
   is better at it. → Tolerable briefly; the Discover strip is the intended

@@ -126,6 +126,16 @@ describe("renderEntry", () => {
     );
   });
 
+  it("links a bare competition event by slug, as the rest of the site does", () => {
+    const rendered = renderEntry(
+      entry({ kind: "competition_winner", competition: competitionRef() }),
+    );
+
+    expect(rendered.flag).toBe("Competition winner");
+    expect(rendered.headline).toBe("Chili has a winner");
+    expect(rendered.href).toBe("/competitions/chili");
+  });
+
   it("has no link when an article has no slug yet", () => {
     const rendered = renderEntry(
       entry({ kind: "article_published", article: articleRef({ slug: null }) }),

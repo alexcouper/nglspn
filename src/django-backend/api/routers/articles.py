@@ -16,7 +16,6 @@ from api.schemas.article import (
     ArticleOut,
     ArticlePublish,
     ArticleUpdate,
-    FeedEventSuggestion,
 )
 from api.schemas.errors import Error
 from api.schemas.project import (
@@ -234,11 +233,6 @@ def publish_article(
     existing = _get_article_in_project(project, article_id)
     if isinstance(existing, tuple):
         return existing
-    if payload.about_feed_event_id is not None:
-        # Recorded before publish so the post-save appender can supersede in the
-        # same pass, rather than leaving a duplicate visible in between.
-        existing.about_feed_event_id = payload.about_feed_event_id
-        existing.save(update_fields=["about_feed_event"])
     try:
         article = HANDLERS.articles.publish(
             article_id, published_at=payload.published_at
@@ -248,39 +242,6 @@ def publish_article(
     except ArticleNotPublishableError:
         return 422, {"detail": "Article requires a title and body to publish"}
     return article
-
-
-@router.get(
-    "/{slug}/articles/{article_id}/feed-event-suggestions",
-    response={200: list[FeedEventSuggestion], 401: Error, 403: Error, 404: Error},
-    auth=auth,
-    tags=["Articles"],
-)
-def list_feed_event_suggestions(
-    request: HttpRequest,
-    slug: str,
-    article_id: UUID,
-) -> list[dict] | tuple[int, dict[str, str]]:
-    """Events this article could be the write-up of, best guess first.
-
-    The publish dialog defaults to the head of the list. Empty is the normal
-    case — most articles are about nothing but themselves.
-    """
-    project = require_full_edit(slug, request.auth.id)
-    if isinstance(project, tuple):
-        return project
-    article = _get_article_in_project(project, article_id)
-    if isinstance(article, tuple):
-        return article
-    return [
-        {
-            "id": event.id,
-            "kind": event.kind,
-            "occurred_at": event.occurred_at,
-            "label": event.competition.name if event.competition else str(event),
-        }
-        for event in REPO.feed.suggest_events_for_article(article)
-    ]
 
 
 @router.delete(

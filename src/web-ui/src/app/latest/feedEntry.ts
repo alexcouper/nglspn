@@ -104,7 +104,7 @@ function bareHeadline(entry: FeedEntry): string {
 }
 
 function bareHref(entry: FeedEntry): string | null {
-  if (entry.competition) return `/competitions/${entry.competition.id}`;
+  if (entry.competition) return `/competitions/${entry.competition.slug}`;
   if (entry.project?.slug) return `/projects/${entry.project.slug}`;
   if (entry.discussion?.project_slug) {
     return `/projects/${entry.discussion.project_slug}/discussions`;

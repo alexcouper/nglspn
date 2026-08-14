@@ -160,17 +160,14 @@ export function useArticleDraft({ project, articleId }: Options) {
   // The two mutations that end the session: the page they were performed on is
   // gone, so the hook takes itself off the screen. `leaving` suppresses the
   // sweep for the unmount that follows.
-  const publish = useCallback(
-    async (aboutFeedEventId: string | null = null) => {
-      const payload = snapshot();
-      if (!payload) return;
-      const published = await persistAndPublish(payload, aboutFeedEventId);
-      if (!published) return;
-      latestRef.current.leaving = true;
-      router.push(`/projects/${projectRef}`);
-    },
-    [snapshot, persistAndPublish, projectRef, router],
-  );
+  const publish = useCallback(async () => {
+    const payload = snapshot();
+    if (!payload) return;
+    const published = await persistAndPublish(payload);
+    if (!published) return;
+    latestRef.current.leaving = true;
+    router.push(`/projects/${projectRef}`);
+  }, [snapshot, persistAndPublish, projectRef, router]);
 
   const remove = useCallback(async () => {
     const deleted = await deleteArticle();

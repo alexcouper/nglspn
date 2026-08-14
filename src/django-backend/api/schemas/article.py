@@ -57,18 +57,6 @@ class ArticleUpdate(Schema):
 
 class ArticlePublish(Schema):
     published_at: datetime | None = None
-    # The feed event this article is a write-up of. Null publishes it as a
-    # standalone entry — which is valid, and is what most articles are.
-    about_feed_event_id: UUID | None = None
-
-
-class FeedEventSuggestion(Schema):
-    """A platform event this article could be the write-up of."""
-
-    id: UUID
-    kind: str
-    occurred_at: datetime
-    label: str
 
 
 class ArticleImageUploadRequest(Schema):

@@ -85,6 +85,12 @@ class Article(models.Model):
     # linked article supersedes that event so the feed shows one entry, not the
     # bare event and its write-up side by side. SET_NULL rather than CASCADE:
     # losing the event should orphan the link, not delete the article.
+    #
+    # Set from Django admin only, and deliberately not on the publish API:
+    # superseding hides someone else's entry from the feed, which is an
+    # editorial act rather than something an author does to their own article.
+    # A missed link costs two entries where one would do — visible, harmless,
+    # and correctable after the fact.
     about_feed_event = models.ForeignKey(
         "feed.FeedEvent",
         on_delete=models.SET_NULL,

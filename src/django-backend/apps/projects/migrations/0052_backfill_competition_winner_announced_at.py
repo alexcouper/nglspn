@@ -43,7 +43,7 @@ def noop(apps, schema_editor):  # noqa: ARG001
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("projects", "0047_competition_winner_announced_at"),
+        ("projects", "0051_competition_winner_announced_at"),
     ]
 
     operations = [

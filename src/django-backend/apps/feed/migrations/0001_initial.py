@@ -11,7 +11,10 @@ class Migration(migrations.Migration):
     dependencies = [
         ("articles", "0005_alter_article_listing_image"),
         ("discussions", "0001_initial"),
-        ("projects", "0048_backfill_competition_winner_announced_at"),
+        # The tables this one points at, not whatever `projects` happened to be
+        # at when it was generated. Pinning the leaf makes every test that
+        # rewinds `projects` drag `feed` back with it.
+        ("projects", "0046_orphanedstorageobject"),
     ]
 
     operations = [

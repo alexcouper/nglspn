@@ -5,7 +5,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
     dependencies = [
-        ("projects", "0046_orphanedstorageobject"),
+        ("projects", "0050_competition_projects_through"),
     ]
 
     operations = [

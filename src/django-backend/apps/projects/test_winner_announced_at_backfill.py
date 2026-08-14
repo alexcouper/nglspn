@@ -8,7 +8,7 @@ from apps.projects.models import Competition
 from tests.factories import CompetitionFactory, ProjectFactory
 
 migration_module = import_module(
-    "apps.projects.migrations.0048_backfill_competition_winner_announced_at"
+    "apps.projects.migrations.0052_backfill_competition_winner_announced_at"
 )
 
 

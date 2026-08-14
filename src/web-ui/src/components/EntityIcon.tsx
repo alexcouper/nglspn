@@ -29,12 +29,10 @@ function pickPalette(seed: string): string {
   return PALETTE[index];
 }
 
-export function NotificationProjectIcon({
-  imageUrl,
-  title,
-  size,
-  className = "",
-}: Props) {
+/** A square image for a named thing, falling back to its initial on a colour
+ *  picked from the name. Nothing here is specific to any one kind of entity —
+ *  notifications, competitions and projects all render through it. */
+export function EntityIcon({ imageUrl, title, size, className = "" }: Props) {
   const [errored, setErrored] = useState(false);
   const showImage = imageUrl && !errored;
   const initial = (title.trim().charAt(0) || "?").toUpperCase();

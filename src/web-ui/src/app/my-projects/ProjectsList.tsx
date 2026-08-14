@@ -182,8 +182,8 @@ export function ProjectsList() {
       )}
 
       <div className="mt-8 text-center">
-        <Link href="/submit" className="btn-primary">
-          {projects.length === 0 ? "Submit your first project" : "Submit a new project"}
+        <Link href="/create" className="btn-primary">
+          {projects.length === 0 ? "Create your first project" : "Create a project"}
         </Link>
       </div>
     </>

@@ -1,12 +1,13 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, datetime
+from enum import Enum
 from typing import Any
 from uuid import UUID
 
 from django.db.models import QuerySet
 
-from apps.projects.models import Project, ProjectContributor
+from apps.projects.models import Competition, Project, ProjectContributor
 
 
 @dataclass(frozen=True)
@@ -48,6 +49,50 @@ class CategoryItem:
     project_count: int
 
 
+class IneligibleReason(str, Enum):
+    """Why a project cannot enter a particular open competition."""
+
+    COMMUNITY_PROJECT = "community_project"
+    PROJECT_STATUS = "project_status"
+    # Distinct from PROJECT_STATUS: a draft is one publish away from eligible,
+    # where a rejected project is not. The UI says different things about them.
+    PROJECT_DRAFT = "project_draft"
+    ALREADY_IN_SERIES = "already_in_series"
+
+
+@dataclass(frozen=True)
+class ProjectEntry:
+    """A competition the project is or was in."""
+
+    competition: Competition
+    entered_at: datetime
+    entered_via: str
+
+
+@dataclass(frozen=True)
+class CompetitionOpportunity:
+    """One open competition, and whether this project may enter it."""
+
+    competition: Competition
+    eligible: bool
+    reason: IneligibleReason | None = None
+    # Only for ALREADY_IN_SERIES: the competition standing in the way, so the
+    # UI can say which entry blocks this one rather than just "no".
+    blocking_entry: Competition | None = None
+
+
+@dataclass(frozen=True)
+class CompetitionStanding:
+    """Where a project stands: what it has entered, and what is open to it.
+
+    An empty `opportunities` means no competition is accepting applications.
+    That is not an ineligibility — there is simply nothing to be eligible for.
+    """
+
+    entries: list[ProjectEntry] = field(default_factory=list)
+    opportunities: list[CompetitionOpportunity] = field(default_factory=list)
+
+
 @dataclass(frozen=True)
 class PaginatedProjects:
     projects: list[ProjectListItem]
@@ -84,10 +129,10 @@ class ProjectQueryInterface(ABC):
     ) -> PaginatedProjects: ...
 
     @abstractmethod
-    def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]: ...
+    def list_for_owner(self, owner_id: UUID) -> list[Project]: ...
 
     @abstractmethod
-    def list_tip_offs_for(self, user_id: UUID) -> QuerySet[Project]: ...
+    def list_tip_offs_for(self, user_id: UUID) -> list[Project]: ...
 
     @abstractmethod
     def list_notifiable_contributors(
@@ -129,3 +174,11 @@ class ProjectQueryInterface(ABC):
 
     @abstractmethod
     def get_project_icon_url(self, project: Project | UUID) -> str | None: ...
+
+    @abstractmethod
+    def competition_standing(self, project: Project) -> CompetitionStanding: ...
+
+    @abstractmethod
+    def with_competition_standing(
+        self, projects: QuerySet[Project] | list[Project]
+    ) -> list[Project]: ...

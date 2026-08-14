@@ -19,6 +19,7 @@ import { ProjectDetailContent } from "@/app/projects/[slug]/ProjectDetailContent
 import { EditProjectContent } from "./EditProjectContent";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { PublishDialog } from "./PublishDialog";
+import { EnterCompetitionDialog } from "./EnterCompetitionDialog";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import type { SelectedTag } from "@/components/TagSelector";
 
@@ -50,6 +51,10 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishMissing, setPublishMissing] = useState<string[] | null>(null);
+  // Set on a successful publish, cleared when the contributor enters or
+  // dismisses. Publishing itself enters nothing.
+  const [publishedProject, setPublishedProject] = useState<Project | null>(null);
+  const [competitionError, setCompetitionError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [images, setImages] = useState<ProjectImage[]>([]);
   const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
@@ -134,6 +139,37 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     };
   }, [isReady, projectId, formInitialized]);
 
+  // Reports whether the entry landed, because callers act on it: the
+  // post-publish dialog navigates away on success and has to stay put
+  // otherwise, or a refused entry would read as an accepted one.
+  const handleEnterCompetition = useCallback(
+    async (competitionId: string): Promise<boolean> => {
+      setCompetitionError("");
+      let entered = true;
+      try {
+        await api.myProjects.enterCompetition(projectId, competitionId);
+      } catch (err) {
+        entered = false;
+        setCompetitionError(
+          describeApiError(err, "Couldn't enter this competition.")
+        );
+      }
+
+      // Always re-fetch, success or failure: a rejected entry usually means the
+      // standing on screen is stale, and a stale control is worse than an
+      // error. Its own try/catch, though — a failed read must not turn a write
+      // that succeeded into a rejection, which is what an unguarded await here
+      // did.
+      try {
+        setProject(await api.myProjects.get(projectId));
+      } catch {
+        // Keep what's on screen. The entry either happened or was reported.
+      }
+      return entered;
+    },
+    [projectId]
+  );
+
   const handleFormChange = useCallback((data: ProjectFormData) => {
     setFormData(data);
   }, []);
@@ -192,7 +228,15 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         tag_ids: formData.tag_ids,
       });
 
-      await api.myProjects.publish(project.id);
+      const published = await api.myProjects.publish(project.id);
+      const openToIt = (
+        published.competition_standing?.opportunities ?? []
+      ).filter((opportunity) => opportunity.eligible);
+      if (openToIt.length > 0) {
+        setProject(published);
+        setPublishedProject(published);
+        return;
+      }
       // Send the owner to their project list. The public /projects/{slug} page
       // would 404 here because the project is now PENDING rather than APPROVED,
       // and the server-side fetch has no auth context to apply owner visibility.
@@ -435,6 +479,11 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           iconImage={images.find((img) => img.is_icon) ?? null}
           onIconFilesSelected={(files) => uploadIconFiles(files)}
           onDeleteIcon={handleDeleteIcon}
+          competitionStanding={project.competition_standing ?? null}
+          competitionError={competitionError}
+          onEnterCompetition={async (competitionId) => {
+            await handleEnterCompetition(competitionId);
+          }}
         />
       ) : (
         previewProject && (
@@ -464,6 +513,27 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         missing={publishMissing ?? []}
         onClose={() => setPublishMissing(null)}
       />
+
+      {publishedProject && (
+        <EnterCompetitionDialog
+          opportunities={(
+            publishedProject.competition_standing?.opportunities ?? []
+          ).filter((opportunity) => opportunity.eligible)}
+          error={competitionError}
+          onEnter={async (competitionId) => {
+            // Only leave on success. Navigating regardless sent the
+            // contributor to their project list believing they had entered,
+            // with the reason they hadn't rendered on the page behind them.
+            if (!(await handleEnterCompetition(competitionId))) return;
+            setPublishedProject(null);
+            router.push("/my-projects");
+          }}
+          onDismiss={() => {
+            setPublishedProject(null);
+            router.push("/my-projects");
+          }}
+        />
+      )}
     </>
   );
 }

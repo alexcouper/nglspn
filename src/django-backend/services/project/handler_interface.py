@@ -17,7 +17,6 @@ class CreateProjectInput:
     demo_url: str | None = None
     tech_stack: list[str] | None = None
     tag_ids: list[UUID] | None = None
-    competition_id: UUID | None = None
     is_community_tipoff: bool = False
 
 
@@ -51,3 +50,8 @@ class ProjectHandlerInterface(ABC):
 
     @abstractmethod
     def publish(self, project_id: UUID, owner_id: UUID) -> Project: ...
+
+    @abstractmethod
+    def enter_competition(
+        self, project_id: UUID, competition_id: UUID, user_id: UUID
+    ) -> Project: ...

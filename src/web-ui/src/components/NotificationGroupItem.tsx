@@ -2,7 +2,7 @@
 
 import type { NotificationGroup } from "@/lib/api";
 import { buildHeadline, relativeTime } from "@/lib/notifications";
-import { NotificationProjectIcon } from "./NotificationProjectIcon";
+import { EntityIcon } from "./EntityIcon";
 
 type Variant = "popover" | "feed" | "toaster";
 
@@ -39,7 +39,7 @@ export function NotificationGroupItem({ group, variant, showUnreadSuffix }: Prop
 
   return (
     <>
-      <NotificationProjectIcon
+      <EntityIcon
         imageUrl={group.article_image_url ?? group.project.image_url}
         title={group.article_title ?? group.project.title}
         size={ICON_SIZE[variant]}

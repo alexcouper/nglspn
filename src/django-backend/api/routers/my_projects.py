@@ -1,6 +1,5 @@
 from typing import Any
 
-from django.db.models import QuerySet
 from django.http import Http404, HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import Router
@@ -8,6 +7,7 @@ from ninja import Router
 from api.auth.security import auth
 from api.schemas.errors import Error
 from api.schemas.project import (
+    CompetitionEntryRequest,
     ImageUploadCompleteRequest,
     PresignedUploadRequest,
     PresignedUploadResponse,
@@ -27,6 +27,8 @@ from services import HANDLERS, REPO
 from services.images.exceptions import ImageError
 from services.images.handler_interface import FileMeta
 from services.project.exceptions import (
+    CompetitionEntryConflictError,
+    InvalidCompetitionError,
     InvalidProjectStateError,
     InvalidTagsError,
     ProjectNotFoundError,
@@ -51,7 +53,7 @@ router = Router()
     auth=auth,
     tags=["My Projects"],
 )
-def list_my_projects(request: HttpRequest) -> QuerySet[Project]:
+def list_my_projects(request: HttpRequest) -> list[Project]:
     return REPO.project.list_for_owner(request.auth.id)
 
 
@@ -61,7 +63,7 @@ def list_my_projects(request: HttpRequest) -> QuerySet[Project]:
     auth=auth,
     tags=["My Projects"],
 )
-def list_my_tip_offs(request: HttpRequest) -> QuerySet[Project]:
+def list_my_tip_offs(request: HttpRequest) -> list[Project]:
     return REPO.project.list_tip_offs_for(request.auth.id)
 
 
@@ -198,6 +200,38 @@ def publish_project(
         return 400, {"detail": str(exc), "missing": exc.missing}
     except InvalidProjectStateError as exc:
         return 400, {"detail": str(exc), "missing": []}
+
+
+@router.post(
+    "/{project_id}/competition-entry",
+    response={
+        200: ProjectResponse,
+        400: Error,
+        401: Error,
+        404: Error,
+        409: Error,
+    },
+    auth=auth,
+    tags=["My Projects"],
+)
+def enter_competition(
+    request: HttpRequest,
+    project_id: str,
+    payload: CompetitionEntryRequest,
+) -> Project | tuple[int, dict[str, str]]:
+    try:
+        project = HANDLERS.project.enter_competition(
+            project_id, payload.competition_id, request.auth.id
+        )
+    except ProjectNotFoundError:
+        return 404, {"detail": "Not Found"}
+    except InvalidProjectStateError as exc:
+        return 400, {"detail": str(exc)}
+    except InvalidCompetitionError as exc:
+        return 400, {"detail": str(exc)}
+    except CompetitionEntryConflictError as exc:
+        return 409, {"detail": str(exc)}
+    return project
 
 
 @router.post(

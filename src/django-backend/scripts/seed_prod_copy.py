@@ -38,7 +38,9 @@ from django.utils.text import slugify
 
 from apps.projects.models import (
     Competition,
+    CompetitionEntry,
     CompetitionStatus,
+    EntrySource,
     ImageVariant,
     Project,
     ProjectCategory,
@@ -383,7 +385,11 @@ def create_competitions(
                 comp.winner = project
                 comp.status = CompetitionStatus.CLOSED
                 comp.save(update_fields=["winner", "status"])
-            comp.projects.add(project)
+            CompetitionEntry.objects.get_or_create(
+                competition=comp,
+                project=project,
+                defaults={"entered_via": EntrySource.BACKFILL},
+            )
             verb = "Created" if was_created else "Exists "
             print(f"  {verb}: {comp.name} (winner: {project.title})")
 

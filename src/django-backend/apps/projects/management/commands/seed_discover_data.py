@@ -16,6 +16,8 @@ from django.utils import timezone
 from apps.discussions.models import Discussion
 from apps.projects.models import (
     Competition,
+    CompetitionEntry,
+    EntrySource,
     Project,
     ProjectCategory,
     ProjectStatus,
@@ -293,7 +295,11 @@ class Command(BaseCommand):
                 },
             )
             if winner and created:
-                comp.projects.add(winner)
+                CompetitionEntry.objects.create(
+                    competition=comp,
+                    project=winner,
+                    entered_via=EntrySource.BACKFILL,
+                )
                 comp.winner = winner
                 comp.save()
         self.stdout.write(f"  Competitions: {len(COMPETITIONS)}")

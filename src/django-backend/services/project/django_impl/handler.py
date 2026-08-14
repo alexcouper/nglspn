@@ -4,13 +4,13 @@ import logging
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.projects.models import (
-    Competition,
-    CompetitionStatus,
+    CompetitionEntry,
     ContributorRole,
+    EntrySource,
     Project,
     ProjectContributor,
     ProjectImage,
@@ -20,6 +20,8 @@ from apps.projects.slugs import assign_unique_slug
 from apps.tags.models import Tag, TagStatus
 from apps.users.seed import COMMUNITY_USER_ID
 from services.project.exceptions import (
+    CompetitionEntryConflictError,
+    InvalidCompetitionError,
     InvalidProjectStateError,
     InvalidTagsError,
     ProjectNotFoundError,
@@ -27,7 +29,7 @@ from services.project.exceptions import (
 )
 from services.project.handler_interface import ProjectHandlerInterface
 
-from .query import DjangoProjectQuery, get_title_from_url
+from .query import DjangoProjectQuery, get_title_from_url, stamp_competition_standing
 
 _query = DjangoProjectQuery()
 
@@ -123,7 +125,7 @@ class DjangoProjectHandler(ProjectHandlerInterface):
             if valid_tags is not None:
                 project.tags.set(valid_tags)
 
-        return project
+        return stamp_competition_standing(project)
 
     def update(
         self, project_id: UUID, owner_id: UUID, data: UpdateProjectInput
@@ -166,7 +168,7 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         else:
             project.tags.clear()
 
-        return project
+        return stamp_competition_standing(project)
 
     def delete(self, project_id: UUID, owner_id: UUID) -> None:
         project = _get_editable_project(project_id, owner_id)
@@ -183,7 +185,7 @@ class DjangoProjectHandler(ProjectHandlerInterface):
         project.rejection_reason = None
         project.save()
 
-        return project
+        return stamp_competition_standing(project)
 
     def publish(self, project_id: UUID, owner_id: UUID) -> Project:
         project = _get_editable_project(project_id, owner_id)
@@ -212,20 +214,84 @@ class DjangoProjectHandler(ProjectHandlerInterface):
                 ]
             )
 
-            if not project.is_community_tipoff:
-                open_competition = (
-                    Competition.objects.filter(
-                        status=CompetitionStatus.ACCEPTING_APPLICATIONS
-                    )
-                    .order_by("-start_date")
-                    .first()
-                )
-                if open_competition is not None:
-                    open_competition.projects.add(project)
+        # Publishing enters no competition. Entry is its own request against
+        # its own endpoint, naming the competition — see enter_competition().
 
         _enqueue_new_project_notification(project)
 
-        return project
+        return stamp_competition_standing(project)
+
+    def enter_competition(
+        self, project_id: UUID, competition_id: UUID, user_id: UUID
+    ) -> Project:
+        project = _get_editable_project(project_id, user_id)
+
+        if project.status == ProjectStatus.DRAFT:
+            msg = "A draft must be published before it can enter a competition"
+            raise InvalidProjectStateError(msg)
+
+        # The lock is on the project, not the competition, because the rule
+        # being protected is about the project: one entry per series. Two
+        # requests naming two rounds of the same series would otherwise both
+        # read a standing without the other's entry and both insert, and no
+        # unique constraint can catch that — the pair the database enforces is
+        # (competition, project), and those two rows differ.
+        #
+        # SQLite ignores `select_for_update`, so this buys nothing under the
+        # test settings; the deployment runs Postgres, where it serialises.
+        with transaction.atomic():
+            locked = Project.objects.select_for_update().get(pk=project.pk)
+            return self._create_entry(locked, competition_id, user_id)
+
+    def _create_entry(
+        self, project: Project, competition_id: UUID, user_id: UUID
+    ) -> Project:
+        """Caller holds the lock on `project`. Re-reads everything it decides
+        on, so a standing that went stale while the user looked at it loses."""
+        if CompetitionEntry.objects.filter(
+            project=project, competition_id=competition_id
+        ).exists():
+            # Ahead of the opportunity lookup: an entered round is deliberately
+            # absent from `opportunities`, so without this the caller would be
+            # told the round is not accepting applications, which is false.
+            msg = "This project is already entered in that competition"
+            raise CompetitionEntryConflictError(msg)
+
+        # Re-evaluated here rather than trusted from the caller: the round may
+        # have closed, or somebody may have entered the project, since the
+        # page that offered the control was rendered.
+        standing = _query.competition_standing(project)
+        opportunity = next(
+            (
+                candidate
+                for candidate in standing.opportunities
+                if candidate.competition.id == competition_id
+            ),
+            None,
+        )
+        if opportunity is None:
+            msg = "That competition is not accepting applications"
+            raise InvalidCompetitionError(msg)
+        if not opportunity.eligible:
+            msg = f"This project cannot enter that competition: {opportunity.reason}"
+            raise InvalidCompetitionError(msg)
+
+        try:
+            # The inner atomic is required, not decorative: without it the
+            # failed insert leaves the surrounding transaction unusable, so the
+            # caller's next query dies instead of getting its 409.
+            with transaction.atomic():
+                CompetitionEntry.objects.create(
+                    competition=opportunity.competition,
+                    project=project,
+                    entered_via=EntrySource.MANUAL,
+                    entered_by_id=user_id,
+                )
+        except IntegrityError as exc:
+            msg = "This project is already entered in that competition"
+            raise CompetitionEntryConflictError(msg) from exc
+
+        return stamp_competition_standing(project)
 
 
 def _publish_preconditions_missing(project: Project) -> list[str]:

@@ -7,7 +7,11 @@ class InvalidProjectStateError(Exception):
 
 
 class InvalidCompetitionError(Exception):
-    pass
+    """The competition named is not one this project may enter right now."""
+
+
+class CompetitionEntryConflictError(Exception):
+    """Something else entered this project into this competition first."""
 
 
 class InvalidTagsError(Exception):

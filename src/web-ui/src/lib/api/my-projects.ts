@@ -4,6 +4,13 @@ import type { Project } from "./projects";
 
 export type { Project };
 export type ProjectCreate = components["schemas"]["ProjectCreate"];
+export type CompetitionStanding =
+  components["schemas"]["CompetitionStandingResponse"];
+export type CompetitionOpportunity =
+  components["schemas"]["CompetitionOpportunityResponse"];
+export type ProjectCompetitionEntry =
+  components["schemas"]["ProjectEntryResponse"];
+export type CompetitionSummary = components["schemas"]["CompetitionSummary"];
 export type ProjectImage = components["schemas"]["ProjectImageResponse"];
 export type PresignedUploadResponse =
   components["schemas"]["PresignedUploadResponse"];
@@ -50,6 +57,21 @@ export class MyProjectsClient {
     return this.client.request<Project>(`/api/my/projects/${id}/publish`, {
       method: "POST",
     });
+  }
+
+  // Publishing enters nothing; entry is always this call, and it always names
+  // the competition.
+  async enterCompetition(
+    projectId: string,
+    competitionId: string
+  ): Promise<Project> {
+    return this.client.request<Project>(
+      `/api/my/projects/${projectId}/competition-entry`,
+      {
+        method: "POST",
+        body: JSON.stringify({ competition_id: competitionId }),
+      }
+    );
   }
 
   // The project's own gallery only. Article images are uploaded through

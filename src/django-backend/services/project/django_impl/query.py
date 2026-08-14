@@ -4,12 +4,14 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Count, Q, QuerySet, prefetch_related_objects
 from django.db.models.functions import Coalesce, Lower
 from django.utils import timezone
 
 from apps.projects.models import (
     Competition,
+    CompetitionEntry,
+    CompetitionStatus,
     ContributorRole,
     Project,
     ProjectCategory,
@@ -21,8 +23,12 @@ from services.images.django_impl.query import gallery_prefetch
 from services.project.exceptions import ProjectNotFoundError
 from services.project.query_interface import (
     CategoryItem,
+    CompetitionOpportunity,
+    CompetitionStanding,
     DiscoverProjectItem,
+    IneligibleReason,
     PaginatedProjects,
+    ProjectEntry,
     ProjectListItem,
     ProjectQueryInterface,
     WinnerItem,
@@ -168,7 +174,10 @@ class DjangoProjectQuery(ProjectQueryInterface):
             raise ProjectNotFoundError from None
         if not self.user_can_edit(project.id, owner_id):
             raise ProjectNotFoundError
-        return project
+        # Owner-scoped by definition, which is exactly the scope standing is
+        # meaningful in — so it comes back on the project rather than costing
+        # the caller a second trip through the service.
+        return stamp_competition_standing(project)
 
     def user_can_edit(self, project_id: UUID | None, user_id: UUID | None) -> bool:
         if project_id is None or user_id is None:
@@ -225,14 +234,16 @@ class DjangoProjectQuery(ProjectQueryInterface):
             pages=pages,
         )
 
-    def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]:
+    def list_for_owner(self, owner_id: UUID) -> list[Project]:
         # Creator-scoped, but tip-off projects belong in /tip-offs: for tip-offs
         # the tipster is the creator, so without this exclusion they would
         # appear in both /my-projects and /my-projects/tip-offs.
-        return _base_queryset().filter(creator_id=owner_id, is_community_tipoff=False)
+        return self.with_competition_standing(
+            _base_queryset().filter(creator_id=owner_id, is_community_tipoff=False)
+        )
 
-    def list_tip_offs_for(self, user_id: UUID) -> QuerySet[Project]:
-        return (
+    def list_tip_offs_for(self, user_id: UUID) -> list[Project]:
+        return self.with_competition_standing(
             _base_queryset()
             .filter(
                 contributors__user_id=user_id,
@@ -409,3 +420,116 @@ class DjangoProjectQuery(ProjectQueryInterface):
                 return None
         icon = resolve_image_by_purpose(project, "icon")
         return variant_url(icon, "thumb")
+
+    def competition_standing(self, project: Project) -> CompetitionStanding:
+        return _standing(project, _entries_for(project), _open_competitions())
+
+    def with_competition_standing(
+        self, projects: QuerySet[Project] | list[Project]
+    ) -> list[Project]:
+        """Stamp each project's standing, at a fixed cost for the whole list.
+
+        The open competitions are resolved once rather than per project, and
+        the entries come from a prefetch, so a list of fifty projects costs the
+        same two extra queries as a list of one.
+        """
+        projects = list(projects)
+        # Prefetched either way, so `.all()` below reads the cache rather than
+        # issuing a query per project.
+        prefetch_related_objects(projects, "competition_entries__competition")
+
+        open_competitions = _open_competitions()
+        for project in projects:
+            project._competition_standing = _standing(  # noqa: SLF001
+                project,
+                list(project.competition_entries.all()),
+                open_competitions,
+            )
+        return projects
+
+
+def stamp_competition_standing(project: Project) -> Project:
+    """Attach one project's standing and hand it back.
+
+    Two queries, against the three `with_competition_standing` costs for a
+    single project: a `select_related` fetches the entries and their
+    competitions together where the prefetch the bulk path needs splits them.
+    Reach for the bulk version at two projects and up, this one at exactly one.
+    """
+    project._competition_standing = _standing(  # noqa: SLF001
+        project, _entries_for(project), _open_competitions()
+    )
+    return project
+
+
+def _open_competitions() -> list[Competition]:
+    return list(
+        Competition.objects.filter(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS
+        ).order_by("-start_date")
+    )
+
+
+def _entries_for(project: Project) -> list[CompetitionEntry]:
+    return list(project.competition_entries.select_related("competition"))
+
+
+def _standing(
+    project: Project,
+    entries: list[CompetitionEntry],
+    open_competitions: list[Competition],
+) -> CompetitionStanding:
+    newest_first = sorted(entries, key=lambda entry: entry.entered_at, reverse=True)
+
+    # One blocker per series, the most recent, so a project that somehow holds
+    # two entries in a series is told about the one it will recognise.
+    blocking_by_series: dict[str, Competition] = {}
+    for entry in newest_first:
+        blocking_by_series.setdefault(entry.competition.entry_series, entry.competition)
+
+    # A round the project is already in is reported as an entry, which says more
+    # than an opportunity could. Asking "may it enter this round" of a round it
+    # is in produced a duplicate row naming itself as the blocker.
+    entered_ids = {entry.competition_id for entry in entries}
+
+    return CompetitionStanding(
+        entries=[
+            ProjectEntry(
+                competition=entry.competition,
+                entered_at=entry.entered_at,
+                entered_via=entry.entered_via,
+            )
+            for entry in newest_first
+        ],
+        opportunities=[
+            _opportunity(project, competition, blocking_by_series)
+            for competition in open_competitions
+            if competition.id not in entered_ids
+        ],
+    )
+
+
+def _opportunity(
+    project: Project,
+    competition: Competition,
+    blocking_by_series: dict[str, Competition],
+) -> CompetitionOpportunity:
+    """The ordered rules, first match wins."""
+    if project.is_community_tipoff:
+        reason, blocking = IneligibleReason.COMMUNITY_PROJECT, None
+    elif project.status in (ProjectStatus.REJECTED, ProjectStatus.ICE_BOX):
+        reason, blocking = IneligibleReason.PROJECT_STATUS, None
+    elif project.status == ProjectStatus.DRAFT:
+        reason, blocking = IneligibleReason.PROJECT_DRAFT, None
+    elif competition.entry_series in blocking_by_series:
+        reason = IneligibleReason.ALREADY_IN_SERIES
+        blocking = blocking_by_series[competition.entry_series]
+    else:
+        reason, blocking = None, None
+
+    return CompetitionOpportunity(
+        competition=competition,
+        eligible=reason is None,
+        reason=reason,
+        blocking_entry=blocking,
+    )

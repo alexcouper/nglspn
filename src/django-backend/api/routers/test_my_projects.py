@@ -1,9 +1,10 @@
 import json
-from unittest.mock import patch
+from unittest.mock import PropertyMock, patch
 
 from hamcrest import (
     assert_that,
     contains_inanyorder,
+    contains_string,
     equal_to,
     has_entries,
     has_key,
@@ -13,13 +14,28 @@ from hamcrest import (
 )
 
 from apps.projects.models import (
+    Competition,
+    CompetitionEntry,
+    CompetitionStatus,
     ContributorRole,
+    EntrySource,
     Project,
     ProjectContributor,
     ProjectStatus,
 )
+from apps.users.seed import COMMUNITY_USER_ID
 from services import REPO
-from tests.factories import ProjectFactory, ProjectImageFactory
+from services.project.django_impl import DjangoProjectQuery
+from services.project.query_interface import (
+    CompetitionOpportunity,
+    CompetitionStanding,
+)
+from tests.factories import (
+    CompetitionEntryFactory,
+    CompetitionFactory,
+    ProjectFactory,
+    ProjectImageFactory,
+)
 
 
 def _ready_draft(**kwargs):
@@ -619,3 +635,449 @@ class TestNonCreatorContributorAccess:
         assert_that(response.status_code, equal_to(404))
         project.refresh_from_db()
         assert_that(project.title, equal_to("Original"))
+
+
+def _open_competition(**kwargs):
+    return CompetitionFactory(
+        status=CompetitionStatus.ACCEPTING_APPLICATIONS,
+        **kwargs,
+    )
+
+
+def _enter(client, project, competition, headers):
+    return client.post(
+        f"/api/my/projects/{project.id}/competition-entry",
+        data=json.dumps({"competition_id": str(competition.id)}),
+        content_type="application/json",
+        **headers,
+    )
+
+
+def _standing(response):
+    return response.json()["competition_standing"]
+
+
+def _opportunity_for(response, competition):
+    return next(
+        candidate
+        for candidate in _standing(response)["opportunities"]
+        if candidate["competition"]["id"] == str(competition.id)
+    )
+
+
+def _entered_competition_ids(response):
+    return [entry["competition"]["id"] for entry in _standing(response)["entries"]]
+
+
+class TestPublishDoesNotEnterCompetitions:
+    def test_publishing_with_an_open_round_creates_no_entry(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = _open_competition()
+        project = _ready_draft(owner=user)
+
+        with patch("api.tasks.email.send_new_project_notification"):
+            response = client.post(
+                f"/api/my/projects/{project.id}/publish", **auth_headers
+            )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(CompetitionEntry.objects.count(), equal_to(0))
+        assert_that(_opportunity_for(response, competition)["eligible"], is_(True))
+
+    def test_publishing_a_community_project_behaves_the_same(
+        self, client, user, auth_headers
+    ) -> None:
+        _open_competition()
+        project = _ready_draft(owner=user)
+        ProjectContributor.objects.filter(
+            project=project, role=ContributorRole.OWNER
+        ).delete()
+        ProjectContributor.objects.create(
+            project=project,
+            user_id=COMMUNITY_USER_ID,
+            role=ContributorRole.OWNER,
+            full_edit=True,
+        )
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.TIPSTER,
+            full_edit=True,
+        )
+
+        with patch("api.tasks.email.send_new_project_notification"):
+            response = client.post(
+                f"/api/my/projects/{project.id}/publish", **auth_headers
+            )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(CompetitionEntry.objects.count(), equal_to(0))
+
+    def test_a_failed_publish_creates_no_entry(
+        self, client, user, auth_headers
+    ) -> None:
+        _open_competition()
+        project = ProjectFactory(
+            owner=user, status=ProjectStatus.DRAFT, description="", slug=None
+        )
+
+        response = client.post(f"/api/my/projects/{project.id}/publish", **auth_headers)
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(CompetitionEntry.objects.count(), equal_to(0))
+
+
+class TestEnterCompetition:
+    def test_entering_an_open_competition_returns_200(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+
+        response = _enter(client, project, competition, auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(_entered_competition_ids(response), equal_to([str(competition.id)]))
+
+    def test_entering_moves_the_round_out_of_the_opportunities(
+        self, client, user, auth_headers
+    ) -> None:
+        """Otherwise the round comes back as one the project cannot enter,
+        blocked by its own entry."""
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+
+        before = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+        assert_that(_opportunity_for(before, competition)["eligible"], is_(True))
+
+        response = _enter(client, project, competition, auth_headers)
+
+        offered = [
+            candidate["competition"]["id"]
+            for candidate in _standing(response)["opportunities"]
+        ]
+        assert_that(offered, equal_to([]))
+        assert_that(_entered_competition_ids(response), equal_to([str(competition.id)]))
+
+    def test_the_entry_records_who_entered_it_and_how(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+
+        _enter(client, project, competition, auth_headers)
+
+        entry = CompetitionEntry.objects.get()
+        assert_that(entry.entered_via, equal_to(EntrySource.MANUAL))
+        assert_that(entry.entered_by_id, equal_to(user.id))
+
+    def test_a_project_published_between_rounds_enters_the_next_one(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        assert_that(CompetitionEntry.objects.count(), equal_to(0))
+        competition = _open_competition()
+
+        response = _enter(client, project, competition, auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(project.competitions.count(), equal_to(1))
+
+    def test_a_past_entrant_may_enter_a_different_series(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        CompetitionEntryFactory(
+            project=project,
+            competition=CompetitionFactory(
+                entry_series="monthly", status=CompetitionStatus.CLOSED
+            ),
+        )
+        hackathon = _open_competition(entry_series="summer-hackathon")
+
+        response = _enter(client, project, hackathon, auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(project.competitions.count(), equal_to(2))
+
+    def test_entering_the_same_series_twice_returns_400(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        CompetitionEntryFactory(
+            project=project,
+            competition=CompetitionFactory(
+                entry_series="monthly", status=CompetitionStatus.CLOSED
+            ),
+        )
+        july = _open_competition(entry_series="monthly")
+
+        response = _enter(client, project, july, auth_headers)
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(CompetitionEntry.objects.count(), equal_to(1))
+
+    def test_entering_a_competition_that_is_not_open_returns_400(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = CompetitionFactory(status=CompetitionStatus.VOTING)
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+
+        response = _enter(client, project, competition, auth_headers)
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(CompetitionEntry.objects.count(), equal_to(0))
+
+    def test_entering_an_unknown_competition_returns_400(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/competition-entry",
+            data=json.dumps({"competition_id": "00000000-0000-0000-0000-000000000000"}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(400))
+
+    def test_a_request_without_a_competition_id_is_rejected(
+        self, client, user, auth_headers
+    ) -> None:
+        _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/competition-entry",
+            data=json.dumps({}),
+            content_type="application/json",
+            **auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+        assert_that(CompetitionEntry.objects.count(), equal_to(0))
+
+    def test_a_draft_cannot_enter(self, client, user, auth_headers) -> None:
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.DRAFT)
+
+        response = _enter(client, project, competition, auth_headers)
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(CompetitionEntry.objects.count(), equal_to(0))
+        project.refresh_from_db()
+        assert_that(project.status, equal_to(ProjectStatus.DRAFT))
+
+    def test_a_community_tipoff_cannot_enter(self, client, user, auth_headers) -> None:
+        competition = _open_competition()
+        project = ProjectFactory(
+            owner=user, status=ProjectStatus.PENDING, _contributor=False
+        )
+        ProjectContributor.objects.create(
+            project=project,
+            user_id=COMMUNITY_USER_ID,
+            role=ContributorRole.OWNER,
+            full_edit=True,
+        )
+        ProjectContributor.objects.create(
+            project=project,
+            user=user,
+            role=ContributorRole.TIPSTER,
+            full_edit=True,
+        )
+
+        response = _enter(client, project, competition, auth_headers)
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(CompetitionEntry.objects.count(), equal_to(0))
+
+    def test_a_non_contributor_gets_404(self, client, auth_headers) -> None:
+        competition = _open_competition()
+        project = ProjectFactory(status=ProjectStatus.PENDING)
+
+        response = _enter(client, project, competition, auth_headers)
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_entry_requires_auth(self, client, db) -> None:
+        competition = _open_competition()
+        project = ProjectFactory(status=ProjectStatus.PENDING)
+
+        response = client.post(
+            f"/api/my/projects/{project.id}/competition-entry",
+            data=json.dumps({"competition_id": str(competition.id)}),
+            content_type="application/json",
+        )
+
+        assert_that(response.status_code, equal_to(401))
+
+    def test_a_round_that_closed_since_the_page_loaded_returns_400(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        competition.status = CompetitionStatus.VOTING
+        competition.save(update_fields=["status"])
+
+        response = _enter(client, project, competition, auth_headers)
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(CompetitionEntry.objects.count(), equal_to(0))
+
+    def test_a_second_entry_into_the_same_competition_returns_409(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+
+        first = _enter(client, project, competition, auth_headers)
+        response = _enter(client, project, competition, auth_headers)
+
+        assert_that(first.status_code, equal_to(200))
+        assert_that(response.status_code, equal_to(409))
+        assert_that(CompetitionEntry.objects.count(), equal_to(1))
+
+    def test_the_conflict_says_the_project_is_already_in_that_round(
+        self, client, user, auth_headers
+    ) -> None:
+        """An entered round is absent from `opportunities`, so the lookup that
+        follows would call an open round closed. The 409 is what the user is
+        shown, so it has to be about the entry, not the round."""
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        _enter(client, project, competition, auth_headers)
+
+        response = _enter(client, project, competition, auth_headers)
+
+        assert_that(response.json()["detail"], contains_string("already entered"))
+
+    def test_a_second_entry_that_slips_past_the_check_still_returns_409(
+        self, client, user, auth_headers
+    ) -> None:
+        """The loser of a concurrent entry: the row already exists by the time
+        this request's create lands, so the database refuses it."""
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        _enter(client, project, competition, auth_headers)
+
+        # Both halves of the guard blinded: a standing that still offers the
+        # round, and an existence check that sees nothing. What is left is the
+        # unique constraint.
+        with (
+            patch.object(
+                DjangoProjectQuery,
+                "competition_standing",
+                side_effect=lambda p: _standing_ignoring_entries(p, competition),
+            ),
+            patch.object(
+                CompetitionEntry.objects,
+                "filter",
+                return_value=CompetitionEntry.objects.none(),
+            ),
+        ):
+            response = _enter(client, project, competition, auth_headers)
+
+        assert_that(response.status_code, equal_to(409))
+        assert_that(CompetitionEntry.objects.count(), equal_to(1))
+
+
+def _standing_ignoring_entries(project, competition):
+    """A standing that still offers `competition` however many entries exist —
+    what a request that read the page before a competing write would have."""
+    return CompetitionStanding(
+        entries=[],
+        opportunities=[CompetitionOpportunity(competition=competition, eligible=True)],
+    )
+
+
+class TestCompetitionStandingOnResponses:
+    def test_the_public_project_response_omits_standing(self, client, user) -> None:
+        _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.APPROVED)
+
+        response = client.get(f"/api/projects/{project.id}")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json()["competition_standing"], is_(none()))
+
+    def test_an_owner_sees_standing_on_their_project(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+
+        response = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+
+        assert_that(_opportunity_for(response, competition)["eligible"], is_(True))
+
+    def test_a_blocked_opportunity_names_the_competition_in_the_way(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        june = CompetitionFactory(
+            entry_series="monthly", status=CompetitionStatus.CLOSED
+        )
+        CompetitionEntryFactory(project=project, competition=june)
+        july = _open_competition(entry_series="monthly")
+
+        response = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+
+        opportunity = _opportunity_for(response, july)
+        assert_that(opportunity["eligible"], is_(False))
+        assert_that(opportunity["reason"], equal_to("already_in_series"))
+        assert_that(opportunity["blocking_entry"]["id"], equal_to(str(june.id)))
+
+    def test_no_open_round_is_an_empty_opportunity_list(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+
+        response = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+
+        assert_that(_standing(response)["opportunities"], equal_to([]))
+        assert_that(_standing(response)["entries"], equal_to([]))
+
+    def test_a_named_competition_carries_its_image(
+        self, client, user, auth_headers
+    ) -> None:
+        """The dialogs render a round as a row with its image, so the standing
+        has to carry one without a second request."""
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        entered = CompetitionFactory(
+            entry_series="summer", status=CompetitionStatus.CLOSED
+        )
+        CompetitionEntryFactory(project=project, competition=entered)
+        _open_competition(entry_series="monthly")
+
+        with patch.object(
+            Competition,
+            "image_url",
+            new_callable=PropertyMock,
+            return_value="https://example.com/round.jpg",
+        ):
+            response = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+
+        standing = _standing(response)
+        assert_that(
+            standing["entries"][0]["competition"]["image_url"],
+            equal_to("https://example.com/round.jpg"),
+        )
+        assert_that(
+            standing["opportunities"][0]["competition"]["image_url"],
+            equal_to("https://example.com/round.jpg"),
+        )
+
+    def test_a_competition_without_an_image_reports_null(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        competition = _open_competition()
+
+        response = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+
+        assert_that(
+            _opportunity_for(response, competition)["competition"]["image_url"],
+            is_(none()),
+        )

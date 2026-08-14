@@ -6,7 +6,12 @@ import Link from "next/link";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
 
-export default function SubmitPage() {
+/**
+ * Creating a project, and nothing else. Entering a competition is a separate
+ * act on a published project — this page deliberately knows nothing about
+ * rounds, and takes no competition parameter.
+ */
+export default function CreateProjectPage() {
   const router = useRouter();
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [url, setUrl] = useState("");
@@ -53,10 +58,10 @@ export default function SubmitPage() {
       <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
         <div className="max-w-lg mx-auto">
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            Start a New Project
+            Create a project
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Drop in a URL — you&apos;ll add the rest before publishing.
+            Add it as a draft, then publish it when it&apos;s ready.
           </p>
         </div>
       </section>
@@ -64,6 +69,9 @@ export default function SubmitPage() {
       <section className="py-8 px-4 sm:px-6">
         <div className="max-w-lg mx-auto">
           <div className="bg-white border border-border rounded-xl p-6">
+            <h2 className="text-foreground font-semibold mb-4">
+              Start a new project
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2.5 rounded-lg text-sm">

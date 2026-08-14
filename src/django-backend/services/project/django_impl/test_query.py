@@ -153,7 +153,7 @@ class TestListForOwner:
 
         result = query.list_for_owner(user.id)
 
-        assert result.count() == 2
+        assert len(result) == 2
 
     def test_excludes_projects_where_user_is_only_a_tipster(self):
         # `list_for_owner` is creator-scoped; TIPSTER-only projects belong
@@ -169,7 +169,7 @@ class TestListForOwner:
 
         result = query.list_for_owner(contributor.id)
 
-        assert result.count() == 0
+        assert len(result) == 0
 
     def test_excludes_tipoff_projects_where_user_is_creator(self):
         # Community tip-offs: the tipster is the creator, but the OWNER
@@ -192,7 +192,7 @@ class TestListForOwner:
 
         result = query.list_for_owner(user.id)
 
-        assert result.count() == 0
+        assert len(result) == 0
 
 
 @pytest.mark.django_db

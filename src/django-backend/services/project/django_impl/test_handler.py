@@ -1,10 +1,13 @@
 from unittest.mock import patch
+from uuid import uuid4
 
 import pytest
 
 from apps.projects.models import (
+    CompetitionEntry,
     CompetitionStatus,
     ContributorRole,
+    EntrySource,
     Project,
     ProjectContributor,
     ProjectStatus,
@@ -12,6 +15,8 @@ from apps.projects.models import (
 from services import REPO
 from services.project.django_impl import DjangoProjectHandler
 from services.project.exceptions import (
+    CompetitionEntryConflictError,
+    InvalidCompetitionError,
     InvalidProjectStateError,
     ProjectNotFoundError,
     PublishPreconditionsError,
@@ -292,7 +297,9 @@ class TestPublish:
         assert result.submission_month != ""
         mock_task.enqueue.assert_called_once_with(str(result.id))
 
-    def test_publish_adds_to_open_competition(self):
+    def test_publish_enters_no_competition(self):
+        """Publishing used to add the project to the open round as a side
+        effect. It now publishes and nothing else — entry is its own call."""
         user = UserFactory()
         competition = CompetitionFactory(
             status=CompetitionStatus.ACCEPTING_APPLICATIONS
@@ -302,7 +309,8 @@ class TestPublish:
         with patch("api.tasks.email.send_new_project_notification"):
             handler.publish(project.id, user.id)
 
-        assert project in competition.projects.all()
+        assert project not in competition.projects.all()
+        assert CompetitionEntry.objects.count() == 0
 
     def test_publish_without_open_competition_still_succeeds(self):
         user = UserFactory()
@@ -313,7 +321,7 @@ class TestPublish:
 
         assert result.status == ProjectStatus.PENDING
 
-    def test_publish_tipoff_skips_competition_entry(self):
+    def test_publish_tipoff_enters_no_competition_either(self):
         user = UserFactory()
         competition = CompetitionFactory(
             status=CompetitionStatus.ACCEPTING_APPLICATIONS
@@ -452,3 +460,99 @@ class TestPublish:
             result = handler.publish(project.id, user.id)
 
         assert result.slug == "duplicate-2"
+
+
+@pytest.mark.django_db
+class TestEnterCompetition:
+    def _open(self, **kwargs):
+        return CompetitionFactory(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS, **kwargs
+        )
+
+    def test_entering_records_the_contributor_and_the_route(self):
+        user = UserFactory()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        competition = self._open()
+
+        handler.enter_competition(project.id, competition.id, user.id)
+
+        entry = CompetitionEntry.objects.get()
+        assert entry.competition_id == competition.id
+        assert entry.entered_via == EntrySource.MANUAL
+        assert entry.entered_by_id == user.id
+
+    def test_a_draft_is_rejected_before_eligibility_is_considered(self):
+        user = UserFactory()
+        project = ProjectFactory(owner=user, status=ProjectStatus.DRAFT)
+        competition = self._open()
+
+        with pytest.raises(InvalidProjectStateError):
+            handler.enter_competition(project.id, competition.id, user.id)
+
+        assert CompetitionEntry.objects.count() == 0
+
+    def test_a_competition_that_is_not_open_is_rejected(self):
+        user = UserFactory()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        competition = CompetitionFactory(status=CompetitionStatus.VOTING)
+
+        with pytest.raises(InvalidCompetitionError):
+            handler.enter_competition(project.id, competition.id, user.id)
+
+    def test_entering_a_round_the_project_is_already_in_is_a_conflict(self):
+        """Not `InvalidCompetitionError`: the round is open and the project is
+        allowed in it — it is simply already there. The entered round is absent
+        from `opportunities`, so without an explicit check the eligibility
+        lookup would fall through and call an open round closed."""
+        user = UserFactory()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        competition = self._open()
+        handler.enter_competition(project.id, competition.id, user.id)
+
+        with pytest.raises(CompetitionEntryConflictError):
+            handler.enter_competition(project.id, competition.id, user.id)
+
+        assert CompetitionEntry.objects.count() == 1
+
+    def test_a_second_competition_in_the_same_series_is_rejected(self):
+        user = UserFactory()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        CompetitionEntry.objects.create(
+            competition=CompetitionFactory(entry_series="monthly"),
+            project=project,
+            entered_via=EntrySource.MANUAL,
+        )
+        july = self._open(entry_series="monthly")
+
+        with pytest.raises(InvalidCompetitionError):
+            handler.enter_competition(project.id, july.id, user.id)
+
+        assert CompetitionEntry.objects.count() == 1
+
+    def test_a_different_series_is_allowed(self):
+        user = UserFactory()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        CompetitionEntry.objects.create(
+            competition=CompetitionFactory(entry_series="monthly"),
+            project=project,
+            entered_via=EntrySource.MANUAL,
+        )
+        hackathon = self._open(entry_series="summer-hackathon")
+
+        handler.enter_competition(project.id, hackathon.id, user.id)
+
+        assert CompetitionEntry.objects.count() == 2
+
+    def test_a_non_contributor_cannot_enter(self):
+        project = ProjectFactory(status=ProjectStatus.PENDING)
+        competition = self._open()
+
+        with pytest.raises(ProjectNotFoundError):
+            handler.enter_competition(project.id, competition.id, UserFactory().id)
+
+    def test_an_unknown_competition_is_rejected(self):
+        user = UserFactory()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+
+        with pytest.raises(InvalidCompetitionError):
+            handler.enter_competition(project.id, uuid4(), user.id)

@@ -11,8 +11,10 @@ from apps.follows.models import Channel, Follow, FollowedChannel
 from apps.notifications.models import Notification, NotificationCadence
 from apps.projects.models import (
     Competition,
+    CompetitionEntry,
     CompetitionReviewer,
     ContributorRole,
+    EntrySource,
     Project,
     ProjectCategory,
     ProjectContributor,
@@ -275,7 +277,26 @@ class CompetitionFactory(factory.django.DjangoModelFactory):
     def projects(self, create, extracted, **kwargs) -> None:
         if not create or not extracted:
             return
-        self.projects.add(*extracted)
+        # Through the entry model rather than projects.add(), so factory-built
+        # competitions carry the same provenance a real one does instead of a
+        # blank entered_via.
+        CompetitionEntry.objects.bulk_create(
+            CompetitionEntry(
+                competition=self,
+                project=project,
+                entered_via=EntrySource.ADMIN,
+            )
+            for project in extracted
+        )
+
+
+class CompetitionEntryFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = CompetitionEntry
+
+    competition = factory.SubFactory(CompetitionFactory)
+    project = factory.SubFactory(ProjectFactory)
+    entered_via = EntrySource.MANUAL
 
 
 class CompetitionReviewerFactory(factory.django.DjangoModelFactory):

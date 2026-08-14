@@ -6,31 +6,21 @@ API. One hook per source catches all three paths, and it is also what lets the
 backfill and the live path share a single appender.
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import Any
 
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from apps.articles.models import Article, ArticleState
 from apps.projects.models import Competition, Project, ProjectStatus
-
-if TYPE_CHECKING:
-    from services.feed.handler_interface import FeedHandlerInterface
-
-
-def _handler() -> "FeedHandlerInterface":
-    # Local import: services/__init__ imports every django_impl, so importing it
-    # at module load time would run before the app registry is ready.
-    from services import HANDLERS  # noqa: PLC0415
-
-    return HANDLERS.feed
+from services import HANDLERS
 
 
 @receiver(post_save, sender=Article)
 def append_on_article_publish(sender: Any, instance: Article, **kwargs: Any) -> None:
     if instance.state != ArticleState.PUBLISHED:
         return
-    handler = _handler()
+    handler = HANDLERS.feed
     # Idempotent on the article, so an edit-after-publish adds nothing.
     handler.append_article_published(instance)
     # Supersede whatever the article is a write-up of. Also idempotent: the
@@ -42,14 +32,14 @@ def append_on_article_publish(sender: Any, instance: Article, **kwargs: Any) -> 
 def append_on_project_approval(sender: Any, instance: Project, **kwargs: Any) -> None:
     if instance.status != ProjectStatus.APPROVED:
         return
-    _handler().append_project_published(instance)
+    HANDLERS.feed.append_project_published(instance)
 
 
 @receiver(post_save, sender=Competition)
 def append_on_competition_change(
     sender: Any, instance: Competition, **kwargs: Any
 ) -> None:
-    handler = _handler()
+    handler = HANDLERS.feed
     handler.append_competition_opened(instance)
     handler.append_competition_closed(instance)
     if instance.winner_id is not None:

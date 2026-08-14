@@ -3,6 +3,9 @@ import uuid
 from django.db import models
 from django.db.models import Q
 
+from apps.articles.models import globally_visible_q
+from apps.projects.models import ProjectStatus
+
 
 class FeedEventKind(models.TextChoices):
     ARTICLE_PUBLISHED = "article_published", "Article published"
@@ -39,11 +42,6 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
 
         Competition entries have no such state and are left alone.
         """
-        # Local imports: those apps own their own visibility vocabulary, and both
-        # FKs are declared lazily, so this is the only place the modules meet.
-        from apps.articles.models import globally_visible_q  # noqa: PLC0415
-        from apps.projects.models import ProjectStatus  # noqa: PLC0415
-
         approved = ProjectStatus.APPROVED
         return self.filter(
             Q(project__isnull=True) | Q(project__status=approved),
@@ -224,7 +222,28 @@ class FeedEvent(models.Model):
         ]
 
     def __str__(self) -> str:
-        return f"{self.get_kind_display()} @ {self.occurred_at:%Y-%m-%d}"
+        return (
+            f"{self.get_kind_display()}: {self.subject} @ {self.occurred_at:%Y-%m-%d}"
+        )
+
+    @property
+    def subject(self) -> str:
+        """What the entry is about, for admin labels.
+
+        Kind and date alone do not identify a row — a week with two approvals
+        renders two identical "Project published @ 2026-08-14" options in the
+        `Article.about_feed_event` autocomplete, which is the one place someone
+        has to pick the right event out of a list.
+        """
+        for candidate in (
+            self.article,
+            self.competition,
+            self.project,
+            self.discussion,
+        ):
+            if candidate is not None:
+                return str(candidate)
+        return "—"
 
     @property
     def is_renderable(self) -> bool:

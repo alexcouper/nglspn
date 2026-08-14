@@ -116,3 +116,16 @@ class TestFeedEventActions:
         )
 
         assert not FeedEvent.objects.filter(is_pinned=True).exists()
+
+
+@pytest.mark.django_db
+class TestEventLabels:
+    """The `Article.about_feed_event` autocomplete labels rows with __str__."""
+
+    def test_label_names_the_subject_so_same_day_entries_are_distinguishable(self):
+        first = FeedEvent.objects.get(project=approved_project(title="Fyrsta"))
+        second = FeedEvent.objects.get(project=approved_project(title="Annað"))
+
+        assert "Fyrsta" in str(first)
+        assert "Annað" in str(second)
+        assert str(first) != str(second)

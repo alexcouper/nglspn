@@ -4,6 +4,8 @@ from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.utils.html import format_html
 
+from services import HANDLERS
+
 from .models import Article, ArticleGlobalVisibility
 
 
@@ -111,8 +113,6 @@ class ArticleAdmin(admin.ModelAdmin):
         # Through the handler, not queryset.update(): approving stamps
         # approved_at, enqueues the fan-out and re-runs the feed's supersession
         # link, none of which a bulk write would do.
-        from services import HANDLERS  # noqa: PLC0415
-
         changed = 0
         for article in queryset:
             if article.global_visibility == value:

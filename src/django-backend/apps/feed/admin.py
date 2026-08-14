@@ -3,6 +3,7 @@ from django.db.models import QuerySet
 from django.http import HttpRequest
 
 from apps.discussions.models import Discussion
+from services import HANDLERS
 
 from .models import FeedEvent
 
@@ -33,10 +34,7 @@ class FeedEventAdmin(admin.ModelAdmin):
 
     @admin.display(description="Subject")
     def subject(self, obj: FeedEvent) -> str:
-        for candidate in (obj.article, obj.competition, obj.project, obj.discussion):
-            if candidate is not None:
-                return str(candidate)
-        return "—"
+        return obj.subject
 
     @admin.display(description="State")
     def state(self, obj: FeedEvent) -> str:
@@ -56,13 +54,13 @@ class FeedEventAdmin(admin.ModelAdmin):
                 level=messages.ERROR,
             )
             return
-        _handler().set_pinned(events[0].id, pinned=True)
+        HANDLERS.feed.set_pinned(events[0].id, pinned=True)
         self.message_user(request, "Pinned as the feed lead.")
 
     @admin.action(description="Unpin")
     def unpin(self, request: HttpRequest, queryset: QuerySet[FeedEvent]) -> None:
         for event in queryset:
-            _handler().set_pinned(event.id, pinned=False)
+            HANDLERS.feed.set_pinned(event.id, pinned=False)
         self.message_user(request, "Unpinned.")
 
     @admin.action(description="Retire (hide from the feed)")
@@ -70,7 +68,7 @@ class FeedEventAdmin(admin.ModelAdmin):
         self, request: HttpRequest, queryset: QuerySet[FeedEvent]
     ) -> None:
         for event in queryset:
-            _handler().retire(event.id)
+            HANDLERS.feed.retire(event.id)
         self.message_user(request, f"Retired {queryset.count()} entries.")
 
     @admin.action(description="Restore to the feed")
@@ -78,7 +76,7 @@ class FeedEventAdmin(admin.ModelAdmin):
         self, request: HttpRequest, queryset: QuerySet[FeedEvent]
     ) -> None:
         for event in queryset:
-            _handler().unretire(event.id)
+            HANDLERS.feed.unretire(event.id)
         self.message_user(request, f"Restored {queryset.count()} entries.")
 
 
@@ -96,7 +94,7 @@ def promote_discussions(
     for discussion in queryset:
         if discussion.parent_id is not None:
             continue
-        _handler().promote_discussion(discussion)
+        HANDLERS.feed.promote_discussion(discussion)
         promoted += 1
     modeladmin.message_user(
         request,
@@ -106,11 +104,3 @@ def promote_discussions(
 
 
 promote_discussions.short_description = "Promote to the Latest feed"
-
-
-def _handler():  # noqa: ANN202
-    # Local import: services/__init__ pulls in every django_impl, which is not
-    # safe at admin module import time.
-    from services import HANDLERS  # noqa: PLC0415
-
-    return HANDLERS.feed

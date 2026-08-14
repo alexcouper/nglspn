@@ -2,6 +2,8 @@ from django.contrib import admin
 from django.db.models import QuerySet
 from django.http import HttpRequest
 
+from apps.feed.admin import promote_discussions
+
 from .models import Discussion
 
 
@@ -18,8 +20,6 @@ class DiscussionAdmin(admin.ModelAdmin):
     def promote_to_feed(
         self, request: HttpRequest, queryset: QuerySet[Discussion]
     ) -> None:
-        from apps.feed.admin import promote_discussions  # noqa: PLC0415
-
         promote_discussions(self, request, queryset)
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[Discussion]:

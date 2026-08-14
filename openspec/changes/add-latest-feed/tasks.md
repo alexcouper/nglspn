@@ -1,35 +1,35 @@
 ## 1. Feed event storage
 
-- [ ] 1.1 Add the feed event model: `occurred_at`, event kind, references to the
+- [x] 1.1 Add the feed event model: `occurred_at`, event kind, references to the
       project / competition / article / discussion it concerns, superseded-by
       reference, retired flag, pinned flag
-- [ ] 1.2 Index on `occurred_at` descending; confirm the rendering query is a
+- [x] 1.2 Index on `occurred_at` descending; confirm the rendering query is a
       single query with no N+1 across the referenced entities
-- [ ] 1.3 Write the migration and verify with
+- [x] 1.3 Write the migration and verify with
       `uv run python manage.py makemigrations --check --dry-run`
-- [ ] 1.4 Add a `services/feed/` handler + repo pair following the existing
+- [x] 1.4 Add a `services/feed/` handler + repo pair following the existing
       `HANDLERS`/`REPO` layering; no ORM access from routers
 
 ## 1a. Competition winner timestamp
 
-- [ ] 1a.1 Add nullable `winner_announced_at` to Competition; set it in `save()`
+- [x] 1a.1 Add nullable `winner_announced_at` to Competition; set it in `save()`
       the first time a winner is assigned, leave it on re-assignment, clear it
       when the winner is cleared
-- [ ] 1a.2 Data migration backfilling it from `voting_end_date`, falling back to
+- [x] 1a.2 Data migration backfilling it from `voting_end_date`, falling back to
       `submission_deadline`, only for competitions that have a winner
-- [ ] 1a.3 Tests for first assignment, re-assignment, clear-then-reassign, and
+- [x] 1a.3 Tests for first assignment, re-assignment, clear-then-reassign, and
       the migration's two backfill paths
 
 ## 2. Appending events
 
-- [ ] 2.1 Append on article publish, at the article's `published_at`, including
+- [x] 2.1 Append on article publish, at the article's `published_at`, including
       backdated publishes
-- [ ] 2.2 Append on project publish
-- [ ] 2.3 Append on community tipoff
-- [ ] 2.4 Append on competition opens / closes / winners announced
-- [ ] 2.5 Assert no append on article edit or delete, on discussion create, or on
+- [x] 2.2 Append on project publish
+- [x] 2.3 Append on community tipoff
+- [x] 2.4 Append on competition opens / closes / winners announced
+- [x] 2.5 Assert no append on article edit or delete, on discussion create, or on
       discussion reply
-- [ ] 2.6 Tests for each source, including the backdated-publish position case
+- [x] 2.6 Tests for each source, including the backdated-publish position case
 
 ## 3. Article ↔ event link and superseding
 

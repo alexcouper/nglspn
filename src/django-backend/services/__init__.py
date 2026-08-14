@@ -13,6 +13,9 @@ from services.discussions.django_impl import (
 from services.discussions.handler_interface import DiscussionHandlerInterface
 from services.discussions.query_interface import DiscussionQueryInterface
 from services.email.django_impl import DjangoEmailHandler, DjangoEmailQuery
+from services.feed.django_impl import DjangoFeedHandler, DjangoFeedQuery
+from services.feed.handler_interface import FeedHandlerInterface
+from services.feed.query_interface import FeedQueryInterface
 from services.email.handler_interface import EmailHandlerInterface
 from services.email.query_interface import EmailQueryInterface
 from services.follows.django_impl import DjangoFollowHandler, DjangoFollowQuery
@@ -47,6 +50,7 @@ class HandlerServices:
         default_factory=DjangoDiscussionHandler
     )
     email: EmailHandlerInterface = field(default_factory=DjangoEmailHandler)
+    feed: FeedHandlerInterface = field(default_factory=DjangoFeedHandler)
     follows: FollowHandlerInterface = field(default_factory=DjangoFollowHandler)
     images: ImageHandlerInterface = field(default_factory=DjangoImageHandler)
     notifications: NotificationHandlerInterface = field(
@@ -65,6 +69,7 @@ class QueryServices:
     articles: ArticleQueryInterface = field(default_factory=DjangoArticleQuery)
     discussions: DiscussionQueryInterface = field(default_factory=DjangoDiscussionQuery)
     email: EmailQueryInterface = field(default_factory=DjangoEmailQuery)
+    feed: FeedQueryInterface = field(default_factory=DjangoFeedQuery)
     follows: FollowQueryInterface = field(default_factory=DjangoFollowQuery)
     images: ImageQueryInterface = field(default_factory=DjangoImageQuery)
     notifications: NotificationQueryInterface = field(

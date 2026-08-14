@@ -87,10 +87,8 @@
       duplicates nothing. Test the run-twice and run-after-new-records cases
 - [ ] 8.3 Assert the command fires no in-app notification and no email
 - [ ] 8.4 Decide and record how far back the launch backfill reaches
-- [ ] 8.5 Before launch, confirm against real data whether any article is already
-      published — those will not appear until the next publish (see design.md)
-- [ ] 8.6 Launch sequencing: ship the feed, run the backfill, then publish the
-      two pending articles a few days apart so each takes a turn as the lead
+- [ ] 8.5 Launch sequencing: ship the feed, run the backfill, then publish the
+      two pending drafts a few days apart so each takes a turn as the lead
 
 ## 9. Verification
 

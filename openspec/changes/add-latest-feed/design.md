@@ -163,15 +163,13 @@ reviewable.
   notifications — the same constraint that governed the Phase 4 content
   backfill.
 
-- **Articles are out of the backfill's scope.** The two articles waiting to be
-  published go out *after* the feed ships, so they arrive through the normal
-  publish path and the backfill never has to reason about article state. The
-  exposure: any article already published when the feed ships will not appear
-  until something new is published. House announcements go out as articles on
-  the house project's Updates channel (`apps/emails/models.py:11`), so this is
-  worth confirming against real data before launch rather than assuming. →
-  Because the backfill is idempotent, widening its scope to articles and
-  re-running is a safe correction rather than a duplicate-producing one.
+- **Articles are out of the backfill's scope**, and as of 2026-08-14 no article
+  has been published — the two that exist are drafts, held until this ships.
+  They then go out through the normal publish path, so the backfill never has to
+  reason about article state and no published article is left stranded. → If
+  that turns out to be wrong, the backfill is idempotent: widening its scope to
+  articles and re-running is a safe correction rather than a duplicate-producing
+  one.
 
 ## Open Questions
 

@@ -6,6 +6,8 @@ export type ArticleListItem = components["schemas"]["ArticleListItem"];
 export type ArticleCreate = components["schemas"]["ArticleCreate"];
 export type ArticleUpdate = components["schemas"]["ArticleUpdate"];
 export type ArticlePublish = components["schemas"]["ArticlePublish"];
+export type FeedEventSuggestion =
+  components["schemas"]["FeedEventSuggestion"];
 // How the article's listing image was decided. Generated from
 // ListingImageMode in apps/articles/models.py.
 export type ListingImageMode = components["schemas"]["ListingImageMode"];
@@ -63,6 +65,17 @@ export class ArticlesClient {
     return this.client.request<Article>(
       `/api/projects/${projectSlug}/articles/${articleId}/publish`,
       { method: "POST", body: JSON.stringify(body) }
+    );
+  }
+
+  // Events this article could be the write-up of, best guess first. Empty is
+  // the normal case — most articles are about nothing but themselves.
+  async feedEventSuggestions(
+    projectSlug: string,
+    articleId: string
+  ): Promise<FeedEventSuggestion[]> {
+    return this.client.request<FeedEventSuggestion[]>(
+      `/api/projects/${projectSlug}/articles/${articleId}/feed-event-suggestions`
     );
   }
 

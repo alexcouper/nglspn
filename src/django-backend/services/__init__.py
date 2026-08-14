@@ -13,11 +13,11 @@ from services.discussions.django_impl import (
 from services.discussions.handler_interface import DiscussionHandlerInterface
 from services.discussions.query_interface import DiscussionQueryInterface
 from services.email.django_impl import DjangoEmailHandler, DjangoEmailQuery
+from services.email.handler_interface import EmailHandlerInterface
+from services.email.query_interface import EmailQueryInterface
 from services.feed.django_impl import DjangoFeedHandler, DjangoFeedQuery
 from services.feed.handler_interface import FeedHandlerInterface
 from services.feed.query_interface import FeedQueryInterface
-from services.email.handler_interface import EmailHandlerInterface
-from services.email.query_interface import EmailQueryInterface
 from services.follows.django_impl import DjangoFollowHandler, DjangoFollowQuery
 from services.follows.handler_interface import FollowHandlerInterface
 from services.follows.query_interface import FollowQueryInterface

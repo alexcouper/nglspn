@@ -40,7 +40,7 @@
       superseded event becomes its own entry
 - [x] 3.4 Restore the bare event to rendering when a superseding article is
       deleted
-- [ ] 3.5 Offer the inferable event as the publish dialog's default where the
+- [x] 3.5 Offer the inferable event as the publish dialog's default where the
       article is on the house project's Competition Winners channel
 - [x] 3.6 Tests: supersede, one-shot, unlinked duplicate renders both, delete
       restores
@@ -68,24 +68,24 @@
 
 ## 6. Shared tab bar
 
-- [ ] 6.1 Extract the tab bar from `src/web-ui/src/app/projects/ProjectsPage.tsx`
+- [x] 6.1 Extract the tab bar from `src/web-ui/src/app/projects/ProjectsPage.tsx`
       into shared chrome rendered by both `/latest` and `/projects`
-- [ ] 6.2 Add "Latest" as the first tab, ahead of "Discover"
-- [ ] 6.3 Confirm the existing category-view and discover-view behaviour is
+- [x] 6.2 Add "Latest" as the first tab, ahead of "Discover"
+- [x] 6.3 Confirm the existing category-view and discover-view behaviour is
       unchanged, including the sticky offset below the nav
 
 ## 7. Latest view
 
-- [ ] 7.1 Add the `/latest` route; leave `/` redirecting to `/projects`
-- [ ] 7.2 Feed row component covering all three entry states from one shape;
+- [x] 7.1 Add the `/latest` route; leave `/` redirecting to `/projects`
+- [x] 7.2 Feed row component covering all three entry states from one shape;
       reuse `ArticleCard`'s treatment for the article-carrying states rather than
       duplicating it
-- [ ] 7.3 Full-width lead card, rendered only when the API supplies a lead
-- [ ] 7.4 Week grouping headers
-- [ ] 7.5 Load-more paging against the cursor endpoint
-- [ ] 7.6 Empty state: short line plus a link to Discover
-- [ ] 7.7 Single-column layout at mobile widths, lead full width
-- [ ] 7.8 Component tests for the three entry states, the imageless article case,
+- [x] 7.3 Full-width lead card, rendered only when the API supplies a lead
+- [x] 7.4 Week grouping headers
+- [x] 7.5 Load-more paging against the cursor endpoint
+- [x] 7.6 Empty state: short line plus a link to Discover
+- [x] 7.7 Single-column layout at mobile widths, lead full width
+- [x] 7.8 Component tests for the three entry states, the imageless article case,
       and lead present / absent
 
 ## 8. Backfill
@@ -103,7 +103,7 @@
 
 ## 9. Verification
 
-- [ ] 9.1 Backend: `make lint`, `make extra-tests`, `make test`
-- [ ] 9.2 Web UI: `make lint`, `make test`, `make build-app`, `make extra-tests`
-- [ ] 9.3 Drive `/latest` in a browser against seeded data: lead present, lead
+- [x] 9.1 Backend: `make lint`, `make extra-tests`, `make test`
+- [x] 9.2 Web UI: `make lint`, `make test`, `make build-app`, `make extra-tests`
+- [x] 9.3 Drive `/latest` in a browser against seeded data: lead present, lead
       absent, superseded pair shows once, paging, mobile width

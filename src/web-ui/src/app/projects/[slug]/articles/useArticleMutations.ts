@@ -76,7 +76,10 @@ export function useArticleMutations({
   // success: the page navigates away, and dropping it first would flash the
   // button back to "Publish".
   const publish = useCallback(
-    async (payload: ArticleSavePayload): Promise<Article | null> => {
+    async (
+      payload: ArticleSavePayload,
+      aboutFeedEventId: string | null = null,
+    ): Promise<Article | null> => {
       onError("");
       setIsPublishing(true);
       const saved = await persistDraft(payload);
@@ -87,6 +90,7 @@ export function useArticleMutations({
       try {
         await api.articles.publish(projectRef, saved.id, {
           published_at: null,
+          about_feed_event_id: aboutFeedEventId,
         });
         return saved;
       } catch (err) {

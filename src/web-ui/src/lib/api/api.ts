@@ -5,6 +5,7 @@ import { ChannelsClient } from "./channels";
 import { CompetitionsClient } from "./competitions";
 import { DiscoverClient } from "./discover";
 import { DiscussionsClient } from "./discussions";
+import { FeedClient } from "./feed";
 import { FollowsClient } from "./follows";
 import { ProjectsClient } from "./projects";
 import { MyProjectsClient } from "./my-projects";
@@ -22,6 +23,7 @@ export class API {
   readonly competitions: CompetitionsClient;
   readonly discover: DiscoverClient;
   readonly discussions: DiscussionsClient;
+  readonly feed: FeedClient;
   readonly follows: FollowsClient;
   readonly projects: ProjectsClient;
   readonly myProjects: MyProjectsClient;
@@ -38,6 +40,7 @@ export class API {
     this.competitions = new CompetitionsClient(this.client);
     this.discover = new DiscoverClient(this.client);
     this.discussions = new DiscussionsClient(this.client);
+    this.feed = new FeedClient(this.client);
     this.follows = new FollowsClient(this.client);
     this.projects = new ProjectsClient(this.client);
     this.myProjects = new MyProjectsClient(this.client);

@@ -11,6 +11,7 @@ from apps.projects.models import (
     EntrySource,
     Project,
 )
+from apps.users.models import User
 from tests.factories import (
     CompetitionEntryFactory,
     CompetitionFactory,
@@ -29,8 +30,54 @@ def staff_client(db) -> Client:
     return client
 
 
+@pytest.fixture
+def staff_user(db) -> User:
+    return UserFactory(is_staff=True, is_superuser=True)
+
+
 def listed_entry_ids(response) -> list[str]:
     return [str(entry.pk) for entry in response.context["cl"].result_list]
+
+
+def save_entry_inline(
+    competition: Competition,
+    project: Project,
+    by: User,
+    existing: CompetitionEntry | None = None,
+) -> None:
+    """Put one row through the entry inline on the competition change form.
+
+    Driven at the formset rather than through a POST to the change view: the
+    change view wants every field of a Competition alongside, and none of that
+    is what `save_formset` is being asked about.
+    """
+    request = RequestFactory().post("/admin/")
+    request.user = by
+
+    competition_admin = admin.site.get_model_admin(Competition)
+    inline = next(
+        candidate
+        for candidate in competition_admin.get_inline_instances(request, competition)
+        if candidate.model is CompetitionEntry
+    )
+    formset_class = inline.get_formset(request, competition)
+    prefix = formset_class.get_default_prefix()
+
+    formset = formset_class(
+        {
+            f"{prefix}-TOTAL_FORMS": "1",
+            f"{prefix}-INITIAL_FORMS": "1" if existing else "0",
+            f"{prefix}-MIN_NUM_FORMS": "0",
+            f"{prefix}-MAX_NUM_FORMS": "1000",
+            f"{prefix}-0-id": str(existing.pk) if existing else "",
+            f"{prefix}-0-competition": str(competition.id),
+            f"{prefix}-0-project": str(project.id),
+        },
+        instance=competition,
+    )
+    assert formset.is_valid(), formset.errors
+
+    competition_admin.save_formset(request, form=None, formset=formset, change=True)
 
 
 class TestEntryChangelist:
@@ -141,6 +188,40 @@ class TestEntryProvenance:
         )
 
         assert set(inline.readonly_fields) >= {"entered_via", "entered_by"}
+
+    def test_the_competition_inline_stamps_provenance_on_a_new_entry(
+        self, staff_user
+    ) -> None:
+        """The fields being readonly is why this is needed, not a substitute
+        for it: readonly means the row arrives with `entered_via` blank, which
+        the database accepts. `save_formset` is the only thing filling it in."""
+        competition = CompetitionFactory()
+        project = ProjectFactory()
+
+        save_entry_inline(competition, project, by=staff_user)
+
+        entry = CompetitionEntry.objects.get()
+        assert entry.competition == competition
+        assert entry.project == project
+        assert entry.entered_via == EntrySource.ADMIN
+        assert entry.entered_by == staff_user
+
+    def test_the_competition_inline_leaves_an_existing_entry_alone(
+        self, staff_user
+    ) -> None:
+        """Re-saving the competition must not rewrite who entered a project."""
+        entered_by = UserFactory()
+        entry = CompetitionEntryFactory(
+            entered_via=EntrySource.MANUAL, entered_by=entered_by
+        )
+
+        save_entry_inline(
+            entry.competition, entry.project, by=staff_user, existing=entry
+        )
+
+        entry.refresh_from_db()
+        assert entry.entered_via == EntrySource.MANUAL
+        assert entry.entered_by == entered_by
 
 
 class TestEntryRemoval:

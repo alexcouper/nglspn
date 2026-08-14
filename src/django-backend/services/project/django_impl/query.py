@@ -174,7 +174,10 @@ class DjangoProjectQuery(ProjectQueryInterface):
             raise ProjectNotFoundError from None
         if not self.user_can_edit(project.id, owner_id):
             raise ProjectNotFoundError
-        return project
+        # Owner-scoped by definition, which is exactly the scope standing is
+        # meaningful in — so it comes back on the project rather than costing
+        # the caller a second trip through the service.
+        return stamp_competition_standing(project)
 
     def user_can_edit(self, project_id: UUID | None, user_id: UUID | None) -> bool:
         if project_id is None or user_id is None:
@@ -231,14 +234,16 @@ class DjangoProjectQuery(ProjectQueryInterface):
             pages=pages,
         )
 
-    def list_for_owner(self, owner_id: UUID) -> QuerySet[Project]:
+    def list_for_owner(self, owner_id: UUID) -> list[Project]:
         # Creator-scoped, but tip-off projects belong in /tip-offs: for tip-offs
         # the tipster is the creator, so without this exclusion they would
         # appear in both /my-projects and /my-projects/tip-offs.
-        return _base_queryset().filter(creator_id=owner_id, is_community_tipoff=False)
+        return self.with_competition_standing(
+            _base_queryset().filter(creator_id=owner_id, is_community_tipoff=False)
+        )
 
-    def list_tip_offs_for(self, user_id: UUID) -> QuerySet[Project]:
-        return (
+    def list_tip_offs_for(self, user_id: UUID) -> list[Project]:
+        return self.with_competition_standing(
             _base_queryset()
             .filter(
                 contributors__user_id=user_id,
@@ -441,6 +446,20 @@ class DjangoProjectQuery(ProjectQueryInterface):
                 open_competitions,
             )
         return projects
+
+
+def stamp_competition_standing(project: Project) -> Project:
+    """Attach one project's standing and hand it back.
+
+    Two queries, against the three `with_competition_standing` costs for a
+    single project: a `select_related` fetches the entries and their
+    competitions together where the prefetch the bulk path needs splits them.
+    Reach for the bulk version at two projects and up, this one at exactly one.
+    """
+    project._competition_standing = _standing(  # noqa: SLF001
+        project, _entries_for(project), _open_competitions()
+    )
+    return project
 
 
 def _open_competitions() -> list[Competition]:

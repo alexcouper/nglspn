@@ -4,6 +4,8 @@ from uuid import UUID
 
 from ninja import Schema
 
+from apps.projects.models import CompetitionStatus
+
 from .tag import TagWithCategoryResponse
 from .user import PublicUserProfile
 
@@ -72,7 +74,12 @@ class CompetitionSummary(Schema):
     id: UUID
     name: str
     slug: str
-    status: str
+    # The four values, not `str`: the frontend feeds this straight to a badge
+    # that switches on them, and a bare string forces a cast that would survive
+    # a fifth status being added. `api.schemas.competition` states the same set
+    # for the same reason — it cannot be shared from there without a cycle,
+    # since that module imports this one.
+    status: CompetitionStatus
     submission_deadline: date
     image_url: str | None = None
 

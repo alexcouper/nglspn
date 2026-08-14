@@ -4,6 +4,7 @@ from unittest.mock import PropertyMock, patch
 from hamcrest import (
     assert_that,
     contains_inanyorder,
+    contains_string,
     equal_to,
     has_entries,
     has_key,
@@ -928,20 +929,56 @@ class TestEnterCompetition:
     def test_a_second_entry_into_the_same_competition_returns_409(
         self, client, user, auth_headers
     ) -> None:
-        """The loser of a concurrent entry: the row already exists by the time
-        this request's create lands."""
         competition = _open_competition()
         project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
 
-        with patch.object(
-            DjangoProjectQuery,
-            "competition_standing",
-            side_effect=lambda p: _standing_ignoring_entries(p, competition),
-        ):
-            first = _enter(client, project, competition, auth_headers)
-            response = _enter(client, project, competition, auth_headers)
+        first = _enter(client, project, competition, auth_headers)
+        response = _enter(client, project, competition, auth_headers)
 
         assert_that(first.status_code, equal_to(200))
+        assert_that(response.status_code, equal_to(409))
+        assert_that(CompetitionEntry.objects.count(), equal_to(1))
+
+    def test_the_conflict_says_the_project_is_already_in_that_round(
+        self, client, user, auth_headers
+    ) -> None:
+        """An entered round is absent from `opportunities`, so the lookup that
+        follows would call an open round closed. The 409 is what the user is
+        shown, so it has to be about the entry, not the round."""
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        _enter(client, project, competition, auth_headers)
+
+        response = _enter(client, project, competition, auth_headers)
+
+        assert_that(response.json()["detail"], contains_string("already entered"))
+
+    def test_a_second_entry_that_slips_past_the_check_still_returns_409(
+        self, client, user, auth_headers
+    ) -> None:
+        """The loser of a concurrent entry: the row already exists by the time
+        this request's create lands, so the database refuses it."""
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        _enter(client, project, competition, auth_headers)
+
+        # Both halves of the guard blinded: a standing that still offers the
+        # round, and an existence check that sees nothing. What is left is the
+        # unique constraint.
+        with (
+            patch.object(
+                DjangoProjectQuery,
+                "competition_standing",
+                side_effect=lambda p: _standing_ignoring_entries(p, competition),
+            ),
+            patch.object(
+                CompetitionEntry.objects,
+                "filter",
+                return_value=CompetitionEntry.objects.none(),
+            ),
+        ):
+            response = _enter(client, project, competition, auth_headers)
+
         assert_that(response.status_code, equal_to(409))
         assert_that(CompetitionEntry.objects.count(), equal_to(1))
 

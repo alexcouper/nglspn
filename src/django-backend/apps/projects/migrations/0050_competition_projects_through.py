@@ -50,6 +50,15 @@ class Migration(migrations.Migration):
                 ),
             ],
             state_operations=[
+                # The AddField below is state-only on purpose, and this is the
+                # asymmetry between the two lists. Adding a `through=` M2M
+                # builds no table — `competition_entries` is already there from
+                # 0048 — so there is nothing for the database half to do, and
+                # putting it there would have the schema editor try to create a
+                # table that exists. The recorded state after this migration
+                # therefore carries the through relation, which is what later
+                # migrations and `makemigrations --check` compare against,
+                # while the database half only ever drops the old join table.
                 migrations.RemoveField(
                     model_name="competition",
                     name="projects",

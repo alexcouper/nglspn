@@ -37,12 +37,6 @@ from services.project.exceptions import (
 from services.project.handler_interface import CreateProjectInput, UpdateProjectInput
 
 
-def _with_standing(project: Project) -> Project:
-    """Competition standing is a /my-projects concern; the public routes leave
-    the field null."""
-    return REPO.project.with_competition_standing([project])[0]
-
-
 def _get_editable_project_or_404(project_id: str, user: User) -> Project:
     project = get_object_or_404(Project, id=project_id)
     if not REPO.project.user_can_edit(project.id, user.id):
@@ -60,9 +54,7 @@ router = Router()
     tags=["My Projects"],
 )
 def list_my_projects(request: HttpRequest) -> list[Project]:
-    return REPO.project.with_competition_standing(
-        REPO.project.list_for_owner(request.auth.id)
-    )
+    return REPO.project.list_for_owner(request.auth.id)
 
 
 @router.get(
@@ -72,9 +64,7 @@ def list_my_projects(request: HttpRequest) -> list[Project]:
     tags=["My Projects"],
 )
 def list_my_tip_offs(request: HttpRequest) -> list[Project]:
-    return REPO.project.with_competition_standing(
-        REPO.project.list_tip_offs_for(request.auth.id)
-    )
+    return REPO.project.list_tip_offs_for(request.auth.id)
 
 
 @router.post(
@@ -104,7 +94,7 @@ def create_project(
         project = HANDLERS.project.create(data)
     except InvalidTagsError as exc:
         return 400, {"detail": str(exc)}
-    return 201, _with_standing(project)
+    return 201, project
 
 
 @router.get(
@@ -117,7 +107,7 @@ def get_my_project(
     request: HttpRequest, project_id: str
 ) -> Project | tuple[int, dict[str, str]]:
     try:
-        return _with_standing(REPO.project.get_for_owner(project_id, request.auth.id))
+        return REPO.project.get_for_owner(project_id, request.auth.id)
     except ProjectNotFoundError:
         return 404, {"detail": "Not Found"}
 
@@ -145,9 +135,7 @@ def update_project(
         tag_ids=payload.tag_ids or [],
     )
     try:
-        return _with_standing(
-            HANDLERS.project.update(project_id, request.auth.id, data)
-        )
+        return HANDLERS.project.update(project_id, request.auth.id, data)
     except ProjectNotFoundError:
         return 404, {"detail": "Not Found"}
     except InvalidTagsError as exc:
@@ -182,7 +170,7 @@ def resubmit_project(
     project_id: str,
 ) -> Project | tuple[int, dict[str, str]]:
     try:
-        return _with_standing(HANDLERS.project.resubmit(project_id, request.auth.id))
+        return HANDLERS.project.resubmit(project_id, request.auth.id)
     except ProjectNotFoundError:
         return 404, {"detail": "Not Found"}
     except InvalidProjectStateError as exc:
@@ -205,7 +193,7 @@ def publish_project(
     project_id: str,
 ) -> Project | tuple[int, dict[str, Any]]:
     try:
-        return _with_standing(HANDLERS.project.publish(project_id, request.auth.id))
+        return HANDLERS.project.publish(project_id, request.auth.id)
     except ProjectNotFoundError:
         return 404, {"detail": "Not Found"}
     except PublishPreconditionsError as exc:
@@ -243,7 +231,7 @@ def enter_competition(
         return 400, {"detail": str(exc)}
     except CompetitionEntryConflictError as exc:
         return 409, {"detail": str(exc)}
-    return _with_standing(project)
+    return project
 
 
 @router.post(

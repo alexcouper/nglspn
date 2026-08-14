@@ -55,6 +55,10 @@ function buttonLabelled(container: HTMLElement, label: string) {
   ) as HTMLButtonElement | undefined;
 }
 
+function alertText(container: HTMLElement): string {
+  return container.querySelector('[role="alert"]')?.textContent ?? "";
+}
+
 function radios(container: HTMLElement): HTMLInputElement[] {
   return [
     ...container.querySelectorAll('input[type="radio"]'),
@@ -192,6 +196,41 @@ describe("EnterCompetitionDialog", () => {
 
     expect(onDismiss).toHaveBeenCalled();
     expect(onEnter).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it("shows the reason an entry was refused", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <EnterCompetitionDialog
+        opportunities={[opportunity()]}
+        onEnter={vi.fn()}
+        onDismiss={vi.fn()}
+        error="This project is already entered in that competition"
+      />,
+    );
+
+    expect(alertText(container)).toContain(
+      "This project is already entered in that competition",
+    );
+    cleanup();
+  });
+
+  it("says something when onEnter rejects instead of reporting", async () => {
+    const onEnter = vi.fn().mockRejectedValue(new Error("network died"));
+    const { container, unmount: cleanup } = await mount(
+      <EnterCompetitionDialog
+        opportunities={[opportunity()]}
+        onEnter={onEnter}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    await act(async () => {
+      buttonLabelled(container, "Enter")?.click();
+    });
+
+    expect(alertText(container)).toContain("Couldn't enter this competition");
+    expect(buttonLabelled(container, "Enter")?.disabled).toBe(false);
     cleanup();
   });
 

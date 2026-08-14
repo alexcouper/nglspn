@@ -5401,6 +5401,16 @@
         "title": "CompetitionStandingResponse",
         "type": "object"
       },
+      "CompetitionStatus": {
+        "enum": [
+          "pending",
+          "accepting_applications",
+          "voting",
+          "closed"
+        ],
+        "title": "CompetitionStatus",
+        "type": "string"
+      },
       "CompetitionSummary": {
         "description": "Enough of a competition to render and link to it without a second call.\n\n`image_url` reads a field already loaded on the instance, so carrying it\ncosts no query — which is what lets the entry dialogs show a round as a row\nwith its image.",
         "properties": {
@@ -5418,8 +5428,7 @@
             "type": "string"
           },
           "status": {
-            "title": "Status",
-            "type": "string"
+            "$ref": "#/components/schemas/CompetitionStatus"
           },
           "submission_deadline": {
             "format": "date",

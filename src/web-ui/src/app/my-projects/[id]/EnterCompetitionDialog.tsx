@@ -13,6 +13,9 @@ interface EnterCompetitionDialogProps {
   opportunities: CompetitionOpportunity[];
   onEnter: (competitionId: string) => Promise<void>;
   onDismiss: () => void;
+  // What the last attempt failed with. The dialog closes itself on success, so
+  // anything shown here is a reason the contributor is still looking at it.
+  error?: string;
 }
 
 function toChoice(opportunity: CompetitionOpportunity): Choice {
@@ -37,23 +40,33 @@ export function EnterCompetitionDialog({
   opportunities,
   onEnter,
   onDismiss,
+  error,
 }: EnterCompetitionDialogProps) {
   const [selectedId, setSelectedId] = useState<string | null>(
     opportunities[0]?.competition.id ?? null,
   );
   const [isEntering, setIsEntering] = useState(false);
+  // Covers `onEnter` rejecting rather than reporting. Without it a thrown
+  // error left the dialog open, idle and silent — indistinguishable from a
+  // button that does nothing.
+  const [unreportedError, setUnreportedError] = useState("");
 
   if (opportunities.length === 0) return null;
 
   const handleEnter = async () => {
     if (!selectedId) return;
     setIsEntering(true);
+    setUnreportedError("");
     try {
       await onEnter(selectedId);
+    } catch {
+      setUnreportedError("Couldn't enter this competition. Please try again.");
     } finally {
       setIsEntering(false);
     }
   };
+
+  const shownError = error || unreportedError;
 
   return (
     <Dialog
@@ -77,6 +90,12 @@ export function EnterCompetitionDialog({
         joins {opportunities.length === 1 ? "the round" : "a round"} on
         approval.
       </p>
+
+      {shownError && (
+        <p role="alert" className="text-red-600 text-sm mb-3">
+          {shownError}
+        </p>
+      )}
 
       <ChoiceList
         name="enter-competition"

@@ -330,4 +330,24 @@ describe("ProjectCompetitions", () => {
     );
     cleanup();
   });
+
+  it("says something when onEnter rejects instead of reporting", async () => {
+    const onEnter = vi.fn().mockRejectedValue(new Error("network died"));
+    const { container, unmount: cleanup } = await mount(
+      <ProjectCompetitions
+        standing={standing({ opportunities: [opportunity()] })}
+        onEnter={onEnter}
+      />,
+    );
+
+    await act(async () => {
+      enterButtons(container)[0].click();
+    });
+
+    expect(container.querySelector('[role="alert"]')?.textContent).toContain(
+      "Couldn't enter this competition",
+    );
+    expect(enterButtons(container)[0].disabled).toBe(false);
+    cleanup();
+  });
 });

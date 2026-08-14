@@ -15,6 +15,7 @@ from apps.projects.models import (
 from services import REPO
 from services.project.django_impl import DjangoProjectHandler
 from services.project.exceptions import (
+    CompetitionEntryConflictError,
     InvalidCompetitionError,
     InvalidProjectStateError,
     ProjectNotFoundError,
@@ -497,6 +498,21 @@ class TestEnterCompetition:
 
         with pytest.raises(InvalidCompetitionError):
             handler.enter_competition(project.id, competition.id, user.id)
+
+    def test_entering_a_round_the_project_is_already_in_is_a_conflict(self):
+        """Not `InvalidCompetitionError`: the round is open and the project is
+        allowed in it — it is simply already there. The entered round is absent
+        from `opportunities`, so without an explicit check the eligibility
+        lookup would fall through and call an open round closed."""
+        user = UserFactory()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+        competition = self._open()
+        handler.enter_competition(project.id, competition.id, user.id)
+
+        with pytest.raises(CompetitionEntryConflictError):
+            handler.enter_competition(project.id, competition.id, user.id)
+
+        assert CompetitionEntry.objects.count() == 1
 
     def test_a_second_competition_in_the_same_series_is_rejected(self):
         user = UserFactory()

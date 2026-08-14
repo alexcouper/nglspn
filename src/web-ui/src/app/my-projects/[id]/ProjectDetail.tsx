@@ -139,21 +139,33 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     };
   }, [isReady, projectId, formInitialized]);
 
-  // Always re-fetch, success or failure: a rejected entry usually means the
-  // standing on screen is stale, and a stale control is worse than an error.
+  // Reports whether the entry landed, because callers act on it: the
+  // post-publish dialog navigates away on success and has to stay put
+  // otherwise, or a refused entry would read as an accepted one.
   const handleEnterCompetition = useCallback(
-    async (competitionId: string) => {
+    async (competitionId: string): Promise<boolean> => {
       setCompetitionError("");
+      let entered = true;
       try {
         await api.myProjects.enterCompetition(projectId, competitionId);
       } catch (err) {
+        entered = false;
         setCompetitionError(
           describeApiError(err, "Couldn't enter this competition.")
         );
       }
-      const refreshed = await api.myProjects.get(projectId);
-      setProject(refreshed);
-      return refreshed;
+
+      // Always re-fetch, success or failure: a rejected entry usually means the
+      // standing on screen is stale, and a stale control is worse than an
+      // error. Its own try/catch, though — a failed read must not turn a write
+      // that succeeded into a rejection, which is what an unguarded await here
+      // did.
+      try {
+        setProject(await api.myProjects.get(projectId));
+      } catch {
+        // Keep what's on screen. The entry either happened or was reported.
+      }
+      return entered;
     },
     [projectId]
   );
@@ -507,8 +519,12 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           opportunities={(
             publishedProject.competition_standing?.opportunities ?? []
           ).filter((opportunity) => opportunity.eligible)}
+          error={competitionError}
           onEnter={async (competitionId) => {
-            await handleEnterCompetition(competitionId);
+            // Only leave on success. Navigating regardless sent the
+            // contributor to their project list believing they had entered,
+            // with the reason they hadn't rendered on the page behind them.
+            if (!(await handleEnterCompetition(competitionId))) return;
             setPublishedProject(null);
             router.push("/my-projects");
           }}

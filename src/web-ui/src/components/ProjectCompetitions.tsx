@@ -50,17 +50,26 @@ export function ProjectCompetitions({
   error,
 }: ProjectCompetitionsProps) {
   const [enteringId, setEnteringId] = useState<string | null>(null);
+  // The parent reports what it knows through `error`. This covers the case it
+  // can't: `onEnter` rejecting outright, which would otherwise leave the row
+  // looking untouched and the failure only in the console.
+  const [unreportedError, setUnreportedError] = useState("");
   const { entries, opportunities } = standing;
   const collapsedReason = projectWideReason(opportunities);
 
   const handleEnter = async (competitionId: string) => {
     setEnteringId(competitionId);
+    setUnreportedError("");
     try {
       await onEnter(competitionId);
+    } catch {
+      setUnreportedError("Couldn't enter this competition. Please try again.");
     } finally {
       setEnteringId(null);
     }
   };
+
+  const shownError = error || unreportedError;
 
   // Tipoffs never enter competitions, so listing rounds and explaining why
   // they're out of reach is noise on a page about somebody else's project.
@@ -73,9 +82,9 @@ export function ProjectCompetitions({
     <section>
       <h3 className="text-foreground font-medium">Competitions</h3>
 
-      {error && (
+      {shownError && (
         <p role="alert" className="text-red-600 text-sm mt-3">
-          {error}
+          {shownError}
         </p>
       )}
 
@@ -102,12 +111,7 @@ export function ProjectCompetitions({
                 Entered {formatDate(entry.entered_at)}
               </span>
               <CompetitionStatusBadge
-                status={
-                  entry.competition
-                    .status as React.ComponentProps<
-                    typeof CompetitionStatusBadge
-                  >["status"]
-                }
+                status={entry.competition.status}
                 className="text-xs"
               />
             </li>

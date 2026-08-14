@@ -81,14 +81,15 @@
 ## 8. Backfill
 
 - [ ] 8.1 Management command seeding events from existing published projects,
-      tipoffs and competitions at their original timestamps. Articles are out of
-      scope — they arrive through the publish path
+      tipoffs and competitions at their original timestamps, back to the earliest
+      record with no cut-off. Articles are out of scope — they arrive through the
+      publish path
 - [ ] 8.2 Make it idempotent: a re-run appends only what earlier runs missed and
       duplicates nothing. Test the run-twice and run-after-new-records cases
 - [ ] 8.3 Assert the command fires no in-app notification and no email
-- [ ] 8.4 Decide and record how far back the launch backfill reaches
-- [ ] 8.5 Launch sequencing: ship the feed, run the backfill, then publish the
-      two pending drafts a few days apart so each takes a turn as the lead
+- [ ] 8.4 Launch sequencing: ship the feed, run the backfill, then publish the
+      pending drafts — the house announcement first — a few days apart so each
+      takes a turn as the lead
 
 ## 9. Verification
 

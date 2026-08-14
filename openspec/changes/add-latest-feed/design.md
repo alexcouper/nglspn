@@ -159,9 +159,11 @@ reviewable.
 
 - **Backfill is a judgement call.** An empty stream on launch shows nothing at
   all. → Seed from existing projects, tipoffs and competitions at their original
-  timestamps, so the tab has history on day one. This must not fire
-  notifications — the same constraint that governed the Phase 4 content
-  backfill.
+  timestamps, back to the earliest record with no cut-off, so the tab has real
+  history on day one. Depth costs nothing to read: the feed is cursor-paginated
+  from the start, so old entries sit behind paging rather than in the first
+  response. This must not fire notifications — the same constraint that governed
+  the Phase 4 content backfill.
 
 - **Articles are out of the backfill's scope**, and as of 2026-08-14 no article
   has been published — the two that exist are drafts, held until this ships.
@@ -171,11 +173,12 @@ reviewable.
   articles and re-running is a safe correction rather than a duplicate-producing
   one.
 
-## Open Questions
+## Launch
 
-- Does the announcement itself get published as an article on the house project,
-  making it the first lead the tab ever shows? It would be a good test of the
-  freshness rule with real content.
-- How far back should the launch backfill reach — everything, or the last few
-  months? Affects nothing structurally; it affects whether the tab reads as a
-  log or a highlights reel.
+The announcement goes out as an article on the house project — drafted already,
+held until this ships. It is therefore the first lead the tab ever shows, and
+the freshness rule gets exercised on real content from day one.
+
+Order: ship the feed, run the backfill, then publish the pending drafts a few
+days apart. Only the newest entry can lead, so publishing them together would
+spend the second one's turn at the top.

@@ -215,8 +215,9 @@ of text and a link to Discover.
 ### Requirement: Launch backfill
 
 The launch backfill SHALL seed the stream from existing projects, tipoffs and
-competitions using each record's original timestamp. Articles are out of its
-scope: article entries enter the stream only through the publish path.
+competitions using each record's original timestamp, covering their full history
+with no cut-off date. Articles are out of its scope: article entries enter the
+stream only through the publish path.
 
 The backfill SHALL be idempotent — running it more than once SHALL NOT produce
 duplicate entries, and a second run SHALL append only events its earlier runs

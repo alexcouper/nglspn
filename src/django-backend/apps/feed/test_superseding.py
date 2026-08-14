@@ -1,11 +1,16 @@
 import pytest
 from django.utils import timezone
 
-from apps.articles.models import ArticleState
+from apps.articles.models import ArticleGlobalVisibility, ArticleState
 from apps.feed.models import FeedEvent, FeedEventKind
 from apps.projects.models import ProjectStatus
 from services import HANDLERS, REPO
-from tests.factories import ArticleFactory, CompetitionFactory, ProjectFactory
+from tests.factories import (
+    ArticleFactory,
+    CompetitionFactory,
+    ProjectFactory,
+    UserFactory,
+)
 
 
 def approved_project(**kwargs):
@@ -23,15 +28,22 @@ def won_competition():
     )
 
 
-def write_up(event=None, *, title="How Broadside won Chili"):
+def write_up(event=None, *, title="How Broadside won Chili", author=None):
     """Publish an article, optionally as the write-up of `event`."""
+    project = approved_project()
     article = ArticleFactory(
-        project=approved_project(),
+        project=project,
+        author=author or project.creator,
         state=ArticleState.DRAFT,
         title=title,
         about_feed_event=event,
     )
     return HANDLERS.articles.publish(article.id)
+
+
+def write_up_awaiting_review(event=None, *, title="An unreviewed take"):
+    """A write-up by an untrusted author: published, but `pending`."""
+    return write_up(event, title=title, author=UserFactory(article_trust=False))
 
 
 def rendered_ids() -> set:
@@ -99,6 +111,53 @@ class TestSuperseding:
         article = write_up(winner_event)
 
         HANDLERS.articles.delete_article(article.id)
+
+        winner_event.refresh_from_db()
+        assert winner_event.superseded_by_id is None
+        assert winner_event.id in rendered_ids()
+
+
+@pytest.mark.django_db
+class TestSupersedingFollowsTheWriteUpsVisibility:
+    """A supersession only holds while the write-up is actually being served.
+
+    An article the feed will not render cannot stand in for the event it
+    replaced: the bare event would be hidden as superseded, the article's own
+    entry hidden as invisible, and the feed would show neither.
+    """
+
+    def test_a_write_up_awaiting_review_supersedes_nothing(self):
+        winner_event = won_competition()
+
+        article = write_up_awaiting_review(winner_event)
+
+        winner_event.refresh_from_db()
+        assert winner_event.superseded_by_id is None
+        assert winner_event.id in rendered_ids()
+        assert FeedEvent.objects.get(article=article).id not in rendered_ids()
+
+    def test_approving_the_write_up_takes_the_bare_event_over(self):
+        winner_event = won_competition()
+        article = write_up_awaiting_review(winner_event)
+
+        HANDLERS.articles.set_global_visibility(
+            article.id, ArticleGlobalVisibility.APPROVED
+        )
+
+        winner_event.refresh_from_db()
+        article_event = FeedEvent.objects.get(article=article)
+        assert winner_event.superseded_by_id == article_event.id
+        assert winner_event.id not in rendered_ids()
+        assert article_event.id in rendered_ids()
+
+    def test_demoting_the_write_up_gives_the_bare_event_back(self):
+        winner_event = won_competition()
+        article = write_up(winner_event)
+        assert winner_event.id not in rendered_ids()
+
+        HANDLERS.articles.set_global_visibility(
+            article.id, ArticleGlobalVisibility.DEMOTED
+        )
 
         winner_event.refresh_from_db()
         assert winner_event.superseded_by_id is None

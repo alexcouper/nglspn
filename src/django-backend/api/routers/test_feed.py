@@ -5,7 +5,7 @@ from django.db import connection
 from django.test.utils import CaptureQueriesContext
 from django.utils import timezone
 
-from apps.articles.models import ArticleState
+from apps.articles.models import ArticleGlobalVisibility, ArticleState
 from apps.feed.models import FeedEvent, FeedEventKind
 from apps.projects.models import ProjectStatus
 from services import HANDLERS
@@ -14,6 +14,7 @@ from tests.factories import (
     CompetitionFactory,
     ProjectFactory,
     ProjectImageFactory,
+    UserFactory,
 )
 
 FEED_URL = "/api/feed"
@@ -37,6 +38,17 @@ def published_article(*, published_at=None, about=None, title="A write-up"):
     return HANDLERS.articles.publish(article.id, published_at=published_at)
 
 
+def article_awaiting_review(*, title="Held back"):
+    """What an untrusted author's publish produces: published, but `pending`."""
+    article = ArticleFactory(
+        project=approved_project(),
+        author=UserFactory(article_trust=False),
+        state=ArticleState.DRAFT,
+        title=title,
+    )
+    return HANDLERS.articles.publish(article.id)
+
+
 def get_feed(client, **params):
     response = client.get(FEED_URL, params)
     assert response.status_code == 200
@@ -45,6 +57,12 @@ def get_feed(client, **params):
 
 def entry_ids(payload) -> list[str]:
     return [entry["id"] for entry in payload["entries"]]
+
+
+def served_ids(payload) -> list[str]:
+    """Every entry the page renders — the lead is held out of `entries`."""
+    lead = payload.get("lead")
+    return ([lead["id"]] if lead else []) + entry_ids(payload)
 
 
 def page_through(client, *, limit: int) -> list[str]:
@@ -149,6 +167,52 @@ class TestFeedSubjectVisibility:
         payload = get_feed(client)
         assert payload["lead"] is None
         assert entry_ids(payload) == []
+
+    def test_an_article_awaiting_review_is_not_served(self, client):
+        article = article_awaiting_review()
+        event = FeedEvent.objects.get(article=article)
+
+        assert str(event.id) not in served_ids(get_feed(client))
+
+    def test_approving_serves_the_entry_appended_at_publish_time(self, client):
+        """Approval writes nothing to the feed.
+
+        The entry was appended when the article published; only the read filter
+        was holding it back, so flipping visibility is the whole transition.
+        """
+        article = article_awaiting_review()
+        event = FeedEvent.objects.get(article=article)
+        assert str(event.id) not in served_ids(get_feed(client))
+
+        HANDLERS.articles.set_global_visibility(
+            article.id, ArticleGlobalVisibility.APPROVED
+        )
+
+        assert str(event.id) in served_ids(get_feed(client))
+
+    def test_demoting_an_article_withdraws_its_entry(self, client):
+        article = published_article()
+        event = FeedEvent.objects.get(article=article)
+        assert str(event.id) in served_ids(get_feed(client))
+
+        HANDLERS.articles.set_global_visibility(
+            article.id, ArticleGlobalVisibility.DEMOTED
+        )
+
+        assert str(event.id) not in served_ids(get_feed(client))
+
+    def test_demoting_leaves_the_admin_retirement_flag_alone(self, client):
+        """`retired_at` means an admin withdrew an entry, which is not what
+        demoting an article says. Overloading it would let a re-approval
+        silently undo a deliberate retirement.
+        """
+        article = published_article()
+
+        HANDLERS.articles.set_global_visibility(
+            article.id, ArticleGlobalVisibility.DEMOTED
+        )
+
+        assert FeedEvent.objects.get(article=article).retired_at is None
 
 
 @pytest.mark.django_db

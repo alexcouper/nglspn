@@ -38,6 +38,7 @@ export function toListItem(
     state: article.state,
     published_at: article.published_at,
     global_visibility: article.global_visibility,
+    is_globally_visible: article.is_globally_visible,
     channel: article.channel,
     listing_image_url:
       imageUrlOverride !== undefined

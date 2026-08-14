@@ -171,6 +171,10 @@ class ArticleListItem(Schema):
     state: str
     published_at: datetime | None
     global_visibility: str
+    # Derived rather than left to the client: only an editor's listing carries
+    # invisible rows at all, and the rule for which ones those are belongs on one
+    # side of the wire.
+    is_globally_visible: bool
     channel: ArticleChannelRef
     listing_image_url: str | None
     listing_crop: CropRect | None
@@ -179,6 +183,10 @@ class ArticleListItem(Schema):
     def resolve_channel(obj: Any) -> dict[str, Any]:
         channel = obj.channel
         return {"id": channel.id, "name": channel.name}
+
+    @staticmethod
+    def resolve_is_globally_visible(obj: Any) -> bool:
+        return obj.is_globally_visible
 
     # REPO.articles.for_project selects whole rows, so obj.body is already
     # loaded and this costs no extra queries. Do not add .only(...) to that

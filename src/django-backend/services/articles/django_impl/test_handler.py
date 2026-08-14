@@ -363,6 +363,16 @@ class TestPublish:
 
         enqueue.assert_not_called()
 
+    def test_publish_awaiting_review_enqueues_nothing(self):
+        """A follower notified now would land on a 404 until an admin approves."""
+        author = UserFactory(article_trust=False)
+        article = ArticleFactory(project=ProjectFactory(owner=author), author=author)
+
+        with _patched_enqueue() as enqueue:
+            self.handler.publish(article.id)
+
+        enqueue.assert_not_called()
+
 
 @pytest.mark.django_db
 class TestPublishQueryCount:
@@ -463,6 +473,98 @@ class TestSetGlobalVisibility:
             article.id, article.global_visibility
         )
         assert result.global_visibility == article.global_visibility
+
+
+@pytest.mark.django_db
+class TestFanOutOnApproval:
+    """Publish holds the fan-out back while an article is invisible, so approval
+    is where its followers finally hear about it.
+    """
+
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def _publish_awaiting_review(self) -> Article:
+        author = UserFactory(article_trust=False)
+        article = ArticleFactory(project=ProjectFactory(owner=author), author=author)
+        with _patched_enqueue():
+            return self.handler.publish(article.id)
+
+    def test_approving_enqueues_the_fan_out_task(self):
+        article = self._publish_awaiting_review()
+
+        with _patched_enqueue() as enqueue:
+            self.handler.set_global_visibility(
+                article.id, ArticleGlobalVisibility.APPROVED
+            )
+
+        enqueue.assert_called_once_with(str(article.id))
+
+    def test_demoting_enqueues_nothing(self):
+        article = ArticleFactory()
+        with _patched_enqueue():
+            self.handler.publish(article.id)
+
+        with _patched_enqueue() as enqueue:
+            self.handler.set_global_visibility(
+                article.id, ArticleGlobalVisibility.DEMOTED
+            )
+
+        enqueue.assert_not_called()
+
+    def test_a_draft_moved_to_approved_enqueues_nothing(self):
+        """`global_visibility` is settable on an unpublished article. It has no
+        audience until it publishes, and publish will do the enqueue itself.
+        """
+        article = ArticleFactory()
+
+        with _patched_enqueue() as enqueue:
+            self.handler.set_global_visibility(
+                article.id, ArticleGlobalVisibility.APPROVED
+            )
+
+        enqueue.assert_not_called()
+
+    def test_approving_a_backdated_publish_enqueues_nothing(self):
+        """Same reason publish suppresses it: a historical row is not news."""
+        author = UserFactory(article_trust=False)
+        article = ArticleFactory(project=ProjectFactory(owner=author), author=author)
+        with _patched_enqueue():
+            self.handler.publish(
+                article.id, published_at=timezone.now() - timedelta(days=7)
+            )
+
+        with _patched_enqueue() as enqueue:
+            self.handler.set_global_visibility(
+                article.id, ArticleGlobalVisibility.APPROVED
+            )
+
+        enqueue.assert_not_called()
+
+    def test_re_approving_notifies_each_follower_once(self):
+        """The fan-out is idempotent per (recipient, article), so a demote and a
+        second approval must not deliver the article twice.
+        """
+        author = UserFactory(article_trust=False)
+        project = ProjectFactory(owner=author)
+        channel = ChannelFactory(project=project, name="Updates")
+        follower = UserFactory()
+        follow = Follow.objects.create(user=follower, project=project)
+        FollowedChannel.objects.create(follow=follow, channel=channel)
+        article = ArticleFactory(project=project, channel=channel, author=author)
+        self.handler.publish(article.id)
+
+        for value in (
+            ArticleGlobalVisibility.APPROVED,
+            ArticleGlobalVisibility.DEMOTED,
+            ArticleGlobalVisibility.APPROVED,
+        ):
+            self.handler.set_global_visibility(article.id, value)
+
+        delivered = Notification.objects.filter(
+            recipient=follower, article=article
+        ).count()
+        assert delivered == 1
 
 
 @pytest.mark.django_db

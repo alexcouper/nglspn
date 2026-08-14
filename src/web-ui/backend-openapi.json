@@ -6481,6 +6481,10 @@
             "title": "Global Visibility",
             "type": "string"
           },
+          "is_globally_visible": {
+            "title": "Is Globally Visible",
+            "type": "boolean"
+          },
           "channel": {
             "$ref": "#/components/schemas/ArticleChannelRef"
           },
@@ -6514,6 +6518,7 @@
           "state",
           "published_at",
           "global_visibility",
+          "is_globally_visible",
           "channel",
           "listing_image_url",
           "listing_crop"

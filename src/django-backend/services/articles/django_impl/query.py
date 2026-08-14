@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from django.db.models import F
 
-from apps.articles.models import Article, ArticleState
+from apps.articles.models import Article
 from apps.follows.models import Channel
 from services.articles.query_interface import ArticleQueryInterface
 
@@ -47,15 +47,15 @@ class DjangoArticleQuery(ArticleQueryInterface):
         self,
         project_id: UUID,
         *,
-        include_drafts: bool = False,
+        include_hidden: bool = False,
     ) -> QuerySet[Article]:
         qs = (
             Article.objects.filter(project_id=project_id)
             .select_related("channel", "author", "listing_image")
             .order_by(F("published_at").desc(nulls_first=True), "-created_at")
         )
-        if not include_drafts:
-            qs = qs.filter(state=ArticleState.PUBLISHED)
+        if not include_hidden:
+            qs = qs.globally_visible()
         return qs
 
     def list_channels_for_project(self, project_id: UUID) -> QuerySet[Channel]:

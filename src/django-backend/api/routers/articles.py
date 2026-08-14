@@ -23,7 +23,7 @@ from api.schemas.project import (
     PresignedUploadResponse,
     ProjectImageResponse,
 )
-from apps.articles.models import Article, ArticleState
+from apps.articles.models import Article
 from apps.projects.models import Project, ProjectImage, UploadStatus
 from apps.users.models import User
 from services import HANDLERS, REPO
@@ -44,7 +44,15 @@ from services.images.handler_interface import FileMeta
 router = Router()
 
 
-def _can_view_draft(article: Article, user: User | None) -> bool:
+def _can_view_hidden(article: Article, user: User | None) -> bool:
+    """Who may read an article the site is not showing globally.
+
+    Authorisation, deliberately separate from `Article.is_globally_visible`:
+    that answers "does this render for everyone", this answers "may this user
+    see it anyway". Covers drafts, articles awaiting admin review and demoted
+    articles alike — an author keeps access to their own work in edit mode
+    whatever the site has decided about it.
+    """
     if user is None:
         return False
     if article.author_id == user.id:
@@ -101,10 +109,13 @@ def list_articles(
     project = resolve_visible_project_or_404(slug, user)
     if isinstance(project, tuple):
         return project
-    include_drafts = user is not None and REPO.project.user_can_edit(
+    # Edit rights are what the my-projects article table is fetched with, and
+    # that table is where an author sees their drafts and anything held back
+    # from global rendering.
+    include_hidden = user is not None and REPO.project.user_can_edit(
         project.id, user.id
     )
-    return list(REPO.articles.for_project(project.id, include_drafts=include_drafts))
+    return list(REPO.articles.for_project(project.id, include_hidden=include_hidden))
 
 
 @router.get(
@@ -124,7 +135,7 @@ def get_article_by_slug(
     article = REPO.articles.get_by_project_and_slug(slug, article_slug)
     if article is None or article.project_id != project.id:
         return 404, {"detail": "Article not found"}
-    if article.state != ArticleState.PUBLISHED and not _can_view_draft(article, user):
+    if not article.is_globally_visible and not _can_view_hidden(article, user):
         return 404, {"detail": "Article not found"}
     return article
 
@@ -146,10 +157,8 @@ def get_article(
     article = _get_article_in_project(project, article_id)
     if isinstance(article, tuple):
         return article
-    if article.state != ArticleState.PUBLISHED and not _can_view_draft(
-        article, request.auth
-    ):
-        return 403, {"detail": "You don't have access to this draft"}
+    if not article.is_globally_visible and not _can_view_hidden(article, request.auth):
+        return 403, {"detail": "You don't have access to this article"}
     return article
 
 

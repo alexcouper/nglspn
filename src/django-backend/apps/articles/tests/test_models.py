@@ -100,3 +100,23 @@ class TestIsGloballyVisibleProperty:
         )
 
         assert article.is_globally_visible is False
+
+
+@pytest.mark.django_db
+class TestVisibilityRuleIsSpelledTheSameTwice:
+    """The rule exists as a Python predicate and as a queryset condition.
+
+    Neither can be derived from the other cheaply: ``Q.check()`` compiles and
+    executes SQL, and the property is read per row while serialising a feed
+    page. So the two spellings share only ``GLOBALLY_VISIBLE_STATES``, and this
+    exhausts the state space to catch the day they disagree.
+    """
+
+    @pytest.mark.parametrize("visibility", ArticleGlobalVisibility.values)
+    @pytest.mark.parametrize("state", ArticleState.values)
+    def test_property_and_queryset_agree(self, state: str, visibility: str):
+        article = ArticleFactory(state=state, global_visibility=visibility)
+
+        in_queryset = Article.objects.globally_visible().filter(pk=article.pk).exists()
+
+        assert article.is_globally_visible == in_queryset

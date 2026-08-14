@@ -51,6 +51,17 @@ def _is_backdated(published_at: datetime | None) -> bool:
     return published_at < timezone.now() - timedelta(seconds=60)
 
 
+def _enqueue_fan_out(article: Article) -> None:
+    # Local import: api.tasks reaches back into the service layer.
+    from api.tasks.notifications import (  # noqa: PLC0415
+        create_article_notifications,
+    )
+
+    # `str`, not `UUID`: the DatabaseBackend serialises task arguments through
+    # `normalize_json`, which a bare UUID does not survive.
+    create_article_notifications.enqueue(str(article.id))
+
+
 def _resolve_visibility_on_publish(article: Article) -> str:
     if article.source == ArticleSource.EXTERNAL:
         # Phase 6 governance: external articles route via feed approval state,
@@ -157,7 +168,9 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             article.save(update_fields=["state", "published_at", "global_visibility"])
             if article.slug is None:
                 assign_unique_article_slug(article)
-            if not _is_backdated(effective_published_at):
+            if article.is_globally_visible and not _is_backdated(
+                effective_published_at
+            ):
                 # Fan-out is ~2N queries on a house-channel publish, so it goes
                 # to the worker rather than the request. Enqueued *inside* the
                 # transaction on purpose: the queue is a table
@@ -169,11 +182,11 @@ class DjangoArticleHandler(ArticleHandlerInterface):
                 # The backdating guard stays here: the task only gets an id,
                 # and from the row alone a backdated publish and a live publish
                 # the worker was slow to reach look identical.
-                from api.tasks.notifications import (  # noqa: PLC0415
-                    create_article_notifications,
-                )
-
-                create_article_notifications.enqueue(str(article.id))
+                #
+                # An article held for review notifies nobody yet — the link
+                # would 404 for every recipient. set_global_visibility picks the
+                # fan-out up when an admin approves it.
+                _enqueue_fan_out(article)
 
         return article
 
@@ -189,8 +202,24 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         article = self._get_article(article_id)
         if article.global_visibility == value:
             return article
-        article.global_visibility = value
-        article.save(update_fields=["global_visibility"])
+
+        was_visible = article.is_globally_visible
+        with transaction.atomic():
+            article.global_visibility = value
+            article.save(update_fields=["global_visibility"])
+            # Becoming visible is when this article's followers can finally read
+            # it, so it is where the fan-out publish held back happens. Safe to
+            # re-run: the fan-out is get_or_create per (recipient, article), so a
+            # demote-then-approve delivers nothing twice.
+            #
+            # The feed needs no equivalent hook — its read filter reads the same
+            # visibility, in both directions.
+            if (
+                not was_visible
+                and article.is_globally_visible
+                and not _is_backdated(article.published_at)
+            ):
+                _enqueue_fan_out(article)
         return article
 
     # ------------------------------------------------------------------

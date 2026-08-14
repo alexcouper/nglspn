@@ -35,6 +35,43 @@ class ArticleGlobalVisibility(models.TextChoices):
     DEMOTED = "demoted", "Demoted"
 
 
+# The visibility states that render globally. One tuple, read by the
+# per-instance property, the queryset method and the feed's join filter, so a
+# fifth state is added here and nowhere else.
+GLOBALLY_VISIBLE_STATES = (
+    ArticleGlobalVisibility.AUTO,
+    ArticleGlobalVisibility.APPROVED,
+)
+
+
+def globally_visible_q(prefix: str = "") -> Q:
+    """``Article.is_globally_visible`` as a queryset condition.
+
+    ``prefix`` walks the rule across a relation: ``globally_visible_q("article__")``
+    is what ``apps.feed``'s ``visible_subject()`` needs, since it filters
+    FeedEvent rows by the article hanging off them. Without the prefix that
+    module would have to spell the rule out a second time, somewhere a change
+    here would not reach.
+    """
+    return Q(
+        **{
+            f"{prefix}state": ArticleState.PUBLISHED,
+            f"{prefix}global_visibility__in": GLOBALLY_VISIBLE_STATES,
+        }
+    )
+
+
+class ArticleQuerySet(models.QuerySet):
+    def globally_visible(self) -> "ArticleQuerySet":
+        """The articles the site shows to everyone.
+
+        Drafts, articles awaiting admin review and demoted articles are all
+        excluded — every public read path goes through here, and the author's
+        own views opt out explicitly rather than by forgetting to filter.
+        """
+        return self.filter(globally_visible_q())
+
+
 class Article(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
@@ -119,6 +156,8 @@ class Article(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+    objects = ArticleQuerySet.as_manager()
+
     class Meta:
         db_table = "articles"
         ordering = ["-published_at", "-created_at"]
@@ -153,7 +192,7 @@ class Article(models.Model):
 
     @property
     def is_globally_visible(self) -> bool:
-        return self.state == ArticleState.PUBLISHED and self.global_visibility in {
-            ArticleGlobalVisibility.AUTO,
-            ArticleGlobalVisibility.APPROVED,
-        }
+        return (
+            self.state == ArticleState.PUBLISHED
+            and self.global_visibility in GLOBALLY_VISIBLE_STATES
+        )

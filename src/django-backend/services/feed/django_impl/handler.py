@@ -169,12 +169,30 @@ class DjangoFeedHandler(FeedHandlerInterface):
         article: Article,
         event_id: UUID | None,
     ) -> FeedEvent | None:
-        if event_id is None:
-            return None
+        """Point the event this article writes up at the article's own entry.
 
+        Two-way, because a supersession only holds while the write-up is being
+        served. An article awaiting review or demoted cannot stand in for what it
+        replaced — the bare event would be hidden as superseded and the article's
+        entry hidden as invisible, so the feed would show neither. Called from the
+        post_save signal, so approving or demoting the article re-runs this and
+        the link follows.
+        """
         with transaction.atomic():
             superseding = FeedEvent.objects.filter(article=article).first()
             if superseding is None:
+                return None
+
+            if not article.is_globally_visible:
+                # Hand back whatever this article had taken the place of. It can
+                # take it again on approval: the guard below only skips a target
+                # that is *still* superseded.
+                FeedEvent.objects.filter(superseded_by=superseding).update(
+                    superseded_by=None
+                )
+                return None
+
+            if event_id is None:
                 return None
 
             target = (

@@ -22,7 +22,7 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
         ).visible_subject()
 
     def visible_subject(self) -> "FeedEventQuerySet":
-        """Drop entries whose project is no longer shown on the site.
+        """Drop entries whose subject is no longer shown on the site.
 
         An entry is appended when a project is approved and nothing withdraws it
         if the project is later rejected or iced. Without this the feed keeps
@@ -30,16 +30,25 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
         that 404s for everyone but its owner — the rest of the site treats
         anything but APPROVED as invisible.
 
+        An article carries a second gate of its own: an admin can hold it for
+        review or demote it after the fact, and the entry has to follow. Filtered
+        here rather than maintained on the FeedEvent row, because both directions
+        then come out of one rule — approving needs no feed write at all, and the
+        `articles` join is already in the query for `article__project__status`
+        and for `with_sources()`, so this costs no round trip.
+
         Competition entries have no such state and are left alone.
         """
-        # Local import: apps.projects owns the status vocabulary, and the FK is
-        # declared lazily, so this is the only place the two modules meet.
+        # Local imports: those apps own their own visibility vocabulary, and both
+        # FKs are declared lazily, so this is the only place the modules meet.
+        from apps.articles.models import globally_visible_q  # noqa: PLC0415
         from apps.projects.models import ProjectStatus  # noqa: PLC0415
 
         approved = ProjectStatus.APPROVED
         return self.filter(
             Q(project__isnull=True) | Q(project__status=approved),
-            Q(article__isnull=True) | Q(article__project__status=approved),
+            Q(article__isnull=True)
+            | (Q(article__project__status=approved) & globally_visible_q("article__")),
             Q(discussion__isnull=True) | Q(discussion__project__status=approved),
         )
 

@@ -117,8 +117,11 @@ export function ProjectCompetitions({
 
       {opportunities.length > 0 && (
         <>
+          {/* "Other": the server no longer reports a round the project is
+              already in as an opportunity, so everything here is a round it
+              isn't in. */}
           <h4 className="text-muted-foreground text-xs font-medium uppercase tracking-wide mt-5">
-            Open now
+            Other rounds open now
           </h4>
           {collapsedReason && (
             <p className="text-muted-foreground text-sm mt-2">
@@ -172,10 +175,14 @@ export function ProjectCompetitions({
         </>
       )}
 
+      {/* With entered rounds excluded from opportunities, an empty list means
+          "nothing else on offer" for a project already in a round — telling it
+          no round is open would be false while it sits in three of them. */}
       {opportunities.length === 0 && (
         <p className="text-muted-foreground text-sm mt-3">
-          No round is currently open.
-          {entries.length === 0 && " This project can enter the next one."}
+          {entries.length > 0
+            ? "No other round is open right now."
+            : "No round is currently open. This project can enter the next one."}
         </p>
       )}
     </section>

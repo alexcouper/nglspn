@@ -88,6 +88,21 @@ describe("EnterCompetitionDialog", () => {
     cleanup();
   });
 
+  it("says the project is under review rather than published", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <EnterCompetitionDialog
+        opportunities={[opportunity()]}
+        onEnter={vi.fn()}
+        onDismiss={vi.fn()}
+      />,
+    );
+
+    expect(container.textContent).not.toContain("Published");
+    expect(container.textContent).toContain("goes live once we've reviewed it");
+    expect(container.textContent).toContain("on approval");
+    cleanup();
+  });
+
   it("renders nothing when no round is on offer", async () => {
     const { container, unmount: cleanup } = await mount(
       <EnterCompetitionDialog

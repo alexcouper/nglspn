@@ -739,6 +739,26 @@ class TestEnterCompetition:
         assert_that(response.status_code, equal_to(200))
         assert_that(_entered_competition_ids(response), equal_to([str(competition.id)]))
 
+    def test_entering_moves_the_round_out_of_the_opportunities(
+        self, client, user, auth_headers
+    ) -> None:
+        """Otherwise the round comes back as one the project cannot enter,
+        blocked by its own entry."""
+        competition = _open_competition()
+        project = ProjectFactory(owner=user, status=ProjectStatus.PENDING)
+
+        before = client.get(f"/api/my/projects/{project.id}", **auth_headers)
+        assert_that(_opportunity_for(before, competition)["eligible"], is_(True))
+
+        response = _enter(client, project, competition, auth_headers)
+
+        offered = [
+            candidate["competition"]["id"]
+            for candidate in _standing(response)["opportunities"]
+        ]
+        assert_that(offered, equal_to([]))
+        assert_that(_entered_competition_ids(response), equal_to([str(competition.id)]))
+
     def test_the_entry_records_who_entered_it_and_how(
         self, client, user, auth_headers
     ) -> None:

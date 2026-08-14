@@ -23,6 +23,27 @@ function isEligibleFor(project: Project, competitionId: string): boolean {
   );
 }
 
+function isEnteredIn(project: Project, competitionId: string): boolean {
+  return (project.competition_standing?.entries ?? []).some(
+    (entry) => entry.competition.id === competitionId,
+  );
+}
+
+// What the contributor is waiting on. A pending project is *in* the round —
+// it appears in the round's list once approved, because that list filters to
+// approved. Saying nothing about it read as a refusal.
+const STATE_LABELS: Record<string, string> = {
+  approved: "Live in the round",
+  pending: "Awaiting review",
+  rejected: "Not approved",
+  ice_box: "On ice",
+  draft: "Draft",
+};
+
+function stateLabel(project: Project): string {
+  return STATE_LABELS[project.status] ?? project.status;
+}
+
 function thumbnailFor(project: Project): string | null {
   const images = project.images ?? [];
   const icon = images.find((image) => image.is_icon);
@@ -56,6 +77,7 @@ export function EnterProjectDialog({
   onEntered,
 }: EnterProjectDialogProps) {
   const [candidates, setCandidates] = useState<Project[] | null>(null);
+  const [alreadyIn, setAlreadyIn] = useState<Project[]>([]);
   const [hasAnyProject, setHasAnyProject] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isEntering, setIsEntering] = useState(false);
@@ -75,12 +97,14 @@ export function EnterProjectDialog({
           isEligibleFor(project, competition.id),
         );
         setHasAnyProject(all.length > 0);
+        setAlreadyIn(all.filter((p) => isEnteredIn(p, competition.id)));
         setCandidates(eligible);
         setSelectedId(eligible[0]?.id ?? null);
       },
       (err) => {
         if (cancelled) return;
         setHasAnyProject(false);
+        setAlreadyIn([]);
         setCandidates([]);
         setError(describeApiError(err, "Couldn't load your projects."));
       },
@@ -130,6 +154,32 @@ export function EnterProjectDialog({
         <p className="text-sm text-muted-foreground">Loading your projects...</p>
       )}
 
+      {/* Where they already stand, before what they can do about it. Without
+          this, a user whose projects are all in the round was told only that
+          none of them could enter — true, and read as a rejection. */}
+      {!isLoading && alreadyIn.length > 0 && (
+        <div className="mb-5">
+          <h3 className="text-muted-foreground text-xs font-medium uppercase tracking-wide mb-2">
+            Already in this round
+          </h3>
+          <ul className="divide-y divide-border">
+            {alreadyIn.map((project) => (
+              <li
+                key={project.id}
+                className="py-2 flex items-center justify-between gap-3"
+              >
+                <span className="text-sm text-foreground truncate">
+                  {project.title || "Untitled Project"}
+                </span>
+                <span className="text-xs text-muted-foreground flex-shrink-0">
+                  {stateLabel(project)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {!isLoading && hasCandidates && (
         <>
           <ChoiceList
@@ -153,11 +203,13 @@ export function EnterProjectDialog({
 
       {!isLoading && !hasCandidates && (
         <p className="text-sm text-muted-foreground mb-5">
-          {hasAnyProject
-            ? "None of your projects can enter this round. Anything already in this run of competitions can't enter again."
-            : "You haven't added a project yet."}{" "}
+          {alreadyIn.length > 0
+            ? "Nothing else of yours can enter this round."
+            : hasAnyProject
+              ? "None of your projects can enter this round. Anything already in this run of competitions can't enter again."
+              : "You haven't added a project yet."}{" "}
           Create a project and you&apos;ll be offered this round when you
-          publish it.
+          submit it.
         </p>
       )}
 

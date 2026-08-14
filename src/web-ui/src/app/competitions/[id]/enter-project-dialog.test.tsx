@@ -57,6 +57,7 @@ function project(
     id: `project-${title.toLowerCase()}`,
     title,
     tagline: `${title} does a thing`,
+    status: "pending",
     images: [],
     competition_standing: {
       entries: [],
@@ -65,6 +66,28 @@ function project(
         reason: null,
         blocking_entry: null,
       })),
+    },
+  } as unknown as Project;
+}
+
+/** A project already holding an entry in `competition` — so the server reports
+ *  it under entries and never as an opportunity. */
+function enteredProject(
+  title: string,
+  status: string,
+  entered: CompetitionSummary = competition(),
+): Project {
+  return {
+    id: `project-${title.toLowerCase()}`,
+    title,
+    tagline: `${title} does a thing`,
+    status,
+    images: [],
+    competition_standing: {
+      entries: [
+        { competition: entered, entered_at: "2026-06-04T09:30:00Z", entered_via: "manual" },
+      ],
+      opportunities: [],
     },
   } as unknown as Project;
 }
@@ -161,6 +184,63 @@ describe("EnterProjectDialog", () => {
       "project-alpha",
       "june",
     );
+    cleanup();
+  });
+
+  it("reports a pending project as in the round, awaiting review", async () => {
+    vi.mocked(api.myProjects.list).mockResolvedValue([
+      enteredProject("Fluglest", "pending"),
+    ]);
+
+    const { container, unmount: cleanup } = await open();
+
+    expect(container.textContent).toContain("Already in this round");
+    expect(container.textContent).toContain("Fluglest");
+    expect(container.textContent).toContain("Awaiting review");
+    expect(container.textContent).not.toContain(
+      "None of your projects can enter this round",
+    );
+    cleanup();
+  });
+
+  it("reports an approved project as live in the round", async () => {
+    vi.mocked(api.myProjects.list).mockResolvedValue([
+      enteredProject("Kortavefur", "approved"),
+    ]);
+
+    const { container, unmount: cleanup } = await open();
+
+    expect(container.textContent).toContain("Live in the round");
+    cleanup();
+  });
+
+  it("says nothing else can enter when everything is already in", async () => {
+    vi.mocked(api.myProjects.list).mockResolvedValue([
+      enteredProject("Fluglest", "pending"),
+    ]);
+
+    const { container, unmount: cleanup } = await open();
+
+    expect(container.textContent).toContain(
+      "Nothing else of yours can enter this round",
+    );
+    expect(container.querySelector('a[href="/create"]')).not.toBeNull();
+    expect(buttonLabelled(container, "Enter")).toBeUndefined();
+    cleanup();
+  });
+
+  it("shows both what is in and what can still be entered", async () => {
+    vi.mocked(api.myProjects.list).mockResolvedValue([
+      enteredProject("Fluglest", "pending"),
+      project("Bokasafn", [{ competition: competition(), eligible: true }]),
+    ]);
+
+    const { container, unmount: cleanup } = await open();
+
+    expect(container.textContent).toContain("Already in this round");
+    expect(container.textContent).toContain("Fluglest");
+    expect(container.textContent).toContain("Bokasafn");
+    expect(buttonLabelled(container, "Enter")).toBeDefined();
     cleanup();
   });
 

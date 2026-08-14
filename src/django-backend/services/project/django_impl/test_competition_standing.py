@@ -110,6 +110,47 @@ class TestOpportunities:
         assert_eligible_for(standing, monthly)
         assert_eligible_for(standing, hackathon)
 
+    def test_an_open_round_the_project_is_in_is_not_an_opportunity(self):
+        """The entry is the answer for that round. Reporting it again as an
+        opportunity listed it twice and named it as its own blocker."""
+        project = published_project()
+        entered = open_competition(entry_series="monthly")
+        CompetitionEntryFactory(competition=entered, project=project)
+
+        standing = query.competition_standing(project)
+
+        assert_that(
+            [entry.competition.id for entry in standing.entries],
+            equal_to([entered.id]),
+        )
+        assert_that(standing.opportunities, is_(empty()))
+
+    def test_a_different_open_round_of_the_same_series_is_still_reported(self):
+        project = published_project()
+        entered = open_competition(entry_series="monthly")
+        CompetitionEntryFactory(competition=entered, project=project)
+        other = open_competition(entry_series="monthly")
+
+        standing = query.competition_standing(project)
+
+        assert_blocked_for(standing, other, IneligibleReason.ALREADY_IN_SERIES)
+        assert_that(
+            opportunity_for(standing, other).blocking_entry.id, equal_to(entered.id)
+        )
+
+    def test_the_two_lists_never_name_the_same_competition(self):
+        project = published_project()
+        CompetitionEntryFactory(
+            competition=open_competition(entry_series="summer"), project=project
+        )
+        open_competition(entry_series="monthly")
+
+        standing = query.competition_standing(project)
+
+        entered_ids = {entry.competition.id for entry in standing.entries}
+        offered_ids = {o.competition.id for o in standing.opportunities}
+        assert_that(entered_ids & offered_ids, equal_to(set()))
+
     def test_a_competition_that_is_not_open_is_not_an_opportunity(self):
         CompetitionFactory(status=CompetitionStatus.VOTING)
 
@@ -280,9 +321,13 @@ class TestStampingAList:
             )
         }
 
-        assert_blocked_for(
-            stamped[entered.id], competition, IneligibleReason.ALREADY_IN_SERIES
+        # The entered project holds the round; the other is offered it. Two
+        # different answers from one pass, which is the point of stamping.
+        assert_that(
+            [entry.competition.id for entry in stamped[entered.id].entries],
+            equal_to([competition.id]),
         )
+        assert_that(stamped[entered.id].opportunities, is_(empty()))
         assert_eligible_for(stamped[eligible.id], competition)
 
     def test_stamping_does_not_issue_a_query_per_project(self):

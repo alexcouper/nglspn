@@ -61,16 +61,21 @@ export function EnterCompetitionDialog({
       onClose={onDismiss}
       labelledBy="enter-competition-title"
     >
+      {/* Not "Published": publish() sets PENDING and an admin approves it, so
+          saying published at the moment the contributor is paying most
+          attention would be a plain untruth. The second line matters as much —
+          told only that it will be reviewed, a contributor reasonably assumes
+          entering a round has to wait for the verdict. It doesn't. */}
       <h2
         id="enter-competition-title"
         className="text-base font-semibold text-foreground"
       >
-        Published. Enter it in a competition?
+        That&apos;s it sent. Enter it in a competition?
       </h2>
       <p className="text-sm text-muted-foreground mt-2 mb-4">
-        {opportunities.length === 1
-          ? "This round is open to your project right now."
-          : "These rounds are open to your project right now."}
+        It goes live once we&apos;ve reviewed it. Entering now is fine — it
+        joins {opportunities.length === 1 ? "the round" : "a round"} on
+        approval.
       </p>
 
       <ChoiceList

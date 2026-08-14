@@ -468,6 +468,11 @@ def _standing(
     for entry in newest_first:
         blocking_by_series.setdefault(entry.competition.entry_series, entry.competition)
 
+    # A round the project is already in is reported as an entry, which says more
+    # than an opportunity could. Asking "may it enter this round" of a round it
+    # is in produced a duplicate row naming itself as the blocker.
+    entered_ids = {entry.competition_id for entry in entries}
+
     return CompetitionStanding(
         entries=[
             ProjectEntry(
@@ -480,6 +485,7 @@ def _standing(
         opportunities=[
             _opportunity(project, competition, blocking_by_series)
             for competition in open_competitions
+            if competition.id not in entered_ids
         ],
     )
 

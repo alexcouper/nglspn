@@ -248,13 +248,47 @@ describe("ProjectCompetitions", () => {
     cleanup();
   });
 
-  it("says no round is open when there is nothing to enter", async () => {
+  it("says no round is open when the project is in none and none are open", async () => {
     const { container, unmount: cleanup } = await mount(
       <ProjectCompetitions standing={standing()} onEnter={vi.fn()} />,
     );
 
     expect(container.textContent).toContain("No round is currently open");
     expect(container.textContent).toContain("can enter the next one");
+    cleanup();
+  });
+
+  it("says no OTHER round is open when the project is already in one", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <ProjectCompetitions
+        standing={standing({ entries: [entry()] })}
+        onEnter={vi.fn()}
+      />,
+    );
+
+    expect(container.textContent).toContain("No other round is open");
+    expect(container.textContent).not.toContain("No round is currently open");
+    cleanup();
+  });
+
+  it("heads the open rounds as the ones the project is not already in", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <ProjectCompetitions
+        standing={standing({
+          entries: [entry()],
+          opportunities: [
+            opportunity({
+              competition: competition({ id: "competition-2", name: "Summer" }),
+            }),
+          ],
+        })}
+        onEnter={vi.fn()}
+      />,
+    );
+
+    expect(container.textContent).toContain("Other rounds open now");
+    // The entered round is named once, above — never repeated below.
+    expect(container.textContent?.match(/June round/g)).toHaveLength(1);
     cleanup();
   });
 

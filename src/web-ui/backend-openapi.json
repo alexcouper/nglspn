@@ -3146,6 +3146,93 @@
         ]
       }
     },
+    "/api/my/projects/{project_id}/competition-entry": {
+      "post": {
+        "operationId": "api_routers_my_projects_enter_competition",
+        "summary": "Enter Competition",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "project_id",
+            "schema": {
+              "title": "Project Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Conflict",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "My Projects"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CompetitionEntryRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
     "/api/my/projects/{project_id}/images/upload-url": {
       "post": {
         "operationId": "api_routers_my_projects_get_upload_url",
@@ -5247,6 +5334,108 @@
         "title": "TagWithCategoryResponse",
         "type": "object"
       },
+      "CompetitionOpportunityResponse": {
+        "properties": {
+          "competition": {
+            "$ref": "#/components/schemas/CompetitionSummary"
+          },
+          "eligible": {
+            "title": "Eligible",
+            "type": "boolean"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "enum": [
+                  "community_project",
+                  "project_status",
+                  "already_in_series"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Reason"
+          },
+          "blocking_entry": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompetitionSummary"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "competition",
+          "eligible"
+        ],
+        "title": "CompetitionOpportunityResponse",
+        "type": "object"
+      },
+      "CompetitionStandingResponse": {
+        "description": "Where a project stands. An empty `opportunities` means no competition is\naccepting applications — not that the project is ineligible.",
+        "properties": {
+          "entries": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ProjectEntryResponse"
+            },
+            "title": "Entries",
+            "type": "array"
+          },
+          "opportunities": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/CompetitionOpportunityResponse"
+            },
+            "title": "Opportunities",
+            "type": "array"
+          }
+        },
+        "title": "CompetitionStandingResponse",
+        "type": "object"
+      },
+      "CompetitionSummary": {
+        "description": "Enough of a competition to render and link to it without a second call.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "slug": {
+            "title": "Slug",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "submission_deadline": {
+            "format": "date",
+            "title": "Submission Deadline",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "slug",
+          "status",
+          "submission_deadline"
+        ],
+        "title": "CompetitionSummary",
+        "type": "object"
+      },
       "ContributorSummary": {
         "properties": {
           "user": {
@@ -5299,6 +5488,29 @@
           "height"
         ],
         "title": "ImageVariantResponse",
+        "type": "object"
+      },
+      "ProjectEntryResponse": {
+        "properties": {
+          "competition": {
+            "$ref": "#/components/schemas/CompetitionSummary"
+          },
+          "entered_at": {
+            "format": "date-time",
+            "title": "Entered At",
+            "type": "string"
+          },
+          "entered_via": {
+            "title": "Entered Via",
+            "type": "string"
+          }
+        },
+        "required": [
+          "competition",
+          "entered_at",
+          "entered_via"
+        ],
+        "title": "ProjectEntryResponse",
         "type": "object"
       },
       "ProjectImageResponse": {
@@ -5556,6 +5768,16 @@
             "default": false,
             "title": "Is Followed",
             "type": "boolean"
+          },
+          "competition_standing": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompetitionStandingResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -6648,6 +6870,21 @@
           "missing"
         ],
         "title": "PublishMissingFieldsResponse",
+        "type": "object"
+      },
+      "CompetitionEntryRequest": {
+        "description": "Required: the endpoint never infers which competition to enter. Guessing\nis what the publish side effect did, and is the bug this replaces.",
+        "properties": {
+          "competition_id": {
+            "format": "uuid",
+            "title": "Competition Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "competition_id"
+        ],
+        "title": "CompetitionEntryRequest",
         "type": "object"
       },
       "PresignedUploadRequest": {

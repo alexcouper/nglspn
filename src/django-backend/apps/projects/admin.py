@@ -22,7 +22,9 @@ from services.email.django_impl import render_email
 
 from .models import (
     Competition,
+    CompetitionEntry,
     CompetitionReviewer,
+    EntrySource,
     ImageVariant,
     Project,
     ProjectCategory,
@@ -640,23 +642,36 @@ class CompetitionReviewerInline(admin.TabularInline):
     autocomplete_fields = ("user",)
 
 
+class CompetitionEntryInline(admin.TabularInline):
+    """Replaces the dual-list project picker, which `admin.E013` forbids on a
+    M2M with a through model. Worse to use for bulk additions; buys the audit
+    trail on every row."""
+
+    model = CompetitionEntry
+    extra = 0
+    autocomplete_fields = ("project",)
+    readonly_fields = ("entered_at", "entered_via", "entered_by")
+
+
 @admin.register(Competition)
 class CompetitionAdmin(admin.ModelAdmin):
     change_form_template = "admin/competition_change_form.html"
     list_display = (
         "thumbnail",
         "name",
+        "entry_series",
         "start_date",
         "submission_deadline",
         "winner_name",
         "project_count",
         "reviewer_count",
     )
-    list_filter = ("start_date", "submission_deadline")
+    # entry_series is free text, so a typo is a new series that excludes
+    # nothing. Listing and filtering on it is how that becomes visible.
+    list_filter = ("entry_series", "start_date", "submission_deadline")
     search_fields = ("name",)
-    filter_horizontal = ("projects",)
     autocomplete_fields = ("winner",)
-    inlines = [CompetitionReviewerInline]
+    inlines = [CompetitionEntryInline, CompetitionReviewerInline]
     ordering = ("-start_date",)
     actions = ("end_review_period",)
     readonly_fields = (
@@ -697,10 +712,43 @@ class CompetitionAdmin(admin.ModelAdmin):
             {"fields": ("status", "winner")},
         ),
         (
-            "Projects",
-            {"fields": ("projects",)},
+            "Entry",
+            {
+                "fields": ("entry_series",),
+                "description": (
+                    "A project may hold one entry per series. Leave as "
+                    "'monthly' for a regular round; give a one-off its own "
+                    "slug so past entrants can take part."
+                ),
+            },
         ),
     )
+
+    def save_formset(
+        self,
+        request: HttpRequest,
+        form: Any,
+        formset: Any,
+        change: bool,  # noqa: FBT001 — Django's signature, not ours
+    ) -> None:
+        """Stamp provenance on entries added through the inline.
+
+        `entered_via` and `entered_by` are readonly on the form, so new rows
+        arrive blank and would otherwise violate the model's choices.
+        """
+        if formset.model is not CompetitionEntry:
+            super().save_formset(request, form, formset, change)
+            return
+
+        instances = formset.save(commit=False)
+        for instance in instances:
+            if instance._state.adding:  # noqa: SLF001
+                instance.entered_via = EntrySource.ADMIN
+                instance.entered_by = request.user
+            instance.save()
+        for deleted in formset.deleted_objects:
+            deleted.delete()
+        formset.save_m2m()
 
     @admin.display(description="Image")
     def thumbnail(self, obj: Competition) -> SafeString:

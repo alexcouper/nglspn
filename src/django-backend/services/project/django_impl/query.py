@@ -4,12 +4,14 @@ from typing import Any
 from urllib.parse import urlparse
 from uuid import UUID
 
-from django.db.models import Count, Q, QuerySet
+from django.db.models import Count, Q, QuerySet, prefetch_related_objects
 from django.db.models.functions import Coalesce, Lower
 from django.utils import timezone
 
 from apps.projects.models import (
     Competition,
+    CompetitionEntry,
+    CompetitionStatus,
     ContributorRole,
     Project,
     ProjectCategory,
@@ -21,8 +23,12 @@ from services.images.django_impl.query import gallery_prefetch
 from services.project.exceptions import ProjectNotFoundError
 from services.project.query_interface import (
     CategoryItem,
+    CompetitionOpportunity,
+    CompetitionStanding,
     DiscoverProjectItem,
+    IneligibleReason,
     PaginatedProjects,
+    ProjectEntry,
     ProjectListItem,
     ProjectQueryInterface,
     WinnerItem,
@@ -409,3 +415,94 @@ class DjangoProjectQuery(ProjectQueryInterface):
                 return None
         icon = resolve_image_by_purpose(project, "icon")
         return variant_url(icon, "thumb")
+
+    def competition_standing(self, project: Project) -> CompetitionStanding:
+        return _standing(project, _entries_for(project), _open_competitions())
+
+    def with_competition_standing(
+        self, projects: QuerySet[Project] | list[Project]
+    ) -> list[Project]:
+        """Stamp each project's standing, at a fixed cost for the whole list.
+
+        The open competitions are resolved once rather than per project, and
+        the entries come from a prefetch, so a list of fifty projects costs the
+        same two extra queries as a list of one.
+        """
+        projects = list(projects)
+        # Prefetched either way, so `.all()` below reads the cache rather than
+        # issuing a query per project.
+        prefetch_related_objects(projects, "competition_entries__competition")
+
+        open_competitions = _open_competitions()
+        for project in projects:
+            project._competition_standing = _standing(  # noqa: SLF001
+                project,
+                list(project.competition_entries.all()),
+                open_competitions,
+            )
+        return projects
+
+
+def _open_competitions() -> list[Competition]:
+    return list(
+        Competition.objects.filter(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS
+        ).order_by("-start_date")
+    )
+
+
+def _entries_for(project: Project) -> list[CompetitionEntry]:
+    return list(project.competition_entries.select_related("competition"))
+
+
+def _standing(
+    project: Project,
+    entries: list[CompetitionEntry],
+    open_competitions: list[Competition],
+) -> CompetitionStanding:
+    newest_first = sorted(entries, key=lambda entry: entry.entered_at, reverse=True)
+
+    # One blocker per series, the most recent, so a project that somehow holds
+    # two entries in a series is told about the one it will recognise.
+    blocking_by_series: dict[str, Competition] = {}
+    for entry in newest_first:
+        blocking_by_series.setdefault(entry.competition.entry_series, entry.competition)
+
+    return CompetitionStanding(
+        entries=[
+            ProjectEntry(
+                competition=entry.competition,
+                entered_at=entry.entered_at,
+                entered_via=entry.entered_via,
+            )
+            for entry in newest_first
+        ],
+        opportunities=[
+            _opportunity(project, competition, blocking_by_series)
+            for competition in open_competitions
+        ],
+    )
+
+
+def _opportunity(
+    project: Project,
+    competition: Competition,
+    blocking_by_series: dict[str, Competition],
+) -> CompetitionOpportunity:
+    """The four ordered rules, first match wins."""
+    if project.is_community_tipoff:
+        reason, blocking = IneligibleReason.COMMUNITY_PROJECT, None
+    elif project.status in (ProjectStatus.REJECTED, ProjectStatus.ICE_BOX):
+        reason, blocking = IneligibleReason.PROJECT_STATUS, None
+    elif competition.entry_series in blocking_by_series:
+        reason = IneligibleReason.ALREADY_IN_SERIES
+        blocking = blocking_by_series[competition.entry_series]
+    else:
+        reason, blocking = None, None
+
+    return CompetitionOpportunity(
+        competition=competition,
+        eligible=reason is None,
+        reason=reason,
+        blocking_entry=blocking,
+    )

@@ -1,6 +1,5 @@
 from typing import Any
 
-from django.db.models import QuerySet
 from django.http import Http404, HttpRequest
 from django.shortcuts import get_object_or_404
 from ninja import Router
@@ -8,6 +7,7 @@ from ninja import Router
 from api.auth.security import auth
 from api.schemas.errors import Error
 from api.schemas.project import (
+    CompetitionEntryRequest,
     ImageUploadCompleteRequest,
     PresignedUploadRequest,
     PresignedUploadResponse,
@@ -27,12 +27,20 @@ from services import HANDLERS, REPO
 from services.images.exceptions import ImageError
 from services.images.handler_interface import FileMeta
 from services.project.exceptions import (
+    CompetitionEntryConflictError,
+    InvalidCompetitionError,
     InvalidProjectStateError,
     InvalidTagsError,
     ProjectNotFoundError,
     PublishPreconditionsError,
 )
 from services.project.handler_interface import CreateProjectInput, UpdateProjectInput
+
+
+def _with_standing(project: Project) -> Project:
+    """Competition standing is a /my-projects concern; the public routes leave
+    the field null."""
+    return REPO.project.with_competition_standing([project])[0]
 
 
 def _get_editable_project_or_404(project_id: str, user: User) -> Project:
@@ -51,8 +59,10 @@ router = Router()
     auth=auth,
     tags=["My Projects"],
 )
-def list_my_projects(request: HttpRequest) -> QuerySet[Project]:
-    return REPO.project.list_for_owner(request.auth.id)
+def list_my_projects(request: HttpRequest) -> list[Project]:
+    return REPO.project.with_competition_standing(
+        REPO.project.list_for_owner(request.auth.id)
+    )
 
 
 @router.get(
@@ -61,8 +71,10 @@ def list_my_projects(request: HttpRequest) -> QuerySet[Project]:
     auth=auth,
     tags=["My Projects"],
 )
-def list_my_tip_offs(request: HttpRequest) -> QuerySet[Project]:
-    return REPO.project.list_tip_offs_for(request.auth.id)
+def list_my_tip_offs(request: HttpRequest) -> list[Project]:
+    return REPO.project.with_competition_standing(
+        REPO.project.list_tip_offs_for(request.auth.id)
+    )
 
 
 @router.post(
@@ -92,7 +104,7 @@ def create_project(
         project = HANDLERS.project.create(data)
     except InvalidTagsError as exc:
         return 400, {"detail": str(exc)}
-    return 201, project
+    return 201, _with_standing(project)
 
 
 @router.get(
@@ -105,7 +117,7 @@ def get_my_project(
     request: HttpRequest, project_id: str
 ) -> Project | tuple[int, dict[str, str]]:
     try:
-        return REPO.project.get_for_owner(project_id, request.auth.id)
+        return _with_standing(REPO.project.get_for_owner(project_id, request.auth.id))
     except ProjectNotFoundError:
         return 404, {"detail": "Not Found"}
 
@@ -133,7 +145,9 @@ def update_project(
         tag_ids=payload.tag_ids or [],
     )
     try:
-        return HANDLERS.project.update(project_id, request.auth.id, data)
+        return _with_standing(
+            HANDLERS.project.update(project_id, request.auth.id, data)
+        )
     except ProjectNotFoundError:
         return 404, {"detail": "Not Found"}
     except InvalidTagsError as exc:
@@ -168,7 +182,7 @@ def resubmit_project(
     project_id: str,
 ) -> Project | tuple[int, dict[str, str]]:
     try:
-        return HANDLERS.project.resubmit(project_id, request.auth.id)
+        return _with_standing(HANDLERS.project.resubmit(project_id, request.auth.id))
     except ProjectNotFoundError:
         return 404, {"detail": "Not Found"}
     except InvalidProjectStateError as exc:
@@ -191,13 +205,45 @@ def publish_project(
     project_id: str,
 ) -> Project | tuple[int, dict[str, Any]]:
     try:
-        return HANDLERS.project.publish(project_id, request.auth.id)
+        return _with_standing(HANDLERS.project.publish(project_id, request.auth.id))
     except ProjectNotFoundError:
         return 404, {"detail": "Not Found"}
     except PublishPreconditionsError as exc:
         return 400, {"detail": str(exc), "missing": exc.missing}
     except InvalidProjectStateError as exc:
         return 400, {"detail": str(exc), "missing": []}
+
+
+@router.post(
+    "/{project_id}/competition-entry",
+    response={
+        200: ProjectResponse,
+        400: Error,
+        401: Error,
+        404: Error,
+        409: Error,
+    },
+    auth=auth,
+    tags=["My Projects"],
+)
+def enter_competition(
+    request: HttpRequest,
+    project_id: str,
+    payload: CompetitionEntryRequest,
+) -> Project | tuple[int, dict[str, str]]:
+    try:
+        project = HANDLERS.project.enter_competition(
+            project_id, payload.competition_id, request.auth.id
+        )
+    except ProjectNotFoundError:
+        return 404, {"detail": "Not Found"}
+    except InvalidProjectStateError as exc:
+        return 400, {"detail": str(exc)}
+    except InvalidCompetitionError as exc:
+        return 400, {"detail": str(exc)}
+    except CompetitionEntryConflictError as exc:
+        return 409, {"detail": str(exc)}
+    return _with_standing(project)
 
 
 @router.post(

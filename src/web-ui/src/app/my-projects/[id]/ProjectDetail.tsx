@@ -19,6 +19,8 @@ import { ProjectDetailContent } from "@/app/projects/[slug]/ProjectDetailContent
 import { EditProjectContent } from "./EditProjectContent";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
 import { PublishDialog } from "./PublishDialog";
+import { EnterCompetitionDialog } from "./EnterCompetitionDialog";
+import { ProjectCompetitions } from "@/components/ProjectCompetitions";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import type { SelectedTag } from "@/components/TagSelector";
 
@@ -50,6 +52,10 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
   const [publishMissing, setPublishMissing] = useState<string[] | null>(null);
+  // Set on a successful publish, cleared when the contributor enters or
+  // dismisses. Publishing itself enters nothing.
+  const [publishedProject, setPublishedProject] = useState<Project | null>(null);
+  const [competitionError, setCompetitionError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [images, setImages] = useState<ProjectImage[]>([]);
   const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
@@ -134,6 +140,25 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     };
   }, [isReady, projectId, formInitialized]);
 
+  // Always re-fetch, success or failure: a rejected entry usually means the
+  // standing on screen is stale, and a stale control is worse than an error.
+  const handleEnterCompetition = useCallback(
+    async (competitionId: string) => {
+      setCompetitionError("");
+      try {
+        await api.myProjects.enterCompetition(projectId, competitionId);
+      } catch (err) {
+        setCompetitionError(
+          describeApiError(err, "Couldn't enter this competition.")
+        );
+      }
+      const refreshed = await api.myProjects.get(projectId);
+      setProject(refreshed);
+      return refreshed;
+    },
+    [projectId]
+  );
+
   const handleFormChange = useCallback((data: ProjectFormData) => {
     setFormData(data);
   }, []);
@@ -192,7 +217,15 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         tag_ids: formData.tag_ids,
       });
 
-      await api.myProjects.publish(project.id);
+      const published = await api.myProjects.publish(project.id);
+      const openToIt = (
+        published.competition_standing?.opportunities ?? []
+      ).filter((opportunity) => opportunity.eligible);
+      if (openToIt.length > 0) {
+        setProject(published);
+        setPublishedProject(published);
+        return;
+      }
       // Send the owner to their project list. The public /projects/{slug} page
       // would 404 here because the project is now PENDING rather than APPROVED,
       // and the server-side fetch has no auth context to apply owner visibility.
@@ -445,6 +478,22 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         )
       )}
 
+      {project.competition_standing && (
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 pt-6">
+          <ProjectCompetitions
+            standing={project.competition_standing}
+            wonCompetitionSlugs={(project.won_competitions ?? []).map(
+              (won) => won.slug
+            )}
+            isCommunityTipoff={project.is_community_tipoff}
+            onEnter={async (competitionId) => {
+              await handleEnterCompetition(competitionId);
+            }}
+            error={competitionError}
+          />
+        </div>
+      )}
+
       <div className="py-6 text-center">
         <Link href="/my-projects" className="text-sm text-accent hover:text-accent-hover transition-colors">
           Back to my projects
@@ -464,6 +513,23 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         missing={publishMissing ?? []}
         onClose={() => setPublishMissing(null)}
       />
+
+      {publishedProject && (
+        <EnterCompetitionDialog
+          opportunities={(
+            publishedProject.competition_standing?.opportunities ?? []
+          ).filter((opportunity) => opportunity.eligible)}
+          onEnter={async (competitionId) => {
+            await handleEnterCompetition(competitionId);
+            setPublishedProject(null);
+            router.push("/my-projects");
+          }}
+          onDismiss={() => {
+            setPublishedProject(null);
+            router.push("/my-projects");
+          }}
+        />
+      )}
     </>
   );
 }

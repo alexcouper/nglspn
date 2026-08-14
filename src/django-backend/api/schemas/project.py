@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, Literal
 from uuid import UUID
 
@@ -61,6 +61,46 @@ class WonCompetitionInfo(Schema):
     slug: str
 
 
+class CompetitionSummary(Schema):
+    """Enough of a competition to render and link to it without a second call."""
+
+    id: UUID
+    name: str
+    slug: str
+    status: str
+    submission_deadline: date
+
+
+class ProjectEntryResponse(Schema):
+    competition: CompetitionSummary
+    entered_at: datetime
+    entered_via: str
+
+
+class CompetitionOpportunityResponse(Schema):
+    competition: CompetitionSummary
+    eligible: bool
+    reason: (
+        Literal["community_project", "project_status", "already_in_series"] | None
+    ) = None
+    blocking_entry: CompetitionSummary | None = None
+
+
+class CompetitionEntryRequest(Schema):
+    """Required: the endpoint never infers which competition to enter. Guessing
+    is what the publish side effect did, and is the bug this replaces."""
+
+    competition_id: UUID
+
+
+class CompetitionStandingResponse(Schema):
+    """Where a project stands. An empty `opportunities` means no competition is
+    accepting applications — not that the project is ineligible."""
+
+    entries: list[ProjectEntryResponse] = []
+    opportunities: list[CompetitionOpportunityResponse] = []
+
+
 class ContributorSummary(Schema):
     user: PublicUserProfile
     role: Literal["owner", "tipster"]
@@ -93,10 +133,18 @@ class ProjectResponse(Schema):
     won_competitions: list[WonCompetitionInfo] = []
     is_community_tipoff: bool = False
     is_followed: bool = False
+    # Populated on /api/my-projects only. Somebody else's entry opportunities
+    # are meaningless, and computing them would cost queries on every public
+    # page — the same reason is_followed is route-dependent.
+    competition_standing: CompetitionStandingResponse | None = None
 
     @staticmethod
     def resolve_owner(obj: Any) -> Any:
         return obj.creator
+
+    @staticmethod
+    def resolve_competition_standing(obj: Any) -> Any:
+        return getattr(obj, "_competition_standing", None)
 
     @staticmethod
     def resolve_contributors(obj: Any) -> list[Any]:

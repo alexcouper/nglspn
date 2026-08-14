@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
+import { EligibleProjectChooser } from "./EligibleProjectChooser";
 
 export default function SubmitPage() {
   const router = useRouter();
@@ -53,17 +54,22 @@ export default function SubmitPage() {
       <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
         <div className="max-w-lg mx-auto">
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            Start a New Project
+            Submit a Project
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Drop in a URL — you&apos;ll add the rest before publishing.
+            Enter one you&apos;ve already added, or start something new.
           </p>
         </div>
       </section>
 
       <section className="py-8 px-4 sm:px-6">
         <div className="max-w-lg mx-auto">
+          <EligibleProjectChooser />
+
           <div className="bg-white border border-border rounded-xl p-6">
+            <h2 className="text-foreground font-semibold mb-4">
+              Start a new project
+            </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
                 <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2.5 rounded-lg text-sm">

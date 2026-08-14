@@ -32,8 +32,10 @@ from django.utils import timezone
 
 from apps.projects.models import (
     Competition,
+    CompetitionEntry,
     CompetitionReviewer,
     CompetitionStatus,
+    EntrySource,
     Project,
     ProjectImage,
     ProjectRanking,
@@ -588,7 +590,14 @@ def create_competitions(projects: list[Project], users: list[User]) -> None:
         # Assign projects
         count = min(comp_data["project_count"], len(approved))
         comp_projects = random.sample(approved, count)
-        comp.projects.add(*comp_projects)
+        CompetitionEntry.objects.bulk_create(
+            CompetitionEntry(
+                competition=comp,
+                project=project,
+                entered_via=EntrySource.BACKFILL,
+            )
+            for project in comp_projects
+        )
 
         # Pick a winner for closed competitions
         if comp_data["pick_winner"] and comp_projects:

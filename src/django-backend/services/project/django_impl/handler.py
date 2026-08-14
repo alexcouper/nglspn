@@ -4,13 +4,13 @@ import logging
 from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse
 
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.projects.models import (
-    Competition,
-    CompetitionStatus,
+    CompetitionEntry,
     ContributorRole,
+    EntrySource,
     Project,
     ProjectContributor,
     ProjectImage,
@@ -20,6 +20,8 @@ from apps.projects.slugs import assign_unique_slug
 from apps.tags.models import Tag, TagStatus
 from apps.users.seed import COMMUNITY_USER_ID
 from services.project.exceptions import (
+    CompetitionEntryConflictError,
+    InvalidCompetitionError,
     InvalidProjectStateError,
     InvalidTagsError,
     ProjectNotFoundError,
@@ -212,18 +214,55 @@ class DjangoProjectHandler(ProjectHandlerInterface):
                 ]
             )
 
-            if not project.is_community_tipoff:
-                open_competition = (
-                    Competition.objects.filter(
-                        status=CompetitionStatus.ACCEPTING_APPLICATIONS
-                    )
-                    .order_by("-start_date")
-                    .first()
-                )
-                if open_competition is not None:
-                    open_competition.projects.add(project)
+        # Publishing enters no competition. Entry is its own request against
+        # its own endpoint, naming the competition — see enter_competition().
 
         _enqueue_new_project_notification(project)
+
+        return project
+
+    def enter_competition(
+        self, project_id: UUID, competition_id: UUID, user_id: UUID
+    ) -> Project:
+        project = _get_editable_project(project_id, user_id)
+
+        if project.status == ProjectStatus.DRAFT:
+            msg = "A draft must be published before it can enter a competition"
+            raise InvalidProjectStateError(msg)
+
+        # Re-evaluated here rather than trusted from the caller: the round may
+        # have closed, or somebody may have entered the project, since the
+        # page that offered the control was rendered.
+        standing = _query.competition_standing(project)
+        opportunity = next(
+            (
+                candidate
+                for candidate in standing.opportunities
+                if candidate.competition.id == competition_id
+            ),
+            None,
+        )
+        if opportunity is None:
+            msg = "That competition is not accepting applications"
+            raise InvalidCompetitionError(msg)
+        if not opportunity.eligible:
+            msg = f"This project cannot enter that competition: {opportunity.reason}"
+            raise InvalidCompetitionError(msg)
+
+        try:
+            # The inner atomic is load-bearing: without it the failed insert
+            # leaves the surrounding transaction unusable, so the caller's next
+            # query dies instead of getting its 409.
+            with transaction.atomic():
+                CompetitionEntry.objects.create(
+                    competition=opportunity.competition,
+                    project=project,
+                    entered_via=EntrySource.MANUAL,
+                    entered_by_id=user_id,
+                )
+        except IntegrityError as exc:
+            msg = "This project is already entered in that competition"
+            raise CompetitionEntryConflictError(msg) from exc
 
         return project
 

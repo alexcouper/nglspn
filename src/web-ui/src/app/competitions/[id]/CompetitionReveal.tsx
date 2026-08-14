@@ -129,11 +129,19 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
               Got a project you&apos;re working on?
             </h2>
             <p className="text-muted-foreground text-sm mt-1">
-              Share your project with the community and compete in {competition.name}
+              {isAuthenticated
+                ? `Enter one you've already added, or start a new one, and compete in ${competition.name}`
+                : `Share your project with the community and compete in ${competition.name}`}
             </p>
           </div>
           <Link
-            href="/submit"
+            /* Signed in, the chooser is the useful landing: it lists projects
+               eligible for this round above the new-project form. */
+            href={
+              isAuthenticated
+                ? `/submit?competition=${competition.id}`
+                : "/submit"
+            }
             className="btn-primary flex-shrink-0 inline-flex items-center gap-2"
           >
             <RocketLaunchIcon className="w-4 h-4" />

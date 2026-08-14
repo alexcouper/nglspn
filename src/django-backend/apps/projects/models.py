@@ -5,6 +5,7 @@ from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 from django.utils.text import slugify
 
 from apps.tags.models import Tag
@@ -390,7 +391,18 @@ class Competition(models.Model):
     image_wide_winner = models.ImageField(
         upload_to=competition_image_path, blank=True, null=True
     )
-    projects = models.ManyToManyField(Project, related_name="competitions", blank=True)
+    # A competition belongs to a run of competitions. Entry exclusivity is
+    # scoped to the series: one entry per project per series, so a project that
+    # ran in a monthly round is still free to enter an occasional one-off.
+    # Defaults to "monthly" so a competition created without stating a series
+    # is treated as part of the recurring round — the safe way to be wrong.
+    entry_series = models.SlugField(max_length=50, default="monthly", db_index=True)
+    projects = models.ManyToManyField(
+        Project,
+        through="CompetitionEntry",
+        related_name="competitions",
+        blank=True,
+    )
     winner = models.ForeignKey(
         Project,
         on_delete=models.SET_NULL,
@@ -448,6 +460,53 @@ class Competition(models.Model):
         if self.image_wide_winner:
             return self.image_wide_winner.url
         return None
+
+
+class EntrySource(models.TextChoices):
+    MANUAL = "manual", "Entered by contributor"
+    ADMIN = "admin", "Added by admin"
+    BACKFILL = "backfill", "Backfilled"
+
+
+class CompetitionEntry(models.Model):
+    """A project's presence in a competition, and how it got there.
+
+    The `through` model of `Competition.projects` rather than an audit log
+    beside it: one row means membership and its provenance cannot diverge.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    competition = models.ForeignKey(
+        Competition,
+        on_delete=models.CASCADE,
+        related_name="entries",
+    )
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="competition_entries",
+    )
+    # Not auto_now_add: the backfill writes real historical timestamps rather
+    # than stamping every pre-existing entry with the deploy time.
+    entered_at = models.DateTimeField(default=timezone.now)
+    entered_via = models.CharField(max_length=20, choices=EntrySource.choices)
+    # Nullable: backfilled rows have no user to point at, and deleting an
+    # account must not delete a round's history.
+    entered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="competition_entries",
+    )
+
+    class Meta:
+        db_table = "competition_entries"
+        unique_together = ("competition", "project")
+        ordering = ["-entered_at"]
+
+    def __str__(self) -> str:
+        return f"{self.project} in {self.competition}"
 
 
 class ReviewStatus(models.TextChoices):

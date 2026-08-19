@@ -62,7 +62,7 @@ class Command(BaseCommand):
 
         for competition in Competition.objects.iterator():
             HANDLERS.feed.append_competition_opened(competition)
-            HANDLERS.feed.append_competition_closed(competition)
+            HANDLERS.feed.append_competition_submissions_closed(competition)
             HANDLERS.feed.append_competition_winner(competition)
 
         return {

@@ -10,7 +10,7 @@ const KIND_FLAGS: Record<string, string> = {
   project_published: "New project",
   project_tipoff: "Tipoff",
   competition_opened: "Competition",
-  competition_closed: "Competition closed",
+  competition_submissions_closed: "Submissions closed",
   competition_winner: "Competition winner",
   discussion_promoted: "Discussion",
 };

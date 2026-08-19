@@ -38,7 +38,10 @@ class Migration(migrations.Migration):
                             ("project_published", "Project published"),
                             ("project_tipoff", "Community tipoff"),
                             ("competition_opened", "Competition opened"),
-                            ("competition_closed", "Competition closed"),
+                            (
+                                "competition_submissions_closed",
+                                "Competition submissions closed",
+                            ),
                             ("competition_winner", "Competition winner announced"),
                             ("discussion_promoted", "Discussion promoted"),
                         ],

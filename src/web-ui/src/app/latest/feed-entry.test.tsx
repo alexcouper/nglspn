@@ -164,6 +164,20 @@ describe("renderEntry", () => {
     expect(rendered.href).toBe("/competitions/chili");
   });
 
+  it("flags each competition milestone with its own wording", () => {
+    // The kinds are the backend's strings verbatim. KIND_FLAGS falls back to
+    // "Update" on a miss, so a rename on either side degrades quietly rather
+    // than failing — this is what notices.
+    const flagFor = (kind: string) =>
+      renderEntry(entry({ kind, competition: competitionRef() })).flag;
+
+    expect(flagFor("competition_opened")).toBe("Competition");
+    expect(flagFor("competition_submissions_closed")).toBe(
+      "Submissions closed",
+    );
+    expect(flagFor("competition_winner")).toBe("Competition winner");
+  });
+
   it("has no link when an article has no slug yet", () => {
     const rendered = renderEntry(
       entry({ kind: "article_published", article: articleRef({ slug: null }) }),

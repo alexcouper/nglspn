@@ -227,48 +227,54 @@ class TestCompetitionMilestonesAreDateDriven:
         )
         assert event.occurred_at.date() == date(2025, 3, 1)
 
-    def test_closing_is_dated_to_the_voting_deadline(self):
-        competition = CompetitionFactory(voting_end_date=date(2025, 2, 15))
-
-        event = FeedEvent.objects.get(
-            competition=competition, kind=FeedEventKind.COMPETITION_CLOSED
-        )
-        assert event.occurred_at.date() == date(2025, 2, 15)
-
-    def test_closing_falls_back_to_the_submission_deadline(self):
+    def test_submissions_closing_is_dated_to_the_submission_deadline(self):
+        """Not `voting_end_date`: the beat the feed carries is entries closing
+        and voting opening, which is the one a reader can act on.
+        """
         competition = CompetitionFactory(
-            submission_deadline=date(2025, 1, 31), voting_end_date=None
+            submission_deadline=date(2025, 1, 31), voting_end_date=date(2025, 2, 15)
         )
 
         event = FeedEvent.objects.get(
-            competition=competition, kind=FeedEventKind.COMPETITION_CLOSED
+            competition=competition, kind=FeedEventKind.COMPETITION_SUBMISSIONS_CLOSED
         )
         assert event.occurred_at.date() == date(2025, 1, 31)
 
-    def test_a_competition_still_running_has_not_closed_yet(self):
+    def test_voting_ending_appends_nothing_of_its_own(self):
+        competition = CompetitionFactory(
+            submission_deadline=date(2025, 1, 31), voting_end_date=date(2025, 2, 15)
+        )
+
+        occurred = {
+            event.occurred_at.date()
+            for event in FeedEvent.objects.filter(competition=competition)
+        }
+        assert date(2025, 2, 15) not in occurred
+
+    def test_a_competition_still_taking_entries_has_no_closing_entry(self):
         competition = self._opening_in(-1)
 
         assert renderable_kinds_for(competition) == {FeedEventKind.COMPETITION_OPENED}
 
-    def test_a_deadline_passing_closes_it_with_nobody_touching_the_row(self):
-        """The case a status check could never catch: voting runs out and no
-        winner is ever picked, so nothing saves the competition again.
+    def test_the_deadline_passing_closes_entries_with_nobody_touching_the_row(self):
+        """The case a status check could never catch: the deadline runs out and
+        the competition is not saved again until someone picks a winner.
         """
         competition = self._opening_in(-1)
 
-        with clock_at(timezone.now() + timedelta(days=46)):
+        # Past the submission deadline, still short of the voting end date.
+        with clock_at(timezone.now() + timedelta(days=31)):
             assert renderable_kinds_for(competition) == {
                 FeedEventKind.COMPETITION_OPENED,
-                FeedEventKind.COMPETITION_CLOSED,
+                FeedEventKind.COMPETITION_SUBMISSIONS_CLOSED,
             }
 
 
 @pytest.mark.django_db
-class TestClosingAndWinningDoNotBothAnnounceTheSameThing:
-    def test_a_winner_picked_after_the_deadline_keeps_the_closed_entry(self):
-        """Real chronology: voting closed, and days later someone announced the
-        result. Two entries, in the order they happened.
-        """
+class TestACompetitionsThreeBeats:
+    """Opened, entries closed, winner announced — one row each, in order."""
+
+    def test_a_decided_competition_carries_all_three(self):
         competition = CompetitionFactory()
 
         competition.winner = ProjectFactory()
@@ -276,31 +282,37 @@ class TestClosingAndWinningDoNotBothAnnounceTheSameThing:
 
         assert set(kinds_for(competition=competition)) == {
             FeedEventKind.COMPETITION_OPENED,
-            FeedEventKind.COMPETITION_CLOSED,
+            FeedEventKind.COMPETITION_SUBMISSIONS_CLOSED,
             FeedEventKind.COMPETITION_WINNER,
         }
 
-    def test_the_closed_entry_stays_on_the_deadline_rather_than_the_announcement(self):
-        competition = CompetitionFactory(voting_end_date=date(2025, 2, 15))
+    def test_the_closing_entry_stays_on_the_deadline_not_the_announcement(self):
+        """The bug this replaced: the entry was written when the winner was
+        assigned and backdated to compensate, landing behind the page boundary
+        a reader had already passed.
+        """
+        competition = CompetitionFactory(submission_deadline=date(2025, 1, 31))
 
         competition.winner = ProjectFactory()
         competition.save()
 
         closed = FeedEvent.objects.get(
-            competition=competition, kind=FeedEventKind.COMPETITION_CLOSED
+            competition=competition, kind=FeedEventKind.COMPETITION_SUBMISSIONS_CLOSED
         )
-        assert closed.occurred_at.date() == date(2025, 2, 15)
+        assert closed.occurred_at.date() == date(2025, 1, 31)
 
-    def test_a_winner_picked_early_cancels_the_closure_it_had_scheduled(self):
-        """Otherwise the feed announces the winner today and reports the same
-        competition closing a fortnight later.
+    def test_a_winner_picked_before_entries_closed_cancels_that_beat(self):
+        """A decided competition does not go on to announce that its entries
+        have closed a week later.
         """
         competition = CompetitionFactory(
             start_date=days_from_now(-1),
             submission_deadline=days_from_now(7),
             voting_end_date=days_from_now(14),
         )
-        assert FeedEventKind.COMPETITION_CLOSED in kinds_for(competition=competition)
+        assert FeedEventKind.COMPETITION_SUBMISSIONS_CLOSED in kinds_for(
+            competition=competition
+        )
 
         competition.winner = ProjectFactory()
         competition.save()

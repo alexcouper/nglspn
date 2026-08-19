@@ -13,7 +13,10 @@ class FeedEventKind(models.TextChoices):
     PROJECT_PUBLISHED = "project_published", "Project published"
     PROJECT_TIPOFF = "project_tipoff", "Community tipoff"
     COMPETITION_OPENED = "competition_opened", "Competition opened"
-    COMPETITION_CLOSED = "competition_closed", "Competition closed"
+    COMPETITION_SUBMISSIONS_CLOSED = (
+        "competition_submissions_closed",
+        "Competition submissions closed",
+    )
     COMPETITION_WINNER = "competition_winner", "Competition winner announced"
     DISCUSSION_PROMOTED = "discussion_promoted", "Discussion promoted"
 

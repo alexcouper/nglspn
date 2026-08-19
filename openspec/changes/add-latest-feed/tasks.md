@@ -26,12 +26,14 @@
       backdated publishes
 - [x] 2.2 Append on project publish
 - [x] 2.3 Append on community tipoff
-- [x] 2.4 Append on competition opens / closes / winners announced
-- [x] 2.4a Schedule the two date-driven milestones: append opening and closing as
-      soon as their date is known and hold them out of the feed until it arrives
-      (`renderable()` gates on `occurred_at <= now`), rather than waiting for a
-      save that never comes. A winner announced before the deadline cancels the
-      closure it had scheduled
+- [x] 2.4 Append on competition opens / entries close / winners announced. The
+      middle beat is the submission deadline, when entries close and voting
+      opens; voting's own end date carries no event
+- [x] 2.4a Schedule the two date-driven milestones: append opening and
+      entries-closed as soon as their date is known and hold them out of the
+      feed until it arrives (`renderable()` gates on `occurred_at <= now`),
+      rather than waiting for a save that never comes. A winner announced before
+      the deadline cancels the beat it had scheduled
 - [x] 2.5 Assert no append on article edit or delete, on discussion create, or on
       discussion reply
 - [x] 2.6 Tests for each source, including the backdated-publish position case

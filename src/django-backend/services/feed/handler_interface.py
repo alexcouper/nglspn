@@ -32,7 +32,7 @@ class FeedHandlerInterface(ABC):
     ) -> FeedEvent | None: ...
 
     @abstractmethod
-    def append_competition_closed(
+    def append_competition_submissions_closed(
         self, competition: Competition
     ) -> FeedEvent | None: ...
 

@@ -87,28 +87,30 @@ class DjangoFeedHandler(FeedHandlerInterface):
             competition=competition,
         )
 
-    def append_competition_closed(self, competition: Competition) -> FeedEvent | None:
-        """Closing is a date too — the voting deadline, not a status change.
+    def append_competition_submissions_closed(
+        self, competition: Competition
+    ) -> FeedEvent | None:
+        """Entries close and voting starts — the middle beat worth a row.
 
-        `status` only reaches CLOSED when someone assigns a winner, which is
-        typically weeks after voting ended, so keying off it meant the entry was
-        written late and backdated to the deadline to compensate: a row inserted
-        into history behind the boundary a reader had already paged past. Keyed
-        off the deadline itself, it lands where it belongs and surfaces on time,
-        including for a competition that quietly runs out without a winner.
+        `submission_deadline`, not `voting_end_date`. Voting *ending* is the one
+        moment in a competition's life with nothing for a reader to do, and the
+        winner announcement lands right behind it; submissions closing is the
+        one that asks for something — go and vote. `status` is no use for
+        either: it only reaches CLOSED when someone assigns a winner, weeks
+        later, so an entry keyed off it has to be backdated into history readers
+        have already paged past.
         """
         if competition.winner_id is not None:
-            # Announcing a winner is the closure. A separate "closed" row is
-            # the duplicate pair the feed exists to avoid, so an early winner
-            # cancels the entry its deadline had scheduled. Only ever one that
-            # nobody has seen: a deadline that passed before the winner was
-            # picked is real chronology and stays.
-            self._drop_unsurfaced(FeedEventKind.COMPETITION_CLOSED, competition)
+            # A decided competition does not announce a beat it never reached.
+            # Only ever cancels one nobody has seen — a deadline that passed
+            # before the winner was picked is real chronology and stays.
+            self._drop_unsurfaced(
+                FeedEventKind.COMPETITION_SUBMISSIONS_CLOSED, competition
+            )
             return None
-        deadline = competition.voting_end_date or competition.submission_deadline
         return self._append_dated(
-            FeedEventKind.COMPETITION_CLOSED,
-            occurred_at=as_datetime(deadline),
+            FeedEventKind.COMPETITION_SUBMISSIONS_CLOSED,
+            occurred_at=as_datetime(competition.submission_deadline),
             competition=competition,
         )
 

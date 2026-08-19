@@ -41,6 +41,6 @@ def append_on_competition_change(
 ) -> None:
     handler = HANDLERS.feed
     handler.append_competition_opened(instance)
-    handler.append_competition_closed(instance)
+    handler.append_competition_submissions_closed(instance)
     if instance.winner_id is not None:
         handler.append_competition_winner(instance)

@@ -71,19 +71,18 @@ class TestBackfill:
         assert FeedEventKind.COMPETITION_OPENED in kinds
         assert FeedEventKind.COMPETITION_WINNER in kinds
 
-    def test_seeds_the_closure_of_a_competition_that_ran_out(self):
-        """No winner was ever picked, so the deadline is the closure."""
+    def test_seeds_the_closing_of_a_competition_with_no_winner(self):
         competition = CompetitionFactory(
-            start_date=date(2025, 1, 1), voting_end_date=date(2025, 2, 15)
+            start_date=date(2025, 1, 1), submission_deadline=date(2025, 1, 31)
         )
         wipe_stream()
 
         run_backfill()
 
         closed = FeedEvent.objects.get(
-            competition=competition, kind=FeedEventKind.COMPETITION_CLOSED
+            competition=competition, kind=FeedEventKind.COMPETITION_SUBMISSIONS_CLOSED
         )
-        assert closed.occurred_at.date() == date(2025, 2, 15)
+        assert closed.occurred_at.date() == date(2025, 1, 31)
 
     def test_skips_unapproved_projects(self):
         pending = ProjectFactory(status=ProjectStatus.PENDING)

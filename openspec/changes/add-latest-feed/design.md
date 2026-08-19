@@ -138,9 +138,9 @@ which is the right way round.
 
 ### Date-driven milestones are scheduled, not triggered
 
-**Decision:** a competition's opening and closing events are appended as soon as
-their date is known and held out of the feed until it arrives. The read filter
-gates on `occurred_at <= now`.
+**Decision:** a competition's opening and entries-closed events are appended as
+soon as their date is known and held out of the feed until it arrives. The read
+filter gates on `occurred_at <= now`.
 
 Found during review. The appenders hang off `post_save`, which is a fine trigger
 for an act — publishing, approving, assigning a winner — and the wrong one for a
@@ -163,10 +163,16 @@ literally true rather than nearly true. A date corrected before the entry
 surfaces moves it — nobody has seen it, so there is no position to preserve;
 once it is public the append-only rule takes over.
 
-**Announcing a winner is the closure.** A competition decided before its voting
-deadline cancels the closing entry that deadline had scheduled, rather than
-reporting the winner today and the same competition closing a fortnight later.
-One decided after its deadline keeps both, because that is what happened.
+**The middle beat is the submission deadline, not the voting end.** A
+competition has four dates and only three are worth a row. Voting *ending* is
+the one moment with nothing for a reader to do, and the winner announcement
+lands right behind it — carrying it produced a near-duplicate pair, which is
+what the entries-are-stories rule exists to prevent. Entries closing is the beat
+that asks for something: go and vote. Voting's end date carries no event.
+
+A competition decided before its entries closed cancels the entry that deadline
+had scheduled — it does not go on to announce a beat it never reached. One
+decided afterwards keeps all three, because that is what happened.
 
 ### Copy stays English
 

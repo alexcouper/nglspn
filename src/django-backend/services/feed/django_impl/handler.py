@@ -8,7 +8,7 @@ from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
 
 from apps.feed.models import FeedEvent, FeedEventKind
-from apps.projects.models import CompetitionStatus, ProjectStatus
+from apps.projects.models import ProjectStatus
 from services.feed.exceptions import FeedEventNotFoundError
 from services.feed.handler_interface import FeedHandlerInterface
 
@@ -74,27 +74,41 @@ class DjangoFeedHandler(FeedHandlerInterface):
         )
 
     def append_competition_opened(self, competition: Competition) -> FeedEvent | None:
-        # A competition can be created weeks before it opens. Appending then
-        # would put a future-dated row at the top of the feed, so the event
-        # waits until the date has actually arrived.
-        opened_at = as_datetime(competition.start_date)
-        if opened_at > timezone.now():
-            return None
-        return self._append(
+        """A competition opens on its start date, which is usually still ahead.
+
+        Appended as soon as the date is known rather than when it arrives:
+        nothing saves a competition on the morning it opens, so waiting for a
+        save meant the event never fired for the ordinary case of setting one
+        up in advance. `renderable()` holds it out of the feed until the day.
+        """
+        return self._append_dated(
             FeedEventKind.COMPETITION_OPENED,
-            occurred_at=opened_at,
+            occurred_at=as_datetime(competition.start_date),
             competition=competition,
         )
 
     def append_competition_closed(self, competition: Competition) -> FeedEvent | None:
-        if competition.status != CompetitionStatus.CLOSED:
+        """Closing is a date too — the voting deadline, not a status change.
+
+        `status` only reaches CLOSED when someone assigns a winner, which is
+        typically weeks after voting ended, so keying off it meant the entry was
+        written late and backdated to the deadline to compensate: a row inserted
+        into history behind the boundary a reader had already paged past. Keyed
+        off the deadline itself, it lands where it belongs and surfaces on time,
+        including for a competition that quietly runs out without a winner.
+        """
+        if competition.winner_id is not None:
+            # Announcing a winner is the closure. A separate "closed" row is
+            # the duplicate pair the feed exists to avoid, so an early winner
+            # cancels the entry its deadline had scheduled. Only ever one that
+            # nobody has seen: a deadline that passed before the winner was
+            # picked is real chronology and stays.
+            self._drop_unsurfaced(FeedEventKind.COMPETITION_CLOSED, competition)
             return None
         deadline = competition.voting_end_date or competition.submission_deadline
-        # Setting a winner closes a competition early, so the deadline can still
-        # be ahead of us; the feed records when it actually closed.
-        return self._append(
+        return self._append_dated(
             FeedEventKind.COMPETITION_CLOSED,
-            occurred_at=min(as_datetime(deadline), timezone.now()),
+            occurred_at=as_datetime(deadline),
             competition=competition,
         )
 
@@ -232,6 +246,47 @@ class DjangoFeedHandler(FeedHandlerInterface):
                 )
         except IntegrityError:
             return FeedEvent.objects.filter(**lookup).first()
+
+    def _append_dated(
+        self,
+        kind: str,
+        *,
+        occurred_at: datetime.datetime,
+        **subject,
+    ) -> FeedEvent | None:
+        """Append a milestone whose date may still be ahead of us, or move it.
+
+        A scheduled entry has been seen by nobody, so correcting the date it was
+        scheduled for moves it. Once it has surfaced the append-only rule takes
+        over: its position is what a reader's cursor is measured against, and
+        moving it would serve it twice or not at all.
+        """
+        event = self._append(kind, occurred_at=occurred_at, **subject)
+        if (
+            event is not None
+            and event.occurred_at != occurred_at
+            and event.occurred_at > timezone.now()
+        ):
+            event.occurred_at = occurred_at
+            event.save(update_fields=["occurred_at"])
+        return event
+
+    @staticmethod
+    def _drop_unsurfaced(kind: str, competition: Competition) -> None:
+        """Delete a scheduled entry that is no longer going to happen.
+
+        Deleted rather than retired: `retired_at` records an admin withdrawing
+        something the site had published, and the stream keeps superseded and
+        retired rows so it stays possible to explain why a row sits where it
+        does. An entry that never surfaced has no such history to preserve, and
+        removing it leaves the unique constraint free if the reason it was
+        cancelled is itself undone.
+        """
+        FeedEvent.objects.filter(
+            kind=kind,
+            competition=competition,
+            occurred_at__gt=timezone.now(),
+        ).delete()
 
     @staticmethod
     def _idempotency_lookup(kind: str, subject: dict) -> dict:

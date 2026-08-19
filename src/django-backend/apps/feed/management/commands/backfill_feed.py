@@ -5,9 +5,11 @@ path, and at the time this shipped none had been published. Widening the scope
 later is safe — every append is idempotent, so a re-run adds only what is
 missing.
 
-The command doubles as a reconciler. Competition milestones are date-driven, and
-nothing fires when a date simply passes, so re-running picks up competitions
-that have opened or closed since the last run.
+Competition milestones need no reconciling here. They are appended as soon as
+their date is known and held out of the feed by `renderable()` until it
+arrives, so nothing has to run when a date passes. What this command covers is
+the competitions that already existed when the stream shipped and have not been
+saved since.
 """
 
 from typing import Any

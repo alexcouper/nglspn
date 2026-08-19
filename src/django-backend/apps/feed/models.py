@@ -2,6 +2,7 @@ import uuid
 
 from django.db import models
 from django.db.models import Q
+from django.utils import timezone
 
 from apps.articles.models import globally_visible_q
 from apps.projects.models import ProjectStatus
@@ -19,7 +20,19 @@ class FeedEventKind(models.TextChoices):
 
 class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
     def renderable(self) -> "FeedEventQuerySet":
+        """The rows the feed serves right now.
+
+        The clock is part of the filter. Competition milestones are dates, and
+        nothing saves a competition when one of its dates simply comes round —
+        `post_save` fires when someone edits the row, which is not the same
+        moment. The appender therefore writes the entry as soon as the date is
+        known, and it waits here until `occurred_at` arrives.
+
+        This is what makes an eagerly appended future entry safe: it is in the
+        table, ordered where it belongs, and invisible until its day.
+        """
         return self.filter(
+            occurred_at__lte=timezone.now(),
             superseded_by__isnull=True,
             retired_at__isnull=True,
         ).visible_subject()
@@ -244,7 +257,3 @@ class FeedEvent(models.Model):
             if candidate is not None:
                 return str(candidate)
         return "—"
-
-    @property
-    def is_renderable(self) -> bool:
-        return self.superseded_by_id is None and self.retired_at is None

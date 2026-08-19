@@ -136,6 +136,38 @@ Date fields convert to datetimes at midnight for event purposes. That is
 imprecise for backfilled history and exact for anything announced from here on,
 which is the right way round.
 
+### Date-driven milestones are scheduled, not triggered
+
+**Decision:** a competition's opening and closing events are appended as soon as
+their date is known and held out of the feed until it arrives. The read filter
+gates on `occurred_at <= now`.
+
+Found during review. The appenders hang off `post_save`, which is a fine trigger
+for an act — publishing, approving, assigning a winner — and the wrong one for a
+date. Nothing saves a competition on the morning it opens, so the opening event
+never fired for the ordinary case of setting one up in advance. Closing was
+worse: it keyed off `status`, which only reaches `CLOSED` when someone assigns a
+winner weeks later, and the appender backdated the entry to the voting deadline
+to compensate — writing a row into history behind the boundary anyone reading
+the feed had already paged past.
+
+*Alternatives considered.* A **scheduled reconciler**, run from a CronJob the way
+`enqueue_digest` and `enqueue_notification_cleanup` are, matches existing
+practice but needs a change in the deployment repo and lands each event up to one
+interval late — the row's `occurred_at` would be right and its arrival wouldn't.
+**Appending at the trigger and backdating** is what was there; it is the thing
+that put a row where no reader would find it.
+
+Scheduling costs one clause in `renderable()` and makes the append-only promise
+literally true rather than nearly true. A date corrected before the entry
+surfaces moves it — nobody has seen it, so there is no position to preserve;
+once it is public the append-only rule takes over.
+
+**Announcing a winner is the closure.** A competition decided before its voting
+deadline cancels the closing entry that deadline had scheduled, rather than
+reporting the winner today and the same competition closing a fortnight later.
+One decided after its deadline keeps both, because that is what happened.
+
 ### Copy stays English
 
 Labels are English, matching the rest of the web UI — "New Arrivals",

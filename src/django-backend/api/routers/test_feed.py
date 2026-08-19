@@ -181,6 +181,37 @@ class TestFeedPaging:
 
         assert len(seen) == len(set(seen)) == total
 
+    def test_an_entry_dated_in_the_future_is_not_served_yet(self, client):
+        """Competition milestones are appended as soon as their date is known,
+        so the table holds rows the feed has not reached. The clock is what
+        reveals them — nothing saves a competition on the day it opens.
+        """
+        CompetitionFactory(
+            start_date=(timezone.now() + timedelta(days=14)).date(),
+            submission_deadline=(timezone.now() + timedelta(days=44)).date(),
+            voting_end_date=(timezone.now() + timedelta(days=60)).date(),
+        )
+
+        payload = get_feed(client)
+
+        assert served_ids(payload) == []
+
+    def test_a_scheduled_entry_does_not_hold_the_cursor_open(self, client):
+        """`next_cursor` reports the end of the stream, not the end of the
+        table: a page of nothing followed by a cursor would leave the Show more
+        button on a feed with nothing left behind it.
+        """
+        CompetitionFactory(
+            start_date=(timezone.now() + timedelta(days=14)).date(),
+            submission_deadline=(timezone.now() + timedelta(days=44)).date(),
+            voting_end_date=(timezone.now() + timedelta(days=60)).date(),
+        )
+        approved_project()
+
+        payload = get_feed(client, limit=1)
+
+        assert payload["next_cursor"] is None
+
     def test_retired_entries_are_not_served(self, client):
         project = approved_project()
         event = FeedEvent.objects.get(project=project)

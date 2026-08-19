@@ -71,6 +71,20 @@ class TestBackfill:
         assert FeedEventKind.COMPETITION_OPENED in kinds
         assert FeedEventKind.COMPETITION_WINNER in kinds
 
+    def test_seeds_the_closure_of_a_competition_that_ran_out(self):
+        """No winner was ever picked, so the deadline is the closure."""
+        competition = CompetitionFactory(
+            start_date=date(2025, 1, 1), voting_end_date=date(2025, 2, 15)
+        )
+        wipe_stream()
+
+        run_backfill()
+
+        closed = FeedEvent.objects.get(
+            competition=competition, kind=FeedEventKind.COMPETITION_CLOSED
+        )
+        assert closed.occurred_at.date() == date(2025, 2, 15)
+
     def test_skips_unapproved_projects(self):
         pending = ProjectFactory(status=ProjectStatus.PENDING)
         wipe_stream()
@@ -144,14 +158,15 @@ class TestBackfillDryRun:
 
     def test_reports_what_a_real_run_would_append(self):
         approved_project()
-        # Opened, closed and won — three milestones from the one competition.
+        # Opened and won — two milestones, not three: announcing a winner is
+        # what closed it, so there is no separate closure to report.
         CompetitionFactory(start_date=date(2025, 1, 1), winner=ProjectFactory())
         wipe_stream()
 
         report = dry_run_backfill()
 
         assert "would append 1 project entries" in report
-        assert "3 competition entries" in report
+        assert "2 competition entries" in report
 
     def test_reports_nothing_once_the_stream_is_already_covered(self):
         approved_project()

@@ -1,6 +1,7 @@
 from django.contrib import admin, messages
 from django.db.models import QuerySet
 from django.http import HttpRequest
+from django.utils import timezone
 
 from apps.discussions.models import Discussion
 from services import HANDLERS
@@ -55,6 +56,11 @@ class FeedEventAdmin(admin.ModelAdmin):
             return "superseded"
         if obj.retired_at is not None:
             return "retired"
+        # Competition milestones are appended as soon as their date is known, so
+        # the admin holds rows the feed has not reached yet. Without this they
+        # read as live and an admin goes looking for them on /latest.
+        if obj.occurred_at > timezone.now():
+            return "scheduled"
         return "live"
 
     @admin.action(description="Pin as the feed lead")

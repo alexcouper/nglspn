@@ -68,6 +68,16 @@ community tipoff, or a competition opens, closes, or has its winners announced.
 Appending SHALL be the only way rows enter the stream; no source writes
 retroactively except the launch backfill.
 
+A milestone that is a date rather than an act — a competition opening, and its
+voting closing — SHALL be appended as soon as the date is known and SHALL NOT
+render until that date has arrived. Nothing fires on the day: the date passing
+saves no record, so a source that waited for one would never append at all, and
+one that appended late would have to backdate the entry into history readers
+have already paged past.
+
+A rescheduled milestone SHALL move with its date while the entry is still
+unrendered, and SHALL stay where it is once the feed has served it.
+
 #### Scenario: Article publish appends an event
 - **WHEN** a contributor publishes an article
 - **THEN** a feed event is appended with `occurred_at` equal to the article's
@@ -81,6 +91,32 @@ retroactively except the launch backfill.
 #### Scenario: Competition milestones append events
 - **WHEN** a competition opens, closes, or announces winners
 - **THEN** one feed event is appended per milestone
+
+#### Scenario: A competition set up before it opens
+- **GIVEN** a competition whose start date is a fortnight away
+- **WHEN** it is created
+- **THEN** its opening event is appended, dated to that start date
+- **AND** the feed does not serve it
+- **AND** the feed serves it once the start date has passed, with nothing having
+  saved the competition in between
+
+#### Scenario: Voting running out closes a competition
+- **GIVEN** a competition whose voting end date passes and whose winner is never
+  assigned
+- **WHEN** the date arrives
+- **THEN** the feed serves its closing event, dated to that deadline
+
+#### Scenario: A milestone rescheduled before anyone sees it
+- **GIVEN** a competition whose opening event has not been served yet
+- **WHEN** its start date is changed
+- **THEN** the entry moves to the new date
+
+#### Scenario: Announcing a winner is the closure
+- **GIVEN** a competition whose voting end date is still ahead
+- **WHEN** a winner is assigned
+- **THEN** the feed carries the winner event and no separate closing event
+- **AND** a competition whose deadline had already passed keeps the closing
+  event it had already been served
 
 #### Scenario: Discussion activity appends nothing
 - **WHEN** a discussion thread is created or replied to

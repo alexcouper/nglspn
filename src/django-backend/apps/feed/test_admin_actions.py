@@ -129,3 +129,18 @@ class TestEventLabels:
         assert "Fyrsta" in str(first)
         assert "Annað" in str(second)
         assert str(first) != str(second)
+
+
+@pytest.mark.django_db
+class TestTheFormCannotBypassTheActions:
+    """Pinning and retirement are invariants the actions hold, not free fields.
+
+    Two rows pinned by hand is a silent loss: `page()` holds every pinned entry
+    out and `lead()` renders only the first, so the second leaves the feed with
+    nothing on the page to say why.
+    """
+
+    def test_pinning_and_retirement_are_not_editable_on_the_form(self):
+        readonly = set(feed_admin().get_readonly_fields(FakeRequest()))
+
+        assert {"is_pinned", "retired_at"} <= readonly

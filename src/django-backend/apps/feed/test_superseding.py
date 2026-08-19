@@ -162,3 +162,67 @@ class TestSupersedingFollowsTheWriteUpsVisibility:
         winner_event.refresh_from_db()
         assert winner_event.superseded_by_id is None
         assert winner_event.id in rendered_ids()
+
+
+@pytest.mark.django_db
+class TestRelinkingAWriteUp:
+    """`about_feed_event` is editable in admin, so corrections have to be undoable.
+
+    Nothing else can give a released event back: `superseded_by` is readonly on
+    the FeedEvent form, so an event left pointing at the wrong write-up would
+    stay out of the feed for good.
+    """
+
+    def test_clearing_the_link_gives_the_bare_event_back(self):
+        winner_event = won_competition()
+        article = write_up(winner_event)
+        assert winner_event.id not in rendered_ids()
+
+        article.about_feed_event = None
+        article.save(update_fields=["about_feed_event"])
+
+        winner_event.refresh_from_db()
+        assert winner_event.superseded_by_id is None
+        assert winner_event.id in rendered_ids()
+
+    def test_pointing_at_another_event_releases_the_first(self):
+        first = won_competition()
+        second = won_competition()
+        article = write_up(first)
+
+        article.about_feed_event = second
+        article.save(update_fields=["about_feed_event"])
+
+        first.refresh_from_db()
+        second.refresh_from_db()
+        article_event = FeedEvent.objects.get(article=article)
+        assert first.superseded_by_id is None
+        assert first.id in rendered_ids()
+        assert second.superseded_by_id == article_event.id
+        assert second.id not in rendered_ids()
+
+    def test_re_saving_an_unchanged_link_keeps_the_event_superseded(self):
+        winner_event = won_competition()
+        article = write_up(winner_event)
+
+        article.save(update_fields=["about_feed_event"])
+
+        winner_event.refresh_from_db()
+        article_event = FeedEvent.objects.get(article=article)
+        assert winner_event.superseded_by_id == article_event.id
+        assert winner_event.id not in rendered_ids()
+
+    def test_relinking_leaves_another_write_ups_supersession_alone(self):
+        mine = won_competition()
+        theirs = won_competition()
+        my_article = write_up(mine, title="Mine")
+        their_article = write_up(theirs, title="Theirs")
+
+        my_article.about_feed_event = None
+        my_article.save(update_fields=["about_feed_event"])
+
+        theirs.refresh_from_db()
+        assert (
+            theirs.superseded_by_id == FeedEvent.objects.get(article=their_article).id
+        )
+        assert theirs.id not in rendered_ids()

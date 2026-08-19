@@ -19,6 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
+from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
 if TYPE_CHECKING:
@@ -59,6 +60,12 @@ class FeedCursor:
         except ValueError:
             return None
         if parsed_occurred is None or parsed_created is None:
+            return None
+        # `encode` always writes aware datetimes, so a naive one did not come
+        # from here. Passing it on means comparing naive against an aware
+        # column: Django warns and reads it as local time, putting the page
+        # boundary somewhere the caller never asked for.
+        if timezone.is_naive(parsed_occurred) or timezone.is_naive(parsed_created):
             return None
         return cls(occurred_at=parsed_occurred, created_at=parsed_created)
 

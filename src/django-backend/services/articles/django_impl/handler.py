@@ -242,7 +242,14 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             #
             # The feed needs no equivalent hook — its read filter reads the same
             # visibility, in both directions.
-            if became_visible and not _is_backdated(article.approved_at):
+            #
+            # No backdating guard here, unlike the publish path: `approved_at`
+            # was just set to now, so there is nothing for one to catch. An
+            # approval is news now whatever date the article carries — an import
+            # that should notify nobody arrives already visible and is suppressed
+            # on the publish path instead. See
+            # `TestFanOutOnApproval.test_a_backdated_article_approved_now_is_news_now`.
+            if became_visible:
                 _enqueue_fan_out(article)
         return article
 

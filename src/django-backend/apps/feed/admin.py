@@ -24,7 +24,20 @@ class FeedEventAdmin(admin.ModelAdmin):
         "article__title",
         "discussion__body",
     )
-    readonly_fields = ("id", "kind", "occurred_at", "created_at", "superseded_by")
+    # Pinning and retirement go through the actions below, never the form. Two
+    # rows pinned by hand is not a visible mistake: `page()` holds every pinned
+    # entry out and `lead()` renders only the first, so the second drops out of
+    # the feed with nothing to say why. `set_pinned` is what keeps there being
+    # one lead.
+    readonly_fields = (
+        "id",
+        "kind",
+        "occurred_at",
+        "created_at",
+        "superseded_by",
+        "is_pinned",
+        "retired_at",
+    )
     ordering = ("-occurred_at",)
     autocomplete_fields = ("project", "competition", "article", "discussion")
     actions = ("pin_as_lead", "unpin", "retire_entries", "restore_entries")

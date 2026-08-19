@@ -174,16 +174,24 @@ class DjangoFeedHandler(FeedHandlerInterface):
             if superseding is None:
                 return None
 
-            if not article.is_globally_visible:
-                # Hand back whatever this article had taken the place of. It can
-                # take it again on approval: the guard below only skips a target
-                # that is *still* superseded.
-                FeedEvent.objects.filter(superseded_by=superseding).update(
-                    superseded_by=None
-                )
-                return None
+            # Hand back everything this write-up currently stands in for but no
+            # longer should — it is invisible again, or an admin re-pointed the
+            # link or cleared it. Nothing else can give a stale target back:
+            # `superseded_by` is readonly on the FeedEvent form, so an event left
+            # covered by the wrong write-up would stay out of the feed for good.
+            #
+            # The new target is spared so a re-save is a no-op rather than a
+            # release-and-retake, and so `link_article_to_event` stays idempotent
+            # under the post_save signal that calls it on every article write.
+            held = FeedEvent.objects.filter(superseded_by=superseding)
+            if article.is_globally_visible and event_id is not None:
+                held = held.exclude(pk=event_id)
+            held.update(superseded_by=None)
 
-            if event_id is None:
+            # Nothing to take: the article is not being served, or there is no
+            # link. An invisible one can take its target again on approval —
+            # the release above has just handed it back.
+            if not article.is_globally_visible or event_id is None:
                 return None
 
             target = (

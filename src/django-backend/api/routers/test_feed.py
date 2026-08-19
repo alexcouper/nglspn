@@ -144,6 +144,19 @@ class TestFeedPaging:
 
         assert response.status_code == 422
 
+    def test_a_cursor_without_a_timezone_is_rejected(self, client):
+        """A naive datetime never came from `encode`, which always writes aware.
+
+        Accepting one means comparing it against an aware column, which Django
+        reads as local time behind a warning — a page boundary the caller did
+        not ask for, rather than an error they can see.
+        """
+        response = client.get(
+            FEED_URL, {"before": "2026-01-01T00:00:00|2026-01-01T00:00:00"}
+        )
+
+        assert response.status_code == 422
+
     def test_paging_continues_at_the_largest_page_size(self, client):
         """The page size the API advertises has to be one you can page past.
 

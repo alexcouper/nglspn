@@ -66,9 +66,12 @@ class ArticleAdmin(admin.ModelAdmin):
                     "Visibility is changed with the Approve and Demote actions "
                     "on the article list, not here — approving is what "
                     "notifies the article's followers. Approved is when the "
-                    "article became visible to everyone, which is what decides "
-                    "whether it is still fresh enough to notify anyone about; "
-                    "an import that should notify nobody wants it backdated."
+                    "article became visible to everyone, and approving always "
+                    "stamps it now: an approval is news now, whatever date the "
+                    "article carries. An import that should notify nobody has "
+                    "to arrive already visible, published with its own old "
+                    "date — going through this queue will notify its "
+                    "followers."
                 ),
             },
         ),

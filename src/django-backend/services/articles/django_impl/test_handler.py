@@ -330,6 +330,23 @@ class TestPublish:
 
         assert not Notification.objects.filter(recipient=follower).exists()
 
+    def test_backdated_publish_dates_the_approval_to_the_publish(self):
+        """The import story rests on this field, not on `published_at`.
+
+        An article brought in with its own old date arrives already visible, and
+        `approved_at` has to carry that date rather than now: it is the only
+        thing the fan-out reads to decide the article is not news. Approving
+        through the review queue instead always stamps now and does notify —
+        see `TestFanOutOnApproval.test_a_backdated_article_approved_now_is_news_now`.
+        """
+        backdated = timezone.now() - timedelta(days=7)
+        article = ArticleFactory()
+
+        published = self.handler.publish(article.id, published_at=backdated)
+
+        assert published.is_globally_visible is True
+        assert published.approved_at == backdated
+
     def test_live_publish_enqueues_the_fan_out_task(self):
         article = ArticleFactory()
 

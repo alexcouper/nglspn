@@ -4,18 +4,11 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from uuid import UUID
-
-    from django.db.models import QuerySet
-
     from apps.feed.models import FeedEvent
     from services.feed.cursor import FeedCursor
 
 
 class FeedQueryInterface(ABC):
-    @abstractmethod
-    def get_by_id(self, event_id: UUID) -> FeedEvent | None: ...
-
     @abstractmethod
     def page(
         self,
@@ -40,9 +33,3 @@ class FeedQueryInterface(ABC):
         A pinned entry wins. Otherwise the newest renderable entry qualifies
         only when it carries an article published inside the window.
         """
-
-    @abstractmethod
-    def renderable(self) -> QuerySet[FeedEvent]: ...
-
-    @abstractmethod
-    def live_event_for_article(self, article_id: UUID) -> FeedEvent | None: ...

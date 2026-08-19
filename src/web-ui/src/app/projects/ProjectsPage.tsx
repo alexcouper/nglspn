@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import type { CategoryItem, DiscoverProject, WinnerProject } from "@/lib/api";
-import { CategoryTabs } from "./CategoryTabs";
+import { ListingTabs } from "@/components/ListingTabs";
 import { DiscoverView } from "./DiscoverView";
 import { CategoryView } from "./CategoryView";
 
@@ -33,9 +33,13 @@ export function ProjectsPage({
 
   return (
     <>
-      <CategoryTabs
-        categories={categoriesWithProjects}
-        activeCategory={activeCategory}
+      <ListingTabs
+        categories={initialCategories}
+        active={
+          activeCategory
+            ? { kind: "category", slug: activeCategory }
+            : { kind: "discover" }
+        }
       />
 
       <section className="py-8 px-4 sm:px-6">

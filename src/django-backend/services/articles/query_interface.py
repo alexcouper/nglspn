@@ -28,7 +28,7 @@ class ArticleQueryInterface(ABC):
         self,
         project_id: UUID,
         *,
-        include_drafts: bool = False,
+        include_hidden: bool = False,
     ) -> QuerySet[Article]: ...
 
     @abstractmethod

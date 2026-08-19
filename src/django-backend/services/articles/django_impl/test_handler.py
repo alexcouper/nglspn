@@ -330,6 +330,23 @@ class TestPublish:
 
         assert not Notification.objects.filter(recipient=follower).exists()
 
+    def test_backdated_publish_dates_the_approval_to_the_publish(self):
+        """The import story rests on this field, not on `published_at`.
+
+        An article brought in with its own old date arrives already visible, and
+        `approved_at` has to carry that date rather than now: it is the only
+        thing the fan-out reads to decide the article is not news. Approving
+        through the review queue instead always stamps now and does notify —
+        see `TestFanOutOnApproval.test_a_backdated_article_approved_now_is_news_now`.
+        """
+        backdated = timezone.now() - timedelta(days=7)
+        article = ArticleFactory()
+
+        published = self.handler.publish(article.id, published_at=backdated)
+
+        assert published.is_globally_visible is True
+        assert published.approved_at == backdated
+
     def test_live_publish_enqueues_the_fan_out_task(self):
         article = ArticleFactory()
 
@@ -359,6 +376,16 @@ class TestPublish:
             patch.object(Article, "save", side_effect=IntegrityError),
             pytest.raises(IntegrityError),
         ):
+            self.handler.publish(article.id)
+
+        enqueue.assert_not_called()
+
+    def test_publish_awaiting_review_enqueues_nothing(self):
+        """A follower notified now would land on a 404 until an admin approves."""
+        author = UserFactory(article_trust=False)
+        article = ArticleFactory(project=ProjectFactory(owner=author), author=author)
+
+        with _patched_enqueue() as enqueue:
             self.handler.publish(article.id)
 
         enqueue.assert_not_called()
@@ -463,6 +490,147 @@ class TestSetGlobalVisibility:
             article.id, article.global_visibility
         )
         assert result.global_visibility == article.global_visibility
+
+
+@pytest.mark.django_db
+class TestFanOutOnApproval:
+    """Publish holds the fan-out back while an article is invisible, so approval
+    is where its followers finally hear about it.
+    """
+
+    def setup_method(self):
+        self.handler = DjangoArticleHandler()
+
+    def _publish_awaiting_review(self) -> Article:
+        author = UserFactory(article_trust=False)
+        article = ArticleFactory(project=ProjectFactory(owner=author), author=author)
+        with _patched_enqueue():
+            return self.handler.publish(article.id)
+
+    def test_approving_enqueues_the_fan_out_task(self):
+        article = self._publish_awaiting_review()
+
+        with _patched_enqueue() as enqueue:
+            self.handler.set_global_visibility(
+                article.id, ArticleGlobalVisibility.APPROVED
+            )
+
+        enqueue.assert_called_once_with(str(article.id))
+
+    def test_approving_long_after_the_publish_still_fans_out(self):
+        """Review takes as long as it takes, and the article is news when it
+        clears — measuring its age from `published_at` suppressed the fan-out
+        for anything an admin did not get to within a minute, which is all of
+        them.
+        """
+        article = self._publish_awaiting_review()
+        Article.objects.filter(pk=article.pk).update(
+            published_at=timezone.now() - timedelta(days=7)
+        )
+
+        with _patched_enqueue() as enqueue:
+            self.handler.set_global_visibility(
+                article.id, ArticleGlobalVisibility.APPROVED
+            )
+
+        enqueue.assert_called_once_with(str(article.id))
+
+    def test_approving_stamps_the_approval_time(self):
+        article = self._publish_awaiting_review()
+        assert article.approved_at is None
+        before = timezone.now()
+
+        approved = self.handler.set_global_visibility(
+            article.id, ArticleGlobalVisibility.APPROVED
+        )
+
+        assert before <= approved.approved_at <= timezone.now()
+
+    def test_demoting_leaves_the_approval_time_alone(self):
+        article = ArticleFactory()
+        with _patched_enqueue():
+            published = self.handler.publish(article.id)
+        approved_at = published.approved_at
+
+        demoted = self.handler.set_global_visibility(
+            article.id, ArticleGlobalVisibility.DEMOTED
+        )
+
+        assert demoted.approved_at == approved_at
+
+    def test_demoting_enqueues_nothing(self):
+        article = ArticleFactory()
+        with _patched_enqueue():
+            self.handler.publish(article.id)
+
+        with _patched_enqueue() as enqueue:
+            self.handler.set_global_visibility(
+                article.id, ArticleGlobalVisibility.DEMOTED
+            )
+
+        enqueue.assert_not_called()
+
+    def test_a_draft_moved_to_approved_enqueues_nothing(self):
+        """`global_visibility` is settable on an unpublished article. It has no
+        audience until it publishes, and publish will do the enqueue itself.
+        """
+        article = ArticleFactory()
+
+        with _patched_enqueue() as enqueue:
+            self.handler.set_global_visibility(
+                article.id, ArticleGlobalVisibility.APPROVED
+            )
+
+        enqueue.assert_not_called()
+
+    def test_a_backdated_article_approved_now_is_news_now(self):
+        """The one case that changed hands when the clock moved to `approved_at`.
+
+        A seven-day-old `published_at` used to suppress this. It no longer does,
+        and should not: an admin approving today is publishing it today, and the
+        date on the article says only what it is about. An import that genuinely
+        should notify nobody arrives already visible and is suppressed on the
+        publish path, where its old `approved_at` is set — see
+        `TestPublishFanOut.test_backdated_publish_enqueues_nothing`.
+        """
+        author = UserFactory(article_trust=False)
+        article = ArticleFactory(project=ProjectFactory(owner=author), author=author)
+        with _patched_enqueue():
+            self.handler.publish(
+                article.id, published_at=timezone.now() - timedelta(days=7)
+            )
+
+        with _patched_enqueue() as enqueue:
+            self.handler.set_global_visibility(
+                article.id, ArticleGlobalVisibility.APPROVED
+            )
+
+        enqueue.assert_called_once_with(str(article.id))
+
+    def test_re_approving_notifies_each_follower_once(self):
+        """The fan-out is idempotent per (recipient, article), so a demote and a
+        second approval must not deliver the article twice.
+        """
+        author = UserFactory(article_trust=False)
+        project = ProjectFactory(owner=author)
+        channel = ChannelFactory(project=project, name="Updates")
+        follower = UserFactory()
+        follow = Follow.objects.create(user=follower, project=project)
+        FollowedChannel.objects.create(follow=follow, channel=channel)
+        article = ArticleFactory(project=project, channel=channel, author=author)
+        self.handler.publish(article.id)
+
+        for value in (
+            ArticleGlobalVisibility.APPROVED,
+            ArticleGlobalVisibility.DEMOTED,
+            ArticleGlobalVisibility.APPROVED,
+        ):
+            self.handler.set_global_visibility(article.id, value)
+
+        delivered = Notification.objects.filter(
+            recipient=follower, article=article
+        ).count()
+        assert delivered == 1
 
 
 @pytest.mark.django_db

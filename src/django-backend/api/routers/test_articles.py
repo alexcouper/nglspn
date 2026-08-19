@@ -9,7 +9,7 @@ from hamcrest import (
     has_length,
 )
 
-from apps.articles.models import Article, ArticleState
+from apps.articles.models import Article, ArticleGlobalVisibility, ArticleState
 from apps.projects.models import (
     ImageVariant,
     ProjectStatus,
@@ -18,6 +18,7 @@ from apps.projects.models import (
 from tests.factories import (
     ArticleFactory,
     ChannelFactory,
+    PendingArticleFactory,
     ProjectFactory,
     ProjectImageFactory,
     PublishedArticleFactory,
@@ -178,6 +179,45 @@ class TestListArticles:
 
         assert_that(response.status_code, equal_to(404))
 
+    def test_anonymous_does_not_see_an_article_awaiting_review(self, client) -> None:
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        PublishedArticleFactory(project=project, title="Pub")
+        PendingArticleFactory(project=project, title="Awaiting review")
+
+        response = client.get(f"/api/projects/{project.id}/articles")
+
+        titles = [a["title"] for a in response.json()]
+        assert_that(titles, equal_to(["Pub"]))
+
+    def test_anonymous_does_not_see_a_demoted_article(self, client) -> None:
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        PublishedArticleFactory(project=project, title="Pub")
+        PublishedArticleFactory(
+            project=project,
+            title="Demoted",
+            global_visibility=ArticleGlobalVisibility.DEMOTED,
+        )
+
+        response = client.get(f"/api/projects/{project.id}/articles")
+
+        titles = [a["title"] for a in response.json()]
+        assert_that(titles, equal_to(["Pub"]))
+
+    def test_full_edit_user_sees_articles_awaiting_review(
+        self, client, user, auth_headers
+    ) -> None:
+        """The my-projects article table is this endpoint with edit rights, and
+        it is the one place an author can see why their article is not showing.
+        """
+        project = ProjectFactory(owner=user)
+        PublishedArticleFactory(project=project, title="Pub")
+        PendingArticleFactory(project=project, title="Awaiting review")
+
+        response = client.get(f"/api/projects/{project.id}/articles", **auth_headers)
+
+        titles = sorted(a["title"] for a in response.json())
+        assert_that(titles, equal_to(["Awaiting review", "Pub"]))
+
 
 @pytest.mark.django_db
 class TestGetArticleById:
@@ -249,6 +289,41 @@ class TestGetArticleById:
         )
         assert_that(response.status_code, equal_to(404))
 
+    def test_awaiting_review_returns_403_for_non_author_non_full_edit(
+        self, client, auth_headers
+    ) -> None:
+        project = ProjectFactory(status=ProjectStatus.APPROVED)
+        article = PendingArticleFactory(project=project)
+        response = client.get(
+            f"/api/projects/{project.id}/articles/{article.id}",
+            **auth_headers,
+        )
+        assert_that(response.status_code, equal_to(403))
+
+    def test_awaiting_review_visible_to_author(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = PendingArticleFactory(project=project, author=user)
+        response = client.get(
+            f"/api/projects/{project.id}/articles/{article.id}",
+            **auth_headers,
+        )
+        assert_that(response.status_code, equal_to(200))
+
+    def test_demoted_visible_to_author(self, client, user, auth_headers) -> None:
+        project = ProjectFactory(owner=user)
+        article = PublishedArticleFactory(
+            project=project,
+            author=user,
+            global_visibility=ArticleGlobalVisibility.DEMOTED,
+        )
+        response = client.get(
+            f"/api/projects/{project.id}/articles/{article.id}",
+            **auth_headers,
+        )
+        assert_that(response.status_code, equal_to(200))
+
 
 @pytest.mark.django_db
 class TestGetArticleBySlug:
@@ -298,6 +373,44 @@ class TestGetArticleBySlug:
         response = client.get("/api/projects/my-proj/articles/by-slug/x")
 
         assert_that(response.status_code, equal_to(404))
+
+    def test_awaiting_review_404s_for_anonymous(self, client) -> None:
+        project = ProjectFactory(slug="my-proj", status=ProjectStatus.APPROVED)
+        article = PendingArticleFactory(project=project, title="X")
+        article.slug = "x"
+        article.save(update_fields=["slug"])
+
+        response = client.get("/api/projects/my-proj/articles/by-slug/x")
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_demoted_404s_for_anonymous(self, client) -> None:
+        project = ProjectFactory(slug="my-proj", status=ProjectStatus.APPROVED)
+        article = PublishedArticleFactory(
+            project=project,
+            title="X",
+            global_visibility=ArticleGlobalVisibility.DEMOTED,
+        )
+        article.slug = "x"
+        article.save(update_fields=["slug"])
+
+        response = client.get("/api/projects/my-proj/articles/by-slug/x")
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_awaiting_review_visible_to_author(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, slug="my-proj")
+        article = PendingArticleFactory(project=project, author=user, title="X")
+        article.slug = "x"
+        article.save(update_fields=["slug"])
+
+        response = client.get(
+            "/api/projects/my-proj/articles/by-slug/x",
+            **auth_headers,
+        )
+        assert_that(response.status_code, equal_to(200))
 
 
 @pytest.mark.django_db

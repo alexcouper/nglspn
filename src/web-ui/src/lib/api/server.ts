@@ -10,6 +10,7 @@ import type {
   CompetitionHighlightsResponse,
   CompetitionOverviewListResponse,
   DiscoverProject,
+  FeedPage,
   Project,
   ProjectListResponse,
   WinnerProject,
@@ -96,6 +97,10 @@ export async function fetchCompetitionHighlights(): Promise<CompetitionHighlight
   return serverFetch<CompetitionHighlightsResponse>(
     "/api/competitions/highlights"
   );
+}
+
+export async function fetchFeedPage(): Promise<FeedPage> {
+  return serverFetch<FeedPage>("/api/feed");
 }
 
 export async function fetchCategories(): Promise<CategoryItem[]> {

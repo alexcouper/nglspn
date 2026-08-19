@@ -44,11 +44,30 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-def _is_backdated(published_at: datetime | None) -> bool:
-    """A publish is backdated if its published_at is more than 60s in the past."""
-    if published_at is None:
+def _is_backdated(approved_at: datetime | None) -> bool:
+    """True when an article became visible more than 60s ago.
+
+    Reads `approved_at`, not `published_at`. The two agree on a straight publish
+    by a trusted author, but nowhere else: an importer sets `published_at` to
+    whenever the article is from, and an article held for review carries a
+    `published_at` as old as the admin's queue. Measuring the fan-out against
+    that suppressed the notification for every article a human took longer than
+    a minute to approve — which is all of them.
+    """
+    if approved_at is None:
         return False
-    return published_at < timezone.now() - timedelta(seconds=60)
+    return approved_at < timezone.now() - timedelta(seconds=60)
+
+
+def _enqueue_fan_out(article: Article) -> None:
+    # Local import: api.tasks reaches back into the service layer.
+    from api.tasks.notifications import (  # noqa: PLC0415
+        create_article_notifications,
+    )
+
+    # `str`, not `UUID`: the DatabaseBackend serialises task arguments through
+    # `normalize_json`, which a bare UUID does not survive.
+    create_article_notifications.enqueue(str(article.id))
 
 
 def _resolve_visibility_on_publish(article: Article) -> str:
@@ -154,10 +173,23 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             article.state = ArticleState.PUBLISHED
             article.published_at = effective_published_at
             article.global_visibility = _resolve_visibility_on_publish(article)
-            article.save(update_fields=["state", "published_at", "global_visibility"])
+            # A publish that is visible immediately is its own approval, and it
+            # takes the publish time rather than `now` so a backdated import
+            # stays backdated: the fan-out reads this field. An article held for
+            # review is not approved yet and keeps a null until an admin says so.
+            if article.is_globally_visible:
+                article.approved_at = effective_published_at
+            article.save(
+                update_fields=[
+                    "state",
+                    "published_at",
+                    "global_visibility",
+                    "approved_at",
+                ]
+            )
             if article.slug is None:
                 assign_unique_article_slug(article)
-            if not _is_backdated(effective_published_at):
+            if article.is_globally_visible and not _is_backdated(article.approved_at):
                 # Fan-out is ~2N queries on a house-channel publish, so it goes
                 # to the worker rather than the request. Enqueued *inside* the
                 # transaction on purpose: the queue is a table
@@ -169,11 +201,11 @@ class DjangoArticleHandler(ArticleHandlerInterface):
                 # The backdating guard stays here: the task only gets an id,
                 # and from the row alone a backdated publish and a live publish
                 # the worker was slow to reach look identical.
-                from api.tasks.notifications import (  # noqa: PLC0415
-                    create_article_notifications,
-                )
-
-                create_article_notifications.enqueue(str(article.id))
+                #
+                # An article held for review notifies nobody yet — the link
+                # would 404 for every recipient. set_global_visibility picks the
+                # fan-out up when an admin approves it.
+                _enqueue_fan_out(article)
 
         return article
 
@@ -189,8 +221,36 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         article = self._get_article(article_id)
         if article.global_visibility == value:
             return article
-        article.global_visibility = value
-        article.save(update_fields=["global_visibility"])
+
+        was_visible = article.is_globally_visible
+        with transaction.atomic():
+            article.global_visibility = value
+            fields = ["global_visibility"]
+            # Approval is the moment the article becomes news, whatever date it
+            # carries, so the clock the fan-out reads starts here. Stamped only
+            # on the transition into visibility — a demotion leaves the last
+            # approval where it was rather than pretending it never happened.
+            became_visible = not was_visible and article.is_globally_visible
+            if became_visible:
+                article.approved_at = timezone.now()
+                fields.append("approved_at")
+            article.save(update_fields=fields)
+            # Becoming visible is when this article's followers can finally read
+            # it, so it is where the fan-out publish held back happens. Safe to
+            # re-run: the fan-out is get_or_create per (recipient, article), so a
+            # demote-then-approve delivers nothing twice.
+            #
+            # The feed needs no equivalent hook — its read filter reads the same
+            # visibility, in both directions.
+            #
+            # No backdating guard here, unlike the publish path: `approved_at`
+            # was just set to now, so there is nothing for one to catch. An
+            # approval is news now whatever date the article carries — an import
+            # that should notify nobody arrives already visible and is suppressed
+            # on the publish path instead. See
+            # `TestFanOutOnApproval.test_a_backdated_article_approved_now_is_news_now`.
+            if became_visible:
+                _enqueue_fan_out(article)
         return article
 
     # ------------------------------------------------------------------

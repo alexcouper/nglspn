@@ -4,7 +4,9 @@ from django.db.models import QuerySet
 from django.http import HttpRequest
 from django.utils.html import format_html
 
-from .models import Article
+from services import HANDLERS
+
+from .models import Article, ArticleGlobalVisibility
 
 
 @admin.register(Article)
@@ -27,9 +29,22 @@ class ArticleAdmin(admin.ModelAdmin):
         "created_at",
         "updated_at",
         "render_link",
+        # Both are set by the service layer and neither is safe to type in.
+        # Approving is what notifies an article's followers, and the form saves
+        # the model directly — editing the field here would flip the article
+        # visible and tell nobody. The actions below are the way in.
+        "global_visibility",
+        "approved_at",
     )
     ordering = ("-published_at", "-created_at")
-    autocomplete_fields = ("project", "channel", "author", "listing_image")
+    actions = ("approve_articles", "demote_articles")
+    autocomplete_fields = (
+        "project",
+        "channel",
+        "author",
+        "listing_image",
+        "about_feed_event",
+    )
 
     fieldsets = (
         (None, {"fields": ("id", "project", "channel", "author")}),
@@ -45,6 +60,30 @@ class ArticleAdmin(admin.ModelAdmin):
                     "state",
                     "published_at",
                     "global_visibility",
+                    "approved_at",
+                ),
+                "description": (
+                    "Visibility is changed with the Approve and Demote actions "
+                    "on the article list, not here — approving is what "
+                    "notifies the article's followers. Approved is when the "
+                    "article became visible to everyone, and approving always "
+                    "stamps it now: an approval is news now, whatever date the "
+                    "article carries. An import that should notify nobody has "
+                    "to arrive already visible, published with its own old "
+                    "date — going through this queue will notify its "
+                    "followers."
+                ),
+            },
+        ),
+        (
+            "Latest feed",
+            {
+                "fields": ("about_feed_event",),
+                "description": (
+                    "The platform event this article is a write-up of. Setting "
+                    "it retires the bare event so the feed shows one entry "
+                    "instead of two. Only takes effect while that event has "
+                    "not already been superseded."
                 ),
             },
         ),
@@ -58,6 +97,32 @@ class ArticleAdmin(admin.ModelAdmin):
             .get_queryset(request)
             .select_related("project", "channel", "author", "listing_image")
         )
+
+    @admin.action(description="Approve (show to everyone, notify followers)")
+    def approve_articles(
+        self, request: HttpRequest, queryset: QuerySet[Article]
+    ) -> None:
+        self._set_visibility(request, queryset, ArticleGlobalVisibility.APPROVED)
+
+    @admin.action(description="Demote (hide from everyone)")
+    def demote_articles(
+        self, request: HttpRequest, queryset: QuerySet[Article]
+    ) -> None:
+        self._set_visibility(request, queryset, ArticleGlobalVisibility.DEMOTED)
+
+    def _set_visibility(
+        self, request: HttpRequest, queryset: QuerySet[Article], value: str
+    ) -> None:
+        # Through the handler, not queryset.update(): approving stamps
+        # approved_at, enqueues the fan-out and re-runs the feed's supersession
+        # link, none of which a bulk write would do.
+        changed = 0
+        for article in queryset:
+            if article.global_visibility == value:
+                continue
+            HANDLERS.articles.set_global_visibility(article.id, value)
+            changed += 1
+        self.message_user(request, f"Updated {changed} articles.")
 
     @admin.display(description="Render page")
     def render_link(self, obj: Article) -> str:

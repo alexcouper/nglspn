@@ -197,6 +197,105 @@ When an admin transitions a `pending` article via the "approve" action, the resu
 - **WHEN** an admin flips U's `article_trust` to `False`
 - **THEN** A's `global_visibility` SHALL remain `auto`
 
+### Requirement: Read paths gate on `is_globally_visible`
+
+An Article that is not globally visible SHALL NOT be served by any public read path. This covers drafts, articles awaiting admin review and demoted articles alike — one rule, not three.
+
+The rule SHALL have a single home in `apps/articles/models.py`: a `GLOBALLY_VISIBLE_STATES` tuple read by both the `is_globally_visible` property and a `globally_visible_q(prefix)` helper, which `ArticleQuerySet.globally_visible()` and the feed's join filter both build on. The property and the queryset condition are separate expressions of one rule — a test SHALL assert they agree across every `state` × `global_visibility` combination.
+
+The gated paths are:
+- `GET /projects/{slug}/articles` — SHALL exclude non-visible Articles unless the caller can edit the project, in which case it SHALL include them. This listing backs the my-projects article table, which is where an author sees the state of their own work, so `ArticleListItem` SHALL carry the derived `is_globally_visible` rather than leaving the client to re-derive the rule.
+- `GET /projects/{slug}/articles/by-slug/{article_slug}` — SHALL return 404 for a non-visible Article unless the caller is its author or can edit the project.
+- `GET /projects/{slug}/articles/{article_id}` — SHALL return 403 for a non-visible Article unless the caller is its author or can edit the project.
+- The Latest feed — `FeedEventQuerySet.visible_subject()` SHALL drop an article-led entry whose Article is not globally visible, in addition to the existing project-status check.
+
+Authorisation ("may this user see it anyway") SHALL stay separate from visibility ("does this render for everyone"): the former lives in `api/routers/articles.py`, the latter on the model.
+
+Feed entries SHALL NOT be maintained on visibility changes. The entry is appended when the Article publishes and the read filter decides whether to serve it, so approving an Article writes nothing to `feed_events` and demoting one leaves `retired_at` untouched — that column means an admin withdrew an entry, which is a different fact.
+
+Supersession is the exception, because it is a claim about *another* entry. `link_article_to_event` SHALL hold a supersession only while the write-up is globally visible: a non-visible Article SHALL release whatever its entry supersedes, and take it again if it becomes visible. Without this the feed loses both entries — the bare event hidden as superseded, the write-up hidden as invisible. The `post_save` signal already re-runs on every Article save, so approval and demotion both re-evaluate the link.
+
+#### Scenario: An article awaiting review is not served publicly
+- **GIVEN** a published Article A in an approved project with `global_visibility = pending`
+- **WHEN** an anonymous client lists the project's articles or requests A by slug
+- **THEN** A SHALL be absent from the listing, and the by-slug request SHALL return 404
+
+#### Scenario: A demoted article is not served publicly
+- **GIVEN** a published Article A with `global_visibility = demoted`
+- **WHEN** an anonymous client lists the project's articles or requests A by slug
+- **THEN** A SHALL be absent from the listing, and the by-slug request SHALL return 404
+
+#### Scenario: The author still sees a held-back article in edit mode
+- **GIVEN** a published Article A with `global_visibility = pending` or `demoted`
+- **WHEN** its author, or a user who can edit the project, lists the project's articles or requests A by id
+- **THEN** A SHALL appear in the listing, and the by-id request SHALL return 200
+
+#### Scenario: A held-back article is not served by the feed
+- **GIVEN** a published Article A with `global_visibility = pending`
+- **WHEN** the Latest feed is read
+- **THEN** neither the lead nor any entry SHALL be A's feed event
+
+#### Scenario: Approving an article serves the entry appended at publish time
+- **GIVEN** a published Article A with `global_visibility = pending` and its feed event already appended
+- **WHEN** an admin sets `global_visibility = approved`
+- **THEN** the feed SHALL serve that same event, with no new `feed_events` row written
+
+#### Scenario: Demoting an article withdraws its entry without retiring it
+- **GIVEN** a published Article A with `global_visibility = auto` whose feed event the feed serves
+- **WHEN** an admin sets `global_visibility = demoted`
+- **THEN** the feed SHALL stop serving that event
+- **AND** the event's `retired_at` SHALL remain null
+
+#### Scenario: A write-up awaiting review supersedes nothing
+- **GIVEN** a feed event E and an Article A linked to it via `about_feed_event`, published with `global_visibility = pending`
+- **WHEN** the Latest feed is read
+- **THEN** E's `superseded_by` SHALL be null and the feed SHALL serve E
+
+#### Scenario: Demoting a write-up gives the superseded event back
+- **GIVEN** a globally visible Article A whose entry supersedes feed event E
+- **WHEN** an admin sets A's `global_visibility = demoted`
+- **THEN** E's `superseded_by` SHALL be null and the feed SHALL serve E again
+
+### Requirement: Notification fan-out follows visibility
+
+Publishing an Article SHALL enqueue the notification fan-out only when the Article is globally visible on publish. An Article held for review has no readable page, so notifying its followers would deliver a link that 404s for every recipient.
+
+`set_global_visibility` SHALL enqueue the fan-out when it moves a published Article from a non-visible state into `auto` or `approved`, and SHALL stamp `approved_at` with that moment.
+
+The backdating suppression SHALL be measured against `approved_at` — when the Article became visible to everyone — and never against `published_at`. The two agree on a straight publish by a trusted author and nowhere else: an Article held for review accumulates an old `published_at` by waiting in the queue, so measuring against it suppressed the fan-out for every Article an admin took longer than a minute to approve. An import that should notify nobody arrives already visible and carries a backdated `approved_at` from the publish path.
+
+The fan-out SHALL remain safe to re-run: it creates notifications with `get_or_create` per `(recipient, article)`, so a demote followed by a second approval delivers nothing twice.
+
+#### Scenario: Publishing an article awaiting review notifies nobody
+- **GIVEN** a User U with `article_trust = False`, and followers on the channel U is publishing into
+- **WHEN** U publishes an internal Article A
+- **THEN** no fan-out task SHALL be enqueued
+
+#### Scenario: Approval delivers the article to its followers
+- **GIVEN** a published Article A with `global_visibility = pending` and a live `published_at`
+- **WHEN** an admin sets `global_visibility = approved`
+- **THEN** the fan-out task SHALL be enqueued for A
+
+#### Scenario: A slow review still delivers the article
+- **GIVEN** a published Article A with `global_visibility = pending`, published a week ago
+- **WHEN** an admin sets `global_visibility = approved`
+- **THEN** the fan-out task SHALL be enqueued for A, because A becomes visible now
+
+#### Scenario: An import that was already visible elsewhere notifies nobody
+- **GIVEN** an Article published as globally visible with a `published_at` a week in the past
+- **WHEN** the publish completes
+- **THEN** `approved_at` SHALL be that same past instant and no fan-out task SHALL be enqueued
+
+#### Scenario: Demoting an article enqueues nothing
+- **GIVEN** a published, globally visible Article A
+- **WHEN** an admin sets `global_visibility = demoted`
+- **THEN** no fan-out task SHALL be enqueued
+
+#### Scenario: Re-approving does not notify a follower twice
+- **GIVEN** a published Article A whose fan-out has already delivered a notification to follower F
+- **WHEN** an admin demotes A and then approves it again
+- **THEN** F SHALL hold exactly one notification for A
+
 ### Requirement: Authoring endpoint and entry point
 
 The system SHALL provide a "Write article" entry point on the project page that is visible only to authenticated users who are a `ProjectContributor` of the project with `full_edit = True`. The entry point SHALL itself create the draft Article and then route to that draft's authoring page. There SHALL NOT be an authoring route that creates an Article on mount and rewrites its own URL — an image cannot be uploaded against an Article that has no id, so the Article has to exist before the editor opens, and creating it on the click costs one navigation instead of two.

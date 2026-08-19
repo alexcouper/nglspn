@@ -72,6 +72,7 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.follows",
     "apps.articles",
+    "apps.feed",
     "django_tasks",
     "django_tasks_db",
 ]

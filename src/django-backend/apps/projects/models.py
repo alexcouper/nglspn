@@ -410,6 +410,12 @@ class Competition(models.Model):
         blank=True,
         related_name="won_competitions",
     )
+    # When the winner was announced. Assigning a winner used to record no time
+    # at all — it only flipped `status` to CLOSED — which left the Latest feed
+    # with no honest timestamp for its winners-announced event. Set on the first
+    # assignment and left alone afterwards, so editing a competition years later
+    # doesn't relocate its entry in the feed.
+    winner_announced_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=30,
         choices=CompetitionStatus.choices,
@@ -438,7 +444,27 @@ class Competition(models.Model):
                 self.status = CompetitionStatus.CLOSED
         elif self.winner is not None:
             self.status = CompetitionStatus.CLOSED
+        self._stamp_winner_announced_at(kwargs)
         super().save(*args, **kwargs)
+
+    def _stamp_winner_announced_at(self, save_kwargs: dict[str, Any]) -> None:
+        """Set the announcement time on first assignment; clear it on removal.
+
+        Deliberately not moved when the winner changes: the feed entry belongs
+        where the announcement happened, not where it was last corrected.
+        """
+        if self.winner_id is None:
+            new_value = None
+        elif self.winner_announced_at is None:
+            new_value = timezone.now()
+        else:
+            return
+
+        self.winner_announced_at = new_value
+        # A caller passing update_fields would otherwise drop this write.
+        update_fields = save_kwargs.get("update_fields")
+        if update_fields is not None:
+            save_kwargs["update_fields"] = {*update_fields, "winner_announced_at"}
 
     @property
     def image_url(self) -> str | None:

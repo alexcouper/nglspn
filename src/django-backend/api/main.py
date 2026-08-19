@@ -9,6 +9,7 @@ from api.routers import (
     channels,
     competitions,
     discussions,
+    feed,
     follows,
     my_projects,
     my_review,
@@ -31,6 +32,7 @@ api.add_router("/projects", discussions.router)
 api.add_router("/projects", follows.router)
 api.add_router("/projects", articles.router)
 api.add_router("/projects", channels.router)
+api.add_router("/feed", feed.router)
 api.add_router("/follows", follows.collection_router)
 api.add_router("/my/projects", my_projects.router)
 api.add_router("/my/reviews", my_review.router)

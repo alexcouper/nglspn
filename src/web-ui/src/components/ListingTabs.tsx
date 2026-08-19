@@ -1,28 +1,37 @@
-"use client";
-
 import Link from "next/link";
 import type { CategoryItem } from "@/lib/api";
 
-interface CategoryTabsProps {
+// Shared chrome rather than part of the projects page: /latest and /projects are
+// peer views of the same place, so they render the identical bar and moving
+// between them costs one click.
+export type ListingTab = { kind: "latest" } | { kind: "discover" } | { kind: "category"; slug: string };
+
+interface ListingTabsProps {
   categories: CategoryItem[];
-  activeCategory: string | null;
+  active: ListingTab;
 }
 
-export function CategoryTabs({ categories, activeCategory }: CategoryTabsProps) {
+export function ListingTabs({ categories, active }: ListingTabsProps) {
+  const withProjects = categories.filter((c) => c.project_count > 0);
+
   return (
     <div className="sticky top-14 z-10 bg-white border-b border-border">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center gap-6">
-        <nav className="flex gap-6 overflow-x-auto scrollbar-hide flex-1" aria-label="Category tabs">
+        <nav
+          className="flex gap-6 overflow-x-auto scrollbar-hide flex-1"
+          aria-label="Section tabs"
+        >
+          <TabLink href="/latest" active={active.kind === "latest"} label="Latest" />
           <TabLink
             href="/projects"
-            active={!activeCategory}
+            active={active.kind === "discover"}
             label="Discover"
           />
-          {categories.map((cat) => (
+          {withProjects.map((cat) => (
             <TabLink
               key={cat.id}
               href={`/projects?category=${cat.slug}`}
-              active={activeCategory === cat.slug}
+              active={active.kind === "category" && active.slug === cat.slug}
               label={cat.name}
             />
           ))}
@@ -50,6 +59,7 @@ function TabLink({
   return (
     <Link
       href={href}
+      aria-current={active ? "page" : undefined}
       className={`whitespace-nowrap py-3 text-sm font-medium border-b-2 transition-colors ${
         active
           ? "border-accent text-accent"

@@ -52,11 +52,26 @@ function articleListItem(
     state: "published",
     published_at: "2026-08-01T10:00:00Z",
     global_visibility: "auto",
+    is_globally_visible: true,
     channel: { id: "channel-1", name: "Updates" },
     listing_image_url: null,
     listing_crop: null,
     ...overrides,
   } as unknown as ArticleListItem;
+}
+
+function awaitingReview(): ArticleListItem {
+  return articleListItem({
+    global_visibility: "pending",
+    is_globally_visible: false,
+  });
+}
+
+function demoted(): ArticleListItem {
+  return articleListItem({
+    global_visibility: "demoted",
+    is_globally_visible: false,
+  });
 }
 
 // ---------------------------------------------------------------- mounting
@@ -200,5 +215,39 @@ describe("the article list", () => {
     expect(harness.container.textContent).toContain("A headline");
 
     await harness.unmount();
+  });
+});
+
+describe("what the badge tells the author", () => {
+  async function badgeFor(article: ArticleListItem) {
+    articles.list.mockResolvedValue([article]);
+    const harness = await mountArticles();
+    const text = harness.container.textContent ?? "";
+    await harness.unmount();
+    return text;
+  }
+
+  it("calls a globally visible article published", async () => {
+    expect(await badgeFor(articleListItem())).toContain("Published");
+  });
+
+  it("calls an unpublished article a draft", async () => {
+    expect(await badgeFor(articleListItem({ state: "draft" }))).toContain(
+      "Draft",
+    );
+  });
+
+  it("says an article awaiting review is not published yet", async () => {
+    const text = await badgeFor(awaitingReview());
+
+    expect(text).toContain("Pending review");
+    expect(text).not.toContain("Published");
+  });
+
+  it("does not call a demoted article published", async () => {
+    const text = await badgeFor(demoted());
+
+    expect(text).toContain("Not shown");
+    expect(text).not.toContain("Published");
   });
 });

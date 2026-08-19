@@ -4,7 +4,12 @@ import factory
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 
-from apps.articles.models import Article, ArticleSource, ArticleState
+from apps.articles.models import (
+    Article,
+    ArticleGlobalVisibility,
+    ArticleSource,
+    ArticleState,
+)
 from apps.discussions.models import Discussion
 from apps.emails.models import BroadcastEmail, BroadcastEmailImage
 from apps.follows.models import Channel, Follow, FollowedChannel
@@ -261,6 +266,14 @@ class PublishedArticleFactory(ArticleFactory):
 
     state = ArticleState.PUBLISHED
     published_at = factory.LazyFunction(timezone.now)
+
+
+class PendingArticleFactory(PublishedArticleFactory):
+    """Published, but awaiting admin review — what an untrusted author's publish
+    produces. Globally invisible, and visible to its author in edit mode.
+    """
+
+    global_visibility = ArticleGlobalVisibility.PENDING
 
 
 class CompetitionFactory(factory.django.DjangoModelFactory):

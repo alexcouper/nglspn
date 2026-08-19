@@ -200,6 +200,12 @@ The "no inbox regression for new content" property is delivered by Phase 3's sen
 
 ## Phase 5 — `/news` page and on-platform rendering of articles
 
+> **Superseded, 2026-08-14.** This phase never shipped. The `/news` destination
+> and the Discover "Latest News" carousel are replaced by a Latest tab carrying
+> a mixed event stream — see the `add-latest-feed` OpenSpec change
+> (`openspec/changes/add-latest-feed/`). The project-page and profile carousels
+> below are unaffected.
+
 Adds the news destinations and ties the notification system into article publishes.
 
 ### `/news` page layout

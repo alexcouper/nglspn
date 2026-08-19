@@ -33,6 +33,33 @@ function sortDraftsFirst(
   });
 }
 
+const BADGE_TONES = {
+  draft: "bg-amber-50 border-amber-200 text-amber-800",
+  live: "bg-emerald-50 border-emerald-200 text-emerald-800",
+  held: "bg-slate-100 border-slate-300 text-slate-700",
+} as const;
+
+// A published article the site isn't showing gets its own badge rather than the
+// green one. This table is the only place its author can find that out, so
+// "Published" on its own would be a lie — the article exists, and nobody else
+// can see it.
+function articleBadge(article: ArticleListItem): {
+  label: string;
+  tone: string;
+} {
+  if (article.state !== "published") {
+    return { label: "Draft", tone: BADGE_TONES.draft };
+  }
+  if (article.is_globally_visible) {
+    return { label: "Published", tone: BADGE_TONES.live };
+  }
+  return {
+    label:
+      article.global_visibility === "pending" ? "Pending review" : "Not shown",
+    tone: BADGE_TONES.held,
+  };
+}
+
 export function MyProjectArticles({ projectSlugOrId }: Props) {
   const router = useRouter();
   const [articles, setArticles] = useState<ArticleListItem[] | null>(null);
@@ -142,7 +169,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
       ) : (
         <ul className="space-y-2">
           {articles.map((article) => {
-            const isDraft = article.state !== "published";
+            const badge = articleBadge(article);
             return (
               <li
                 key={article.id}
@@ -164,15 +191,11 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
                       <span className="text-base font-medium text-foreground truncate">
                         {article.title || "Untitled draft"}
                       </span>
-                      {isDraft ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
-                          Draft
-                        </span>
-                      ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs font-medium">
-                          Published
-                        </span>
-                      )}
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium ${badge.tone}`}
+                      >
+                        {badge.label}
+                      </span>
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                       <span className="font-semibold uppercase tracking-wide text-accent">

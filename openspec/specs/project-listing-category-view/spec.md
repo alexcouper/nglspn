@@ -3,9 +3,7 @@
 ## Purpose
 
 Defines the Category view of the project listing page: a filtered, icon-led grid of projects within a single category, activated by tab selection, with sorting, a project count, and the supporting category-filtered API endpoint.
-
 ## Requirements
-
 ### Requirement: Category view activated by tab selection
 
 When a user selects a category tab, the page SHALL switch from Discover view to Category view, showing a filtered grid of projects in that category. The URL SHALL update to include the category as a search param (`/preview/projects?category={slug}`).
@@ -24,15 +22,21 @@ When a user selects a category tab, the page SHALL switch from Discover view to 
 
 ### Requirement: Category tabs bar
 
-The page SHALL have a tab bar using the existing underline tab pattern, sticky below the navigation bar, showing "Discover" as the first tab followed by one tab per category that has at least one approved project. Categories with zero projects SHALL not appear as tabs.
+The page SHALL have a tab bar using the existing underline tab pattern, sticky below the navigation bar, showing "Latest" as the first tab, then "Discover", followed by one tab per category that has at least one approved project. Categories with zero projects SHALL not appear as tabs.
+
+The tab bar SHALL be shared chrome rather than being rendered by the projects page alone, so that `/latest` and `/projects` present an identical bar and moving between the two views costs one click.
 
 #### Scenario: Categories with projects
 - **WHEN** "Dev Tools" has projects and "Consumer Products" has projects but "Community Boosters" has none
-- **THEN** tabs shown are: Discover, Dev Tools, Consumer Products (no Community Boosters tab)
+- **THEN** tabs shown are: Latest, Discover, Dev Tools, Consumer Products (no Community Boosters tab)
 
 #### Scenario: No categories exist
 - **WHEN** no categories have been created
-- **THEN** only the "Discover" tab is shown
+- **THEN** only the "Latest" and "Discover" tabs are shown
+
+#### Scenario: Bar is identical across views
+- **WHEN** a visitor moves between `/latest`, `/projects`, and a category view
+- **THEN** the same tab bar is shown in each, with the active tab reflecting the current view
 
 ### Requirement: Category view grid layout
 
@@ -81,3 +85,4 @@ The system SHALL expose `GET /api/projects/by-category/{slug}` returning approve
 #### Scenario: Category slug not found
 - **WHEN** a client requests `GET /api/projects/by-category/nonexistent`
 - **THEN** the system returns 404
+

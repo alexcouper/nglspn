@@ -499,6 +499,8 @@ The log line SHALL be emitted regardless of cadence — including `never`. This 
 
 The log line SHALL NOT be emitted for non-house-channel articles. The log line SHALL NOT replace or duplicate any other notification-creation log.
 
+The house project's channels are "Updates" and "Competition Winners"; both are house channels for the purposes of this requirement.
+
 #### Scenario: Log line emitted per recipient for a house-channel article
 
 - **GIVEN** an article published on the house project's "Competition Winners" channel; 5 users have a `FollowedChannel` row on that channel
@@ -508,7 +510,7 @@ The log line SHALL NOT be emitted for non-house-channel articles. The log line S
 
 #### Scenario: Log line emitted for never-cadence recipients
 
-- **GIVEN** an article published on the house project's "Product Updates" channel; user U has a `FollowedChannel` row on that channel and `article_email_frequency = never`
+- **GIVEN** an article published on the house project's "Updates" channel; user U has a `FollowedChannel` row on that channel and `article_email_frequency = never`
 - **WHEN** `create_notifications_for_article` runs
 - **THEN** the log SHALL contain a `event=house_channel_article_enqueued` line for U
 - **AND** the line SHALL include `recipient_frequency=never`

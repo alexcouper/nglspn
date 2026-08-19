@@ -48,18 +48,23 @@ export function renderEntry(entry: FeedEntry): RenderedEntry {
   const supersededKind = entry.supersedes?.kind;
 
   if (article) {
+    // An article about an event keeps the event's flag — a winner write-up
+    // still reads as a competition winner. Otherwise the project leads: which
+    // project an update is from is what makes it worth reading, and the channel
+    // it went out on is house plumbing.
+    const flag = supersededKind
+      ? (KIND_FLAGS[supersededKind] ?? article.project_title)
+      : article.project_title;
     return {
       id: entry.id,
-      // An article about an event keeps the event's flag; a standalone one is
-      // labelled by its channel.
-      flag: supersededKind
-        ? (KIND_FLAGS[supersededKind] ?? article.channel_name)
-        : article.channel_name,
+      flag,
       headline: article.title,
       summary: article.summary ?? "",
       href: articleHref(entry),
+      // Whatever the flag did not already say. The project is in both lines
+      // otherwise, which reads as a stutter.
       meta: [article.project_title, article.channel_name]
-        .filter(Boolean)
+        .filter((part) => part && part !== flag)
         .join(" · "),
       imageUrl: article.listing_image_url ?? null,
       crop: article.listing_crop ?? null,

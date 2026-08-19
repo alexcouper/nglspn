@@ -94,7 +94,7 @@ describe("renderEntry", () => {
     expect(rendered.flag).toBe("Tipoff");
   });
 
-  it("labels a standalone article with its channel", () => {
+  it("labels a standalone article with the project it came from", () => {
     const rendered = renderEntry(
       entry({
         kind: "article_published",
@@ -102,8 +102,36 @@ describe("renderEntry", () => {
       }),
     );
 
-    expect(rendered.flag).toBe("Updates");
+    expect(rendered.flag).toBe("Naglasúpan");
     expect(rendered.hasArticle).toBe(true);
+  });
+
+  it("does not repeat the project in the meta line below it", () => {
+    const rendered = renderEntry(
+      entry({
+        kind: "article_published",
+        article: articleRef({ channel_name: "Updates" }),
+      }),
+    );
+
+    expect(rendered.meta).toBe("Updates");
+  });
+
+  it("keeps the project in the meta line when the event holds the flag", () => {
+    const rendered = renderEntry(
+      entry({
+        kind: "article_published",
+        article: articleRef({ channel_name: "Updates" }),
+        supersedes: {
+          kind: "competition_winner",
+          competition: competitionRef(),
+          project: null,
+        },
+      }),
+    );
+
+    expect(rendered.flag).toBe("Competition winner");
+    expect(rendered.meta).toBe("Naglasúpan · Updates");
   });
 
   it("keeps the superseded event's flag on a write-up", () => {

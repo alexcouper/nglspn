@@ -1,143 +1,26 @@
 import { test, expect, type Page } from "@playwright/test";
 import * as path from "path";
+import {
+  allowLeavingTheEditor,
+  API_URL,
+  cleanUp,
+  editorBody,
+  fetchArticle,
+  imagePicker,
+  login,
+  openBlankArticleEditor,
+  trackUploadedImageIds,
+} from "./helpers";
 
 const FIXTURES = path.join(__dirname, "fixtures");
 const INLINE_IMAGE = path.join(FIXTURES, "inline-image.png");
 const NOT_AN_IMAGE = path.join(FIXTURES, "not-an-image.txt");
 
-async function login(page: Page) {
-  const password = process.env.TEST_USER_PASSWORD;
-  if (!password) {
-    throw new Error(
-      "TEST_USER_PASSWORD not set. Make sure .env.claude exists with credentials.",
-    );
-  }
-
-  await page.goto("/login");
-  await page.fill("#email", process.env.TEST_USER_EMAIL || "test@example.com");
-  await page.fill("#password", password);
-  await page.click('button[type="submit"]');
-  await expect(page).toHaveURL(/\/my-projects/);
-}
-
-// Walks from the project list to a blank article editor, so the test doesn't
-// hard-code a project slug. The New article button creates the draft — an
-// upload cannot name an article that does not exist yet — and routes straight
-// to its editor, so this returns both ids.
-async function openBlankArticleEditor(
-  page: Page,
-): Promise<{ projectId: string; articleId: string }> {
-  await page.goto("/my-projects");
-  await page.locator('a[href^="/my-projects/"]').last().click();
-  await expect(page).toHaveURL(/\/my-projects\/[0-9a-f-]+$/);
-  const projectId = page.url().split("/").pop()!;
-
-  // The button lives behind a tab, and it is the thing that creates the draft —
-  // there is no route to navigate to instead.
-  await page.getByRole("button", { name: "Articles", exact: true }).click();
-  await page.getByRole("button", { name: "New article" }).click();
-  await expect(page).toHaveURL(/\/articles\/edit\/[0-9a-f-]+$/);
-  await expect(editorBody(page)).toBeVisible();
-
-  return { projectId, articleId: page.url().split("/").pop()! };
-}
-
-// Article uploads are excluded from `project.images`, so cleanup cannot find
-// them by listing the project. Record the ids the backend hands out instead.
-function trackUploadedImageIds(page: Page): string[] {
-  const ids: string[] = [];
-  page.on("response", async (response) => {
-    if (!response.url().endsWith("/images/upload-url") || !response.ok()) return;
-    const body = await response.json().catch(() => null);
-    if (body?.image_id) ids.push(body.image_id);
-  });
-  return ids;
-}
-
-// Deleting the draft cascades its linked images, but the ids are tracked and
-// deleted too so a failure part-way through still cleans up. Every test now
-// leaves a draft behind, because opening the editor creates one.
-async function cleanUp(
-  page: Page,
-  projectId: string,
-  articleId: string,
-  imageIds: string[],
-) {
-  await page.evaluate(
-    async ({ projectId, articleId, imageIds }) => {
-      const apiUrl = "http://localhost:8000";
-      const headers = {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-      };
-
-      await Promise.all(
-        imageIds.map((imageId: string) =>
-          fetch(
-            `${apiUrl}/api/projects/${projectId}/articles/${articleId}/images/${imageId}`,
-            { method: "DELETE", headers },
-          ),
-        ),
-      );
-      await fetch(`${apiUrl}/api/projects/${projectId}/articles/${articleId}`, {
-        method: "DELETE",
-        headers,
-      });
-    },
-    { projectId, articleId, imageIds: imageIds.splice(0) },
-  );
-}
-
-// The images linked to an article — the listing-image wizard's selection list.
-async function articleImageIds(
-  page: Page,
-  projectId: string,
-  articleId: string,
-): Promise<string[]> {
-  return page.evaluate(
-    async ({ projectId, articleId }) => {
-      const article = await fetch(
-        `http://localhost:8000/api/projects/${projectId}/articles/${articleId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        },
-      ).then((r) => r.json());
-      return (article.images ?? []).map((image: { id: string }) => image.id);
-    },
-    { projectId, articleId },
-  );
-}
-
-// The gallery an author manages on the owner-facing project page.
-async function galleryImageIds(
-  page: Page,
-  projectId: string,
-): Promise<string[]> {
-  return page.evaluate(async (projectId) => {
-    const project = await fetch(
-      `http://localhost:8000/api/my/projects/${projectId}`,
-      {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-        },
-      },
-    ).then((r) => r.json());
-    return (project.images ?? []).map((image: { id: string }) => image.id);
-  }, projectId);
-}
-
-function editorBody(page: Page) {
-  return page.locator('[contenteditable="true"]').first();
-}
+// One login for the file: /api/auth/login allows 5/min per IP.
+test.describe.configure({ mode: "serial" });
 
 function insertedImage(page: Page) {
   return editorBody(page).locator("img").first();
-}
-
-// The toolbar's insert button drives a hidden file input rather than a dialog.
-function imagePicker(page: Page) {
-  return page.locator('.mdxeditor input[type="file"]').first();
 }
 
 // Next renders its own empty role="alert" route announcer, so pick ours out by
@@ -146,20 +29,33 @@ function uploadAlert(page: Page) {
   return page.getByRole("alert").filter({ hasText: "Image upload failed" });
 }
 
-// Login is rate limited to 5/minute per IP, so the whole file shares one
-// session rather than logging in per test.
-test.describe.configure({ mode: "serial" });
+// The images linked to an article — the listing-image wizard's selection list.
+async function articleImageIds(
+  page: Page,
+  projectId: string,
+  articleId: string,
+): Promise<string[]> {
+  const article = await fetchArticle(page, projectId, articleId);
+  const images = (article.images ?? []) as { id: string }[];
+  return images.map((image) => image.id);
+}
 
-// The editor guards against losing an unsaved body, so navigating away from it
-// raises a beforeunload prompt. Every navigation in these tests is deliberate.
-function allowLeavingTheEditor(page: Page) {
-  page.on("dialog", (dialog) => {
-    if (dialog.type() === "beforeunload") {
-      void dialog.accept();
-    } else {
-      void dialog.dismiss();
-    }
-  });
+// The gallery an author manages on the owner-facing project page.
+async function galleryImageIds(
+  page: Page,
+  projectId: string,
+): Promise<string[]> {
+  return page.evaluate(
+    async ({ apiUrl, projectId }) => {
+      const project = await fetch(`${apiUrl}/api/my/projects/${projectId}`, {
+        headers: {
+          Authorization: `Bearer ${localStorage.getItem("access_token")}`,
+        },
+      }).then((r) => r.json());
+      return (project.images ?? []).map((image: { id: string }) => image.id);
+    },
+    { apiUrl: API_URL, projectId },
+  );
 }
 
 test.describe("Article inline images", () => {

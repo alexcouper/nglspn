@@ -1,64 +1,28 @@
 import { test, expect, type Page } from "@playwright/test";
 import * as path from "path";
+import {
+  allowLeavingTheEditor,
+  cleanUp,
+  editorBody,
+  fetchArticle,
+  imagePicker,
+  login,
+  openBlankArticleEditor,
+  trackUploadedImageIds,
+} from "./helpers";
 
 const FIXTURES = path.join(__dirname, "fixtures");
 const IMAGE = path.join(FIXTURES, "inline-image.png");
 
-// /api/auth/login is rate limited to 5/min per IP, so this file logs in once
-// and runs serially. Projects also cap at 10 gallery images — article uploads
-// do not count towards that, but each test still puts its own uploads back.
+// One login for the file: /api/auth/login allows 5/min per IP. Projects also
+// cap at 10 gallery images — article uploads do not count towards that, but
+// each test still puts its own uploads back.
 test.describe.configure({ mode: "serial" });
-
-async function login(page: Page) {
-  const password = process.env.TEST_USER_PASSWORD;
-  if (!password) {
-    throw new Error(
-      "TEST_USER_PASSWORD not set. Make sure .env.claude exists with credentials.",
-    );
-  }
-
-  await page.goto("/login");
-  await page.fill("#email", process.env.TEST_USER_EMAIL || "test@example.com");
-  await page.fill("#password", password);
-  await page.click('button[type="submit"]');
-  await expect(page).toHaveURL(/\/my-projects/);
-}
-
-// Walks from the project list to a blank article editor, so the test doesn't
-// hard-code a project slug. The New article button creates the draft and routes
-// straight to its editor, so this returns both ids.
-async function openBlankArticleEditor(
-  page: Page,
-): Promise<{ projectId: string; articleId: string }> {
-  await page.goto("/my-projects");
-  await page.locator('a[href^="/my-projects/"]').last().click();
-  await expect(page).toHaveURL(/\/my-projects\/[0-9a-f-]+$/);
-  const projectId = page.url().split("/").pop()!;
-
-  // The button lives behind a tab, and it is the thing that creates the draft —
-  // there is no route to navigate to instead.
-  await page.getByRole("button", { name: "Articles", exact: true }).click();
-  await page.getByRole("button", { name: "New article" }).click();
-
-  // The draft is created by the click, so the editor opens on /edit/<id>
-  // before the author types anything.
-  await expect(page).toHaveURL(/\/articles\/edit\/[0-9a-f-]+$/);
-  await expect(page.locator('input[placeholder="Article title"]')).toBeVisible();
-
-  return { projectId, articleId: page.url().split("/").pop()! };
-}
-
-const editorBody = (page: Page) =>
-  page.locator('[contenteditable="true"]').first();
-
-// The toolbar's insert button drives a hidden file input rather than a dialog.
-const bodyImagePicker = (page: Page) =>
-  page.locator('.mdxeditor input[type="file"]').first();
 
 const bodyImages = (page: Page) => editorBody(page).locator("img");
 
 async function insertBodyImage(page: Page, index: number) {
-  await bodyImagePicker(page).setInputFiles(IMAGE);
+  await imagePicker(page).setInputFiles(IMAGE);
   await expect(bodyImages(page)).toHaveCount(index + 1, { timeout: 30_000 });
 }
 
@@ -95,20 +59,8 @@ async function savedListingImageId(
   projectId: string,
   articleId: string,
 ): Promise<string | null> {
-  return page.evaluate(
-    async ({ projectId, articleId }) => {
-      const article = await fetch(
-        `http://localhost:8000/api/projects/${projectId}/articles/${articleId}`,
-        {
-          headers: {
-            Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-          },
-        },
-      ).then((r) => r.json());
-      return article.listing_image_id ?? null;
-    },
-    { projectId, articleId },
-  );
+  const article = await fetchArticle(page, projectId, articleId);
+  return (article.listing_image_id as string | null) ?? null;
 }
 
 // Scoped to the dialog: Next.js dev tools puts its own "Next" button on the
@@ -134,62 +86,6 @@ async function chooseListingImage(page: Page, index: number) {
 
 async function removeListingImage(page: Page) {
   await page.getByRole("button", { name: "Remove", exact: true }).click();
-}
-
-// Article uploads are excluded from `project.images`, so cleanup cannot find
-// them by listing the project. Record the ids the backend hands out instead.
-function trackUploadedImageIds(page: Page): string[] {
-  const ids: string[] = [];
-  page.on("response", async (response) => {
-    if (!response.url().endsWith("/images/upload-url") || !response.ok()) return;
-    const body = await response.json().catch(() => null);
-    if (body?.image_id) ids.push(body.image_id);
-  });
-  return ids;
-}
-
-// Deleting the article cascades its linked images, but the ids are tracked and
-// deleted too so a failure part-way through still cleans up.
-async function cleanUp(
-  page: Page,
-  projectId: string,
-  articleId: string,
-  imageIds: string[],
-) {
-  await page.evaluate(
-    async ({ projectId, articleId, imageIds }) => {
-      const apiUrl = "http://localhost:8000";
-      const headers = {
-        Authorization: `Bearer ${localStorage.getItem("access_token")}`,
-      };
-
-      await Promise.all(
-        imageIds.map((imageId: string) =>
-          fetch(
-            `${apiUrl}/api/projects/${projectId}/articles/${articleId}/images/${imageId}`,
-            { method: "DELETE", headers },
-          ),
-        ),
-      );
-      await fetch(`${apiUrl}/api/projects/${projectId}/articles/${articleId}`, {
-        method: "DELETE",
-        headers,
-      });
-    },
-    { projectId, articleId, imageIds: imageIds.splice(0) },
-  );
-}
-
-// The editor guards against losing an unsaved body, so navigating away from it
-// raises a beforeunload prompt. Every navigation in these tests is deliberate.
-function allowLeavingTheEditor(page: Page) {
-  page.on("dialog", (dialog) => {
-    if (dialog.type() === "beforeunload") {
-      void dialog.accept();
-    } else {
-      void dialog.dismiss();
-    }
-  });
 }
 
 test.describe("Article listing image", () => {

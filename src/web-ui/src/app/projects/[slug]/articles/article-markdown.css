@@ -49,7 +49,8 @@
  * span is inline by default, which kills `margin: auto` on the image. Force
  * the decorator to block-flow and center its inline-block child so the editor
  * view matches the rendered article view. */
-.markdown-article [data-lexical-decorator]:has([data-editor-block-type="image"]) {
+.markdown-article
+  [data-lexical-decorator]:has([data-editor-block-type="image"]) {
   display: block;
   text-align: center;
 }
@@ -69,7 +70,8 @@
 
 /* Inline code: `like this` */
 .markdown-article :not(pre) > code {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   font-size: 0.875em;
   padding: 0.15em 0.4em;
   background-color: var(--article-code-inline-bg);
@@ -90,7 +92,8 @@
 }
 
 .markdown-article pre > code {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   background: none;
   padding: 0;
   color: inherit;
@@ -155,4 +158,21 @@
 .markdown-article pre .token.important,
 .markdown-article pre .token.variable {
   color: var(--article-code-regex);
+}
+
+/* --- Editor toolbar ------------------------------------------------------ */
+
+/*
+ * MDXEditor's toolbar is `position: sticky; top: 0`, so scrolling into a long
+ * article parks it behind the fixed site nav and the sticky action bar: hidden,
+ * and clicks at it land on the header. Re-park it below that chrome, at the
+ * offset `useStickyChromeOffset` measures off the action bar.
+ *
+ * Scoping to `.article-editor` outranks the library's own `.toolbarRoot` rule
+ * without depending on stylesheet order. `mdxeditor-toolbar` is the stable
+ * class the library sets alongside its hashed one — an upgrade that drops it
+ * puts the bug back, and only the Playwright spec would notice.
+ */
+.article-editor .mdxeditor-toolbar {
+  top: var(--article-chrome-offset, 113px);
 }

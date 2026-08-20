@@ -1,6 +1,7 @@
 import { permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ProjectDetailContent } from "./ProjectDetailContent";
+import { socialCard } from "@/lib/social-card";
 import {
   fetchProject,
   fetchProjectArticles,
@@ -27,30 +28,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       : undefined;
     return {
       title,
-      description: description,
-      openGraph: {
-        type: "website",
-        siteName: "naglasúpan",
+      description,
+      ...socialCard({
+        title,
+        description,
         url: `https://naglasupan.is/projects/${canonicalSlug}`,
-        title,
-        description: description,
-        ...(mainImage && {
-          images: [
-            {
-              url: mainImage.url,
-              ...(mainImage.width && { width: mainImage.width }),
-              ...(mainImage.height && { height: mainImage.height }),
-              alt: project.title,
-            },
-          ],
-        }),
-      },
-      twitter: {
-        card: "summary_large_image",
-        title,
-        description: description,
-        ...(mainImage && { images: [mainImage.url] }),
-      },
+        imageUrl: mainImage?.url,
+        imageWidth: mainImage?.width ?? undefined,
+        imageHeight: mainImage?.height ?? undefined,
+      }),
     };
   } catch {
     return {};

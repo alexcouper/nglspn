@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { ArticleRenderContent } from "./ArticleRenderContent";
+import { socialCard } from "@/lib/social-card";
 import {
   fetchArticleBySlug,
   getProjectOr404,
@@ -35,17 +36,15 @@ export async function generateMetadata({
     return {
       title: `${article.title} — ${article.project.title}`,
       description,
-      openGraph: {
+      // The uncropped original. The author's 16:9 framing is applied in CSS at
+      // render time (see CroppedImage), so there is no cropped file to point a
+      // scraper at — Facebook and Slack show the whole image.
+      ...socialCard({
         type: "article",
         title: article.title,
         description,
-        // The uncropped original. The author's 16:9 framing is applied in CSS
-        // at render time (see CroppedImage), so there is no cropped file to
-        // point a scraper at — Facebook and Slack show the whole image.
-        ...(article.listing_image_url && {
-          images: [{ url: article.listing_image_url, alt: article.title }],
-        }),
-      },
+        imageUrl: article.listing_image_url,
+      }),
     };
   } catch {
     return {};

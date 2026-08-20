@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { CompetitionReveal } from "./CompetitionReveal";
 import { fetchCompetition, ApiNotFoundError } from "@/lib/api/server";
+import { socialCard } from "@/lib/social-card";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -23,16 +24,15 @@ export async function generateMetadata({
       day: "numeric",
       year: "numeric",
     });
+    const description = `${competition.name} — ${start} to ${end}`;
     return {
       title: competition.name,
-      description: `${competition.name} — ${start} to ${end}`,
-      openGraph: {
+      description,
+      ...socialCard({
         title: competition.name,
-        description: `${competition.name} — ${start} to ${end}`,
-        ...(competition.image_url && {
-          images: [{ url: competition.image_url }],
-        }),
-      },
+        description,
+        imageUrl: competition.image_url,
+      }),
     };
   } catch {
     return {};

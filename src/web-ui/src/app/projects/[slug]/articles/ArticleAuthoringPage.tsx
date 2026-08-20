@@ -2,7 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { type CSSProperties, useMemo, useState } from "react";
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/auth";
 import type { Project } from "@/lib/api";
@@ -12,6 +12,7 @@ import { ChannelDropdown } from "./ChannelDropdown";
 import { ListingImageDialog } from "./ListingImageDialog";
 import { ListingSettingsPanel } from "./ListingSettingsPanel";
 import { useArticleDraft } from "./useArticleDraft";
+import { useStickyChromeOffset } from "./useStickyChromeOffset";
 
 // The import stays inline: next/dynamic's compile-time transform has to see the
 // literal `import()` to register the chunk in the loadable manifest. Hoisting
@@ -50,6 +51,9 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
   const projectRef = project.slug ?? project.id;
 
   const draft = useArticleDraft({ project, articleId });
+  // The editor's own toolbar is sticky as well, and has to come to rest below
+  // the action bar rather than behind it. See article-markdown.css.
+  const { ref: actionBarRef, offset: chromeOffset } = useStickyChromeOffset();
   const [showPublishDialog, setShowPublishDialog] = useState(false);
   const [showImageWizard, setShowImageWizard] = useState(false);
   const [tab, setTab] = useState<Tab>("content");
@@ -140,7 +144,10 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
 
   return (
     <>
-      <div className="sticky top-14 z-30 bg-white border-b border-border">
+      <div
+        ref={actionBarRef}
+        className="sticky top-14 z-30 bg-white border-b border-border"
+      >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 flex items-center justify-between py-2">
           <div className="text-sm text-muted-foreground">
             <Link
@@ -209,7 +216,12 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4">
+      <div
+        className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4"
+        style={
+          { "--article-chrome-offset": `${chromeOffset}px` } as CSSProperties
+        }
+      >
         {/* Above the tabs: the title is article identity and it is what the
             card preview renders, so tuning a headline for the card should not
             mean changing tabs. */}

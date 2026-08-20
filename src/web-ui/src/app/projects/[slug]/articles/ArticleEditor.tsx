@@ -57,7 +57,7 @@ export function ArticleEditor({
   );
 
   return (
-    <div className="rounded-lg border border-border bg-white">
+    <div className="article-editor rounded-lg border border-border bg-white">
       <ImageUploadStatusBar status={status} onDismissError={dismissError} />
       <MDXEditor
         ref={editorRef}

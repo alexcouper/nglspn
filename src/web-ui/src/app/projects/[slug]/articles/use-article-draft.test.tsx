@@ -491,3 +491,16 @@ describe("unsaved changes", () => {
     await harness.unmount();
   });
 });
+
+describe("the deliberate exits", () => {
+  it("does not sweep the article again on the unmount that follows", async () => {
+    const harness = await mountDraft({ articleId: "article-1" });
+
+    await harness.act(async () => {
+      await harness.draft().remove();
+    });
+    await harness.unmount();
+
+    expect(articles.delete).toHaveBeenCalledOnce();
+  });
+});

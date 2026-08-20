@@ -126,7 +126,7 @@ export function useArticleDraft({ project, articleId }: Options) {
     () => fieldsAreDirty(article),
     [fieldsAreDirty, article],
   );
-  const confirmLeave = useLeaveGuard(isDirty);
+  useLeaveGuard(isDirty);
 
   // The wizard's outcome: an image and the rectangle the author drew on it.
   // Any choice commits the mode, so the next save does not re-derive the image
@@ -194,7 +194,6 @@ export function useArticleDraft({ project, articleId }: Options) {
     updateForm: updateFields,
     snapshotForm: snapshot,
     isDirty,
-    confirmLeave,
     chooseListingImage,
     removeListingImage,
     save,

@@ -146,11 +146,6 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
             <Link
               href={`/my-projects/${project.id}#articles`}
               className="hover:text-foreground"
-              onClick={(e) => {
-                // The body is only in memory until a save, so leaving by the
-                // breadcrumb is as lossy as closing the tab.
-                if (!draft.confirmLeave()) e.preventDefault();
-              }}
             >
               {project.title}
             </Link>

@@ -14,9 +14,10 @@ description: >-
 You are proposing how the projects on naglasupan.is should be grouped. The
 deliverable is a report — `docs/taxonomy/<YYYY-MM-DD>-report.json` — listing
 every project with the category it is in today and the category it belongs in.
-The tooling only ever GETs from the public API: nothing on the site changes,
-no migrations, no `ProjectCategory` writes, no edits to
-`scripts/set_categories.py`. Someone reads the report and decides.
+Your tooling only ever GETs from the public API: nothing on the site changes,
+no migrations, no `ProjectCategory` writes. Someone reads the report and
+decides, and a separate command applies it — see **Applying a report** below.
+Do not run that command yourself.
 
 ## Workflow
 
@@ -183,6 +184,37 @@ Both run from `src/django-backend/`, both take `--api-url` (default
 Both build the same snapshot from the same endpoints (`scripts/taxonomy/`), so
 the export and the check can't disagree about what the site contains. Neither
 needs database access or a Django environment — plain `python3` is enough.
+
+## Applying a report
+
+Not your job, but worth knowing what the report becomes. A checked report is
+applied by a Django management command, run by a person against a real
+database:
+
+```bash
+cd src/django-backend
+uv run python manage.py apply_taxonomy \
+    ../../docs/taxonomy/<date>-report.json --dry-run   # then again without it
+```
+
+It reads `proposed_taxonomy` and `projects`, matches projects on `id`, and takes
+`display_order` from the order categories appear in `proposed_taxonomy` — so
+that order is an editorial decision, not a formatting detail. It is the sequence
+of tabs on `/projects` and of rows on the discover page. Put the categories in
+the order a visitor should meet them.
+
+Two things it will not do, which shape what a report should say:
+
+- **It ignores `subcategories`.** Nothing in the schema, the API or the UI
+  models a second level. Propose them where they are real — they tell the
+  reader where the next split goes — but a report whose top level only works
+  once the subcategories exist is a report that cannot be applied.
+- **It never deletes a category.** A dropped category is emptied and its row
+  kept, because `Project.category` is `on_delete=SET_NULL` and draft and
+  pending projects still point at it without ever appearing in a report. An
+  emptied category vanishes from the UI on its own: both `ListingTabs` and
+  `CategoryRowsSection` filter on `project_count > 0`, which counts only
+  approved projects.
 
 ## Common failures
 

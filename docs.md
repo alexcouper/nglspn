@@ -15,7 +15,7 @@ find it. This file is the source of truth the `nglspn-docs` skill is built from.
 | **Brainstormed specs** | `docs/superpowers/specs/<date>-<topic>-design.md` | Validated designs produced through the brainstorming flow, before they become OpenSpec changes. |
 | **OpenSpec changes** | `openspec/changes/<name>/` | Multi-step / architectural change plans: `proposal.md`, `design.md`, `specs/`, `tasks.md`. The plan of record while work is in flight. |
 | **OpenSpec specs** | `openspec/specs/` | Capability specs that have landed — the current intended behaviour. |
-| **Taxonomy reports** | `docs/taxonomy/<date>-report.json` | Proposals for regrouping projects into categories: every project, its current category and the proposed one. Written by the `nglspn-taxonomy` skill, checked by `python3 -m scripts.taxonomy check`. |
+| **Taxonomy reports** | `docs/taxonomy/<date>-report.json` | Proposals for regrouping projects into categories: every project, its current category and the proposed one. Written by the `nglspn-taxonomy` skill, checked by `python3 -m scripts.taxonomy check`, applied by `manage.py apply_taxonomy`. |
 | **Assistant guidance** | `CLAUDE.md` | Repo facts and commands an AI assistant needs every session. Keep it current and short. |
 | **Skills** | `.claude/skills/<name>/SKILL.md` | Procedural knowledge an assistant invokes on demand (code review, docs). |
 | **Inline** | docstrings, code comments | The "why" next to non-obvious code. The "what" should be the code itself. |

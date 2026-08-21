@@ -6,6 +6,9 @@ api.naglasupan.is, then downloads each referenced image from the prod
 CDN and uploads it to local MinIO so the listing renders real
 artwork. Re-running picks up new prod projects (idempotent per record).
 
+Projects keep their production UUIDs, so a taxonomy report exported from prod
+(docs/taxonomy/) can be applied against this database with `apply_taxonomy`.
+
 Usage:
     uv run python scripts/seed_prod_copy.py
     # or
@@ -23,6 +26,7 @@ import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Any
+from uuid import UUID
 
 DJANGO_BACKEND_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(DJANGO_BACKEND_DIR))
@@ -230,13 +234,18 @@ def create_projects(
         cat_slug = project_category.get(pd["id"])
         category = categories_by_slug.get(cat_slug) if cat_slug else None
 
-        existing = Project.objects.filter(title=pd["title"]).first()
+        # Keep the prod UUID as the local primary key. `apply_taxonomy` matches
+        # a report's projects on `id` and aborts on any it cannot find, so a
+        # copy with fresh ids is a copy no taxonomy report can be applied to.
+        prod_id = UUID(pd["id"])
+        existing = Project.objects.filter(pk=prod_id).first()
         if existing:
             project = existing
             print(f"  Exists : {project.title}")
         else:
             created_at = datetime.fromisoformat(pd["created_at"])
             project = Project.objects.create(
+                id=prod_id,
                 title=pd["title"],
                 tagline=pd.get("tagline") or "",
                 description=pd.get("tagline")

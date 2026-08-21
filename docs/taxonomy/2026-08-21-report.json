@@ -1,0 +1,961 @@
+{
+  "generated_at": "2026-08-21",
+  "source": {
+    "api_url": "https://api.naglasupan.is/api"
+  },
+  "current_categories": [
+    {
+      "slug": "apps-services",
+      "name": "Apps & Services",
+      "project_count": 32
+    },
+    {
+      "slug": "community-public-good",
+      "name": "Community & Public Good",
+      "project_count": 17
+    },
+    {
+      "slug": "productivity-business",
+      "name": "Productivity & Business",
+      "project_count": 10
+    },
+    {
+      "slug": "developer-tools",
+      "name": "Developer Tools",
+      "project_count": 11
+    }
+  ],
+  "proposed_taxonomy": [
+    {
+      "slug": "developer-tools",
+      "name": "Developer Tools",
+      "status": "kept",
+      "replaces": [],
+      "rationale": "The one current category whose boundary already matches how a visitor searches: things you install, import or run while building software. Kept as-is, slug included: no reason to spend churn on a line that already works. Only the membership is tightened — the two Icelandic-language packages move to 'Icelandic Language', where their domain rather than their file format does the sorting, and CowCo joins from 'Productivity & Business' because its stated job is editing 'the files your AI is creating'.",
+      "future_example": "A CLI that diffs Terraform plans, or a TypeScript client for an Icelandic bank API.",
+      "subcategories": []
+    },
+    {
+      "slug": "productivity-business",
+      "name": "Productivity & Business",
+      "status": "kept",
+      "replaces": [],
+      "rationale": "Holds up: everything in it is software someone uses to run work — a team's, a company's, or a volunteer board's. Kept unchanged, name and slug, because the problem with the current taxonomy is not this line. It gains the two housing-association products, which were filed under 'Apps & Services' and 'Community & Public Good' respectively despite being the same kind of admin software, and loses CowCo to Developer Tools. At eleven projects with a clean split between personal/team tooling and back-office operations, it earns subcategories.",
+      "future_example": "An invoicing tool for Icelandic sole traders, or a shift planner for a restaurant.",
+      "subcategories": [
+        {
+          "slug": "productivity-tools",
+          "name": "Productivity Tools",
+          "rationale": "Tools an individual or a single team picks up unilaterally — task lists, whiteboards, estimation, research. No procurement, no rollout."
+        },
+        {
+          "slug": "business-operations",
+          "name": "Business Operations",
+          "rationale": "Systems of record for an organisation: HR, compliance, bookkeeping, governance, security posture. Bought once and lived in."
+        }
+      ]
+    },
+    {
+      "slug": "community-public-good",
+      "name": "Community & Public Good",
+      "status": "kept",
+      "replaces": [],
+      "rationale": "The name was never the problem; the membership was. It had become the second dumping ground — a disc golf map, a dictionary, a paid housing-association SaaS and a fuel price tracker all filed here because they felt worthy. Kept with slug and name intact, so links and bookmarks to /projects?category=community-public-good keep resolving, but re-scoped to its actual subject: public institutions, public data, and the projects that exist to strengthen a shared commons. Seven projects leave, three arrive from 'Apps & Services'. At thirteen with two clearly different reading motives — 'show me the data' versus 'let me take part' — it earns subcategories.",
+      "future_example": "A dashboard of municipal building permits, or a volunteer-run mirror of Statistics Iceland releases.",
+      "subcategories": [
+        {
+          "slug": "democracy",
+          "name": "Democracy",
+          "rationale": "Elections, parliament, and holding elected representatives to what they said. Read before you vote or after you wonder."
+        },
+        {
+          "slug": "open-data",
+          "name": "Open Data",
+          "rationale": "Public measurements made legible — traffic, DNS, parking tariffs, hosting dependencies. The project is the presentation layer; the data is already public."
+        },
+        {
+          "slug": "community-initiatives",
+          "name": "Community Initiatives",
+          "rationale": "Projects whose product is participation: directories, challenges, shared platforms, and infrastructure for civil liberties."
+        }
+      ]
+    },
+    {
+      "slug": "cost-of-living",
+      "name": "Cost of Living",
+      "status": "split",
+      "replaces": [
+        "apps-services",
+        "community-public-good"
+      ],
+      "rationale": "Five projects independently attacked the same Icelandic problem — what things cost and whether the discount is real — and were scattered across two categories that told a visitor nothing about them. 'Apps & Services' hid Útsölur and the Krónan inflation tracker; 'Community & Public Good' hid Gasvaktin, which is a price comparison tool, not a civic institution. The old shape sorted these by how public-spirited they felt rather than by what a visitor wants from them, which is money.",
+      "future_example": "A rent index for Reykjavík, or a tool comparing electricity tariffs.",
+      "subcategories": []
+    },
+    {
+      "slug": "games-puzzles",
+      "name": "Games & Puzzles",
+      "status": "split",
+      "replaces": [
+        "apps-services"
+      ],
+      "rationale": "'Apps & Services' held six games. Nothing about that name tells a visitor a browser naval battle and an Icelandic daily-puzzle site are in there, and nothing about the category let those six be browsed together — which is the single most likely reason someone opens a showcase of side projects at all.",
+      "future_example": "An Icelandic crossword generator, or a co-op mobile trivia game.",
+      "subcategories": []
+    },
+    {
+      "slug": "events-gatherings",
+      "name": "Events & Gatherings",
+      "status": "split",
+      "replaces": [
+        "apps-services"
+      ],
+      "rationale": "Four projects assume people are, or are about to be, in the same room: one finds the event, one runs it, two are what you do once everyone has arrived. 'Apps & Services' split that intent across an events marketplace and a party game with no way to see they belong to the same occasion. Deliberately narrow — the test is whether the gathering is the point, not whether the software is fun.",
+      "future_example": "A ticketing tool for Icelandic music venues, or a pub quiz host app.",
+      "subcategories": []
+    },
+    {
+      "slug": "family-wellbeing",
+      "name": "Family & Wellbeing",
+      "status": "split",
+      "replaces": [
+        "apps-services",
+        "community-public-good"
+      ],
+      "rationale": "Eight projects serve a household rather than a market: children, parents, health, and the private record of a life. The old shape had them in three different places — a chore-reward system and a playground map under 'Apps & Services', a breast self-examination app under 'Community & Public Good' — which sorted them by how the author framed the project rather than by who opens it. Audience is the right axis here: everything in this category is opened by someone at home.",
+      "future_example": "A vaccination reminder app for Icelandic parents, or a shared family calendar.",
+      "subcategories": [
+        {
+          "slug": "kids-parenting",
+          "name": "Kids & Parenting",
+          "rationale": "Built for a child to use, or for a parent to use on a child's behalf: play, chores, screens, dinner."
+        },
+        {
+          "slug": "health-personal",
+          "name": "Health & Personal",
+          "rationale": "One person's own body and own memory. Both members keep their data on the device by design, which is why they sit apart from the parenting half."
+        }
+      ]
+    },
+    {
+      "slug": "outdoors-hobbies",
+      "name": "Outdoors & Hobbies",
+      "status": "split",
+      "replaces": [
+        "apps-services",
+        "community-public-good"
+      ],
+      "rationale": "What people do with their free time that is not a game on a screen: finding a course or a pool, tracking a boat, matching yarn, building a bead pattern, swapping a vocal. 'Apps & Services' and 'Community & Public Good' between them had a disc golf map, a golf booking aggregator and a yarn colour search engine filed as far apart as the taxonomy allowed. At eight with a hard line between 'go outside' and 'make something at the table', it earns subcategories.",
+      "future_example": "A hiking route planner for the Westfjords, or a pattern editor for lopapeysa knitters.",
+      "subcategories": [
+        {
+          "slug": "sport-outdoors",
+          "name": "Sport & Outdoors",
+          "rationale": "Getting out of the house: where to play, where to swim, where you are, and who to call if it goes wrong."
+        },
+        {
+          "slug": "crafts-making",
+          "name": "Crafts & Making",
+          "rationale": "Tools that help produce a physical or creative artefact — a pattern, a colour match, a finished track."
+        }
+      ]
+    },
+    {
+      "slug": "icelandic-language",
+      "name": "Icelandic Language",
+      "status": "new",
+      "replaces": [
+        "developer-tools",
+        "community-public-good"
+      ],
+      "rationale": "A recurring subject on this site with no home: the four projects here were split between 'Developer Tools' (a lemmatiser, a word database) and 'Community & Public Good' (a dictionary, a directory of courses) purely on whether they shipped as a package or a website. That is sorting by delivery format, which is exactly what tags are for. Anyone who wants Icelandic-language tooling wants all four, whatever shape it arrives in. Re-filing costs nothing in URLs — a project lives at /projects/<slug> regardless of category — so the cost here is purely that a developer browsing Developer Tools no longer finds them. That is the trade this category asks for, and the one most worth arguing about.",
+      "future_example": "An Icelandic text-to-speech voice, a BÍN-backed spellchecker, or a declension trainer.",
+      "subcategories": []
+    }
+  ],
+  "projects": [
+    {
+      "id": "7811e9ef-613b-471d-814a-0855b00338e7",
+      "slug": "accessibility-scanner",
+      "title": "Accessibility Scanner",
+      "current_category_slug": "developer-tools",
+      "proposed_category_slug": "developer-tools",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'scan for accessibility issues _in production_ ... We ship the scanner to production and scan the page as the user navigates'. Tagged 'Library'. A dependency a web developer adds to their own app; stays put."
+    },
+    {
+      "id": "e55b0a28-7dad-4ced-a340-36c9835fa1f2",
+      "slug": "atlas-hinrik-io",
+      "title": "Atlas",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "games-puzzles",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Tagline: 'Spin the globe. Guess the country. Conquer the world!' Description: 'Every right answer wins you a country — conquer them all'. A quiz game that happens to teach geography."
+    },
+    {
+      "id": "c8d64e68-5f07-46d1-b4dc-65d4ba2f2eaa",
+      "slug": "beadblueprint-uk",
+      "title": "beadblueprint.uk",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "outdoors-hobbies",
+      "proposed_subcategory_slug": "crafts-making",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Tagline: 'Free and ad free bead pattern library and design tool'. Description: 'drop in a photo and it'll generate a blueprint for you, and hand you a printable pattern with bead counts'. Produces something you then make by hand."
+    },
+    {
+      "id": "97d2b8eb-c21e-456b-8cf2-b7411a391db6",
+      "slug": "bilaleikir-is",
+      "title": "bilaleikir.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "family-wellbeing",
+      "proposed_subcategory_slug": "kids-parenting",
+      "alternative_category_slug": "games-puzzles",
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Description: 'a mobile-first PWA built for Icelandic families on road trips ... Bílabingó Countryside bingo with three difficulty levels (3x3 for ages 3–6 ...)'. They are games, but they are chosen by a parent in a car, which is the audience this category sorts on."
+    },
+    {
+      "id": "0aa1c8da-e08a-4851-b6ec-9289444e3e34",
+      "slug": "bjornj12-github-io",
+      "title": "bjornj12.github.io",
+      "current_category_slug": "developer-tools",
+      "proposed_category_slug": "developer-tools",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Tagline: 'Your Claude Code sessions, finally orchestrated.' Description: 'an orchestrator for Claude Code — manages your worktrees, Linear tickets'. Audience is developers running parallel agent sessions; stays put."
+    },
+    {
+      "id": "ed4369f2-6a56-4057-9d26-92f6d908fb92",
+      "slug": "boardroomkids-vercel-app",
+      "title": "boardroomkids.vercel.app",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "family-wellbeing",
+      "proposed_subcategory_slug": "kids-parenting",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Description: 'a calm digital workspace designed to introduce children to writing, typing, and thinking with a keyboard instead of passive screen consumption ... Instead of games or addictive mechanics'. Explicitly not a game."
+    },
+    {
+      "id": "8ada8b9d-9811-449f-ab1a-b32b91ae3f05",
+      "slug": "broadside",
+      "title": "Broadside",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "games-puzzles",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Description: 'a browser game about fast, tactical naval battles in a procedurally generated 17th century Caribbean'. Tagged 'Game'."
+    },
+    {
+      "id": "e331fc48-409a-4885-a6bb-311893d2a307",
+      "slug": "chessanalyses-com",
+      "title": "chessanalyses.com",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "games-puzzles",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Description: 'skákspilarar ... geta greint leikina sína, fundið sína styrkleika og veikleika og æft sig með þrautum'. Analysis and puzzle training for chess players — closer to a games site than to a productivity tool, though it is an analytics product at heart."
+    },
+    {
+      "id": "a3939766-ebc9-4204-b171-072efca29811",
+      "slug": "clusters",
+      "title": "Clusters",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "games-puzzles",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Whole description: 'Clusters. A word-game. \"NYT Connections\", with difficulty levels.'"
+    },
+    {
+      "id": "f97d1047-5952-4ae0-8b68-61fa6c53d0f0",
+      "slug": "code-snippet-manager",
+      "title": "Code Snippet Manager",
+      "current_category_slug": "developer-tools",
+      "proposed_category_slug": "developer-tools",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'a developer tool for storing, organizing, and sharing code snippets in one place', tagged 'Developer tool'. Stays put."
+    },
+    {
+      "id": "e904525f-f27d-4c6b-99f9-83ecfb2be87a",
+      "slug": "codeclip-link",
+      "title": "codeclip.link",
+      "current_category_slug": "developer-tools",
+      "proposed_category_slug": "developer-tools",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'Dead simple code snippet sharing. Paste code → get link' with 'Auto-detects 20+ languages with syntax highlighting'. Stays put."
+    },
+    {
+      "id": "c7b72e65-255b-46f4-a2ff-a9e0289fb1cb",
+      "slug": "cowco-app",
+      "title": "CowCo",
+      "current_category_slug": "productivity-business",
+      "proposed_category_slug": "developer-tools",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": "productivity-business",
+      "confidence": "medium",
+      "rationale": "Moves from 'Productivity & Business'. Description: 'your eyes and hands on the files your AI is creating and editing. Point it at a project folder, browse the tree' and names Claude Code and Copilot as the workflows it sits beside. That is a developer's working set, not office work — though it edits 'spreadsheets, images and more', so the old placement was not absurd."
+    },
+    {
+      "id": "0e9fae2a-815a-43fc-a8a6-73c71a54f432",
+      "slug": "digitalmap-atli-io",
+      "title": "digitalmap.atli.io",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "open-data",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'maps where Icelandic government agencies ... host their core digital infrastructure, email, websites, and DNS' using 'publicly available DNS data'. Stays put."
+    },
+    {
+      "id": "005935fc-00ed-43c2-a591-d56cfd97a9e6",
+      "slug": "eldasmart-is",
+      "title": "eldasmart.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "cost-of-living",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Tagline: 'Eldið meira fyrir minna' (cook more for less). Description: 'As this economy forces us all to tighten our belts ... Each recipe exists in 3 ... price ranges: low, organic and high. This allows users to compare the costs'. It is a recipe site, so a future 'Food & Drink' category would claim it — but its whole argument is the grocery bill."
+    },
+    {
+      "id": "b9306397-0101-49c3-9465-f7f2b41b944e",
+      "slug": "erumferd-is",
+      "title": "erumferd.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "open-data",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Description: 'Gögn um meðalhraða á nokkrum götum ásamt fjölda bíla á klukkustund ... fengin frá Landsupplýsingakerfi Reykjavíkurborgar - LUKR'. A presentation layer over municipal open data — the same thing Netvaktin and digitalmap do."
+    },
+    {
+      "id": "39e1b712-5e23-4499-b3bd-2426e24e86df",
+      "slug": "eventa-is",
+      "title": "eventa.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "events-gatherings",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Tagline: 'Stafrænt viðburðartorg á Íslandi'. Description: 'Sóttir flest allir viðburðir á íslandi og flokkaðir á einum stað ... Búa til viðburði opna eða prívat.' Both sides of an event: finding one and running one."
+    },
+    {
+      "id": "49d8327d-cbf1-4787-88fd-b410063e8c8f",
+      "slug": "finaldinner-fun",
+      "title": "finaldinner.fun",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "events-gatherings",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": "games-puzzles",
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Description: 'A real-time social deduction game for groups of 4–25 players at a physical gathering. Everyone joins on their phone via QR code.' It is literally a game, so 'Games & Puzzles' is the honest alternative — filed here because it is useless without a dinner party, which is the line this category draws."
+    },
+    {
+      "id": "6eb5b6d7-05b1-46b3-bebe-42d1ca8cd4e7",
+      "slug": "folfvellir-is",
+      "title": "folfvellir.is",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "outdoors-hobbies",
+      "proposed_subcategory_slug": "sport-outdoors",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Community & Public Good'. Tagline: 'Interactive map of every disc golf course in Iceland'. Description: 'open in a parking lot in Reykjavík, instantly see which course is nearest, and head out'. A recreation finder, not a civic service."
+    },
+    {
+      "id": "33c9beeb-d70c-495a-853f-b65e889aa198",
+      "slug": "fundid-is",
+      "title": "fundid.is",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "community-initiatives",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'a free, map-based lost & found platform for Iceland ... let the community help get it home', built because 'Lost & found in Iceland is fragmented'. Shared infrastructure nobody else was going to build. Stays put."
+    },
+    {
+      "id": "d4afe752-200a-49fc-a0c2-ef95e1bc50f0",
+      "slug": "gasvaktin",
+      "title": "Gasvaktin",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "cost-of-living",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": "community-public-good",
+      "confidence": "high",
+      "rationale": "Moves from 'Community & Public Good'. Description: 'Automated price comparison tool for petrol stations across Iceland, providing up-to-date fuel prices'. Open data and MIT-licensed, hence the old placement, but what a visitor comes for is the price of petrol."
+    },
+    {
+      "id": "e70bd7c9-79f9-4f1b-8306-421db657b507",
+      "slug": "gcm-aihero-variant",
+      "title": "gcm-aihero-variant",
+      "current_category_slug": "developer-tools",
+      "proposed_category_slug": "developer-tools",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'a zero-config CLI for cloning, organising, and monitoring many local git repositories'. Stays put."
+    },
+    {
+      "id": "154743e9-2e1e-4ec3-ac34-11579c781475",
+      "slug": "gulrot-is",
+      "title": "gulrot.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "family-wellbeing",
+      "proposed_subcategory_slug": "kids-parenting",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Tagline: 'Hvatakerfi hannað til að virkja og styrkja börn á öllum aldri'. Description: 'hvernig væri best að hvetja hann og systkini hans til meiri þáttöku á heimilinu og í skóla ... þurftu að vera verkefni og að sjálfsögðu verðlaun'. A chore-and-reward system for parents."
+    },
+    {
+      "id": "ec3e8115-adb2-4ba9-9561-816204e4fb92",
+      "slug": "habitera-is",
+      "title": "habitera.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "productivity-business",
+      "proposed_subcategory_slug": "business-operations",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Description: 'a lightweight property management tool designed for housing associations ... generate resident lists, and create printable mailbox labels'. Back-office admin software; belongs beside Húsró, which does the same job."
+    },
+    {
+      "id": "dccf464f-c5ca-4bab-b1db-caa11517abc4",
+      "slug": "husro-is",
+      "title": "husro.is",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "productivity-business",
+      "proposed_subcategory_slug": "business-operations",
+      "alternative_category_slug": "community-public-good",
+      "confidence": "high",
+      "rationale": "Moves from 'Community & Public Good'. Description: 'categorizes transactions, generates annual financial statements and operating and maintenance plans, and sets housing association fees', tagged 'Bootstrapped' and pitched as cheaper than 'traditional housing association services'. It is a commercial product for a volunteer board, not a public good."
+    },
+    {
+      "id": "37ee6192-b059-4e39-b3f0-3576cb18844b",
+      "slug": "icelandic-data",
+      "title": "icelandic-data",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "developer-tools",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": "community-public-good",
+      "confidence": "medium",
+      "rationale": "Moves from 'Community & Public Good'. Description: 'Það er ekki grafískt tól heldur safn af SKILL.md skrám ... ásamt Python skriptum' — the consumer is Claude Code, not a member of the public. The subject matter is Icelandic public data, so the old placement is a defensible second reading, but nobody browses this without a terminal open."
+    },
+    {
+      "id": "52c0f1d3-dc82-4faa-a546-02cf627c54e0",
+      "slug": "keep-is",
+      "title": "keep.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "family-wellbeing",
+      "proposed_subcategory_slug": "health-personal",
+      "alternative_category_slug": null,
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Tagline: 'A private timeline for your life.' Description: 'a quiet place to save the moments you don't want to forget ... No algorithms, no likes, no noise ... You can tag the people who were there.' It is neither health nor family in the strict sense; it sits here because it is a private record of home life, and this is the least bad shelf for it in a nine-category taxonomy."
+    },
+    {
+      "id": "78fcaa80-8ebb-43cb-abdc-1c8a440664a3",
+      "slug": "komms",
+      "title": "Komms",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "community-initiatives",
+      "alternative_category_slug": null,
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. The description is a civil-liberties argument, not a product pitch: 'Mass surveillance initiatives like Chatcontrol seek to systematically compromise end-to-end encryption', with internet blackouts in Iran as the worked example. Tagged 'Non-profit', 'Society Impact'. Filing a messenger under public good is a stretch until you read why it exists."
+    },
+    {
+      "id": "e9f7d393-3292-4348-b1a3-fba62e2a6ace",
+      "slug": "kosningar2026-skaginn-is",
+      "title": "kosningar2026.skaginn.is",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "democracy",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'Vefsíða um sveitarstjórnarkosningar á Akranesi 2026 ... Skoðað flokka, frambjóðendur og stefnur ... Leitað að kjördeild'. Stays put, now under the Democracy subcategory."
+    },
+    {
+      "id": "e7be2a28-c5a3-4143-aec2-2ad9d0d18dd5",
+      "slug": "kotodo-app",
+      "title": "kotodo.app",
+      "current_category_slug": "productivity-business",
+      "proposed_category_slug": "productivity-business",
+      "proposed_subcategory_slug": "productivity-tools",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'a task manager that runs entirely on your device ... Projects come as a list, kanban board, or week grid'. Stays put."
+    },
+    {
+      "id": "35e0f1a0-98d3-4519-801f-572a7d4bed71",
+      "slug": "kronan-inflation-vercel-app",
+      "title": "kronan-inflation.vercel.app",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "cost-of-living",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Tagline: 'See how prices have changed on the products you actually buy'. It 'reprices every item at today's cost surfacing the real impact of food inflation on the basket they actually buy, not the national CPI average'."
+    },
+    {
+      "id": "200773b6-84dc-44a0-826f-ab7b722da705",
+      "slug": "leiksvaedi-is",
+      "title": "Leiksvæði.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "family-wellbeing",
+      "proposed_subcategory_slug": "kids-parenting",
+      "alternative_category_slug": "outdoors-hobbies",
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Whole description: 'Uppgötvaðu og kortlegðu leiksvæði um allt land ... samfélagsvettvangur til að hjálpa fjölskyldum að finna skemmtilega leikvelli fyrir börnin sín.' A map of outdoor places, so 'Outdoors & Hobbies' is arguable; filed here because the copy names families as the users."
+    },
+    {
+      "id": "58759b1e-34a1-4919-aa18-e5b011b4237d",
+      "slug": "lemma-solberg-is",
+      "title": "lemma.solberg.is",
+      "current_category_slug": "developer-tools",
+      "proposed_category_slug": "icelandic-language",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": "developer-tools",
+      "confidence": "high",
+      "rationale": "Moves from 'Developer Tools'. Tagline: 'Icelandic lemmatization for JavaScript'. Description: 'Icelandic is heavily inflected. A single noun like \"hestur\" (horse) has 16 forms'. It ships as a package, which is why it was under Developer Tools — but its subject is the language, and that is what someone is searching for."
+    },
+    {
+      "id": "a4d9ed43-8b3f-4983-8a80-e2b7a8478d21",
+      "slug": "loka-ord",
+      "title": "Loka-Orð",
+      "current_category_slug": "developer-tools",
+      "proposed_category_slug": "icelandic-language",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": "developer-tools",
+      "confidence": "high",
+      "rationale": "Moves from 'Developer Tools'. Description: 'Frjálst gagnasafn yfir íslensk orð, beygingamyndir og samsetningu þeirra ... Gagnasafnið telur í dag (2026-01) rétt yfir hundraðþúsund orð'. A word database under LGPLv3 — the raw material Lemma-style tools are built on, and it belongs beside them."
+    },
+    {
+      "id": "45950569-bba9-4f21-b88a-27f7849d00be",
+      "slug": "lydraedisveislan-is",
+      "title": "lydraedisveislan.is",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "democracy",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'Finndu út allt um öll framboð fyrir sveitarstjórnarkosningarnar 16. maí 2026 á einum stað'. The national counterpart to the Akranes site; stays put."
+    },
+    {
+      "id": "d23ce444-4abf-4e0e-b835-70489dda5531",
+      "slug": "melda-is",
+      "title": "melda.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "events-gatherings",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": "productivity-business",
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Description: 'an all-in-one event management platform for weddings, confirmations, annual parties, company events ... collect RSVPs, manage meal preferences, organize schedules and seating'. The company-events half of the pitch is why 'Productivity & Business' is a fair second reading, but the primary occasion is a wedding."
+    },
+    {
+      "id": "4d0eb68d-34c2-414f-8b7f-a34c3c9a4e51",
+      "slug": "minna-is",
+      "title": "minna.is",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "community-initiatives",
+      "alternative_category_slug": "cost-of-living",
+      "confidence": "medium",
+      "rationale": "Description in full: 'Minna is an initiative that raises awareness of consumption and waste in Iceland, while helping people make better choices that reduce waste and save money.' Self-described as an initiative and led with the environment ('fyrir þig og umhverfið'), so it stays — but 'save money' is half the pitch and one sentence is thin evidence either way."
+    },
+    {
+      "id": "87ee8849-cdb9-48b5-9df6-1d62d07fba92",
+      "slug": "minskimun-is",
+      "title": "minskimun.is",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "family-wellbeing",
+      "proposed_subcategory_slug": "health-personal",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Community & Public Good'. Description: 'a free app that guides you through a monthly breast self-examination in under 10 minutes ... No login. No data leaving your phone.' Public-health motivation, but the user is one person checking her own body — the audience, not the motive, decides the shelf."
+    },
+    {
+      "id": "898b8389-9afd-4786-ace5-2d99e6899c74",
+      "slug": "morphvox-net",
+      "title": "morphvox.net",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "outdoors-hobbies",
+      "proposed_subcategory_slug": "crafts-making",
+      "alternative_category_slug": "developer-tools",
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Description: 'a web app where you can browse voice models, convert voice in real time, generate TTS, and do full song voice swaps'. Making something creative, so it sits with the crafts — but it is an RVC platform with model management and a GitHub repo, so a developer-tool reading is defensible and this is the weakest fit in the category."
+    },
+    {
+      "id": "f44fcbf5-8737-4beb-bdaf-94a3f8c15446",
+      "slug": "naglasupan",
+      "title": "Naglasúpan",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "community-initiatives",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'A project focused on encouraging software development in Iceland ... to encourage more building ... wins in the community are wins for all of us.' Stays put."
+    },
+    {
+      "id": "9ff7c07a-47ef-47c9-9cba-916d0b8baa87",
+      "slug": "navoa-is",
+      "title": "Navoa",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "outdoors-hobbies",
+      "proposed_subcategory_slug": "sport-outdoors",
+      "alternative_category_slug": null,
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Tagline: 'Coastal Cruising Tracking System'. Description: 'SAR-integrated GPS tracking and route logging for cruisers and pleasure vessels ... Trigger an SOS that alerts both the Icelandic Coast Guard and your designated emergency contact.' Recreational boating, with a safety function that gives it a public-good reading too."
+    },
+    {
+      "id": "ac77b749-4606-4b95-ad98-8cea1c5031a6",
+      "slug": "netvaktin-is",
+      "title": "netvaktin.is",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "open-data",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'Netvaktin birtir mælingar á völdum stafrænum innviðum Íslands ... opinberum DNS-færslum eins og SPF, DMARC og DKIM'. Same subject as digitalmap; stays put."
+    },
+    {
+      "id": "49a7092e-ac25-4631-bc69-7831f0a3dd40",
+      "slug": "open-mannvaen-is",
+      "title": "open.mannvaen.is",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "community-initiatives",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'A directory mapping open-source projects with connections to Iceland ... to make the Icelandic open-source ecosystem visible, support collaboration'. Stays put."
+    },
+    {
+      "id": "b7c0d4d4-6a3b-486a-985b-e8267b65163c",
+      "slug": "postwall-app",
+      "title": "postwall.app",
+      "current_category_slug": "productivity-business",
+      "proposed_category_slug": "productivity-business",
+      "proposed_subcategory_slug": "productivity-tools",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Tagline: 'A collaborative whiteboard for your stickies!' Built because the author 'needed to ideate and organize thoughts'. Stays put."
+    },
+    {
+      "id": "ab979d64-d5bb-4dcc-8f1a-74d2c1189dfd",
+      "slug": "proto",
+      "title": "Prótó",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "community-initiatives",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'A free 4 week online creative challenge where participants prototype their ideas ... we share what we're working on, provide feedback, and cheer each other on.' The product is the participation. Stays put."
+    },
+    {
+      "id": "1beac070-fc4e-46c0-91e5-57744b6167bc",
+      "slug": "rastimar-golf-is",
+      "title": "rastimar.golf.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "outdoors-hobbies",
+      "proposed_subcategory_slug": "sport-outdoors",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Description: 'bringing together, in one place, details about golf simulators, courses, clubs, and PGA golf instructors ... helps golfers find available tee times'."
+    },
+    {
+      "id": "8bab9ddf-058a-427d-b5bb-96126381f458",
+      "slug": "result-rpc",
+      "title": "Result-RPC",
+      "current_category_slug": "developer-tools",
+      "proposed_category_slug": "developer-tools",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Tagline: 'Typed RPC for web apps - errors stay values, across the wire'. Tagged 'Library'. Stays put."
+    },
+    {
+      "id": "90a6adb3-63f6-49fb-ad4a-d75bae4fc397",
+      "slug": "rocketleague-is",
+      "title": "rocketleague.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "games-puzzles",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": "outdoors-hobbies",
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Description: 'Fantasy league vefsida fyrir íslensku Rocket League deildina (RLIS). Notendur byggja draumaliðið sitt og keppa sín á milli vikulega.' The thing you play is the fantasy league, so it sits here rather than with the sport-venue projects — but it is a competitive-league companion, which is the other reading."
+    },
+    {
+      "id": "072d0065-8159-4297-9d23-032068dbae1a",
+      "slug": "roommate",
+      "title": "roommate",
+      "current_category_slug": "productivity-business",
+      "proposed_category_slug": "productivity-business",
+      "proposed_subcategory_slug": "productivity-tools",
+      "alternative_category_slug": "outdoors-hobbies",
+      "confidence": "low",
+      "rationale": "Whole description: 'Roomselector app to help organize room assignments for a soccer team'. That is group logistics, so it stays where it is, but one sentence and a bare GitHub URL is not enough to tell whether it generalises beyond one club — in which case 'Outdoors & Hobbies' would read better. A tagline and a screenshot would settle it."
+    },
+    {
+      "id": "dfe8ad24-c5e6-47fe-8b42-790f2b09f99b",
+      "slug": "runur-is",
+      "title": "runur.is",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "games-puzzles",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Description: 'an Icelandic puzzle game website where you can play a variety of daily word and logic games ... games like Wordle, Sudoku, a connections puzzle'."
+    },
+    {
+      "id": "3fdf4292-26fb-45a0-a075-8e2d1e3daf0f",
+      "slug": "screamingcards-com",
+      "title": "screamingcards.com",
+      "current_category_slug": "productivity-business",
+      "proposed_category_slug": "productivity-business",
+      "proposed_subcategory_slug": "productivity-tools",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'Planning poker settur upp á skemmtilegan máta ... Markmið tólsins er að gera planning fundi einfaldari'. Team estimation meetings. Stays put."
+    },
+    {
+      "id": "1e7c58bf-760c-4890-93d5-a073126538b7",
+      "slug": "sino-pe",
+      "title": "Sino.pe",
+      "current_category_slug": "productivity-business",
+      "proposed_category_slug": "productivity-business",
+      "proposed_subcategory_slug": "business-operations",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'an AI compliance concierge ... maps your answers to the 93 controls of ISO 27001 in real time'. Tagged 'RegTech'. Stays put."
+    },
+    {
+      "id": "0dffa5fd-d7f2-4617-ac9e-ba60fa2f6b0c",
+      "slug": "sinopebase",
+      "title": "sinopebase",
+      "current_category_slug": "developer-tools",
+      "proposed_category_slug": "developer-tools",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'Auth, database, storage, realtime, and AI — one deploy, zero boilerplate ... One import swap from supabase-js'. Tagged 'BaaS', 'Developer tool'. Stays put."
+    },
+    {
+      "id": "7e0593da-2d20-428e-b3a6-96235d3bc7d3",
+      "slug": "smakk-app",
+      "title": "smakk.app",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "events-gatherings",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": "games-puzzles",
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Description: 'Create a tasting session, invite others to join, and rate beers in real time ... ideal for casual group tastings, work events, or get-togethers.' Same test as Final Dinner: the occasion is the product. A future 'Food & Drink' category would have a strong claim on it."
+    },
+    {
+      "id": "51b5c0b2-d314-44ec-a7b7-cd1755500557",
+      "slug": "sogusmidja",
+      "title": "Sögusmiðja",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "family-wellbeing",
+      "proposed_subcategory_slug": "kids-parenting",
+      "alternative_category_slug": "outdoors-hobbies",
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Description: 'an AI-powered children's story app that helps parents create short, personalised stories in Icelandic ... playful reading moments around a child's interests'. Parent-facing by its own description; the creative-tool reading is secondary."
+    },
+    {
+      "id": "fb56e658-5815-48e3-9711-b054a6d6544e",
+      "slug": "sundlaugar-com",
+      "title": "sundlaugar.com",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "outdoors-hobbies",
+      "proposed_subcategory_slug": "sport-outdoors",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Description: 'Nýleg endursmíði á Sundlaugalistanum ... Nú með multi-check-in, stjörnur og meðmæli, badges, leaderboard og sundlaugakóngur/drotning ... \"finna næstu laug\"'. Pool finder with a scoreboard on top."
+    },
+    {
+      "id": "faf9b3e3-27ee-44d0-8ecd-61a1f8073eb7",
+      "slug": "synapse-watch-ai-agents-think-in-real-time",
+      "title": "Synapse - Watch AI Agents Think in Real-Time",
+      "current_category_slug": "developer-tools",
+      "proposed_category_slug": "developer-tools",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'renders every step as a live, interactive node graph ... Connect any AI agent in real-time via WebSocket'. A debugging surface for people building agents. Stays put."
+    },
+    {
+      "id": "6f4790ea-6f2e-4c13-be58-3dc7a5c4895d",
+      "slug": "tensions",
+      "title": "Tensions",
+      "current_category_slug": "productivity-business",
+      "proposed_category_slug": "productivity-business",
+      "proposed_subcategory_slug": "business-operations",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Description: 'a collaborative organizational management tool built on the principles ... of Holacracy and sociocracy ... run structured tactical meetings'. Stays put."
+    },
+    {
+      "id": "1b5f27ae-a6ec-4d77-a444-16c307434424",
+      "slug": "tepuisec-com",
+      "title": "tepuisec.com",
+      "current_category_slug": "productivity-business",
+      "proposed_category_slug": "productivity-business",
+      "proposed_subcategory_slug": "business-operations",
+      "alternative_category_slug": "developer-tools",
+      "confidence": "medium",
+      "rationale": "Description: 'a multi-cloud security platform that scans Azure, AWS, and GCP environments for misconfigurations and compliance gaps'. The buyer is a company's security function, so it stays put — but the reader is an engineer, and a visitor hunting for a cloud scanner would plausibly look under Developer Tools first."
+    },
+    {
+      "id": "06b778cc-fa30-4e88-a508-a03ec8840f4c",
+      "slug": "thingpuls-is",
+      "title": "Thingpuls.is",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "democracy",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Tagline: 'Parliament transparency'. Description: 'users can explore legislative activity and view analytics about the current political parties'. Tagged 'Opin gögn'. Stays put."
+    },
+    {
+      "id": "645875f6-36ab-4018-8c13-28489513273e",
+      "slug": "udl",
+      "title": "udl",
+      "current_category_slug": "developer-tools",
+      "proposed_category_slug": "developer-tools",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "medium",
+      "rationale": "Tagline: 'Single Go binary replacing Sonarr + Radarr + NZBGet for Usenet-based media automation', installed with 'brew install udl'. Strictly it is a self-hosting utility rather than a development tool, but its CLI-and-daemon shape puts it in front of the same audience and the existing placement works. Left alone rather than churned."
+    },
+    {
+      "id": "055edfc7-e2fd-4d13-b67d-0b7713edaa58",
+      "slug": "utsolur-is-utsolur-og-tilbod-a-islandi",
+      "title": "utsolur.is | Útsölur og tilboð á Íslandi",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "cost-of-living",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Tagline: 'Alvöru útsölur á Íslandi — uppfært daglega.' Description: 'gathers every Icelandic sale into a single page, updated every day, ranked by the biggest discounts first'."
+    },
+    {
+      "id": "f129aae4-68d9-4a94-8b72-55fbae411e39",
+      "slug": "utsoluvaktin",
+      "title": "Útsöluvaktin",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "cost-of-living",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Description: 'monitors discounts on Icelandic webstores ... Fake discounts are aggregated and flagged to inform the user of previous lower prices or never-ending discounts which aren't permitted by law.' Price transparency, in the same aisle as Útsölur."
+    },
+    {
+      "id": "8581e26c-b8cf-49e9-8d39-991c9b12916e",
+      "slug": "vinnr-is",
+      "title": "vinnr.is",
+      "current_category_slug": "productivity-business",
+      "proposed_category_slug": "productivity-business",
+      "proposed_subcategory_slug": "business-operations",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Tagline: 'AI-Powered HR Operations for Modern Teams'. Description opens on 'An HR manager was juggling three separate SaaS tools'. Stays put."
+    },
+    {
+      "id": "3863c3c6-0baa-4bc5-9ba9-e20bff9b3435",
+      "slug": "vissar",
+      "title": "Vissar",
+      "current_category_slug": "productivity-business",
+      "proposed_category_slug": "productivity-business",
+      "proposed_subcategory_slug": "productivity-tools",
+      "alternative_category_slug": null,
+      "confidence": "medium",
+      "rationale": "Tagline: 'Vissar AI that searches and watches the web for you.' 'You tell it what you care about ... and notifies you when something worth knowing turns up' — a standing research assistant. Stays put, though the copy names no particular audience, so it could equally be a personal tool."
+    },
+    {
+      "id": "0130fddb-0a60-4886-8ae7-5411947658b2",
+      "slug": "whats-for-dinner-huh-working-title",
+      "title": "Whats for dinner, huh? - Working title",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "family-wellbeing",
+      "proposed_subcategory_slug": "kids-parenting",
+      "alternative_category_slug": "cost-of-living",
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Description: 'a first gen family assistant ... helps families with removing the stress and worries about what to have for dinner ... personalize your menu with describing your family. F.x. 2 adults, 2 teenagers'. Also promises 'grocery lists with approx prices and some suggestions on how to save money', which is the Cost of Living claim. The linked URL is a Gemini share link rather than a running app, so this is judged on copy alone."
+    },
+    {
+      "id": "6de5fa31-3d7c-4971-9778-75c2c6daad29",
+      "slug": "where-to-park-reykjavik",
+      "title": "Where to Park — Reykjavík",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "community-public-good",
+      "proposed_subcategory_slug": "open-data",
+      "alternative_category_slug": null,
+      "confidence": "medium",
+      "rationale": "Moves from 'Apps & Services'. Description works through the city's tariff rules — 'P1 caps at three hours, P3 drops to 70 kr/h after the first two paid hours' — and is tagged 'Opin gögn', 'arcGIS', 'openstreetmap'. It makes a public tariff schedule usable, which is the Open Data pattern, though its immediate value to the user is personal rather than civic."
+    },
+    {
+      "id": "55144197-7223-4f16-9a13-09245acba2a1",
+      "slug": "wheretolearnicelandic-org",
+      "title": "wheretolearnicelandic.org",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "icelandic-language",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": "community-public-good",
+      "confidence": "high",
+      "rationale": "Moves from 'Community & Public Good'. Description: 'While there are countless resources, courses, and learning methods out there, they're all spread across the internet' — a directory of ways to learn Icelandic. Anyone browsing the language shelf wants this next to the dictionary."
+    },
+    {
+      "id": "159b0947-2390-4ae2-b7b9-bd44c3dc5f85",
+      "slug": "wikiradar",
+      "title": "WikiRadar",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "outdoors-hobbies",
+      "proposed_subcategory_slug": "sport-outdoors",
+      "alternative_category_slug": null,
+      "confidence": "low",
+      "rationale": "Moves from 'Apps & Services'. Description: 'a simple PebbleOS watch app that shows you Wikipedia articles about the places around you ... a live compass arrow points at the place you picked, with the distance counting down as you walk'. Filed here because you use it on foot, outside — but it is really a travel and curiosity tool, and if two or three more like it appear they should get their own category rather than be absorbed here."
+    },
+    {
+      "id": "99545056-fbe6-448f-8bae-62c1534fc4a2",
+      "slug": "yarnpalette-xyz",
+      "title": "yarnpalette.xyz",
+      "current_category_slug": "apps-services",
+      "proposed_category_slug": "outdoors-hobbies",
+      "proposed_subcategory_slug": "crafts-making",
+      "alternative_category_slug": null,
+      "confidence": "high",
+      "rationale": "Moves from 'Apps & Services'. Description: 'a color-matching search engine that transforms the way fiber artists discover yarn ... searches across multiple yarn brand databases to identify the closest color matches'. Same shelf as Bead Blueprint: a tool in service of handwork."
+    },
+    {
+      "id": "dfa5be7a-7dbe-432b-8656-b5cbd428dd30",
+      "slug": "yrda-is",
+      "title": "yrða.is",
+      "current_category_slug": "community-public-good",
+      "proposed_category_slug": "icelandic-language",
+      "proposed_subcategory_slug": null,
+      "alternative_category_slug": "community-public-good",
+      "confidence": "high",
+      "rationale": "Moves from 'Community & Public Good'. Whole description: 'Yrða er íslensk veforðabók með það að markmiði að sameina gögn úr ólíkum áttum á einum stað í skýru og snörpu viðmóti.' A dictionary. It was filed as a public good; it is more precisely a language resource."
+    }
+  ],
+  "unplaced": [],
+  "observations": [
+    "'Apps & Services' held 32 of 70 projects — 46%, over the 30% ceiling on its own — and its name predicted nothing, so it is dissolved rather than trimmed.",
+    "Churn is cheaper here than the usual argument assumes, and the report should not be read as if it were expensive. Category is not a path segment: a project lives at /projects/<project-slug> whatever category it is in, so re-filing 42 of 70 projects breaks no project URL. The only artefact tied to a category slug is the filter link /projects?category=<slug>, and retiring one degrades rather than 404s — CategoryView falls back to rendering the raw slug as its heading over 'No projects in this category yet' (src/web-ui/src/app/projects/CategoryView.tsx). Retiring apps-services costs exactly that, on a query-string link nobody bookmarks deliberately. The real cost of re-filing is that a returning visitor looks in the old place and does not find the project — which is an argument about names, not about links. The three surviving slugs are still kept verbatim, but because those lines are right, not to protect URLs.",
+    "Nine top-level categories is the top of the 5–9 range. The alternative was merging 'Games & Puzzles', 'Events & Gatherings' and 'Outdoors & Hobbies' into one ~18-project leisure bucket, which reproduces the 'Apps & Services' problem at a smaller scale: a category a visitor cannot predict the contents of. Worth knowing that the taxonomy has no slack — a genuinely new domain means merging two of these.",
+    "'Events & Gatherings' (4) and 'Games & Puzzles' (6) share a border, and two projects sit on it: Final Dinner is a game that only works at a dinner party, Smakk is a rating app that only works at a tasting. The line drawn is whether the gathering is a precondition. If a third and fourth borderline case appear, the honest fix is to merge the two categories, not to log the ambiguity again.",
+    "There is no 'Food & Drink' category and there probably should be within a release or two. Three projects already have a claim on it — Elda Smart (recipes, filed under Cost of Living), Smakk (beer, filed under Events & Gatherings) and Whats for dinner (meal planning, filed under Family & Wellbeing). Each is defensible where it is, but they are pulling apart a real cluster and two more submissions would settle it.",
+    "'Cost of Living' at 5 projects is the smallest category after Icelandic Language and is unashamedly Iceland-in-2026. It is included rather than folded into Community & Public Good because five separate people independently built price-transparency tools, which is a signal about what gets submitted next.",
+    "'Icelandic Language' is the category most worth arguing about: it takes two projects out of Developer Tools, a category that is otherwise working, on the grounds that a package and a website about the same subject should sit together. If the reviewer disagrees, dropping this category leaves Yrða and Where to Learn Icelandic in Community & Public Good and the taxonomy still stands at eight.",
+    "The 'Health & Personal' subcategory under Family & Wellbeing holds exactly two projects and is the weakest structure in the report. Keep.is in particular is placed by elimination, not by fit — it is a private journal, and no category here is really about that. If a second journalling or a second health project arrives, split them out.",
+    "Nothing is listed as unplaced. Every project has enough copy to judge, though 'roommate' (one sentence, bare GitHub URL) and Clusters (two lines) are close to the limit and both are marked accordingly.",
+    "Sixteen projects carry a tech-stack tag as their only real signal (Next.js, Supabase, Vercel). The tags already do that job well; none of the categories here are drawn on stack, and the two that were closest to it — a JavaScript lemmatiser and a Go media CLI — are sorted by subject and by audience respectively."
+  ]
+}

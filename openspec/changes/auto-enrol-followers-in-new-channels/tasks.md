@@ -57,7 +57,12 @@ All paths are relative to `src/django-backend/`.
 - [x] 4.3 `make test` — 1427 passed
 - [x] 4.4 `uv run python manage.py makemigrations --check --dry-run` — no model
   change, so this must report nothing to make.
-- [ ] 4.5 Drive it in the running app: create a channel on a project in the
-  Django admin and confirm a follower who predates it sees the channel ticked on
-  `/profile/following`, then publish an article to it and confirm it reaches
-  their bell.
+- [x] 4.5 Cover the Django admin route specifically — it saves `Channel`
+  through a ModelForm and never reaches the service layer, so
+  `Channel.objects.create` in the other tests is not evidence for it. A test
+  posts to `/admin/follows/channel/add/` as a staff user and asserts the
+  existing follower is enrolled.
+- [ ] 4.6 Not done: drive it in the running app end to end (admin → the
+  channel ticked on `/profile/following` → an article in it reaching the
+  bell). Needs Postgres, a seeded database and both dev servers; the local
+  stack was not up and `POSTGRES_PASSWORD` is not in the environment.

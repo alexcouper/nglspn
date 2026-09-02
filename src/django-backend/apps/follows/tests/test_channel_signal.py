@@ -1,5 +1,6 @@
 import pytest
 from django.db.models.signals import post_save
+from django.test import Client
 
 from apps.follows.models import Channel, Follow, FollowedChannel
 from services import HANDLERS
@@ -14,6 +15,13 @@ def follow_project(user, project) -> Follow:
 
 def followed_by(channel: Channel) -> set[Follow]:
     return {fc.follow for fc in FollowedChannel.objects.filter(channel=channel)}
+
+
+def admin_client() -> Client:
+    staff = UserFactory(is_staff=True, is_superuser=True)
+    client = Client()
+    client.force_login(staff)
+    return client
 
 
 @pytest.mark.django_db
@@ -92,4 +100,24 @@ class TestNewChannelEnrolsExistingFollowers:
 
         channel = ChannelFactory(project=project, name="Releases")
 
+        assert followed_by(channel) == {follow}
+
+
+@pytest.mark.django_db
+class TestChannelCreatedThroughTheDjangoAdmin:
+    """The admin is how channels actually get made, and it never touches the
+    service layer — it saves the model through a ModelForm."""
+
+    def test_adding_a_channel_in_the_admin_enrols_existing_followers(self):
+        project = ProjectFactory()
+        follow = follow_project(UserFactory(), project)
+        client = admin_client()
+
+        response = client.post(
+            "/admin/follows/channel/add/",
+            {"project": str(project.id), "name": "Releases"},
+        )
+
+        assert response.status_code == 302, response.status_code
+        channel = Channel.objects.get(project=project, name="Releases")
         assert followed_by(channel) == {follow}

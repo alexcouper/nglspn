@@ -3,7 +3,7 @@ from hamcrest import assert_that, equal_to, has_length, is_
 
 from apps.follows.models import Channel, Follow, FollowedChannel
 from apps.projects.models import ProjectStatus
-from tests.factories import ProjectFactory
+from tests.factories import ProjectFactory, make_followed_channel
 
 
 @pytest.mark.django_db
@@ -44,6 +44,26 @@ class TestFollowEndpoint:
         client.post(f"/api/projects/{project.slug}/follow", **auth_headers)
         assert_that(
             Follow.objects.filter(user=user, project=project).count(), equal_to(1)
+        )
+
+    def test_post_does_not_re_enrol_a_channel_the_user_unfollowed(
+        self, client, user, auth_headers
+    ):
+        project = ProjectFactory(status=ProjectStatus.APPROVED, slug="approved-project")
+        releases = Channel.objects.create(project=project, name="Releases")
+        client.post(f"/api/projects/{project.slug}/follow", **auth_headers)
+        client.delete(
+            f"/api/projects/{project.slug}/follow/channels/{releases.id}",
+            **auth_headers,
+        )
+
+        client.post(f"/api/projects/{project.slug}/follow", **auth_headers)
+
+        assert_that(
+            FollowedChannel.objects.filter(
+                follow__user=user, channel=releases
+            ).exists(),
+            is_(False),
         )
 
     def test_delete_hard_deletes(self, client, user, auth_headers):
@@ -203,9 +223,12 @@ class TestFollowChannelEndpoint:
         p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
         follow = Follow.objects.create(user=user, project=p)
         c = Channel.objects.get(project=p, name="Updates")
+        # "Releases" is created after the Follow, so the channel post_save
+        # receiver has already enrolled the user in it; the helper is
+        # idempotent where a plain create would hit the unique constraint.
         other = Channel.objects.create(project=p, name="Releases")
-        FollowedChannel.objects.create(follow=follow, channel=c)
-        FollowedChannel.objects.create(follow=follow, channel=other)
+        make_followed_channel(user, p, c)
+        make_followed_channel(user, p, other)
 
         response = client.delete(
             f"/api/projects/{p.slug}/follow/channels/{c.id}", **auth_headers
@@ -242,10 +265,12 @@ class TestFollowChannelEndpoint:
     ):
         Follow.objects.filter(user=user).delete()
         p = ProjectFactory(slug="alpha", status=ProjectStatus.APPROVED)
-        follow = Follow.objects.create(user=user, project=p)
+        Follow.objects.create(user=user, project=p)
         c = Channel.objects.get(project=p, name="Updates")
+        # Enrolled in "Releases" only: it postdates the Follow so the receiver
+        # covers it, while "Updates" predates the Follow and stays unfollowed.
         other = Channel.objects.create(project=p, name="Releases")
-        FollowedChannel.objects.create(follow=follow, channel=other)
+        make_followed_channel(user, p, other)
 
         client.delete(f"/api/projects/{p.slug}/follow/channels/{c.id}", **auth_headers)
         response = client.delete(

@@ -178,6 +178,58 @@ describe("directives the gallery does not claim", () => {
     unmount();
   });
 
+  it("still renders an image inside an unknown container directive", async () => {
+    const { container, unmount } = await mountArticle(
+      ":::note\n![A chart](https://cdn.example/a.svg)\n:::\n",
+    );
+
+    expect(container.querySelector("img")?.getAttribute("src")).toBe(
+      "https://cdn.example/a.svg",
+    );
+
+    unmount();
+  });
+
+  it("still renders inline markdown inside an unknown container directive", async () => {
+    const { container, unmount } = await mountArticle(
+      ":::note\nSee **this**\n:::\n",
+    );
+
+    expect(container.querySelector("strong")?.textContent).toBe("this");
+
+    unmount();
+  });
+
+  it("renders a gallery nested inside an unknown container directive", async () => {
+    const { container, unmount } = await mountArticle(
+      `::::note\n${galleryMarkdown("a.svg", "b.svg")}::::\n`,
+    );
+
+    expect(visibleImage(container)?.getAttribute("src")).toBe("a.svg");
+    expect(dots(container)).toHaveLength(2);
+
+    unmount();
+  });
+
+  it("keeps the content of an unclosed container directive", async () => {
+    const { container, unmount } = await mountArticle(":::note\nWatch out.\n");
+
+    expect(container.textContent).toContain(":::note");
+    expect(container.textContent?.match(/Watch out\./g)).toHaveLength(1);
+
+    unmount();
+  });
+
+  it("shows the label of an unknown container directive once", async () => {
+    const { container, unmount } = await mountArticle(
+      ":::note[Heads up]\nWatch out.\n:::\n",
+    );
+
+    expect(container.textContent?.match(/Heads up/g)).toHaveLength(1);
+
+    unmount();
+  });
+
   it("leaves an unknown leaf directive as its literal source", async () => {
     const { container, unmount } = await mountArticle("::youtube{#abc}\n");
 

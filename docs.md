@@ -15,6 +15,7 @@ find it. This file is the source of truth the `nglspn-docs` skill is built from.
 | **Brainstormed specs** | `docs/superpowers/specs/<date>-<topic>-design.md` | Validated designs produced through the brainstorming flow, before they become OpenSpec changes. |
 | **OpenSpec changes** | `openspec/changes/<name>/` | Multi-step / architectural change plans: `proposal.md`, `design.md`, `specs/`, `tasks.md`. The plan of record while work is in flight. |
 | **OpenSpec specs** | `openspec/specs/` | Capability specs that have landed — the current intended behaviour. |
+| **Taxonomy reports** | `docs/taxonomy/<date>-report.json` | Proposals for regrouping projects into categories: every project, its current category and the proposed one. Written by the `nglspn-taxonomy` skill, checked by `python3 -m scripts.taxonomy check`, applied by `manage.py apply_taxonomy`. |
 | **Assistant guidance** | `CLAUDE.md` | Repo facts and commands an AI assistant needs every session. Keep it current and short. |
 | **Skills** | `.claude/skills/<name>/SKILL.md` | Procedural knowledge an assistant invokes on demand (code review, docs). |
 | **Inline** | docstrings, code comments | The "why" next to non-obvious code. The "what" should be the code itself. |
@@ -28,6 +29,7 @@ find it. This file is the source of truth the `nglspn-docs` skill is built from.
 | Plan a multi-step or architectural change | An **OpenSpec change** under `openspec/changes/<name>/` |
 | Capture a validated design from brainstorming | `docs/superpowers/specs/<date>-<topic>-design.md` |
 | Write up the rationale behind one decision, an investigation, or a post-mortem | `docs/<date>-<topic>.md` |
+| Propose a new grouping of projects into categories | A **taxonomy report** under `docs/taxonomy/` (the `nglspn-taxonomy` skill) |
 | Record a command or fact every assistant session needs | `CLAUDE.md` |
 | Capture a reusable procedure an assistant should follow | A skill under `.claude/skills/` |
 | Explain why a specific line is the way it is | An inline comment or docstring |
@@ -43,7 +45,7 @@ from the more general one, rather than copying the content.
 - **OpenSpec changes** use a verb-led kebab name describing the change:
   `add-article-authoring`, `simplify-follow-and-cadence`.
 - **Skills** are prefixed `nglspn-` to mark them as repo-local:
-  `nglspn-code-review`, `nglspn-docs`.
+  `nglspn-code-review`, `nglspn-docs`, `nglspn-taxonomy`.
 
 ## House style
 

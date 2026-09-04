@@ -176,3 +176,23 @@
 .article-editor .mdxeditor-toolbar {
   top: var(--article-chrome-offset, 113px);
 }
+
+/* --- Galleries ----------------------------------------------------------- */
+
+/* The carousel sizes and centres its own image, so the body-image rules above
+ * (block, auto margins, rounded corners) would only fight it. `ArticleGallery`
+ * renders in both the read view and the editor, so this covers both. */
+.markdown-article .article-gallery img {
+  margin: 0;
+  max-height: 70vh;
+  border-radius: 0.25rem;
+}
+
+/* Dragging an image over a gallery or a body image in the editor. Set by
+ * `galleryDropPlugin` on the element the drop would land in. */
+.markdown-article .gallery-drop-target,
+.markdown-article [data-lexical-decorator]:has(.gallery-drop-target) {
+  outline: 2px dashed var(--accent);
+  outline-offset: 2px;
+  border-radius: 0.5rem;
+}

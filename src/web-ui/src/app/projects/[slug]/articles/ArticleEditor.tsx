@@ -15,6 +15,7 @@ import {
   UndoRedo,
   codeBlockPlugin,
   codeMirrorPlugin,
+  directivesPlugin,
   headingsPlugin,
   imagePlugin,
   linkDialogPlugin,
@@ -31,6 +32,11 @@ import "./article-markdown.css";
 import { useRef } from "react";
 import { articleCodeMirrorExtensions } from "./article-codemirror-theme";
 import { ArticleImageDialog } from "./ArticleImageDialog";
+import {
+  galleryDirectiveDescriptor,
+  passthroughDirectiveDescriptor,
+} from "./GalleryDirectiveDescriptor";
+import { galleryDropPlugin } from "./galleryDropPlugin";
 import { ImageUploadStatusBar } from "./ImageUploadStatusBar";
 import { InsertImageButton } from "./InsertImageButton";
 import { useImageUploadStatus } from "./useImageUploadStatus";
@@ -94,6 +100,16 @@ export function ArticleEditor({
             },
             codeMirrorExtensions: articleCodeMirrorExtensions,
           }),
+          // The gallery descriptor has to precede the catch-all: MDXEditor
+          // takes the first descriptor whose `testNode` matches.
+          directivesPlugin({
+            directiveDescriptors: [
+              galleryDirectiveDescriptor,
+              passthroughDirectiveDescriptor,
+            ],
+            escapeUnknownTextDirectives: true,
+          }),
+          galleryDropPlugin({ upload: uploadImage }),
           markdownShortcutPlugin(),
           toolbarPlugin({
             toolbarClassName:

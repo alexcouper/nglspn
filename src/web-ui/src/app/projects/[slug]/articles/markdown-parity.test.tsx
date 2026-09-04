@@ -6,6 +6,7 @@ import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
 import remarkGfm from "remark-gfm";
 import {
+  articleAllowedDivClasses,
   articleAllowedSpanClasses,
   articleSanitizeSchema,
 } from "./sanitize-schema";
@@ -320,8 +321,9 @@ describe("Code-block class sanitisation", () => {
       "opacity-0",
       "pointer-events-none",
     ];
-    expect(
-      layoutUtilities.filter((name) => articleAllowedSpanClasses.has(name)),
-    ).toEqual([]);
+    const allowed = [...articleAllowedSpanClasses, ...articleAllowedDivClasses];
+    expect(layoutUtilities.filter((name) => allowed.includes(name))).toEqual(
+      [],
+    );
   });
 });

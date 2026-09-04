@@ -7,7 +7,11 @@ import ReactMarkdown from "react-markdown";
 import rehypePrismPlus from "rehype-prism-plus";
 import rehypeRaw from "rehype-raw";
 import rehypeSanitize from "rehype-sanitize";
+import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
+import { ArticleGallery } from "../ArticleGallery";
+import { galleryImagesFromElement } from "../gallery-hast";
+import { remarkGallery } from "../remark-gallery";
 import { articleSanitizeSchema } from "../sanitize-schema";
 import "../article-markdown.css";
 import { useAuth } from "@/contexts/auth";
@@ -103,7 +107,11 @@ export function ArticleRenderContent({ project, article }: Props) {
             piece inserts one into the body. */}
         <div className="markdown markdown-article mt-8">
           <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
+            // remarkDirective parses `:::gallery`; remarkGallery must follow
+            // it, because it is what turns those nodes into something
+            // renderable — and what puts every directive it does not
+            // recognise back as the literal text the author typed.
+            remarkPlugins={[remarkGfm, remarkDirective, remarkGallery]}
             // Plugin order matters: rehypeRaw first to turn HTML strings into
             // hast nodes; rehypePrismPlus second so it can syntax-highlight
             // fenced code blocks into <span class="token …"> tokens;
@@ -116,6 +124,14 @@ export function ArticleRenderContent({ project, article }: Props) {
               [rehypeSanitize, articleSanitizeSchema],
             ]}
             components={{
+              div: ({ node, children, ...props }) => {
+                const images = galleryImagesFromElement(node);
+                return images ? (
+                  <ArticleGallery images={images} />
+                ) : (
+                  <div {...props}>{children}</div>
+                );
+              },
               table: ({ children }) => (
                 <div className="my-6 overflow-x-auto">
                   <table className="w-full text-sm border border-border rounded-lg overflow-hidden border-collapse">

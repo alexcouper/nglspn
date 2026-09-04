@@ -1,5 +1,6 @@
 import { defaultSchema } from "rehype-sanitize";
 import type { Schema } from "hast-util-sanitize";
+import { GALLERY_CLASS } from "./gallery-mdast";
 
 // rehype-prism-plus writes `language-<name>` onto <pre> and <code> from the
 // fence info string, and refractor uses the same shape as a token alias
@@ -95,7 +96,16 @@ export const articleSanitizeSchema: Schema = {
   ],
   attributes: {
     ...(defaultSchema.attributes ?? {}),
-    div: [...(defaultSchema.attributes?.div ?? []), "align"],
+    // `gallery` is the marker `remark-gallery` puts on the wrapper it builds
+    // from a `:::gallery` block, so `ArticleRenderContent` can swap in the
+    // carousel component. Only that one literal name gets through, and the
+    // rules behind it live in `article-markdown.css` — an author writing the
+    // class by hand gets the same wrapper, not a lever on page layout.
+    div: [
+      ...(defaultSchema.attributes?.div ?? []),
+      "align",
+      ["className", GALLERY_CLASS],
+    ],
     img: [
       ...(defaultSchema.attributes?.img ?? []),
       "width",
@@ -127,4 +137,9 @@ export const articleSanitizeSchema: Schema = {
 export const articleAllowedSpanClasses: ReadonlySet<string> = new Set([
   ...PRISM_LINE_CLASSES,
   ...PRISM_TOKEN_CLASSES,
+]);
+
+// Same, for the one class an author can put on a block-level element.
+export const articleAllowedDivClasses: ReadonlySet<string> = new Set([
+  GALLERY_CLASS,
 ]);

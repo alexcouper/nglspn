@@ -122,7 +122,3 @@ export async function fetchRecentTipoffs(): Promise<DiscoverProject[]> {
 export async function fetchWinners(): Promise<WinnerProject[]> {
   return serverFetch<WinnerProject[]>("/api/projects/winners");
 }
-
-export async function fetchMostDiscussed(): Promise<DiscoverProject[]> {
-  return serverFetch<DiscoverProject[]>("/api/projects/most-discussed");
-}

@@ -1,7 +1,6 @@
 import {
   fetchCategories,
   fetchFeaturedProjects,
-  fetchMostDiscussed,
   fetchNewArrivals,
   fetchRecentTipoffs,
   fetchWinners,
@@ -10,14 +9,13 @@ import { ProjectsPage } from "./ProjectsPage";
 
 
 export default async function PreviewProjectsPage() {
-  const [categories, featured, newArrivals, recentTipoffs, winners, mostDiscussed] =
+  const [categories, featured, newArrivals, recentTipoffs, winners] =
     await Promise.all([
       fetchCategories(),
       fetchFeaturedProjects(),
       fetchNewArrivals(),
       fetchRecentTipoffs(),
       fetchWinners(),
-      fetchMostDiscussed(),
     ]);
 
   return (
@@ -28,7 +26,6 @@ export default async function PreviewProjectsPage() {
         initialNewArrivals={newArrivals}
         initialRecentTipoffs={recentTipoffs}
         initialWinners={winners}
-        initialMostDiscussed={mostDiscussed}
       />
     </main>
   );

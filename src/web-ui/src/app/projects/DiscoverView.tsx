@@ -6,14 +6,12 @@ import { NewArrivalsSection } from "./sections/NewArrivalsSection";
 import { RecentTipoffsSection } from "./sections/RecentTipoffsSection";
 import { WinnersSection } from "./sections/WinnersSection";
 import { CategoryRowsSection } from "./sections/CategoryRowsSection";
-import { MostDiscussedSection } from "./sections/MostDiscussedSection";
 
 interface DiscoverViewProps {
   featured: DiscoverProject[];
   newArrivals: DiscoverProject[];
   recentTipoffs: DiscoverProject[];
   winners: WinnerProject[];
-  mostDiscussed: DiscoverProject[];
   categories: CategoryItem[];
 }
 
@@ -22,7 +20,6 @@ export function DiscoverView({
   newArrivals,
   recentTipoffs,
   winners,
-  mostDiscussed,
   categories,
 }: DiscoverViewProps) {
   return (
@@ -32,9 +29,6 @@ export function DiscoverView({
       {winners.length > 0 && <WinnersSection winners={winners} />}
       <RecentTipoffsSection projects={recentTipoffs} />
       {categories.length > 0 && <CategoryRowsSection categories={categories} />}
-      {mostDiscussed.length > 0 && (
-        <MostDiscussedSection projects={mostDiscussed} />
-      )}
     </div>
   );
 }

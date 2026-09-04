@@ -35,29 +35,31 @@ class TestFollow:
         assert Follow.objects.filter(user=user, project=project).exists()
         assert FollowedChannel.objects.filter(follow__user=user).count() == 2
 
-    def test_second_follow_is_idempotent_and_does_not_auto_enrol_new_channels(self):
+    def test_second_follow_does_not_re_enrol_an_unfollowed_channel(self):
+        user = UserFactory()
+        project = ProjectFactory()
+        releases = Channel.objects.create(project=project, name="Releases")
+        self.handler.follow(user.id, project)
+        FollowedChannel.objects.filter(follow__user=user, channel=releases).delete()
+
+        self.handler.follow(user.id, project)
+
+        # Re-following is not a repair tool: an unticked channel stays unticked.
+        assert not FollowedChannel.objects.filter(
+            follow__user=user, channel=releases
+        ).exists()
+        assert Follow.objects.filter(user=user, project=project).count() == 1
+
+    def test_a_channel_added_after_the_follow_enrols_the_follower(self):
         user = UserFactory()
         project = ProjectFactory()
         self.handler.follow(user.id, project)
-        initial_ids = set(
-            FollowedChannel.objects.filter(follow__user=user).values_list(
-                "channel_id", flat=True
-            )
-        )
 
-        # A new channel appears after the original follow.
-        Channel.objects.create(project=project, name="Releases")
+        releases = Channel.objects.create(project=project, name="Releases")
 
-        self.handler.follow(user.id, project)
-
-        # Still only the channels that existed when the user first followed.
-        current_ids = set(
-            FollowedChannel.objects.filter(follow__user=user).values_list(
-                "channel_id", flat=True
-            )
-        )
-        assert current_ids == initial_ids
-        assert Follow.objects.filter(user=user, project=project).count() == 1
+        assert FollowedChannel.objects.filter(
+            follow__user=user, channel=releases
+        ).exists()
 
     def test_unfollow_hard_deletes_follow_and_followed_channels(self):
         user = UserFactory()

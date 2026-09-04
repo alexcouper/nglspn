@@ -43,8 +43,10 @@ class TestDjangoFollowQuery:
 def _make_follow(user, project, channel_names):
     follow = Follow.objects.create(user=user, project=project)
     for name in channel_names:
+        # A channel that does not exist yet is created after the Follow, so
+        # the channel post_save receiver has already enrolled the user in it.
         channel, _ = Channel.objects.get_or_create(project=project, name=name)
-        FollowedChannel.objects.create(follow=follow, channel=channel)
+        FollowedChannel.objects.get_or_create(follow=follow, channel=channel)
     return follow
 
 

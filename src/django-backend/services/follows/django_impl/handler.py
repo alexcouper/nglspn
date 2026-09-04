@@ -15,11 +15,12 @@ from services.project.exceptions import ProjectNotFoundError
 
 class DjangoFollowHandler(FollowHandlerInterface):
     def follow(self, user_id: UUID, project: Project) -> FollowState:
-        # First follow auto-enrols every current channel. Re-following does
-        # not enrol channels added after the original follow — that's the
-        # user's choice to make via follow_channel(). The same applies to a
-        # Follow left with no channels at all: `created` is False, so this
-        # writes nothing and recovery is via follow_channel() too.
+        # First follow enrols every channel the project has now. Channels
+        # added later are enrolled by the post_save receiver in
+        # apps/follows/signals.py, so this loop only has to cover the ones
+        # that predate the follow. Re-following writes nothing — `created` is
+        # False — which leaves an unticked channel unticked, and a Follow left
+        # with no channels at all empty until follow_channel() repairs it.
         with transaction.atomic():
             follow, created = Follow.objects.get_or_create(
                 user_id=user_id, project=project

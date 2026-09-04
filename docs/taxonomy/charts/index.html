@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Taxonomy change charts</title>
+<style>
+  :root {
+    --bg: #FAFAF7; --ink: #111111; --muted: #555555;
+    --faint: #888888; --rule: #E2E0D8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--ink);
+    font: 15px/1.5 "Helvetica Neue", Inter, Helvetica, Arial, sans-serif;
+  }
+  header {
+    position: sticky; top: 0; z-index: 10;
+    background: rgba(250, 250, 247, 0.94); backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--rule); padding: 14px 32px;
+  }
+  header h1 { margin: 0 0 2px; font-size: 17px; letter-spacing: -0.01em; }
+  header p { margin: 0; font-size: 13px; color: var(--faint); }
+  nav { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; }
+  nav a {
+    font-size: 12.5px; text-decoration: none; color: var(--muted);
+    border: 1px solid var(--rule); border-radius: 999px;
+    padding: 3px 11px; white-space: nowrap;
+  }
+  nav a:hover { color: var(--ink); border-color: var(--faint); }
+  main { padding: 32px; max-width: 1400px; margin: 0 auto; }
+  figure { margin: 0 0 44px; scroll-margin-top: 130px; }
+  figcaption {
+    display: flex; align-items: baseline; gap: 10px;
+    margin-bottom: 10px; font-size: 13px; color: var(--faint);
+  }
+  figcaption b { color: var(--muted); font-size: 13px; font-weight: 600; }
+  figcaption a { color: var(--faint); text-decoration: none; }
+  figcaption a:hover { color: var(--ink); text-decoration: underline; }
+  img {
+    display: block; width: 100%; height: auto;
+    border: 1px solid var(--rule); border-radius: 6px;
+  }
+  footer {
+    padding: 0 32px 48px; font-size: 12.5px; color: var(--faint);
+    max-width: 1400px; margin: 0 auto;
+  }
+  code {
+    font: 12px ui-monospace, SFMono-Regular, Menlo, monospace;
+    background: #F0EEE6; padding: 1px 5px; border-radius: 3px;
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Taxonomy change charts</h1>
+  <p>Generated from <code>2026-08-21-report.json</code></p>
+  <nav id="nav"></nav>
+</header>
+
+<main id="main"></main>
+
+<footer>
+  This page is generated. Rebuild with
+  <code>cd docs/taxonomy/charts &amp;&amp; uv run make_charts.py</code>.
+</footer>
+
+<script>
+  const CHARTS = [["00-overview", "Overview"], ["01-cost-of-living", "Cost of Living"], ["02-events-gatherings", "Events & Gatherings"], ["03-family-wellbeing", "Family & Wellbeing"], ["04-games-puzzles", "Games & Puzzles"], ["05-icelandic-language", "Icelandic Language"], ["06-outdoors-hobbies", "Outdoors & Hobbies"], ["07-community-public-good", "Community & Public Good"], ["08-developer-tools", "Developer Tools"], ["09-productivity-business", "Productivity & Business"]];
+  const nav = document.getElementById("nav");
+  const main = document.getElementById("main");
+
+  for (const [stem, label] of CHARTS) {
+    const a = document.createElement("a");
+    a.href = "#" + stem;
+    a.textContent = label;
+    nav.appendChild(a);
+
+    const fig = document.createElement("figure");
+    fig.id = stem;
+
+    const cap = document.createElement("figcaption");
+    const b = document.createElement("b");
+    b.textContent = label;
+    const png = document.createElement("a");
+    png.href = `out/${stem}.png`;
+    png.textContent = "PNG";
+    const svg = document.createElement("a");
+    svg.href = `out/${stem}.svg`;
+    svg.textContent = "SVG";
+    cap.append(b, png, svg);
+
+    const img = document.createElement("img");
+    img.src = `out/${stem}.png`;
+    img.alt = label + " Sankey diagram";
+    img.loading = "lazy";
+
+    fig.append(cap, img);
+    main.appendChild(fig);
+  }
+</script>
+</body>
+</html>

@@ -8,6 +8,7 @@ from django.urls import reverse
 
 from api.tasks import email as email_tasks
 from apps.emails.models import SentEmail, SentEmailType
+from apps.feed.models import FeedEvent, FeedEventKind
 from apps.projects.admin import ProjectAdmin
 from apps.projects.models import (
     ContributorRole,
@@ -62,6 +63,43 @@ class TestApproveProjectsAdminAction:
         for project in projects:
             project.refresh_from_db()
             assert project.status == ProjectStatus.APPROVED
+
+    def test_records_approver_and_approval_time(self):
+        admin_user = UserFactory(is_superuser=True, is_staff=True)
+        project = ProjectFactory()
+
+        with patch.object(HANDLERS.email, "send_project_approved_email"):
+            self._call_action([project], user=admin_user)
+
+        project.refresh_from_db()
+        assert project.approved_by == admin_user
+        assert project.approved_at is not None
+
+    def test_appends_a_feed_event_for_each_approved_project(self):
+        projects = ProjectFactory.create_batch(2)
+
+        with patch.object(HANDLERS.email, "send_project_approved_email"):
+            self._call_action(projects)
+
+        for project in projects:
+            _assert_project_published_event(project)
+
+    def test_does_not_append_feed_events_for_non_pending_projects(self):
+        rejected = ProjectFactory(status=ProjectStatus.REJECTED)
+
+        with patch.object(HANDLERS.email, "send_project_approved_email"):
+            self._call_action([rejected])
+
+        assert not FeedEvent.objects.filter(project=rejected).exists()
+
+
+def _assert_project_published_event(project: Project) -> None:
+    events = FeedEvent.objects.filter(
+        project=project, kind=FeedEventKind.PROJECT_PUBLISHED
+    )
+    assert events.count() == 1, f"expected one feed event for {project.title}"
+    project.refresh_from_db()
+    assert events.get().occurred_at == project.approved_at
 
 
 @pytest.mark.django_db

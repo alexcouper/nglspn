@@ -325,19 +325,21 @@ class ProjectAdmin(admin.ModelAdmin):
         pending = list(
             queryset.filter(status=ProjectStatus.PENDING).select_related("creator")
         )
-        updated = queryset.filter(status=ProjectStatus.PENDING).update(
-            status=ProjectStatus.APPROVED,
-            approved_by=request.user,
-            approved_at=timezone.now(),
-        )
+        # Saved one by one rather than with queryset.update(): the feed is
+        # appended from a post_save signal, which a bulk UPDATE never fires.
+        approved_at = timezone.now()
         for project in pending:
+            project.status = ProjectStatus.APPROVED
+            project.approved_by = request.user
+            project.approved_at = approved_at
+            project.save(update_fields=["status", "approved_by", "approved_at"])
             try:
                 email_tasks.send_project_approved_email.enqueue(str(project.id))
             except Exception:
                 logger.exception(
                     "Failed to send approval email for project %s", project.id
                 )
-        self.message_user(request, f"{updated} projects were approved.")
+        self.message_user(request, f"{len(pending)} projects were approved.")
 
     @admin.action(description="Reject selected projects")
     def reject_projects(

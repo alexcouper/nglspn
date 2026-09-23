@@ -39,9 +39,17 @@ vi.mock("@/lib/avatarBlob", () => {
   };
 });
 vi.mock("@/lib/avatarUpload", () => ({ uploadAvatar: vi.fn() }));
+// The real cropper needs ResizeObserver, which jsdom lacks. Its geometry is
+// what the test is about, so `defaultCrop` stays real.
+vi.mock("@/components/ImageCropper", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/components/ImageCropper")>()),
+  ImageCropper: () => null,
+}));
 
 const { api } = await import("@/lib/api");
-const { loadImageFile, NotAnImageError } = await import("@/lib/avatarBlob");
+const { loadImageFile, NotAnImageError, renderAvatarBlob } = await import("@/lib/avatarBlob");
+const { uploadAvatar } = await import("@/lib/avatarUpload");
+const { defaultCrop } = await import("@/components/ImageCropper");
 const { default: ProfilePage } = await import("./page");
 
 // ------------------------------------------------------------------ mounting
@@ -106,6 +114,14 @@ async function click(el: Element | undefined) {
 
 function field(container: HTMLElement, id: string) {
   return container.querySelector(`#${id}`) as HTMLInputElement | HTMLTextAreaElement;
+}
+
+async function pickFile(container: HTMLElement, file: File) {
+  const input = container.querySelector("#avatar-file") as HTMLInputElement;
+  await act(async () => {
+    Object.defineProperty(input, "files", { value: [file], configurable: true });
+    input.dispatchEvent(new Event("change", { bubbles: true }));
+  });
 }
 
 function alertText(container: HTMLElement): string {
@@ -206,15 +222,29 @@ describe("the profile edit page", () => {
     vi.mocked(loadImageFile).mockRejectedValue(new NotAnImageError("That file is not an image we can read."));
     const { container, unmount: cleanup } = await mount(<ProfilePage />);
 
-    const input = container.querySelector("#avatar-file") as HTMLInputElement;
-    const file = new File(["nope"], "notes.txt", { type: "text/plain" });
-    await act(async () => {
-      Object.defineProperty(input, "files", { value: [file], configurable: true });
-      input.dispatchEvent(new Event("change", { bubbles: true }));
-    });
+    await pickFile(container, new File(["nope"], "notes.txt", { type: "text/plain" }));
 
     expect(alertText(container)).toContain("not an image");
     expect(api.auth.getAvatarUploadUrl).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it("renders an untouched framing as the centred square the cropper showed", async () => {
+    const landscape = { image: {} as HTMLImageElement, dataUrl: "data:,", width: 1000, height: 500 };
+    vi.mocked(loadImageFile).mockResolvedValue(landscape);
+    vi.mocked(renderAvatarBlob).mockResolvedValue(new Blob());
+    vi.mocked(uploadAvatar).mockResolvedValue(user({ avatar_url: "https://cdn.example/a.jpg" }));
+    const { container, unmount: cleanup } = await mount(<ProfilePage />);
+
+    await pickFile(container, new File(["jpg"], "me.jpg", { type: "image/jpeg" }));
+    await click(buttonNamed(container, "Use it"));
+
+    expect(renderAvatarBlob).toHaveBeenCalledWith(
+      landscape,
+      defaultCrop({ width: 1000, height: 500, lockRatio: 1 }),
+    );
+    expect(uploadAvatar).toHaveBeenCalled();
+    expect(authState.value.refreshUser).toHaveBeenCalled();
     cleanup();
   });
 

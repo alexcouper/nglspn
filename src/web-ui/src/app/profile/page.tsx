@@ -19,7 +19,7 @@ import { uploadAvatar } from "@/lib/avatarUpload";
 import { Avatar } from "@/components/Avatar";
 import type { CropRect } from "@/components/CroppedImage";
 import { Dialog } from "@/components/Dialog";
-import { ImageCropper } from "@/components/ImageCropper";
+import { ImageCropper, defaultCrop } from "@/components/ImageCropper";
 import { ProfileAbout } from "@/components/ProfileAbout";
 
 export interface ProfileFormData {
@@ -117,9 +117,11 @@ export default function ProfilePage() {
     setAvatarBusy(true);
     setAvatarError("");
     try {
+      // Untouched framing is what the cropper drew: its own default, not a
+      // full-width rect that would letterbox a landscape photo.
       const blob = await renderAvatarBlob(
         source,
-        crop ?? { x: 0, y: 0, w: 1, h: source.height / source.width, ratio: 1 },
+        crop ?? defaultCrop({ width: source.width, height: source.height, lockRatio: 1 }),
       );
       await uploadAvatar(blob);
       await refreshUser();

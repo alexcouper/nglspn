@@ -45,6 +45,20 @@ type ProfileState =
   | { kind: "error"; message: string }
   | { kind: "loaded"; profile: PublicUserProfile };
 
+// A list that failed is shown as failed, never as empty: "No projects yet."
+// on a 5xx would be a claim about the person that nobody made.
+type ListState<T> =
+  | { kind: "loading" }
+  | { kind: "failed" }
+  | { kind: "loaded"; items: T[] };
+
+const LOADING = { kind: "loading" } as const;
+const FAILED = { kind: "failed" } as const;
+
+function loaded<T>(items: T[]): ListState<T> {
+  return { kind: "loaded", items };
+}
+
 export default function PublicUserProfilePage({ params }: PageProps) {
   const { id } = use(params);
   // Keyed so a navigation from one profile to another remounts with fresh
@@ -55,8 +69,8 @@ export default function PublicUserProfilePage({ params }: PageProps) {
 export function ProfileView({ id }: { id: string }) {
   const { user } = useAuth();
   const [state, setState] = useState<ProfileState>({ kind: "loading" });
-  const [projects, setProjects] = useState<UserProject[] | null>(null);
-  const [articles, setArticles] = useState<UserArticle[] | null>(null);
+  const [projects, setProjects] = useState<ListState<UserProject>>(LOADING);
+  const [articles, setArticles] = useState<ListState<UserArticle>>(LOADING);
 
   // The profile first, the lists once it exists: a 404 here is the whole
   // answer, and the two list requests would only 404 again.
@@ -70,12 +84,12 @@ export function ProfileView({ id }: { id: string }) {
         setState({ kind: "loaded", profile });
         api.users
           .listProjects(id)
-          .then((data) => !cancelled && setProjects(data))
-          .catch(() => !cancelled && setProjects([]));
+          .then((data) => !cancelled && setProjects(loaded(data)))
+          .catch(() => !cancelled && setProjects(FAILED));
         api.users
           .listArticles(id)
-          .then((data) => !cancelled && setArticles(data))
-          .catch(() => !cancelled && setArticles([]));
+          .then((data) => !cancelled && setArticles(loaded(data)))
+          .catch(() => !cancelled && setArticles(FAILED));
       })
       .catch((err) => {
         if (cancelled) return;
@@ -136,8 +150,8 @@ export function ProfileView({ id }: { id: string }) {
   const name = getAuthorName(profile);
   const isOwn = user?.id === profile.id;
   const meta = [joinedLine(profile.created_at)];
-  if (projects) meta.push(plural(projects.length, "project"));
-  if (articles) meta.push(plural(articles.length, "article"));
+  if (projects.kind === "loaded") meta.push(plural(projects.items.length, "project"));
+  if (articles.kind === "loaded") meta.push(plural(articles.items.length, "article"));
 
   return (
     <main className="min-h-screen bg-muted pt-14">
@@ -179,18 +193,24 @@ export function ProfileView({ id }: { id: string }) {
 
           <div className="space-y-10 min-w-0">
             <section aria-labelledby="profile-projects">
-              <SectionHeading id="profile-projects" title="Projects" count={projects?.length} />
-              {projects === null ? (
+              <SectionHeading
+                id="profile-projects"
+                title="Projects"
+                count={projects.kind === "loaded" ? projects.items.length : undefined}
+              />
+              {projects.kind === "loading" ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   <div className="skeleton aspect-[4/3] rounded-xl" />
                   <div className="skeleton aspect-[4/3] rounded-xl" />
                   <div className="skeleton aspect-[4/3] rounded-xl hidden md:block" />
                 </div>
-              ) : projects.length === 0 ? (
+              ) : projects.kind === "failed" ? (
+                <ListError what="projects" />
+              ) : projects.items.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No projects yet.</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 items-start">
-                  {projects.map((project) => (
+                  {projects.items.map((project) => (
                     <ProjectTile
                       key={project.id}
                       id={project.id}
@@ -207,17 +227,23 @@ export function ProfileView({ id }: { id: string }) {
             </section>
 
             <section aria-labelledby="profile-articles">
-              <SectionHeading id="profile-articles" title="Articles" count={articles?.length} />
-              {articles === null ? (
+              <SectionHeading
+                id="profile-articles"
+                title="Articles"
+                count={articles.kind === "loaded" ? articles.items.length : undefined}
+              />
+              {articles.kind === "loading" ? (
                 <div className="space-y-3">
                   <div className="skeleton h-[124px] rounded-lg" />
                   <div className="skeleton h-[124px] rounded-lg" />
                 </div>
-              ) : articles.length === 0 ? (
+              ) : articles.kind === "failed" ? (
+                <ListError what="articles" />
+              ) : articles.items.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No articles yet.</p>
               ) : (
                 <div className="space-y-3">
-                  {articles.map((article) => (
+                  {articles.items.map((article) => (
                     <ArticleCard
                       key={article.id}
                       article={article}
@@ -237,6 +263,18 @@ export function ProfileView({ id }: { id: string }) {
         </div>
       </section>
     </main>
+  );
+}
+
+function ListError({ what }: { what: string }) {
+  return (
+    <p
+      className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"
+      role="alert"
+      data-testid={`profile-${what}-error`}
+    >
+      Couldn&apos;t load {what}. Try again in a moment.
+    </p>
   );
 }
 

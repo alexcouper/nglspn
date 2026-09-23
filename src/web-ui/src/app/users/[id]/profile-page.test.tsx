@@ -165,6 +165,21 @@ describe("the public profile page", () => {
     cleanup();
   });
 
+  it("shows a failed list as an error, not as nothing yet", async () => {
+    vi.mocked(api.users.getPublicProfile).mockResolvedValue(profile());
+    vi.mocked(api.users.listProjects).mockRejectedValue(new Error("Service Unavailable"));
+    vi.mocked(api.users.listArticles).mockResolvedValue([article()]);
+
+    const { container, unmount: cleanup } = await mount(<ProfileView id={USER_ID} />);
+
+    expect(container.querySelector('[data-testid="profile-projects-error"]')).not.toBeNull();
+    expect(container.textContent).not.toContain("No projects yet.");
+    expect(text(container, '[data-testid="profile-meta"]')).toBe(
+      `${joinedLine("2025-03-12T10:00:00Z")} · 1 article`,
+    );
+    cleanup();
+  });
+
   it("renders User not found on a 404 and asks for nothing else", async () => {
     vi.mocked(api.users.getPublicProfile).mockRejectedValue(
       new ApiRequestError("Not found", {}, 404),

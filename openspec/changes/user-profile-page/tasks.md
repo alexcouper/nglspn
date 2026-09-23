@@ -111,17 +111,17 @@ Design reference: https://claude.ai/artifact/EtycAMJgbaSXFN7vuFHALR
 
 ## 6. Verify
 
-- [ ] 6.1 `make lint`, `make test`, `make build-app`, `make extra-tests` in
+- [x] 6.1 `make lint`, `make test`, `make build-app`, `make extra-tests` in
   `src/web-ui/`; add a `/users/[id]` line to `bundle-budgets.json` if the
   default budget would hide a regression on this route.
 - [x] 6.2 `uv run python manage.py makemigrations --check --dry-run` in
   `src/django-backend/` reports nothing.
-- [ ] 6.3 Manual pass against `make dev` in both services with the seeded
+- [x] 6.3 Manual pass against `make dev` in both services with the seeded
   database (mind the 5/min login limit): open a byline link → profile renders
   with projects and articles; own profile shows Edit profile; upload, replace
   and remove an avatar, confirming the nav button follows; save About and see it
   on the public page; `/profile/settings` still saves cadence; a system user's
   id 404s; phone width has no horizontal scroll.
-- [ ] 6.4 Playwright: add `src/web-ui/e2e/profile.spec.ts` covering the public
+- [x] 6.4 Playwright: add `src/web-ui/e2e/profile.spec.ts` covering the public
   page render and the edit → save → public round trip. Keep it out of CI as the
   rest of `e2e/` is.

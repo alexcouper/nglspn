@@ -1,5 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
-import { API_URL, login } from "./helpers";
+import { login } from "./helpers";
 
 // One login for the file: /api/auth/login allows 5/min per IP.
 test.describe.configure({ mode: "serial" });
@@ -11,9 +11,18 @@ interface Me {
   info: string;
 }
 
+// The backend's origin, learned from the login request the page itself makes.
+// `make dev` picks a free port and the frontend is built against it, so a
+// hard-coded origin is wrong whenever 8000 is taken by something else.
+async function loginAndLearnApiOrigin(page: Page): Promise<string> {
+  const loginResponse = page.waitForResponse((r) => r.url().endsWith("/api/auth/login"));
+  await login(page);
+  return new URL((await loginResponse).url()).origin;
+}
+
 // The signed-in user's own row, straight from the API: the specs need the id
 // to reach the public page, and the original About text to put back.
-async function fetchMe(page: Page): Promise<Me> {
+async function fetchMe(page: Page, apiUrl: string): Promise<Me> {
   return page.evaluate(
     async ({ apiUrl }) =>
       fetch(`${apiUrl}/api/auth/me`, {
@@ -21,11 +30,11 @@ async function fetchMe(page: Page): Promise<Me> {
           Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
       }).then((r) => r.json()),
-    { apiUrl: API_URL },
+    { apiUrl },
   );
 }
 
-async function restoreAbout(page: Page, info: string) {
+async function restoreAbout(page: Page, apiUrl: string, info: string) {
   await page.evaluate(
     async ({ apiUrl, info }) =>
       fetch(`${apiUrl}/api/auth/me`, {
@@ -36,22 +45,23 @@ async function restoreAbout(page: Page, info: string) {
         },
         body: JSON.stringify({ info }),
       }),
-    { apiUrl: API_URL, info },
+    { apiUrl, info },
   );
 }
 
 test.describe("User profile", () => {
   let page: Page;
+  let apiUrl: string;
   let me: Me;
 
   test.beforeAll(async ({ browser }) => {
     page = await browser.newPage();
-    await login(page);
-    me = await fetchMe(page);
+    apiUrl = await loginAndLearnApiOrigin(page);
+    me = await fetchMe(page, apiUrl);
   });
 
   test.afterAll(async () => {
-    await restoreAbout(page, me.info);
+    await restoreAbout(page, apiUrl, me.info);
     await page.close();
   });
 

@@ -189,7 +189,7 @@ export function ProfileView({ id }: { id: string }) {
               ) : projects.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No projects yet.</p>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 items-start">
                   {projects.map((project) => (
                     <ProjectTile
                       key={project.id}
@@ -216,7 +216,7 @@ export function ProfileView({ id }: { id: string }) {
               ) : articles.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No articles yet.</p>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid gap-4 sm:grid-cols-2 items-start">
                   {articles.map((article) => (
                     <ArticleCard
                       key={article.id}

@@ -209,14 +209,14 @@ export function ProfileView({ id }: { id: string }) {
             <section aria-labelledby="profile-articles">
               <SectionHeading id="profile-articles" title="Articles" count={articles?.length} />
               {articles === null ? (
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="skeleton aspect-[16/9] rounded-lg" />
-                  <div className="skeleton aspect-[16/9] rounded-lg" />
+                <div className="space-y-3">
+                  <div className="skeleton h-[124px] rounded-lg" />
+                  <div className="skeleton h-[124px] rounded-lg" />
                 </div>
               ) : articles.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No articles yet.</p>
               ) : (
-                <div className="grid gap-4 sm:grid-cols-2 items-start">
+                <div className="space-y-3">
                   {articles.map((article) => (
                     <ArticleCard
                       key={article.id}
@@ -227,7 +227,7 @@ export function ProfileView({ id }: { id: string }) {
                           ? `/projects/${article.project.slug}/articles/${article.slug}`
                           : undefined
                       }
-                      variant="grid"
+                      variant="row"
                     />
                   ))}
                 </div>

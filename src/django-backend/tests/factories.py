@@ -28,7 +28,7 @@ from apps.projects.models import (
     ProjectStatus,
 )
 from apps.tags.models import Tag, TagCategory, TagStatus
-from apps.users.models import EmailVerificationCode, PasswordResetCode
+from apps.users.models import EmailVerificationCode, PasswordResetCode, UserAvatar
 from services.users.django_impl.query import BROADCAST_CHANNEL_BY_EMAIL_TYPE
 
 User = get_user_model()
@@ -225,6 +225,25 @@ class ProjectImageFactory(factory.django.DjangoModelFactory):
     content_type = "image/jpeg"
     file_size = 1024
     upload_status = "uploaded"
+
+
+class UserAvatarFactory(factory.django.DjangoModelFactory):
+    class Meta:
+        model = UserAvatar
+
+    user = factory.SubFactory(UserFactory)
+    storage_key = factory.Sequence(lambda n: f"avatars/{n}/avatar.jpg")
+    content_type = "image/jpeg"
+    file_size = 1024
+    upload_status = "uploaded"
+
+
+def give_avatar(user, **kwargs: object) -> UserAvatar:
+    """Make `user` an uploaded avatar and point `user.avatar` at it."""
+    avatar = UserAvatarFactory(user=user, **kwargs)
+    user.avatar = avatar
+    user.save(update_fields=["avatar"])
+    return avatar
 
 
 class ArticleFactory(factory.django.DjangoModelFactory):

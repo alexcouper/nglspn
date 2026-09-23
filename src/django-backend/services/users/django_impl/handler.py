@@ -5,9 +5,22 @@ from datetime import timedelta
 from typing import TYPE_CHECKING
 
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.utils import timezone
 
-from apps.users.models import EmailVerificationCode, PasswordResetCode
+from apps.projects.models import UploadStatus
+from apps.users.models import EmailVerificationCode, PasswordResetCode, UserAvatar
+from services.images.exceptions import (
+    FileTooLargeError,
+    UnsupportedContentTypeError,
+    UploadNotCompletedError,
+)
+from services.images.handler_interface import (
+    AVATAR_CONTENT_TYPES,
+    MAX_AVATAR_FILE_SIZE,
+    PreparedUpload,
+)
+from services.storage import storage_service
 from services.users.exceptions import (
     CodeExhaustedError,
     EmailAlreadyRegisteredError,
@@ -18,6 +31,7 @@ from services.users.handler_interface import UserHandlerInterface, VerifyResetCo
 
 if TYPE_CHECKING:
     from apps.users.models import User
+    from services.images.handler_interface import FileMeta
     from services.users.handler_interface import RegisterUserInput
 
 
@@ -180,3 +194,67 @@ class DjangoUserHandler(UserHandlerInterface):
     def reset_password(self, user: User, new_password: str) -> None:
         user.set_password(new_password)
         user.save(update_fields=["password"])
+
+    # ------------------------------------------------------------------
+    # Avatar
+    # ------------------------------------------------------------------
+
+    def create_avatar_upload(self, user: User, meta: FileMeta) -> PreparedUpload:
+        if meta.content_type not in AVATAR_CONTENT_TYPES:
+            raise UnsupportedContentTypeError(AVATAR_CONTENT_TYPES)
+        if meta.file_size > MAX_AVATAR_FILE_SIZE:
+            raise FileTooLargeError(MAX_AVATAR_FILE_SIZE)
+
+        storage_key = storage_service.generate_avatar_upload_key(
+            str(user.id), meta.filename
+        )
+        avatar = UserAvatar.objects.create(
+            user=user,
+            storage_key=storage_key,
+            content_type=meta.content_type,
+            file_size=meta.file_size,
+            upload_status=UploadStatus.PENDING,
+        )
+        presigned = storage_service.generate_presigned_upload_url(
+            storage_key, meta.content_type
+        )
+        return PreparedUpload(
+            image=avatar,
+            upload_url=presigned["upload_url"],
+            method=presigned["method"],
+            headers=presigned["headers"],
+            storage_key=storage_key,
+        )
+
+    def complete_avatar_upload(
+        self, user: User, avatar: UserAvatar, *, width: int | None, height: int | None
+    ) -> User:
+        if not storage_service.object_exists(avatar.storage_key):
+            raise UploadNotCompletedError
+
+        previous = user.avatar
+        with transaction.atomic():
+            avatar.upload_status = UploadStatus.UPLOADED
+            avatar.uploaded_at = timezone.now()
+            avatar.width = width
+            avatar.height = height
+            avatar.save()
+
+            user.avatar = avatar
+            user.save(update_fields=["avatar"])
+
+            # Deleting the row is what retires the object: the `pre_delete`
+            # receiver tombstones its key and the images sweep deletes it.
+            if previous is not None and previous.pk != avatar.pk:
+                previous.delete()
+        return user
+
+    def remove_avatar(self, user: User) -> User:
+        previous = user.avatar
+        if previous is None:
+            return user
+        with transaction.atomic():
+            user.avatar = None
+            user.save(update_fields=["avatar"])
+            previous.delete()
+        return user

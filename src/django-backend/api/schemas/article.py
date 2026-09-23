@@ -201,3 +201,38 @@ class ArticleListItem(Schema):
         if image is None:
             return None
         return image.url
+
+
+class UserArticleResponse(Schema):
+    """One entry in a user's public article list.
+
+    The public half of `ArticleListItem` plus the project, because the article's
+    URL lives under its project and the profile shows articles from many. No
+    visibility fields: everything the list returns is published and visible.
+    """
+
+    id: UUID
+    title: str
+    summary: str
+    slug: str | None
+    published_at: datetime | None
+    channel: ArticleChannelRef
+    project: ArticleProjectRef
+    listing_image_url: str | None
+    listing_crop: CropRect | None
+
+    @staticmethod
+    def resolve_channel(obj: Any) -> dict[str, Any]:
+        return ArticleListItem.resolve_channel(obj)
+
+    @staticmethod
+    def resolve_project(obj: Any) -> dict[str, Any]:
+        return ArticleOut.resolve_project(obj)
+
+    @staticmethod
+    def resolve_summary(obj: Any) -> str:
+        return ArticleListItem.resolve_summary(obj)
+
+    @staticmethod
+    def resolve_listing_image_url(obj: Any) -> str | None:
+        return ArticleListItem.resolve_listing_image_url(obj)

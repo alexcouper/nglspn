@@ -160,7 +160,7 @@ export function Settings({
   };
 
   return (
-    <div className="bg-white rounded-xl border border-border p-5 mt-6">
+    <div className="bg-white rounded-xl border border-border p-5">
       <h2 className="text-sm font-semibold text-foreground mb-1">Email preferences</h2>
       <p className="text-xs text-muted-foreground mb-3">
         Choose which project channels email you on the{" "}

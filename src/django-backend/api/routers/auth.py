@@ -33,9 +33,17 @@ from api.schemas.auth import (
     VerifyEmailResponse,
 )
 from api.schemas.errors import Error
-from api.schemas.user import UserCreate, UserResponse, UserUpdate
+from api.schemas.project import ImageUploadCompleteRequest, PresignedUploadResponse
+from api.schemas.user import (
+    AvatarUploadRequest,
+    UserCreate,
+    UserResponse,
+    UserUpdate,
+)
 from api.tasks import email as email_tasks
 from services import HANDLERS, REPO
+from services.images.exceptions import ImageError
+from services.images.handler_interface import FileMeta
 from services.users.exceptions import (
     CodeExhaustedError,
     EmailAlreadyRegisteredError,
@@ -199,6 +207,76 @@ def update_current_user(
 
     user.save()
     return user
+
+
+# ----------------------------------------------------------------------
+# Avatar. The same reserve → PUT → complete flow as project images, scoped
+# to the caller; see services/users for the lifecycle.
+# ----------------------------------------------------------------------
+
+
+@router.post(
+    "/me/avatar/upload-url",
+    response={200: PresignedUploadResponse, 400: Error, 401: Error},
+    auth=auth,
+    tags=["Authentication"],
+)
+def get_avatar_upload_url(
+    request: HttpRequest,
+    payload: AvatarUploadRequest,
+) -> PresignedUploadResponse | tuple[int, Error]:
+    try:
+        prepared = HANDLERS.users.create_avatar_upload(
+            request.auth,
+            FileMeta(
+                filename=payload.filename,
+                content_type=payload.content_type,
+                file_size=payload.file_size,
+            ),
+        )
+    except ImageError as exc:
+        return 400, Error(detail=str(exc))
+
+    return PresignedUploadResponse(
+        image_id=prepared.image.id,
+        upload_url=prepared.upload_url,
+        method=prepared.method,
+        headers=prepared.headers,
+        storage_key=prepared.storage_key,
+    )
+
+
+@router.post(
+    "/me/avatar/{image_id}/complete",
+    response={200: UserResponse, 400: Error, 401: Error, 404: Error},
+    auth=auth,
+    tags=["Authentication"],
+)
+def complete_avatar_upload(
+    request: HttpRequest,
+    image_id: UUID,
+    payload: ImageUploadCompleteRequest,
+) -> AbstractUser | tuple[int, Error]:
+    avatar = REPO.users.get_pending_avatar(request.auth, image_id)
+    if avatar is None:
+        return 404, Error(detail="Avatar upload not found")
+
+    try:
+        return HANDLERS.users.complete_avatar_upload(
+            request.auth, avatar, width=payload.width, height=payload.height
+        )
+    except ImageError as exc:
+        return 400, Error(detail=str(exc))
+
+
+@router.delete(
+    "/me/avatar",
+    response={200: UserResponse, 401: Error},
+    auth=auth,
+    tags=["Authentication"],
+)
+def remove_avatar(request: HttpRequest) -> AbstractUser:
+    return HANDLERS.users.remove_avatar(request.auth)
 
 
 @router.post(

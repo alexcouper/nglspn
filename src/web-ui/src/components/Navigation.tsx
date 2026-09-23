@@ -146,7 +146,10 @@ export function Navigation() {
             ) : isAuthenticated ? (
               <>
                 {hasCompletedOnboarding && (
-                  <Link href="/profile" className={mobileLinkClass("/profile")} onClick={closeMenu}>Profile</Link>
+                  <>
+                    <Link href="/profile" className={mobileLinkClass("/profile")} onClick={closeMenu}>Profile</Link>
+                    <Link href="/profile/settings" className={mobileLinkClass("/profile/settings")} onClick={closeMenu}>Settings</Link>
+                  </>
                 )}
                 <div className="border-t border-slate-100 my-3" />
                 <button

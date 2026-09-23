@@ -42,18 +42,26 @@ def _top_level_discussion_count() -> Count:
 
 
 def _discover_queryset() -> QuerySet[Project]:
-    return Project.objects.select_related("creator", "category").prefetch_related(
+    return Project.objects.select_related(
+        "creator", "creator__avatar", "category"
+    ).prefetch_related(
         "won_competitions",
         gallery_prefetch(),
     )
 
 
 def _base_queryset() -> QuerySet[Project]:
-    return Project.objects.select_related("creator").prefetch_related(
+    # `creator__avatar` and `contributors__user__avatar`: PublicUserProfile
+    # resolves `avatar_url` off the FK, and without these every embedded profile
+    # would be a query.
+    return Project.objects.select_related(
+        "creator", "creator__avatar"
+    ).prefetch_related(
         "tags",
         "tags__category",
         "won_competitions",
         "contributors__user",
+        "contributors__user__avatar",
         gallery_prefetch(),
     )
 

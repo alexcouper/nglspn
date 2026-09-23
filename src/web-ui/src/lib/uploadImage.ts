@@ -1,4 +1,5 @@
 import { api, type ProjectImage } from "@/lib/api";
+import type { PresignedUploadResponse } from "@/lib/api/articles";
 
 export const ALLOWED_IMAGE_TYPES = [
   "image/jpeg",
@@ -70,29 +71,7 @@ export async function uploadImage(
 
   options.onImageId?.(presigned.image_id);
 
-  await new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-
-    if (options.onProgress) {
-      xhr.upload.addEventListener("progress", (e) => {
-        if (e.lengthComputable) {
-          options.onProgress!(Math.round((e.loaded / e.total) * 100));
-        }
-      });
-    }
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) resolve();
-      else reject(new Error(`Upload failed with status ${xhr.status}`));
-    };
-    xhr.onerror = () => reject(new Error("Upload failed"));
-
-    xhr.open(presigned.method, presigned.upload_url);
-    Object.entries(presigned.headers).forEach(([key, value]) => {
-      xhr.setRequestHeader(key, value);
-    });
-    xhr.send(file);
-  });
+  await putToPresignedUrl(presigned, file, options.onProgress);
 
   options.onUploadDone?.();
 
@@ -108,6 +87,38 @@ export async function uploadImage(
         presigned.image_id,
         dimensions,
       );
+}
+
+// The S3 PUT on its own. Shared with the avatar upload, which reserves and
+// completes against different endpoints but sends the bytes the same way.
+export function putToPresignedUrl(
+  presigned: Pick<PresignedUploadResponse, "method" | "upload_url" | "headers">,
+  body: Blob,
+  onProgress?: (percent: number) => void,
+): Promise<void> {
+  return new Promise<void>((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+
+    if (onProgress) {
+      xhr.upload.addEventListener("progress", (e) => {
+        if (e.lengthComputable) {
+          onProgress(Math.round((e.loaded / e.total) * 100));
+        }
+      });
+    }
+
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Upload failed with status ${xhr.status}`));
+    };
+    xhr.onerror = () => reject(new Error("Upload failed"));
+
+    xhr.open(presigned.method, presigned.upload_url);
+    Object.entries(presigned.headers).forEach(([key, value]) => {
+      xhr.setRequestHeader(key, value);
+    });
+    xhr.send(body);
+  });
 }
 
 // Null rather than throwing: an image the browser cannot decode still uploads,

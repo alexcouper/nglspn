@@ -282,3 +282,26 @@ describe("ArticleCard", () => {
     imaged.unmount();
   });
 });
+
+describe("ArticleCard row variant", () => {
+  it("puts the image beside the text and clamps the text the same with or without one", async () => {
+    const imaged = await mount(
+      <ArticleCard article={articleListItem()} href="/a" variant="row" />,
+    );
+    expect(imaged.container.querySelector('[data-testid="article-listing-image"]')).not.toBeNull();
+    expect(imaged.container.querySelector("h3")?.className).toContain("line-clamp-2");
+    imaged.unmount();
+
+    const bare = await mount(
+      <ArticleCard
+        article={articleListItem({ listing_image_url: null })}
+        href="/a"
+        variant="row"
+      />,
+    );
+    expect(bare.container.querySelector('[data-testid="article-listing-image"]')).toBeNull();
+    expect(bare.container.querySelector("h3")?.className).toContain("line-clamp-2");
+    expect(bare.container.querySelector("h3")?.textContent).toBe("A headline about something");
+    bare.unmount();
+  });
+});

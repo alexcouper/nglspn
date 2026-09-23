@@ -12,6 +12,12 @@ interface ProjectTileProps {
   title: string;
   tagline?: string | null;
   categoryName?: string | null;
+  /**
+   * The viewer's relation to the project, e.g. "Owner" or "Tipped off". Only
+   * the profile page has a person to relate the project to; listings leave it
+   * unset and the chip is not drawn.
+   */
+  roleLabel?: string | null;
   /** Read-only surface: no hover affordance, muted text. */
   dimmed?: boolean;
   /**
@@ -38,6 +44,7 @@ export function ProjectTile({
   title,
   tagline,
   categoryName,
+  roleLabel,
   dimmed = false,
   layout = "tile",
 }: ProjectTileProps) {
@@ -73,14 +80,28 @@ export function ProjectTile({
             asRow ? "sm:flex sm:flex-col sm:justify-center" : ""
           }`}
         >
-          {categoryName && (
-            <span
-              className={`text-[10px] font-semibold uppercase tracking-wider ${
-                dimmed ? "text-muted-foreground" : "text-accent"
-              }`}
-            >
-              {categoryName}
-            </span>
+          {(categoryName || roleLabel) && (
+            <div className="flex items-center justify-between gap-2">
+              {categoryName ? (
+                <span
+                  className={`text-[10px] font-semibold uppercase tracking-wider ${
+                    dimmed ? "text-muted-foreground" : "text-accent"
+                  }`}
+                >
+                  {categoryName}
+                </span>
+              ) : (
+                <span />
+              )}
+              {roleLabel && (
+                <span
+                  className="text-[10px] font-medium text-slate-600 bg-slate-100 rounded-full px-2 py-0.5"
+                  data-testid="project-tile-role"
+                >
+                  {roleLabel}
+                </span>
+              )}
+            </div>
           )}
           <h3
             className={`text-sm font-medium mt-0.5 line-clamp-2 ${

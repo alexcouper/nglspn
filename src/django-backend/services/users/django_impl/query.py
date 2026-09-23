@@ -4,10 +4,20 @@ from typing import TYPE_CHECKING
 
 from django.contrib.auth import get_user_model
 
-from apps.projects.models import Project
+from apps.articles.models import Article
+from apps.projects.models import (
+    Project,
+    ProjectContributor,
+    ProjectImage,
+    ProjectStatus,
+    UploadStatus,
+)
+from apps.users.models import UserAvatar
 from apps.users.seed import COMMUNITY_USER_ID
+from services.images.django_impl.query import gallery_prefetch
+from services.project.django_impl.query import variant_url
 from services.users.exceptions import UserNotFoundError
-from services.users.query_interface import UserQueryInterface
+from services.users.query_interface import UserProjectItem, UserQueryInterface
 
 # Maps a BroadcastEmail.email_type to the house-project channel whose
 # per-user email preference now governs that broadcast. Replaces the legacy
@@ -22,6 +32,18 @@ if TYPE_CHECKING:
     from django.db.models import QuerySet
 
     from apps.users.models import User
+
+
+def _main_image(project: Project) -> ProjectImage | None:
+    """The cover, else the first gallery image — the listing card's rule.
+
+    Reads the prefetched relation; `variant_url` then falls back to the
+    original when the thumb has not been generated yet.
+    """
+    images = list(project.images.all())
+    return next((img for img in images if img.is_main), None) or (
+        images[0] if images else None
+    )
 
 
 class DjangoUserQuery(UserQueryInterface):
@@ -77,3 +99,41 @@ class DjangoUserQuery(UserQueryInterface):
                 "not have run."
             )
             raise RuntimeError(msg) from exc
+
+    def get_pending_avatar(self, user: User, avatar_id: UUID) -> UserAvatar | None:
+        return UserAvatar.objects.filter(
+            pk=avatar_id, user=user, upload_status=UploadStatus.PENDING
+        ).first()
+
+    def list_public_projects_for(self, user_id: UUID) -> list[UserProjectItem]:
+        rows = (
+            ProjectContributor.objects.filter(
+                user_id=user_id, project__status=ProjectStatus.APPROVED
+            )
+            .select_related("project__category")
+            .prefetch_related(gallery_prefetch("project__images"), "project__tags")
+            # "owner" < "tipster", so ascending puts what the person made
+            # before what they pointed at.
+            .order_by("role", "-project__published_at", "-project__created_at")
+        )
+        return [
+            UserProjectItem(
+                project=row.project,
+                role=row.role,
+                category_name=row.project.category.name
+                if row.project.category
+                else None,
+                main_image_thumb_url=variant_url(_main_image(row.project), "thumb"),
+            )
+            for row in rows
+        ]
+
+    def list_public_articles_for(self, user_id: UUID) -> QuerySet[Article]:
+        return (
+            Article.objects.filter(
+                author_id=user_id, project__status=ProjectStatus.APPROVED
+            )
+            .globally_visible()
+            .select_related("channel", "project", "listing_image")
+            .order_by("-published_at", "-created_at")
+        )

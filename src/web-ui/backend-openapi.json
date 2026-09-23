@@ -268,6 +268,178 @@
         ]
       }
     },
+    "/api/auth/me/avatar/upload-url": {
+      "post": {
+        "operationId": "api_routers_auth_get_avatar_upload_url",
+        "summary": "Get Avatar Upload Url",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PresignedUploadResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AvatarUploadRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/auth/me/avatar/{image_id}/complete": {
+      "post": {
+        "operationId": "api_routers_auth_complete_avatar_upload",
+        "summary": "Complete Avatar Upload",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "image_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Image Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImageUploadCompleteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/auth/me/avatar": {
+      "delete": {
+        "operationId": "api_routers_auth_remove_avatar",
+        "summary": "Remove Avatar",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/UserResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Authentication"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
     "/api/auth/verify-email": {
       "post": {
         "operationId": "api_routers_auth_verify_email",
@@ -4370,6 +4542,100 @@
         ]
       }
     },
+    "/api/users/{user_id}/projects": {
+      "get": {
+        "operationId": "api_routers_users_list_public_projects",
+        "summary": "List Public Projects",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserProjectResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/users/{user_id}/articles": {
+      "get": {
+        "operationId": "api_routers_users_list_public_articles",
+        "summary": "List Public Articles",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/UserArticleResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Users"
+        ]
+      }
+    },
     "/api/notifications/summary": {
       "get": {
         "operationId": "api_routers_notifications_get_summary",
@@ -4537,6 +4803,17 @@
             "default": false,
             "title": "Is System User",
             "type": "boolean"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
           },
           "created_at": {
             "format": "date-time",
@@ -4798,6 +5075,94 @@
           }
         },
         "title": "UserUpdate",
+        "type": "object"
+      },
+      "PresignedUploadResponse": {
+        "properties": {
+          "image_id": {
+            "format": "uuid",
+            "title": "Image Id",
+            "type": "string"
+          },
+          "upload_url": {
+            "title": "Upload Url",
+            "type": "string"
+          },
+          "method": {
+            "title": "Method",
+            "type": "string"
+          },
+          "headers": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Headers",
+            "type": "object"
+          },
+          "storage_key": {
+            "title": "Storage Key",
+            "type": "string"
+          }
+        },
+        "required": [
+          "image_id",
+          "upload_url",
+          "method",
+          "headers",
+          "storage_key"
+        ],
+        "title": "PresignedUploadResponse",
+        "type": "object"
+      },
+      "AvatarUploadRequest": {
+        "properties": {
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "file_size": {
+            "title": "File Size",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "filename",
+          "content_type",
+          "file_size"
+        ],
+        "title": "AvatarUploadRequest",
+        "type": "object"
+      },
+      "ImageUploadCompleteRequest": {
+        "properties": {
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          }
+        },
+        "title": "ImageUploadCompleteRequest",
         "type": "object"
       },
       "VerifyEmailResponse": {
@@ -5884,6 +6249,7 @@
         "type": "object"
       },
       "PublicUserProfile": {
+        "description": "What anyone may know about a user.\n\nEmbedded in every project (creator, contributors) and article (author), so\neverything here must come off the user row and its `avatar` FK — the list\nquerysets `select_related` that FK for exactly this reason. The person's\nprojects and articles are separate endpoints, never fields here.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -5906,13 +6272,30 @@
             "default": false,
             "title": "Is System User",
             "type": "boolean"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
           }
         },
         "required": [
           "id",
           "first_name",
           "last_name",
-          "info"
+          "info",
+          "created_at"
         ],
         "title": "PublicUserProfile",
         "type": "object"
@@ -6639,43 +7022,6 @@
         "title": "ArticlePublish",
         "type": "object"
       },
-      "PresignedUploadResponse": {
-        "properties": {
-          "image_id": {
-            "format": "uuid",
-            "title": "Image Id",
-            "type": "string"
-          },
-          "upload_url": {
-            "title": "Upload Url",
-            "type": "string"
-          },
-          "method": {
-            "title": "Method",
-            "type": "string"
-          },
-          "headers": {
-            "additionalProperties": {
-              "type": "string"
-            },
-            "title": "Headers",
-            "type": "object"
-          },
-          "storage_key": {
-            "title": "Storage Key",
-            "type": "string"
-          }
-        },
-        "required": [
-          "image_id",
-          "upload_url",
-          "method",
-          "headers",
-          "storage_key"
-        ],
-        "title": "PresignedUploadResponse",
-        "type": "object"
-      },
       "ArticleImageUploadRequest": {
         "description": "An article upload names only the file.\n\nThe article it belongs to is in the path, so there is no `source` /\n`source_id` pair here that could disagree with which article the row is\nstored against.",
         "properties": {
@@ -6698,34 +7044,6 @@
           "file_size"
         ],
         "title": "ArticleImageUploadRequest",
-        "type": "object"
-      },
-      "ImageUploadCompleteRequest": {
-        "properties": {
-          "width": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Width"
-          },
-          "height": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Height"
-          }
-        },
-        "title": "ImageUploadCompleteRequest",
         "type": "object"
       },
       "ChannelResponse": {
@@ -8443,6 +8761,157 @@
           "project_count"
         ],
         "title": "CompetitionSummaryResponse",
+        "type": "object"
+      },
+      "UserProjectResponse": {
+        "description": "One entry in a user's public project list.\n\n`role` is the contributor row's role. `full_edit` is deliberately absent:\nit is an editing permission, not a public fact.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "tagline": {
+            "title": "Tagline",
+            "type": "string"
+          },
+          "category_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category Name"
+          },
+          "main_image_thumb_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Main Image Thumb Url"
+          },
+          "role": {
+            "enum": [
+              "owner",
+              "tipster"
+            ],
+            "title": "Role",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "tagline",
+          "category_name",
+          "main_image_thumb_url",
+          "role"
+        ],
+        "title": "UserProjectResponse",
+        "type": "object"
+      },
+      "UserArticleResponse": {
+        "description": "One entry in a user's public article list.\n\nThe public half of `ArticleListItem` plus the project, because the article's\nURL lives under its project and the profile shows articles from many. No\nvisibility fields: everything the list returns is published and visible.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "channel": {
+            "$ref": "#/components/schemas/ArticleChannelRef"
+          },
+          "project": {
+            "$ref": "#/components/schemas/ArticleProjectRef"
+          },
+          "listing_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Image Url"
+          },
+          "listing_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "slug",
+          "published_at",
+          "channel",
+          "project",
+          "listing_image_url",
+          "listing_crop"
+        ],
+        "title": "UserArticleResponse",
         "type": "object"
       },
       "NotificationSummaryResponse": {

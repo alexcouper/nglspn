@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from apps.articles.models import Article
     from apps.projects.models import Project, ProjectImage
+    from apps.users.models import UserAvatar
 
 # Upload limits. Article uploads get their own ceiling rather than sharing the
 # project's: they are inline figures in a body, not slots in a gallery, so a
@@ -22,6 +23,12 @@ ALLOWED_CONTENT_TYPES = frozenset(
         "image/gif",
     }
 )
+
+# Avatars are cropped to a square and downsized in the browser before upload,
+# so a much lower ceiling holds, and an animated GIF has no place in a 28px
+# circle in the nav.
+MAX_AVATAR_FILE_SIZE = 2 * 1024 * 1024  # 2MB
+AVATAR_CONTENT_TYPES = ALLOWED_CONTENT_TYPES - {"image/gif"}
 
 
 @dataclass(frozen=True)
@@ -54,9 +61,13 @@ class StorageSweepResult:
 
 @dataclass(frozen=True)
 class PreparedUpload:
-    """A reserved image row plus the presigned PUT that fills it."""
+    """A reserved image row plus the presigned PUT that fills it.
 
-    image: ProjectImage
+    `image` is a `ProjectImage` for gallery and article uploads and a
+    `UserAvatar` for avatars; the router only reads its `id`.
+    """
+
+    image: ProjectImage | UserAvatar
     upload_url: str
     method: str
     headers: dict[str, str]

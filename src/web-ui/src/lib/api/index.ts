@@ -23,6 +23,9 @@ export { TagsClient } from "./tags";
 // Types - Feed
 export type { FeedEntry, FeedPage, FeedEventKind } from "./feed";
 
+// Types - Users
+export type { PublicUserProfile, UserProject, UserArticle } from "./users";
+
 // Types - Auth
 export type { User, TokenResponse, VerifyEmailResponse, ResendVerificationResponse } from "./auth";
 export { VerifyCodeError } from "./auth";
@@ -91,9 +94,6 @@ export type {
   ReviewProjectDetail,
   ReviewStatus,
 } from "./my-review";
-
-// Types - Users
-export type { PublicUserProfile } from "./users";
 
 // Types - Tags
 export type { TagCategory, TagWithCategory, TagGrouped, TagSuggestRequest } from "./tags";

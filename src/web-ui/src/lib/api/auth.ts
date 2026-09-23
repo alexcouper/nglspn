@@ -4,6 +4,8 @@ import { ApiRequestError, type APIClient } from "./base";
 export type TokenResponse = components["schemas"]["Token"];
 export type User = components["schemas"]["UserResponse"];
 export type UserUpdate = components["schemas"]["UserUpdate"];
+export type PresignedUploadResponse =
+  components["schemas"]["PresignedUploadResponse"];
 export type VerifyEmailResponse = components["schemas"]["VerifyEmailResponse"];
 export type ResendVerificationResponse = components["schemas"]["ResendVerificationResponse"];
 export type ForgotPasswordResponse = components["schemas"]["ForgotPasswordResponse"];
@@ -56,6 +58,37 @@ export class AuthClient {
       method: "PUT",
       body: JSON.stringify(data),
     });
+  }
+
+  // Avatar: the same reserve → PUT → complete flow as project images, scoped
+  // to the signed-in user. See lib/avatarUpload.ts for the driver.
+  async getAvatarUploadUrl(
+    filename: string,
+    contentType: string,
+    fileSize: number,
+  ): Promise<PresignedUploadResponse> {
+    return this.client.request<PresignedUploadResponse>("/api/auth/me/avatar/upload-url", {
+      method: "POST",
+      body: JSON.stringify({
+        filename,
+        content_type: contentType,
+        file_size: fileSize,
+      }),
+    });
+  }
+
+  async completeAvatarUpload(
+    imageId: string,
+    dimensions: { width: number; height: number } | null,
+  ): Promise<User> {
+    return this.client.request<User>(`/api/auth/me/avatar/${imageId}/complete`, {
+      method: "POST",
+      body: JSON.stringify(dimensions ?? {}),
+    });
+  }
+
+  async removeAvatar(): Promise<User> {
+    return this.client.request<User>("/api/auth/me/avatar", { method: "DELETE" });
   }
 
   async verifyEmail(code: string): Promise<VerifyEmailResponse> {

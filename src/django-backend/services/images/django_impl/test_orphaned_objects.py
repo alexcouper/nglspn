@@ -22,6 +22,7 @@ from apps.projects.models import (
     UploadStatus,
     VariantSize,
 )
+from apps.users.models import UserAvatar
 from services import HANDLERS
 from services.images.django_impl.handler import DjangoImageHandler
 from services.images.handler_interface import (
@@ -32,7 +33,10 @@ from tests.factories import (
     ArticleFactory,
     ProjectFactory,
     ProjectImageFactory,
+    UserAvatarFactory,
+    UserFactory,
     article_image,
+    give_avatar,
 )
 
 DELETE_OBJECT = "services.storage.storage_service.delete_object"
@@ -287,3 +291,77 @@ class TestAbandonedUploads:
             handler.sweep_orphaned_objects()
 
         assert ProjectImage.objects.filter(pk=image.pk).exists()
+
+
+# ----------------------------------------------------------------------
+# Avatars — the second model the sweep covers
+# ----------------------------------------------------------------------
+
+
+def abandoned_avatar_upload(**kwargs: object) -> UserAvatar:
+    avatar = UserAvatarFactory(upload_status=UploadStatus.PENDING, **kwargs)
+    stale = timezone.now() - timedelta(hours=PENDING_UPLOAD_MAX_AGE_HOURS + 1)
+    UserAvatar.objects.filter(pk=avatar.pk).update(created_at=stale)
+    return avatar
+
+
+@pytest.mark.django_db
+class TestAvatarObjects:
+    def test_replacing_an_avatar_records_and_drains_the_old_key(self, handler):
+        user = UserFactory()
+        old = give_avatar(user)
+        replacement = UserAvatarFactory(user=user, upload_status=UploadStatus.PENDING)
+
+        with patch("services.storage.storage_service.object_exists", return_value=True):
+            HANDLERS.users.complete_avatar_upload(
+                user, replacement, width=512, height=512
+            )
+        assert recorded_keys() == {old.storage_key}
+
+        with patch(DELETE_OBJECT) as delete_object:
+            handler.sweep_orphaned_objects()
+
+        delete_object.assert_called_once_with(old.storage_key)
+        assert_no_tombstones_left()
+
+    def test_removing_an_avatar_records_and_drains_its_key(self, handler):
+        user = UserFactory()
+        avatar = give_avatar(user)
+
+        HANDLERS.users.remove_avatar(user)
+
+        with patch(DELETE_OBJECT) as delete_object:
+            handler.sweep_orphaned_objects()
+
+        delete_object.assert_called_once_with(avatar.storage_key)
+        assert_no_tombstones_left()
+
+    def test_sweep_reaps_a_stale_pending_avatar_reservation(self, handler):
+        avatar = abandoned_avatar_upload()
+
+        with patch(DELETE_OBJECT) as delete_object:
+            result = handler.sweep_orphaned_objects()
+
+        delete_object.assert_called_once_with(avatar.storage_key)
+        assert result.pending_uploads_reaped == 1
+        assert not UserAvatar.objects.filter(pk=avatar.pk).exists()
+        assert_no_tombstones_left()
+
+    def test_sweep_leaves_a_fresh_avatar_reservation_alone(self, handler):
+        avatar = UserAvatarFactory(upload_status=UploadStatus.PENDING)
+
+        with patch(DELETE_OBJECT) as delete_object:
+            result = handler.sweep_orphaned_objects()
+
+        delete_object.assert_not_called()
+        assert result.pending_uploads_reaped == 0
+        assert UserAvatar.objects.filter(pk=avatar.pk).exists()
+
+    def test_sweep_counts_stale_project_images_and_avatars_together(self, handler):
+        abandoned_upload()
+        abandoned_avatar_upload()
+
+        with patch(DELETE_OBJECT):
+            result = handler.sweep_orphaned_objects()
+
+        assert result.pending_uploads_reaped == 2

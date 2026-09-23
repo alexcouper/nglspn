@@ -29,16 +29,27 @@ class StorageService:
         return self._client
 
     def generate_upload_key(self, project_id: str, filename: str) -> str:
-        """Generate a unique storage key for an upload.
+        """Generate a unique storage key for a project or article image.
 
         Format: projects/{project_id}/{uuid}/{filename}
         """
+        return f"projects/{project_id}/{self._unique_object_path(filename)}"
+
+    def generate_avatar_upload_key(self, user_id: str, filename: str) -> str:
+        """Generate a unique storage key for a user's avatar.
+
+        Format: avatars/{user_id}/{uuid}/{filename}
+        """
+        return f"avatars/{user_id}/{self._unique_object_path(filename)}"
+
+    @staticmethod
+    def _unique_object_path(filename: str) -> str:
         unique_id = uuid.uuid4().hex[:12]
         # Sanitize filename - keep only alphanumeric, dots, hyphens, underscores
         safe_filename = "".join(c for c in filename if c.isalnum() or c in ".-_")
         if not safe_filename:
             safe_filename = "image"
-        return f"projects/{project_id}/{unique_id}/{safe_filename}"
+        return f"{unique_id}/{safe_filename}"
 
     def generate_presigned_upload_url(
         self,

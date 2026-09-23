@@ -164,16 +164,26 @@ class DjangoImageHandler(ImageHandlerInterface):
         never heard back", not "there is nothing there", so the object may or
         may not exist and the delete has to be attempted either way.
         """
+        from apps.users.models import UserAvatar  # noqa: PLC0415
+
         cutoff = timezone.now() - timedelta(hours=PENDING_UPLOAD_MAX_AGE_HOURS)
-        stale_ids = list(
-            ProjectImage.objects.filter(
-                upload_status=UploadStatus.PENDING, created_at__lt=cutoff
-            ).values_list("pk", flat=True)[:batch_size]
-        )
-        if not stale_ids:
-            return 0
-        ProjectImage.objects.filter(pk__in=stale_ids).delete()
-        return len(stale_ids)
+        reaped = 0
+        # Avatars reserve rows the same way and are tombstoned by their own
+        # `pre_delete` receiver (`apps/users/signals.py`), so the one sweep
+        # covers both.
+        for model in (ProjectImage, UserAvatar):
+            stale_ids = list(
+                model.objects.filter(
+                    upload_status=UploadStatus.PENDING, created_at__lt=cutoff
+                ).values_list("pk", flat=True)[: batch_size - reaped]
+            )
+            if not stale_ids:
+                continue
+            model.objects.filter(pk__in=stale_ids).delete()
+            reaped += len(stale_ids)
+            if reaped >= batch_size:
+                break
+        return reaped
 
     @staticmethod
     def _drain_tombstones(*, batch_size: int) -> tuple[int, int]:

@@ -5,8 +5,19 @@ import type { ArticleListItem } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 import { ArticleListingImage } from "./ArticleListingImage";
 
+// The fields the card draws. Structural rather than `ArticleListItem` itself
+// so a cross-project listing — the profile page's — can feed it a leaner
+// response that has no visibility fields.
+export type ArticleCardItem = Pick<
+  ArticleListItem,
+  "title" | "summary" | "published_at" | "channel" | "listing_image_url" | "listing_crop"
+>;
+
 interface Props {
-  article: ArticleListItem;
+  article: ArticleCardItem;
+  // Named where the card sits outside its project — on a profile, a feed. The
+  // project page leaves it out; every card there is the same project.
+  projectTitle?: string;
   // Supplied rather than derived from a project slug: a cross-project feed
   // builds its links differently. Omitted where there is nothing to link to —
   // an unpublished draft has no slug, so the authoring preview renders the
@@ -27,7 +38,7 @@ const SUMMARY = {
   grid: { imaged: "line-clamp-3", bare: "line-clamp-5" },
 } as const;
 
-export function ArticleCard({ article, href, variant }: Props) {
+export function ArticleCard({ article, projectTitle, href, variant }: Props) {
   const isLead = variant === "lead";
   const hasImage = !!article.listing_image_url;
   const shape = hasImage ? "imaged" : "bare";
@@ -50,6 +61,14 @@ export function ArticleCard({ article, href, variant }: Props) {
           <div className="mb-3 h-1 w-12 rounded-full bg-accent" />
         )}
         <div className="text-xs font-semibold uppercase tracking-wide text-accent">
+          {projectTitle && (
+            <>
+              {projectTitle}
+              <span className="text-muted-foreground font-normal normal-case tracking-normal">
+                {" · "}
+              </span>
+            </>
+          )}
           {article.channel.name}
           {article.published_at && (
             <span className="text-muted-foreground font-normal normal-case tracking-normal">

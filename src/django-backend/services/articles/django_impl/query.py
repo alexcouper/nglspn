@@ -24,7 +24,7 @@ def article_detail_queryset() -> QuerySet[Article]:
     `ArticleOut` too and a second prefetch list would drift from this one.
     """
     return Article.objects.select_related(
-        "project", "channel", "author", "listing_image"
+        "project", "channel", "author", "author__avatar", "listing_image"
     ).prefetch_related("listing_image__variants", "images__variants")
 
 
@@ -51,7 +51,7 @@ class DjangoArticleQuery(ArticleQueryInterface):
     ) -> QuerySet[Article]:
         qs = (
             Article.objects.filter(project_id=project_id)
-            .select_related("channel", "author", "listing_image")
+            .select_related("channel", "author", "author__avatar", "listing_image")
             .order_by(F("published_at").desc(nulls_first=True), "-created_at")
         )
         if not include_hidden:

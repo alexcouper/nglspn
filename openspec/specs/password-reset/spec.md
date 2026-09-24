@@ -1,4 +1,8 @@
-## ADDED Requirements
+## Purpose
+
+Lets a user who has forgotten their password prove control of their email address with a short-lived code and set a new password without knowing the old one.
+
+## Requirements
 
 ### Requirement: Request password reset code
 Any anonymous user SHALL be able to submit an email address to request a password reset code. The system SHALL generate a 6-digit numeric code, store it with a 15-minute expiry, and send it to the email address via an async email task. The system SHALL always return a success response regardless of whether the email exists in the system.

@@ -27,7 +27,7 @@ if TYPE_CHECKING:
     from apps.discussions.models import Discussion
     from apps.emails.models import BroadcastEmail
     from apps.notifications.models import Notification
-    from apps.projects.models import Project
+    from apps.projects.models import Project, ProjectReport
     from apps.users.models import User
 
 logger = logging.getLogger(__name__)
@@ -270,6 +270,66 @@ class DjangoEmailHandler(EmailHandlerInterface):
             email_type=SentEmailType.PROJECT_APPROVED,
             subject=subject,
             to_email=recipient.email,
+            html_body=html,
+            project=project,
+        )
+
+    def send_project_report_email(
+        self, report: ProjectReport, recipient_email: str, recipient: User | None
+    ) -> None:
+        """Tell a project's maker that a visitor found it broken.
+
+        `recipient` is None when the project has no maker to tell — a tip-off
+        nobody has claimed — and the report goes to the site's admin address
+        instead, worded for someone who does not own the project.
+        """
+        project = report.project
+        slug_or_id = project.slug or project.id
+        context = {
+            "recipient_name": (recipient.first_name if recipient else "") or "there",
+            "is_maker": recipient is not None,
+            "project_title": project.title,
+            "project_url": f"{settings.FRONTEND_URL}/projects/{slug_or_id}",
+            "website_url": project.website_url,
+            "edit_url": f"{settings.FRONTEND_URL}/my-projects/{project.id}",
+            "reason": report.get_reason_display(),
+            "details": report.details,
+            "contact_email": report.contact_email,
+            "logo_url": EMAIL_LOGO_URL,
+            "current_year": timezone.now().year,
+        }
+        html, text = render_email("project_report", context)
+
+        subject = f"Someone reported a problem with {project.title} - Naglasúpan"
+        email = EmailMultiAlternatives(
+            subject=subject,
+            body=text,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[recipient_email],
+            # Replying reaches the reporter only when they chose to leave an
+            # address; otherwise a reply would go to the no-reply sender.
+            reply_to=[report.contact_email] if report.contact_email else None,
+        )
+        email.attach_alternative(html, "text/html")
+        try:
+            email.send(fail_silently=False)
+        except Exception:
+            _log_sent_email(
+                recipient=recipient,
+                email_type=SentEmailType.PROJECT_REPORT,
+                subject=subject,
+                to_email=recipient_email,
+                success=False,
+                error_message=f"Failed to send to {recipient_email}",
+                html_body=html,
+                project=project,
+            )
+            raise
+        _log_sent_email(
+            recipient=recipient,
+            email_type=SentEmailType.PROJECT_REPORT,
+            subject=subject,
+            to_email=recipient_email,
             html_body=html,
             project=project,
         )

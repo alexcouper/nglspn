@@ -4,6 +4,9 @@ import type { APIClient } from "./base";
 export type Project = components["schemas"]["ProjectResponse"];
 export type ProjectListItem = components["schemas"]["ProjectListItemResponse"];
 export type ProjectListResponse = components["schemas"]["ProjectListResponse"];
+export type ProjectReportCreate = components["schemas"]["ProjectReportCreate"];
+export type ProjectReportReason = ProjectReportCreate["reason"];
+export type ProjectReport = components["schemas"]["ProjectReportResponse"];
 
 export interface ListProjectsParams {
   tags?: string[];
@@ -45,4 +48,14 @@ export class ProjectsClient {
     return this.client.request<Project>(`/api/projects/${projectId}`);
   }
 
+  /** Tell the project's makers it is broken. Open to signed-out visitors. */
+  async report(
+    projectSlugOrId: string,
+    payload: ProjectReportCreate,
+  ): Promise<ProjectReport> {
+    return this.client.request<ProjectReport>(
+      `/api/projects/${projectSlugOrId}/reports`,
+      { method: "POST", body: JSON.stringify(payload) },
+    );
+  }
 }

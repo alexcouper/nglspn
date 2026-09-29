@@ -31,6 +31,7 @@ from .models import (
     ProjectContributor,
     ProjectImage,
     ProjectRanking,
+    ProjectReport,
     ProjectStatus,
     ProjectView,
 )
@@ -521,6 +522,38 @@ class ProjectViewAdmin(admin.ModelAdmin):
         request: HttpRequest,
         obj: ProjectView | None = None,
     ) -> bool:
+        return False
+
+
+@admin.register(ProjectReport)
+class ProjectReportAdmin(admin.ModelAdmin):
+    list_display = (
+        "project_link",
+        "reason",
+        "contact_email",
+        "makers_notified",
+        "created_at",
+    )
+    list_filter = ("reason", "makers_notified", "created_at")
+    search_fields = ("project__title", "contact_email", "details")
+    readonly_fields = (
+        "id",
+        "project",
+        "reason",
+        "details",
+        "contact_email",
+        "reporter",
+        "makers_notified",
+        "created_at",
+    )
+    ordering = ("-created_at",)
+
+    @admin.display(description="Project", ordering="project__title")
+    def project_link(self, obj: ProjectReport) -> SafeString:
+        url = reverse("admin:projects_project_change", args=[obj.project.pk])
+        return format_html('<a href="{}">{}</a>', url, obj.project.title)
+
+    def has_add_permission(self, request: HttpRequest) -> bool:
         return False
 
 

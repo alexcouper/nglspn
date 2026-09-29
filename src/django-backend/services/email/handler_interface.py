@@ -9,7 +9,7 @@ if TYPE_CHECKING:
     from apps.discussions.models import Discussion
     from apps.emails.models import BroadcastEmail
     from apps.notifications.models import Notification
-    from apps.projects.models import Project
+    from apps.projects.models import Project, ProjectReport
     from apps.users.models import User
 
 
@@ -27,6 +27,11 @@ class EmailHandlerInterface(ABC):
     @abstractmethod
     def send_new_project_notification(
         self, project: Project, recipient_email: str
+    ) -> None: ...
+
+    @abstractmethod
+    def send_project_report_email(
+        self, report: ProjectReport, recipient_email: str, recipient: User | None
     ) -> None: ...
 
     @abstractmethod

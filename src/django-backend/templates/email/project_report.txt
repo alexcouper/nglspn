@@ -1,0 +1,21 @@
+{% autoescape off %}A problem was reported with {{ project_title }} - Naglasúpan
+=============================================================
+
+{% if is_maker %}Hi {{ recipient_name }},
+
+A visitor on Naglasúpan tried your project and says something isn't working.{% else %}A visitor reported a problem with this project. It has no maker on Naglasúpan to tell, so the report came to you.{% endif %}
+
+What's wrong: {{ reason }}
+{% if details %}
+"{{ details }}"
+{% endif %}
+{% if contact_email %}They left an address in case you have questions — reply to this email to reach them.{% else %}They didn't leave a contact address.{% endif %}
+
+Check the site: {{ website_url }}
+{% if is_maker %}Moved it, or retired it? Update the project: {{ edit_url }}{% else %}View the project: {{ project_url }}{% endif %}
+
+---
+Byggjum, deilum, vöxum saman
+
+(c) {{ current_year }} Naglasúpan.
+{% endautoescape %}

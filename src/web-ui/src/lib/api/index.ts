@@ -76,7 +76,14 @@ export type {
 export type { DiscoverProject, CategoryItem, WinnerProject } from "./discover";
 
 // Types - Projects
-export type { Project, ProjectListItem, ProjectListResponse, ListProjectsParams } from "./projects";
+export type {
+  Project,
+  ProjectListItem,
+  ProjectListResponse,
+  ListProjectsParams,
+  ProjectReport,
+  ProjectReportReason,
+} from "./projects";
 
 // Types - My Projects
 export type {

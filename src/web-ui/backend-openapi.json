@@ -1051,6 +1051,68 @@
         ]
       }
     },
+    "/api/projects/{identifier}/reports": {
+      "post": {
+        "operationId": "api_routers_projects_report_project",
+        "summary": "Report Project",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "identifier",
+            "schema": {
+              "title": "Identifier",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProjectReportResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too Many Requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Projects"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ProjectReportCreate"
+              }
+            }
+          },
+          "required": true
+        }
+      }
+    },
     "/api/projects/{project_id}/discussions": {
       "get": {
         "operationId": "api_routers_discussions_list_discussions",
@@ -6298,6 +6360,68 @@
           "created_at"
         ],
         "title": "PublicUserProfile",
+        "type": "object"
+      },
+      "ProjectReportResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "reason": {
+            "enum": [
+              "site_down",
+              "something_broken",
+              "wrong_link",
+              "other"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "reason",
+          "created_at"
+        ],
+        "title": "ProjectReportResponse",
+        "type": "object"
+      },
+      "ProjectReportCreate": {
+        "properties": {
+          "reason": {
+            "enum": [
+              "site_down",
+              "something_broken",
+              "wrong_link",
+              "other"
+            ],
+            "title": "Reason",
+            "type": "string"
+          },
+          "details": {
+            "default": "",
+            "maxLength": 2000,
+            "title": "Details",
+            "type": "string"
+          },
+          "contact_email": {
+            "default": "",
+            "maxLength": 254,
+            "title": "Contact Email",
+            "type": "string"
+          }
+        },
+        "required": [
+          "reason"
+        ],
+        "title": "ProjectReportCreate",
         "type": "object"
       },
       "DiscussionAuthor": {

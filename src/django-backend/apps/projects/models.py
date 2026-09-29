@@ -203,6 +203,51 @@ class ProjectView(models.Model):
         return f"{self.project} - {self.viewer_ip}"
 
 
+class ProjectReportReason(models.TextChoices):
+    SITE_DOWN = "site_down", "The site won't load"
+    SOMETHING_BROKEN = "something_broken", "Something on the site is broken"
+    WRONG_LINK = "wrong_link", "The link goes somewhere else"
+    OTHER = "other", "Something else"
+
+
+class ProjectReport(models.Model):
+    """A visitor telling a project's makers that their work is broken.
+
+    Kept after the email goes out so admins can see which projects keep
+    collecting reports, and so a report is not lost if sending fails.
+    """
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    project = models.ForeignKey(
+        Project,
+        on_delete=models.CASCADE,
+        related_name="reports",
+    )
+    reason = models.CharField(max_length=30, choices=ProjectReportReason.choices)
+    details = models.TextField(max_length=2000, blank=True)
+    # Only ever set by the reporter. It is handed to the makers as the email's
+    # Reply-To, so an address the reporter did not type must never end up here.
+    contact_email = models.EmailField(blank=True)
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="project_reports",
+    )
+    # False when the report arrived inside the email cooldown: it is kept for
+    # the admin, but the makers were not emailed about it.
+    makers_notified = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "project_reports"
+        ordering = ["-created_at"]
+
+    def __str__(self) -> str:
+        return f"{self.project} - {self.get_reason_display()}"
+
+
 class UploadStatus(models.TextChoices):
     PENDING = "pending", "Pending Upload"
     UPLOADED = "uploaded", "Uploaded"

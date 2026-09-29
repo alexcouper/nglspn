@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from uuid import UUID
 
-from apps.projects.models import Project
+from apps.projects.models import Project, ProjectReport
 
 
 @dataclass
@@ -33,6 +33,15 @@ class UpdateProjectInput:
     tag_ids: list[UUID] = field(default_factory=list)
 
 
+@dataclass
+class ReportProjectInput:
+    project_id: UUID
+    reason: str
+    details: str = ""
+    contact_email: str = ""
+    reporter_id: UUID | None = None
+
+
 class ProjectHandlerInterface(ABC):
     @abstractmethod
     def create(self, data: CreateProjectInput) -> Project: ...
@@ -55,3 +64,6 @@ class ProjectHandlerInterface(ABC):
     def enter_competition(
         self, project_id: UUID, competition_id: UUID, user_id: UUID
     ) -> Project: ...
+
+    @abstractmethod
+    def report(self, data: ReportProjectInput) -> ProjectReport: ...

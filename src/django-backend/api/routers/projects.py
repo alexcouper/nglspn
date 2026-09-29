@@ -3,6 +3,7 @@ from typing import Any
 from django.http import HttpRequest
 from ninja import Query, Router
 
+from api.rate_limit import check_rate_limit
 from api.routers._helpers import get_optional_user
 from api.schemas.errors import Error
 from api.schemas.project import (
@@ -13,9 +14,11 @@ from api.schemas.project import (
     ProjectResponse,
     WinnerProjectResponse,
 )
-from apps.projects.models import Project, ProjectStatus
-from services import REPO
+from api.schemas.project_report import ProjectReportCreate, ProjectReportResponse
+from apps.projects.models import Project, ProjectReport, ProjectStatus
+from services import HANDLERS, REPO
 from services.project.exceptions import ProjectNotFoundError
+from services.project.handler_interface import ReportProjectInput
 
 router = Router()
 
@@ -189,3 +192,41 @@ def get_project(
         return project
 
     return 404, {"detail": "Project not found"}
+
+
+@router.post(
+    "/{identifier}/reports",
+    response={201: ProjectReportResponse, 404: Error, 429: Error},
+    tags=["Projects"],
+)
+def report_project(
+    request: HttpRequest,
+    identifier: str,
+    payload: ProjectReportCreate,
+) -> Any:
+    # Open to visitors who aren't signed in — they are the ones most likely to
+    # hit a dead link — so the only brake on a flood of email to a maker is
+    # this per-IP limit.
+    rate_limit_response = check_rate_limit(request, "report_project", "5/h")
+    if rate_limit_response:
+        return rate_limit_response
+
+    try:
+        project = REPO.project.get_by_identifier(identifier)
+    except ProjectNotFoundError:
+        return 404, {"detail": "Project not found"}
+
+    user = get_optional_user(request)
+    try:
+        report: ProjectReport = HANDLERS.project.report(
+            ReportProjectInput(
+                project_id=project.id,
+                reason=payload.reason,
+                details=payload.details,
+                contact_email=payload.contact_email,
+                reporter_id=user.id if user else None,
+            )
+        )
+    except ProjectNotFoundError:
+        return 404, {"detail": "Project not found"}
+    return 201, report

@@ -12,7 +12,6 @@ import type {
   DiscoverProject,
   FeedPage,
   Project,
-  ProjectListResponse,
   WinnerProject,
 } from "./index";
 
@@ -37,18 +36,6 @@ async function serverFetch<T>(path: string): Promise<T> {
     throw new Error(`API error: ${res.status}`);
   }
   return res.json();
-}
-
-export async function fetchProjects(params?: {
-  sort_by?: string;
-  sort_order?: string;
-}): Promise<ProjectListResponse> {
-  const searchParams = new URLSearchParams();
-  if (params?.sort_by) searchParams.set("sort_by", params.sort_by);
-  if (params?.sort_order) searchParams.set("sort_order", params.sort_order);
-  const query = searchParams.toString();
-  const path = query ? `/api/projects?${query}` : "/api/projects";
-  return serverFetch<ProjectListResponse>(path);
 }
 
 export async function fetchProject(id: string): Promise<Project> {

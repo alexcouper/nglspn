@@ -36,6 +36,7 @@ export function Navigation() {
   const closeMenu = () => setMenuOpen(false);
   const loginHref = buildLoginPath(pathname);
   const registerHref = pathname !== "/" ? `/register?next=${encodeURIComponent(pathname)}` : "/register";
+  const guidesHref = pathname.startsWith("/is/guides") ? "/is/guides" : "/guides";
 
   return (
     <>
@@ -59,6 +60,7 @@ export function Navigation() {
             </Link>
             <Link href="/projects" className={linkClass("/projects")}>Projects</Link>
             <Link href="/competitions" className={linkClass("/competitions")}>Competitions</Link>
+            <Link href={guidesHref} className={linkClass(guidesHref)}>Guides</Link>
           </div>
 
           {/* Mobile logo */}
@@ -132,6 +134,7 @@ export function Navigation() {
           <div className="space-y-0.5 border-b border-slate-100 pb-4 mb-4">
             <Link href="/projects" className={mobileLinkClass("/projects")} onClick={closeMenu}>Projects</Link>
             <Link href="/competitions" className={mobileLinkClass("/competitions")} onClick={closeMenu}>Competitions</Link>
+            <Link href={guidesHref} className={mobileLinkClass(guidesHref)} onClick={closeMenu}>Guides</Link>
           </div>
 
           <div className="space-y-0.5">

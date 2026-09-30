@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { Inter, JetBrains_Mono } from "next/font/google";
-import { Suspense } from "react";
 import { AuthProvider } from "@/contexts/auth";
 import { NotificationsProvider } from "@/contexts/notifications";
 import { ToastsProvider } from "@/contexts/toasts";
@@ -68,12 +67,8 @@ export default function RootLayout({
         <AuthProvider>
           <NotificationsProvider>
             <ToastsProvider>
-              <Suspense>
-                <Navigation />
-              </Suspense>
-              <Suspense>
-                <div className="flex-1 flex flex-col">{children}</div>
-              </Suspense>
+              <Navigation />
+              <div className="flex-1 flex flex-col">{children}</div>
               <Footer />
               <NotificationToaster />
               <ToastContainer />

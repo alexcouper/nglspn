@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function AboutPage() {
   return (
     <section className="bg-muted py-20 px-4 sm:px-6">
@@ -54,6 +56,23 @@ export default function AboutPage() {
             </p>
           </div>
         </div>
+
+        <section className="mt-12 rounded-xl border border-border bg-white p-7">
+          <h2 className="text-xl font-semibold tracking-tight">Why the name Naglasúpan?</h2>
+          <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
+            The name comes from the story of nail soup: a shared meal made
+            possible by many small contributions. The same idea brings people
+            building software in Iceland together here.
+          </p>
+          <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 text-sm">
+            <Link href="/guides/iceland-developer-community#why-the-name" className="text-accent-hover underline underline-offset-4">
+              The story behind Naglasúpan
+            </Link>
+            <Link href="/is/guides/iceland-developer-community#why-the-name" lang="is" hrefLang="is" className="text-accent-hover underline underline-offset-4">
+              Sagan á bak við Naglasúpuna
+            </Link>
+          </div>
+        </section>
       </div>
     </section>
   );

@@ -7,6 +7,12 @@ export function Footer() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10">
         <div className="flex justify-center">
           <nav className="flex flex-wrap justify-center gap-x-6 gap-y-2 text-sm" aria-label="Footer">
+            <Link href="/guides" className="text-muted-foreground hover:text-foreground transition-colors">
+              Guides
+            </Link>
+            <Link href="/is/guides" lang="is" hrefLang="is" className="text-muted-foreground hover:text-foreground transition-colors">
+              Leiðarvísar
+            </Link>
             <Link
               href="/about"
               className="text-muted-foreground hover:text-foreground transition-colors"

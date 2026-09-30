@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 import { SITE_EMAIL } from "@/lib/constants";
 
 export function TipoffExplainer() {
@@ -8,13 +10,24 @@ export function TipoffExplainer() {
         than their makers.
       </p>
       <p className="text-sm text-muted-foreground">
-        If this is your project, get in touch:{" "}
+        Know of one?{" "}
+        <Link
+          href="/create"
+          className="text-accent hover:text-accent-hover underline underline-offset-2"
+        >
+          Add it as a tip-off
+        </Link>
+        .
+      </p>
+      <p className="text-sm text-muted-foreground">
+        Made one of these projects? Email{" "}
         <a
           href={`mailto:${SITE_EMAIL}`}
           className="text-accent hover:text-accent-hover underline underline-offset-2"
         >
           {SITE_EMAIL}
-        </a>
+        </a>{" "}
+        to claim it.
       </p>
     </div>
   );

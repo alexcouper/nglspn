@@ -48,8 +48,8 @@ Pointing the FK at `auth.Group` instead was rejected for three reasons:
 
 ### "Everyone" is a flag, not stored membership
 
-Membership in a flagged group is always true. Membership in a panel is
-`members.filter(pk=user.pk).exists()`. Storing a row per user, kept in sync
+Membership in a flagged group is always true. Membership in a panel is a row
+in the `members` table. Storing a row per user, kept in sync
 from the `post_save` of `User`, was rejected because rows drift: bulk creates,
 data migrations and fixtures all skip the signal. Stored rows would also bring
 back exactly the "someone forgot" failure this change removes.
@@ -59,14 +59,23 @@ membership. A deactivated panel member stays on the panel but has no access.
 
 ### One access check in the review service
 
-The query side gets two methods:
+The whole rule is one queryset, `reviewable_competitions(user_id)` in
+`services/review/django_impl/query.py`. It returns competitions in `voting`,
+where the user is eligible, whose group either includes all users or has the
+user as a member (an `Exists` on the members table, not a join, so a
+competition comes back once). Every access decision is built on it:
 
-- `can_review(user, competition) -> bool`: the rule from the spec (status
-  `voting`, active non-system user, group member).
-  This is the write gate.
-- `review_competitions_for(user)`: the competitions to list. This is the union
-  of competitions in `voting` that the user can review and competitions where
-  the user has a row. It returns each with a derived status.
+- `can_review(user_id, competition_id)` is the write gate.
+- `review_competitions_for(user_id)` is the list: the union of reviewable
+  competitions and competitions where the user has a row. Each comes back with
+  its derived status and whether the user can still write.
+- `get_review_competition(user_id, competition_id)` is the same for one
+  competition, or None when the user can neither review it nor has a row.
+- `can_view_review_project(user_id, project_id)` checks the project endpoint.
+- The handler's write gate uses the queryset directly.
+
+A per-object `has_member` method on the model was considered and dropped. It
+would have been a second copy of the rule that could drift from the queryset.
 
 The router stops querying `CompetitionReviewer` directly. Read endpoints
 (detail, project) allow access when `can_review` holds **or** a row exists,
@@ -75,20 +84,17 @@ require `can_review`.
 
 An error has to tell the router which response to send. A user with no access
 and no row gets `ReviewerNotAssignedError`, which maps to 404 as today. A user
-with a row whose competition has left `voting` gets `ReviewClosedError`, which
-maps to 400 as today. Both status codes are already declared on those
-endpoints, so the OpenAPI spec doesn't change.
-
-The list needs the same rule as a queryset: competitions in `voting` filtered
-by `Q(reviewer_group__includes_all_users=True) | Q(reviewer_group__members=user)`,
-applied only when the user is eligible. Both forms live in one module next to
-each other, so a change to the rule touches one file.
+with a row who has lost access gets `ReviewClosedError`, which maps to 400 as
+today. Both status codes are already declared on those endpoints, so no schema
+in the OpenAPI spec changes. Only the endpoint descriptions change, because
+they are generated from the rewritten docstrings.
 
 ### The row is created by the first write, inside the handler
 
 `replace_ballot` and a new `set_review_status` handler method both call
-`CompetitionReviewer.objects.get_or_create(user, competition)` after
-`can_review` passes. The existing `(user, competition)` unique constraint makes
+`CompetitionReviewer.objects.get_or_create(user, competition)` once the
+access check has passed. `replace_ballot` first validates the payload, so a
+rejected first ballot creates no row. The existing `(user, competition)` unique constraint makes
 concurrent first writes safe: `get_or_create` retries the read on
 `IntegrityError`.
 

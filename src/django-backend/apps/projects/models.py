@@ -375,6 +375,46 @@ def competition_image_path(instance: "Competition", filename: str) -> str:
     return f"{instance.id}/{filename}"
 
 
+EVERYONE_REVIEWER_GROUP_NAME = "Everyone"
+
+
+class ReviewerGroup(models.Model):
+    """The people who may review a competition.
+
+    Membership is all a group decides. Whether a member may review right now
+    also depends on the competition being in voting and on the member's
+    account being active and human — see `services.review`.
+    """
+
+    name = models.CharField(max_length=100, unique=True)
+    # A flag rather than a membership row per user: stored rows would need
+    # every way of creating a user to remember to add one, and forgetting a
+    # step is what this model exists to stop.
+    includes_all_users = models.BooleanField(default=False)
+    members = models.ManyToManyField(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        related_name="reviewer_groups",
+    )
+
+    class Meta:
+        db_table = "reviewer_groups"
+        ordering = ["name"]
+
+    def __str__(self) -> str:
+        return self.name
+
+
+def everyone_reviewer_group_id() -> int:
+    # get_or_create rather than get: the seed migration's row is gone from a
+    # flushed test database, and a competition must still be creatable there.
+    group, _ = ReviewerGroup.objects.get_or_create(
+        name=EVERYONE_REVIEWER_GROUP_NAME,
+        defaults={"includes_all_users": True},
+    )
+    return group.pk
+
+
 class Competition(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100, db_index=True)
@@ -416,6 +456,12 @@ class Competition(models.Model):
     # assignment and left alone afterwards, so editing a competition years later
     # doesn't relocate its entry in the feed.
     winner_announced_at = models.DateTimeField(null=True, blank=True)
+    reviewer_group = models.ForeignKey(
+        ReviewerGroup,
+        on_delete=models.PROTECT,
+        default=everyone_reviewer_group_id,
+        related_name="competitions",
+    )
     status = models.CharField(
         max_length=30,
         choices=CompetitionStatus.choices,
@@ -538,7 +584,6 @@ class CompetitionEntry(models.Model):
 class ReviewStatus(models.TextChoices):
     IN_PROGRESS = "in_progress", "In Progress"
     COMPLETED = "completed", "Completed"
-    ENDED = "ended", "Ended"
 
 
 class CompetitionReviewer(models.Model):

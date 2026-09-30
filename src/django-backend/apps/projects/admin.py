@@ -15,8 +15,7 @@ from django.utils.safestring import mark_safe
 
 from api.tasks import email as email_tasks
 from apps.emails.models import SentEmail, SentEmailType
-from apps.users.models import User
-from services import HANDLERS, REPO
+from services import REPO
 from services.email import EMAIL_LOGO_URL
 from services.email.django_impl import render_email
 
@@ -33,6 +32,7 @@ from .models import (
     ProjectRanking,
     ProjectStatus,
     ProjectView,
+    ReviewerGroup,
 )
 
 if TYPE_CHECKING:
@@ -694,7 +694,6 @@ class CompetitionAdmin(admin.ModelAdmin):
     autocomplete_fields = ("winner",)
     inlines = [CompetitionEntryInline, CompetitionReviewerInline]
     ordering = ("-start_date",)
-    actions = ("end_review_period",)
     readonly_fields = (
         "image_preview",
         "image_wide_preview",
@@ -730,7 +729,24 @@ class CompetitionAdmin(admin.ModelAdmin):
         ),
         (
             "Status",
-            {"fields": ("status", "winner")},
+            {
+                "fields": ("status", "winner"),
+                "description": (
+                    "Reviewing is open while the status is Voting and shuts "
+                    "when it changes. Assigning a winner closes it. Move to "
+                    "Closed first to freeze ballots before deciding."
+                ),
+            },
+        ),
+        (
+            "Review",
+            {
+                "fields": ("reviewer_group",),
+                "description": (
+                    "Who may review. Everyone means every active account; a "
+                    "panel is only its members."
+                ),
+            },
         ),
         (
             "Entry",
@@ -817,50 +833,12 @@ class CompetitionAdmin(admin.ModelAdmin):
     def project_count(self, obj: Competition) -> int:
         return obj.projects.count()
 
-    @admin.display(description="Reviewers")
+    @admin.display(description="Reviews started")
     def reviewer_count(self, obj: Competition) -> int:
         return obj.reviewers.count()
 
-    @admin.action(description="End review period for selected competitions")
-    def end_review_period(
-        self,
-        request: HttpRequest,
-        queryset: QuerySet[Competition],
-    ) -> None:
-        total_ended = 0
-        competition_count = queryset.count()
-        for competition in queryset:
-            total_ended += HANDLERS.reviews.end_review_period(competition.id)
-        self.message_user(
-            request,
-            f"Ended review period for {competition_count} competition(s); "
-            f"{total_ended} review(s) marked as ended.",
-        )
-
     def get_queryset(self, request: HttpRequest) -> QuerySet[Competition]:
         return super().get_queryset(request).select_related("winner")
-
-    def response_change(self, request: HttpRequest, obj: Competition) -> HttpResponse:
-        if "_add_all_reviewers" in request.POST:
-            existing_user_ids = CompetitionReviewer.objects.filter(
-                competition=obj,
-            ).values_list("user_id", flat=True)
-            new_users = User.objects.filter(is_active=True).exclude(
-                id__in=existing_user_ids,
-            )
-            reviewers = [
-                CompetitionReviewer(user=user, competition=obj) for user in new_users
-            ]
-            CompetitionReviewer.objects.bulk_create(reviewers)
-            already = len(existing_user_ids)
-            added = len(reviewers)
-            self.message_user(
-                request,
-                f"Added {added} users as reviewers ({already} already assigned).",
-                messages.SUCCESS,
-            )
-            return self.response_post_save_change(request, obj)
-        return super().response_change(request, obj)
 
     def get_urls(self) -> list:
         custom_urls = [
@@ -953,6 +931,29 @@ def _grid_headers(tally: CompetitionTally) -> list[dict[str, Any]]:
         for tier in tally.tiers
         for project_id in tier
     ]
+
+
+@admin.register(ReviewerGroup)
+class ReviewerGroupAdmin(admin.ModelAdmin):
+    list_display = ("name", "includes_all_users", "member_count")
+    search_fields = ("name",)
+    filter_horizontal = ("members",)
+
+    def get_queryset(self, request: HttpRequest) -> QuerySet[ReviewerGroup]:
+        return super().get_queryset(request).annotate(member_total=Count("members"))
+
+    @admin.display(description="Members", ordering="member_total")
+    def member_count(self, obj: ReviewerGroup) -> int | str:
+        return "All users" if obj.includes_all_users else obj.member_total
+
+    def has_delete_permission(
+        self, request: HttpRequest, obj: ReviewerGroup | None = None
+    ) -> bool:
+        # Everyone is every competition's default; deleting it would leave
+        # new competitions with nothing to fall back on.
+        if obj is not None and obj.includes_all_users:
+            return False
+        return super().has_delete_permission(request, obj)
 
 
 @admin.register(CompetitionReviewer)

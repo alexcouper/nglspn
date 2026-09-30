@@ -51,7 +51,7 @@ started.
 - **`ended` is derived, no longer stored.** The API returns `ended` when the
   competition is not in `voting` and the user's row is not `completed`.
   `in_progress` and `completed` stay the only stored values. The API enum is
-  unchanged, so there is no OpenAPI or web-ui change.
+  unchanged, so no schema changes and the web-ui needs no change.
 - **BREAKING (data): the old assignment rows are removed.** A data migration
   deletes every reviewer row that is not `completed` and has no rankings, since
   those rows are only assignments. It converts the remaining `ended` rows to
@@ -96,8 +96,8 @@ None. No existing spec covers reviewing.
   write. `end_review_period` is removed, along with its tests
   (`apps/projects/test_admin_end_review_period.py`).
 - `api/routers/my_review.py`: list, detail, rankings, status and project
-  endpoints use the derived check. Response shapes are unchanged, so
-  `make extra-tests` must show no OpenAPI diff.
+  endpoints use the derived check. Response shapes are unchanged. The
+  regenerated `backend-openapi.json` differs only in endpoint descriptions.
 - `apps/projects/admin.py` and
   `templates/admin/competition_change_form.html`: reviewer group on the form,
   `ReviewerGroupAdmin`, the button and the bulk action removed.

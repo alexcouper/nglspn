@@ -3790,7 +3790,7 @@
             }
           }
         },
-        "description": "List all competitions the current user is assigned to review.",
+        "description": "List the competitions the user can review now or has a review in.",
         "tags": [
           "My Review"
         ],
@@ -3838,7 +3838,7 @@
             }
           }
         },
-        "description": "Get competition details with projects and reviewer's rankings.",
+        "description": "Get competition details with projects and the user's rankings.\n\nReading never starts a review: a user who can review but has not yet\nsaved anything sees every project in the pool.",
         "tags": [
           "My Review"
         ],
@@ -4022,7 +4022,7 @@
             }
           }
         },
-        "description": "Get project details for a reviewer.\n\nReturns the project if the user is assigned as a reviewer to any\ncompetition that contains this project. Returns 404 otherwise.",
+        "description": "Get project details for a reviewer.\n\nReturns the project if it is in a competition the user can review or has a\nreview in. Returns 404 otherwise, and for rejected or ice-boxed projects.",
         "tags": [
           "My Review"
         ],

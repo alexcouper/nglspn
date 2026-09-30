@@ -1,15 +1,17 @@
 from unittest.mock import patch
 
 import pytest
-from hamcrest import assert_that, calling, equal_to, raises
+from hamcrest import assert_that, calling, equal_to, has_length, raises
 
 from apps.projects.models import (
     CompetitionReviewer,
+    CompetitionStatus,
     ProjectRanking,
     ProjectStatus,
     ReviewStatus,
 )
 from services.review.django_impl.handler import DjangoReviewHandler
+from services.review.django_impl.query import DjangoReviewQuery
 from services.review.exceptions import (
     DuplicateProjectError,
     ProjectNotInCompetitionError,
@@ -21,7 +23,10 @@ from tests.factories import (
     CompetitionReviewerFactory,
     ProjectFactory,
     ProjectRankingFactory,
+    ReviewerGroupFactory,
     UserFactory,
+    review_of,
+    voting_competition,
 )
 
 
@@ -36,11 +41,25 @@ def _status_of(reviewer: CompetitionReviewer) -> str:
 
 
 def competition_with_reviewer(project_count=3, status=ReviewStatus.IN_PROGRESS):
+    """A voting competition with a review the reviewer has already started."""
     projects = [ProjectFactory() for _ in range(project_count)]
-    competition = CompetitionFactory(projects=projects)
+    competition = voting_competition(projects=projects)
     reviewer = UserFactory()
-    CompetitionReviewerFactory(competition=competition, user=reviewer, status=status)
+    review_of(reviewer, competition, status=status)
     return competition, reviewer, projects
+
+
+def reviews_of(user) -> list[tuple]:
+    return list(
+        CompetitionReviewer.objects.filter(user=user).values_list(
+            "competition_id", "status"
+        )
+    )
+
+
+def close(competition) -> None:
+    competition.status = CompetitionStatus.CLOSED
+    competition.save()
 
 
 def saved_ballot(competition, reviewer):
@@ -60,70 +79,6 @@ def save_ballot(competition, reviewer, projects):
             project=project,
             position=position,
         )
-
-
-@pytest.mark.django_db
-class TestEndReviewPeriod:
-    def test_transitions_in_progress_reviews_to_ended(self, handler) -> None:
-        competition = CompetitionFactory()
-        in_progress = CompetitionReviewerFactory(
-            competition=competition, status=ReviewStatus.IN_PROGRESS
-        )
-
-        count = handler.end_review_period(competition.id)
-
-        assert_that(count, equal_to(1))
-        assert_that(_status_of(in_progress), equal_to(ReviewStatus.ENDED))
-
-    def test_leaves_completed_reviews_untouched(self, handler) -> None:
-        competition = CompetitionFactory()
-        completed = CompetitionReviewerFactory(
-            competition=competition, status=ReviewStatus.COMPLETED
-        )
-
-        count = handler.end_review_period(competition.id)
-
-        assert_that(count, equal_to(0))
-        assert_that(_status_of(completed), equal_to(ReviewStatus.COMPLETED))
-
-    def test_leaves_already_ended_reviews_untouched(self, handler) -> None:
-        competition = CompetitionFactory()
-        already_ended = CompetitionReviewerFactory(
-            competition=competition, status=ReviewStatus.ENDED
-        )
-
-        count = handler.end_review_period(competition.id)
-
-        assert_that(count, equal_to(0))
-        assert_that(_status_of(already_ended), equal_to(ReviewStatus.ENDED))
-
-    def test_does_not_affect_other_competitions(self, handler) -> None:
-        target = CompetitionFactory()
-        other = CompetitionFactory()
-        CompetitionReviewerFactory(competition=target, status=ReviewStatus.IN_PROGRESS)
-        other_reviewer = CompetitionReviewerFactory(
-            competition=other, status=ReviewStatus.IN_PROGRESS
-        )
-
-        handler.end_review_period(target.id)
-
-        assert_that(_status_of(other_reviewer), equal_to(ReviewStatus.IN_PROGRESS))
-
-    def test_counts_all_in_progress_rows_for_competition(self, handler) -> None:
-        competition = CompetitionFactory()
-        CompetitionReviewerFactory(
-            competition=competition, status=ReviewStatus.IN_PROGRESS
-        )
-        CompetitionReviewerFactory(
-            competition=competition, status=ReviewStatus.IN_PROGRESS
-        )
-        CompetitionReviewerFactory(
-            competition=competition, status=ReviewStatus.COMPLETED
-        )
-
-        count = handler.end_review_period(competition.id)
-
-        assert_that(count, equal_to(2))
 
 
 @pytest.mark.django_db
@@ -241,10 +196,12 @@ class TestReplaceBallot:
             raises(ReviewClosedError),
         )
 
-    def test_an_ended_review_cannot_be_changed(self, handler) -> None:
-        competition, reviewer, projects = competition_with_reviewer(
-            status=ReviewStatus.ENDED
-        )
+    def test_a_review_in_a_competition_that_left_voting_cannot_be_changed(
+        self, handler
+    ) -> None:
+        competition, reviewer, projects = competition_with_reviewer()
+        save_ballot(competition, reviewer, projects)
+        close(competition)
 
         assert_that(
             calling(handler.replace_ballot).with_args(
@@ -252,14 +209,139 @@ class TestReplaceBallot:
             ),
             raises(ReviewClosedError),
         )
+        assert_that(
+            saved_ballot(competition, reviewer), equal_to([p.id for p in projects])
+        )
 
-    def test_a_non_reviewer_cannot_submit_a_ballot(self, handler) -> None:
-        competition, _reviewer, projects = competition_with_reviewer()
-        stranger = UserFactory()
+    def test_a_panel_outsider_cannot_submit_a_ballot(self, handler) -> None:
+        project = ProjectFactory()
+        panel = ReviewerGroupFactory(members=[UserFactory()])
+        competition = voting_competition(group=panel, projects=[project])
+        outsider = UserFactory()
 
         assert_that(
             calling(handler.replace_ballot).with_args(
-                stranger.id, competition.id, [projects[0].id]
+                outsider.id, competition.id, [project.id]
             ),
             raises(ReviewerNotAssignedError),
         )
+        assert_that(reviews_of(outsider), equal_to([]))
+
+    def test_nobody_can_submit_before_voting_opens(self, handler) -> None:
+        project = ProjectFactory()
+        competition = CompetitionFactory(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS, projects=[project]
+        )
+
+        assert_that(
+            calling(handler.replace_ballot).with_args(
+                UserFactory().id, competition.id, [project.id]
+            ),
+            raises(ReviewerNotAssignedError),
+        )
+
+    def test_the_first_ballot_starts_the_review(self, handler) -> None:
+        first, second = ProjectFactory(), ProjectFactory()
+        competition = voting_competition(projects=[first, second])
+        newcomer = UserFactory()
+
+        handler.replace_ballot(newcomer.id, competition.id, [second.id, first.id])
+
+        assert_that(
+            reviews_of(newcomer),
+            equal_to([(competition.id, ReviewStatus.IN_PROGRESS)]),
+        )
+        assert_that(
+            saved_ballot(competition, newcomer), equal_to([second.id, first.id])
+        )
+
+    def test_a_rejected_first_ballot_starts_no_review(self, handler) -> None:
+        project = ProjectFactory()
+        competition = voting_competition(projects=[project])
+        newcomer = UserFactory()
+
+        assert_that(
+            calling(handler.replace_ballot).with_args(
+                newcomer.id, competition.id, [project.id, project.id]
+            ),
+            raises(DuplicateProjectError),
+        )
+        assert_that(reviews_of(newcomer), equal_to([]))
+
+    def test_saving_twice_keeps_one_review(self, handler) -> None:
+        project = ProjectFactory()
+        competition = voting_competition(projects=[project])
+        newcomer = UserFactory()
+
+        handler.replace_ballot(newcomer.id, competition.id, [project.id])
+        handler.replace_ballot(newcomer.id, competition.id, [])
+
+        assert_that(reviews_of(newcomer), has_length(1))
+
+
+@pytest.mark.django_db
+class TestSetReviewStatus:
+    def test_completing_without_a_ballot_is_a_counted_abstention(self, handler) -> None:
+        competition = voting_competition(projects=[ProjectFactory()])
+        abstainer = UserFactory()
+
+        handler.set_review_status(abstainer.id, competition.id, ReviewStatus.COMPLETED)
+
+        assert_that(
+            reviews_of(abstainer),
+            equal_to([(competition.id, ReviewStatus.COMPLETED)]),
+        )
+        tally = DjangoReviewQuery().get_competition_tally(competition.id)
+        assert_that(tally.counted_ballots, equal_to(1))
+
+    def test_reopening_a_completed_review(self, handler) -> None:
+        competition, reviewer, _ = competition_with_reviewer(
+            status=ReviewStatus.COMPLETED
+        )
+
+        handler.set_review_status(reviewer.id, competition.id, ReviewStatus.IN_PROGRESS)
+
+        assert_that(
+            reviews_of(reviewer),
+            equal_to([(competition.id, ReviewStatus.IN_PROGRESS)]),
+        )
+
+    def test_cannot_change_once_the_competition_left_voting(self, handler) -> None:
+        competition, reviewer, _ = competition_with_reviewer()
+        close(competition)
+
+        assert_that(
+            calling(handler.set_review_status).with_args(
+                reviewer.id, competition.id, ReviewStatus.COMPLETED
+            ),
+            raises(ReviewClosedError),
+        )
+        assert_that(
+            reviews_of(reviewer),
+            equal_to([(competition.id, ReviewStatus.IN_PROGRESS)]),
+        )
+
+    def test_assigning_a_winner_closes_the_review(self, handler) -> None:
+        competition, reviewer, projects = competition_with_reviewer()
+        competition.winner = projects[0]
+        competition.save()
+
+        assert_that(
+            calling(handler.set_review_status).with_args(
+                reviewer.id, competition.id, ReviewStatus.COMPLETED
+            ),
+            raises(ReviewClosedError),
+        )
+
+    def test_a_panel_outsider_gets_no_review(self, handler) -> None:
+        panel = ReviewerGroupFactory(members=[UserFactory()])
+        competition = voting_competition(group=panel)
+        outsider = UserFactory()
+
+        assert_that(
+            calling(handler.set_review_status).with_args(
+                outsider.id, competition.id, ReviewStatus.COMPLETED
+            ),
+            raises(ReviewerNotAssignedError),
+        )
+        assert_that(reviews_of(outsider), equal_to([]))

@@ -1,10 +1,16 @@
 from hashlib import sha256
 from uuid import UUID
 
+from django.contrib.auth import get_user_model
+from django.db.models import Exists, OuterRef, Q, QuerySet
+
 from apps.projects.models import (
+    Competition,
     CompetitionReviewer,
+    CompetitionStatus,
     Project,
     ProjectRanking,
+    ReviewerGroup,
     ReviewStatus,
 )
 from services.images.django_impl.query import gallery_prefetch
@@ -12,9 +18,10 @@ from services.project.django_impl.query import (
     resolve_image_by_purpose,
     variant_url,
 )
-from services.review.eligibility import EXCLUDED_PROJECT_STATUSES
+from services.review.eligibility import EXCLUDED_PROJECT_STATUSES, effective_status
 from services.review.query_interface import (
     CompetitionTally,
+    ReviewCompetition,
     ReviewerProjects,
     ReviewProjectItem,
     ReviewQueryInterface,
@@ -27,6 +34,27 @@ from services.review.tally import (
     schulze_order,
     support_signals,
 )
+
+
+def reviewable_competitions(user_id: UUID) -> QuerySet[Competition]:
+    """The competitions the user may review right now: the whole access rule.
+
+    One queryset rather than a per-object check beside it, so the list, the
+    single-competition check and the write gate cannot drift apart.
+    """
+    is_eligible = get_user_model().objects.filter(
+        pk=user_id, is_active=True, is_system_user=False
+    )
+    # Exists, not a join on `members`: an OR across a many-to-many join
+    # returns a competition once per member of its group.
+    is_member = ReviewerGroup.members.through.objects.filter(
+        reviewergroup_id=OuterRef("reviewer_group_id"), user_id=user_id
+    )
+    return Competition.objects.filter(
+        Exists(is_eligible),
+        Q(reviewer_group__includes_all_users=True) | Exists(is_member),
+        status=CompetitionStatus.VOTING,
+    )
 
 
 def _eligible_projects(competition_id: UUID) -> list[Project]:
@@ -112,6 +140,64 @@ class DjangoReviewQuery(ReviewQueryInterface):
         return ReviewerProjects(
             ranked=[_ballot_item(p) for p in ranked],
             pool=[_ballot_item(p) for p in pool],
+        )
+
+    def can_review(self, user_id: UUID, competition_id: UUID) -> bool:
+        return reviewable_competitions(user_id).filter(pk=competition_id).exists()
+
+    def review_competitions_for(self, user_id: UUID) -> list[ReviewCompetition]:
+        row_statuses = dict(
+            CompetitionReviewer.objects.filter(user_id=user_id).values_list(
+                "competition_id", "status"
+            )
+        )
+        reviewable_ids = set(
+            reviewable_competitions(user_id).values_list("pk", flat=True)
+        )
+        competitions = Competition.objects.filter(
+            pk__in=reviewable_ids | row_statuses.keys()
+        ).order_by("-start_date")
+        return [
+            ReviewCompetition(
+                competition=competition,
+                status=effective_status(
+                    row_statuses.get(competition.pk), competition.status
+                ),
+                can_write=competition.pk in reviewable_ids,
+            )
+            for competition in competitions
+        ]
+
+    def get_review_competition(
+        self, user_id: UUID, competition_id: UUID
+    ) -> ReviewCompetition | None:
+        competition = Competition.objects.filter(pk=competition_id).first()
+        if competition is None:
+            return None
+        row_status = (
+            CompetitionReviewer.objects.filter(
+                user_id=user_id, competition_id=competition_id
+            )
+            .values_list("status", flat=True)
+            .first()
+        )
+        can_write = self.can_review(user_id, competition_id)
+        if not can_write and row_status is None:
+            return None
+        return ReviewCompetition(
+            competition=competition,
+            status=effective_status(row_status, competition.status),
+            can_write=can_write,
+        )
+
+    def can_view_review_project(self, user_id: UUID, project_id: UUID) -> bool:
+        return (
+            Competition.objects.filter(projects__id=project_id)
+            .filter(
+                Q(pk__in=reviewable_competitions(user_id).values("pk"))
+                | Q(reviewers__user_id=user_id)
+            )
+            .exists()
         )
 
 

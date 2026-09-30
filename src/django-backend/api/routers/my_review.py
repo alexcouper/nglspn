@@ -14,11 +14,7 @@ from api.schemas.my_review import (
     StatusUpdateRequest,
     SuccessResponse,
 )
-from apps.projects.models import (
-    Competition,
-    CompetitionReviewer,
-    Project,
-)
+from apps.projects.models import Project, ReviewStatus
 from services import HANDLERS, REPO
 from services.review.eligibility import EXCLUDED_PROJECT_STATUSES
 from services.review.exceptions import (
@@ -57,26 +53,20 @@ def _project_response(
     tags=["My Review"],
 )
 def list_my_review_competitions(request: HttpRequest) -> ReviewCompetitionListResponse:
-    """List all competitions the current user is assigned to review."""
-    assignments = (
-        CompetitionReviewer.objects.filter(user=request.auth)
-        .select_related("competition")
-        .order_by("-competition__start_date")
-    )
-
+    """List the competitions the user can review now or has a review in."""
     competitions = [
         ReviewCompetitionResponse(
-            id=a.competition.id,
-            name=a.competition.name,
-            start_date=a.competition.start_date,
-            submission_deadline=a.competition.submission_deadline,
-            image_url=a.competition.image_url,
-            project_count=a.competition.projects.exclude(
+            id=entry.competition.id,
+            name=entry.competition.name,
+            start_date=entry.competition.start_date,
+            submission_deadline=entry.competition.submission_deadline,
+            image_url=entry.competition.image_url,
+            project_count=entry.competition.projects.exclude(
                 status__in=EXCLUDED_PROJECT_STATUSES
             ).count(),
-            my_review_status=a.status,
+            my_review_status=entry.status,
         )
-        for a in assignments
+        for entry in REPO.reviews.review_competitions_for(request.auth.id)
     ]
     return ReviewCompetitionListResponse(competitions=competitions)
 
@@ -91,16 +81,16 @@ def get_my_review_competition(
     request: HttpRequest,
     competition_id: str,
 ) -> ReviewCompetitionDetailResponse | tuple[int, Error]:
-    """Get competition details with projects and reviewer's rankings."""
-    assignment = CompetitionReviewer.objects.filter(
-        user=request.auth,
-        competition_id=competition_id,
-    ).first()
+    """Get competition details with projects and the user's rankings.
 
-    if not assignment:
+    Reading never starts a review: a user who can review but has not yet
+    saved anything sees every project in the pool.
+    """
+    entry = REPO.reviews.get_review_competition(request.auth.id, competition_id)
+    if entry is None:
         return 404, Error(detail="Competition not found")
 
-    competition = Competition.objects.get(id=competition_id)
+    competition = entry.competition
     ballot = REPO.reviews.get_reviewer_projects(request.auth.id, competition.id)
 
     return ReviewCompetitionDetailResponse(
@@ -108,7 +98,7 @@ def get_my_review_competition(
         name=competition.name,
         start_date=competition.start_date,
         submission_deadline=competition.submission_deadline,
-        my_review_status=assignment.status,
+        my_review_status=entry.status,
         ranked_projects=[
             _project_response(item, position)
             for position, item in enumerate(ballot.ranked, start=1)
@@ -165,16 +155,18 @@ def update_review_status(
     """Update the reviewer's status for a competition."""
     if payload.status == ReviewStatusEnum.ENDED:
         return 400, Error(
-            detail="Reviewers cannot set status to 'ended'; that is set by an admin."
+            detail="Reviewers cannot set status to 'ended'; it follows the "
+            "competition leaving voting."
         )
 
-    updated = CompetitionReviewer.objects.filter(
-        user=request.auth,
-        competition_id=competition_id,
-    ).update(status=payload.status.value)
-
-    if not updated:
+    try:
+        HANDLERS.reviews.set_review_status(
+            request.auth.id, competition_id, ReviewStatus(payload.status.value)
+        )
+    except ReviewerNotAssignedError:
         return 404, Error(detail="Competition not found")
+    except ReviewClosedError:
+        return 400, Error(detail="Cannot update status for a closed review")
 
     return SuccessResponse()
 
@@ -191,17 +183,10 @@ def get_review_project(
 ) -> Project | tuple[int, Error]:
     """Get project details for a reviewer.
 
-    Returns the project if the user is assigned as a reviewer to any
-    competition that contains this project. Returns 404 otherwise.
+    Returns the project if it is in a competition the user can review or has a
+    review in. Returns 404 otherwise, and for rejected or ice-boxed projects.
     """
-    # Check if user is a reviewer for any competition containing this project
-    # and that the project is not rejected or in ice box
-    has_access = CompetitionReviewer.objects.filter(
-        user=request.auth,
-        competition__projects__id=project_id,
-    ).exists()
-
-    if not has_access:
+    if not REPO.reviews.can_view_review_project(request.auth.id, project_id):
         return 404, Error(detail="Project not found")
 
     try:

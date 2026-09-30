@@ -7,6 +7,7 @@ import {
   fetchWinners,
 } from "@/lib/api/server";
 import { ProjectsPage } from "./ProjectsPage";
+import { SITE_URL } from "@/lib/constants";
 
 const title = "Naglasúpan | Software projects in Iceland";
 const description = "Discover Icelandic apps, tools, and side projects on Naglasúpan. Meet the people building them, try their work, and share feedback with the community.";
@@ -14,12 +15,12 @@ const description = "Discover Icelandic apps, tools, and side projects on Naglas
 export const metadata: Metadata = {
   title,
   description,
-  alternates: { canonical: "https://naglasupan.is/projects" },
+  alternates: { canonical: `${SITE_URL}/projects` },
   openGraph: {
     type: "website",
     title,
     description,
-    url: "https://naglasupan.is/projects",
+    url: `${SITE_URL}/projects`,
     siteName: "Naglasúpan",
     images: [{ url: "/icons/app/logo.png", alt: "Naglasúpan" }],
   },

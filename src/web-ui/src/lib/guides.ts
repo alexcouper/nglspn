@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { guides, type Guide } from "@/content/guides";
 import { icelandicGuides } from "@/content/guides-is";
+import { SITE_URL } from "@/lib/constants";
 
 export type GuideLanguage = "en" | "is";
-export const GUIDE_SITE_URL = "https://naglasupan.is";
 
 export const guideCopy = {
   en: {
@@ -72,16 +72,16 @@ export function guideMetadata(language: GuideLanguage, guide?: Guide): Metadata 
   const heading = guide?.title ?? guideCopy[language].label;
   const title = heading.includes("Naglasúpan") ? heading : `${heading} | Naglasúpan`;
   const description = guide?.description ?? guideCopy[language].description;
-  const url = `${GUIDE_SITE_URL}${guideUrl(language, guide?.slug)}`;
+  const url = `${SITE_URL}${guideUrl(language, guide?.slug)}`;
   return {
     title,
     description,
     alternates: {
       canonical: url,
       languages: {
-        en: `${GUIDE_SITE_URL}${guideUrl("en", guide?.slug)}`,
-        is: `${GUIDE_SITE_URL}${guideUrl("is", guide?.slug)}`,
-        "x-default": `${GUIDE_SITE_URL}${guideUrl("en", guide?.slug)}`,
+        en: `${SITE_URL}${guideUrl("en", guide?.slug)}`,
+        is: `${SITE_URL}${guideUrl("is", guide?.slug)}`,
+        "x-default": `${SITE_URL}${guideUrl("en", guide?.slug)}`,
       },
     },
     openGraph: {
@@ -104,15 +104,15 @@ export function guideMetadata(language: GuideLanguage, guide?: Guide): Metadata 
 }
 
 export function guideStructuredData(language: GuideLanguage, guide?: Guide) {
-  const url = `${GUIDE_SITE_URL}${guideUrl(language, guide?.slug)}`;
+  const url = `${SITE_URL}${guideUrl(language, guide?.slug)}`;
   const allGuides = localizedGuides(language);
   const children = guide
     ? allGuides.filter((entry) => entry.parent === guide.slug)
     : allGuides.filter((entry) => entry.kind === "hub");
   const parent = guide?.parent ? localizedGuide(language, guide.parent) : undefined;
   const breadcrumbs = [
-    { name: guideCopy[language].label, url: `${GUIDE_SITE_URL}${guideUrl(language)}` },
-    ...(parent ? [{ name: parent.title, url: `${GUIDE_SITE_URL}${guideUrl(language, parent.slug)}` }] : []),
+    { name: guideCopy[language].label, url: `${SITE_URL}${guideUrl(language)}` },
+    ...(parent ? [{ name: parent.title, url: `${SITE_URL}${guideUrl(language, parent.slug)}` }] : []),
     ...(guide ? [{ name: guide.title, url }] : []),
   ];
 
@@ -121,10 +121,10 @@ export function guideStructuredData(language: GuideLanguage, guide?: Guide) {
     "@graph": [
       {
         "@type": "Organization",
-        "@id": `${GUIDE_SITE_URL}/#organization`,
+        "@id": `${SITE_URL}/#organization`,
         name: "Naglasúpan",
-        url: GUIDE_SITE_URL,
-        logo: `${GUIDE_SITE_URL}/icons/app/logo.png`,
+        url: SITE_URL,
+        logo: `${SITE_URL}/icons/app/logo.png`,
       },
       {
         "@type": guide?.kind === "spoke" ? "Article" : "CollectionPage",
@@ -136,9 +136,9 @@ export function guideStructuredData(language: GuideLanguage, guide?: Guide) {
         inLanguage: language,
         ...(guide ? {
           dateModified: guide.updated,
-          author: { "@id": `${GUIDE_SITE_URL}/#organization` },
+          author: { "@id": `${SITE_URL}/#organization` },
         } : {}),
-        publisher: { "@id": `${GUIDE_SITE_URL}/#organization` },
+        publisher: { "@id": `${SITE_URL}/#organization` },
         ...(guide?.kind === "spoke" ? { mainEntityOfPage: url } : {
           mainEntity: {
             "@type": "ItemList",
@@ -146,7 +146,7 @@ export function guideStructuredData(language: GuideLanguage, guide?: Guide) {
               "@type": "ListItem",
               position: index + 1,
               name: child.title,
-              url: `${GUIDE_SITE_URL}${guideUrl(language, child.slug)}`,
+              url: `${SITE_URL}${guideUrl(language, child.slug)}`,
             })),
           },
         }),

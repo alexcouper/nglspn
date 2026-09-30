@@ -2,6 +2,7 @@ import { permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { ProjectDetailContent } from "./ProjectDetailContent";
 import { socialCard } from "@/lib/social-card";
+import { SITE_URL } from "@/lib/constants";
 import {
   fetchProject,
   fetchProjectArticles,
@@ -32,7 +33,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
       ...socialCard({
         title,
         description,
-        url: `https://naglasupan.is/projects/${canonicalSlug}`,
+        url: `${SITE_URL}/projects/${canonicalSlug}`,
         imageUrl: mainImage?.url,
         imageWidth: mainImage?.width ?? undefined,
         imageHeight: mainImage?.height ?? undefined,

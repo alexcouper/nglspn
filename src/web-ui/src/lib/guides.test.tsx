@@ -6,8 +6,8 @@ import sitemap from "@/app/sitemap";
 import robots from "@/app/robots";
 import { generateStaticParams as englishParams } from "@/app/guides/[...slug]/page";
 import { generateStaticParams as icelandicParams } from "@/app/is/guides/[...slug]/page";
+import { SITE_URL } from "@/lib/constants";
 import {
-  GUIDE_SITE_URL,
   guideMetadata,
   guideStructuredData,
   guideUrl,
@@ -24,14 +24,14 @@ describe("bilingual guide discovery", () => {
     expect(new Set(entries.map((entry) => entry.url)).size).toBe(entries.length);
     for (const language of ["en", "is"] as const) {
       for (const slug of ["", ...guides.map((guide) => guide.slug)]) {
-        const url = `${GUIDE_SITE_URL}${guideUrl(language, slug)}`;
+        const url = `${SITE_URL}${guideUrl(language, slug)}`;
         expect(entries.find((entry) => entry.url === url)?.alternates?.languages).toEqual({
-          en: `${GUIDE_SITE_URL}${guideUrl("en", slug)}`,
-          is: `${GUIDE_SITE_URL}${guideUrl("is", slug)}`,
+          en: `${SITE_URL}${guideUrl("en", slug)}`,
+          is: `${SITE_URL}${guideUrl("is", slug)}`,
         });
       }
     }
-    expect(robots().sitemap).toBe(`${GUIDE_SITE_URL}/sitemap.xml`);
+    expect(robots().sitemap).toBe(`${SITE_URL}/sitemap.xml`);
     expect(entries.some((entry) => /my-projects|profile|login|register|create/.test(entry.url))).toBe(false);
   });
 
@@ -111,12 +111,12 @@ describe("bilingual guide discovery", () => {
           expect(breadcrumb).toBeUndefined();
         }
         const metadata = guideMetadata(language, guide);
-        const url = `${GUIDE_SITE_URL}${guideUrl(language, guide?.slug)}`;
+        const url = `${SITE_URL}${guideUrl(language, guide?.slug)}`;
         expect(metadata.alternates?.canonical).toBe(url);
         expect(metadata.alternates?.languages).toEqual({
-          en: `${GUIDE_SITE_URL}${guideUrl("en", guide?.slug)}`,
-          is: `${GUIDE_SITE_URL}${guideUrl("is", guide?.slug)}`,
-          "x-default": `${GUIDE_SITE_URL}${guideUrl("en", guide?.slug)}`,
+          en: `${SITE_URL}${guideUrl("en", guide?.slug)}`,
+          is: `${SITE_URL}${guideUrl("is", guide?.slug)}`,
+          "x-default": `${SITE_URL}${guideUrl("en", guide?.slug)}`,
         });
         expect(metadata.openGraph).toMatchObject({ title: metadata.title, description: metadata.description, url });
         expect(metadata.twitter).toMatchObject({ title: metadata.title, description: metadata.description });

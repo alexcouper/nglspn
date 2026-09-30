@@ -8,6 +8,7 @@ import { Footer } from "@/components/Footer";
 import { NotificationToaster } from "@/components/NotificationToaster";
 import { ToastContainer } from "@/components/ToastContainer";
 import { PlausibleTracker } from "@/components/PlausibleTracker";
+import { SITE_URL } from "@/lib/constants";
 import "./globals.css";
 
 const inter = Inter({
@@ -27,7 +28,7 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://naglasupan.is"),
+  metadataBase: new URL(SITE_URL),
   title: "naglasúpan",
   description: "Byggjum, deilum, vöxum saman",
   icons: {

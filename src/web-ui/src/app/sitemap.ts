@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { guides } from "@/content/guides";
+import { guidesFor } from "@/content/guides";
 import { SITE_URL } from "@/lib/constants";
 import { guideUrl } from "@/lib/guides";
 
@@ -22,7 +22,7 @@ export const PUBLIC_STATIC_PAGES = [
 // are not enumerated yet — see issue #96. No private drafts or account routes
 // belong in this sitemap.
 export default function sitemap(): MetadataRoute.Sitemap {
-  const guideEntries = [{ slug: "", updated: undefined }, ...guides];
+  const guideEntries = [{ slug: "", updated: undefined }, ...guidesFor("en")];
   return [
     ...PUBLIC_STATIC_PAGES.map((path) => ({ url: `${SITE_URL}${path}` })),
     ...(["en", "is"] as const).flatMap((language) =>

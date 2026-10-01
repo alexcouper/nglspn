@@ -1,12 +1,12 @@
 import { notFound } from "next/navigation";
 import { GuideArticle } from "@/components/guides/GuidePages";
-import { guides } from "@/content/guides";
+import { guidesFor } from "@/content/guides";
 import { guideMetadata, localizedGuide } from "@/lib/guides";
 
 export const dynamicParams = false;
 
 export function generateStaticParams() {
-  return guides.map((guide) => ({ slug: guide.slug.split("/") }));
+  return guidesFor("en").map((guide) => ({ slug: guide.slug.split("/") }));
 }
 
 type Props = { params: Promise<{ slug: string[] }> };

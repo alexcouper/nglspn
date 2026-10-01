@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { GuideArticle, GuideIndex } from "@/components/guides/GuidePages";
-import { guides } from "@/content/guides";
+import { guidesFor } from "@/content/guides";
 import sitemap from "@/app/sitemap";
 import robots from "@/app/robots";
 import { generateStaticParams as englishParams } from "@/app/guides/[...slug]/page";
@@ -17,13 +17,13 @@ import {
 
 describe("bilingual guide discovery", () => {
   it("prerenders both languages with matching topics and includes every URL in the sitemap", () => {
-    const expected = guides.map((guide) => ({ slug: guide.slug.split("/") }));
+    const expected = guidesFor("en").map((guide) => ({ slug: guide.slug.split("/") }));
     expect(englishParams()).toEqual(expected);
     expect(icelandicParams()).toEqual(expected);
     const entries = sitemap();
     expect(new Set(entries.map((entry) => entry.url)).size).toBe(entries.length);
     for (const language of ["en", "is"] as const) {
-      for (const slug of ["", ...guides.map((guide) => guide.slug)]) {
+      for (const slug of ["", ...guidesFor("en").map((guide) => guide.slug)]) {
         const url = `${SITE_URL}${guideUrl(language, slug)}`;
         expect(entries.find((entry) => entry.url === url)?.alternates?.languages).toEqual({
           en: `${SITE_URL}${guideUrl("en", slug)}`,
@@ -89,7 +89,7 @@ describe("bilingual guide discovery", () => {
         }
         if (language === "is") {
           expect(page.querySelector('a[href^="/guides/"]:not([hreflang])')).toBeNull();
-          expect(guide.title).not.toBe(guides.find((entry) => entry.slug === guide.slug)?.title);
+          expect(guide.title).not.toBe(guidesFor("en").find((entry) => entry.slug === guide.slug)?.title);
         }
         const data = JSON.parse(page.querySelector('script[type="application/ld+json"]')!.textContent!);
         expect(data).toEqual(guideStructuredData(language, guide));

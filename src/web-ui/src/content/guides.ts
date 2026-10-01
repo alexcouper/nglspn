@@ -32,7 +32,7 @@ export type Guide = {
 const CONTENT_DIR = path.join(process.cwd(), "src/content/guides");
 
 const LANGUAGES = ["en", "is"] as const;
-type Language = (typeof LANGUAGES)[number];
+export type GuideLanguage = (typeof LANGUAGES)[number];
 
 type Structure = {
   order: number;
@@ -122,7 +122,7 @@ function parseSections(markdown: string, file: string): GuideSection[] {
   return sections;
 }
 
-function readGuide(slug: string, language: Language): Guide {
+function readGuide(slug: string, language: GuideLanguage): Guide {
   const file = path.join(CONTENT_DIR, slug, `${language}.md`);
   if (!fs.existsSync(file)) fail(file, `missing; every guide needs ${LANGUAGES.join(" and ")}`);
   const { data, content } = matter(fs.readFileSync(file, "utf8"));
@@ -145,20 +145,34 @@ function readGuide(slug: string, language: Language): Guide {
   };
 }
 
-function loadGuides(language: Language): Guide[] {
-  return slugsInOrder().map((slug) => readGuide(slug, language));
+const anchorsOf = (guide: Guide) => guide.sections.map((section) => section.id).join(", ");
+
+function loadAll(): Record<GuideLanguage, Guide[]> {
+  const slugs = slugsInOrder();
+  const loaded = {
+    en: slugs.map((slug) => readGuide(slug, "en")),
+    is: slugs.map((slug) => readGuide(slug, "is")),
+  };
+  // A language switch keeps the reader on the section they were reading, so the
+  // anchors have to line up. Catch a drifting translation here, not in a dead
+  // link.
+  loaded.en.forEach((guide, index) => {
+    if (anchorsOf(loaded.is[index]) !== anchorsOf(guide)) {
+      throw new Error(
+        `${guide.slug}: en.md and is.md disagree on sections — "${anchorsOf(guide)}" vs "${anchorsOf(loaded.is[index])}"`,
+      );
+    }
+  });
+  return loaded;
 }
 
-export const guides: Guide[] = loadGuides("en");
-export const icelandicGuides: Guide[] = loadGuides("is");
+let cached: Record<GuideLanguage, Guide[]> | undefined;
 
-// A language switch keeps the reader on the same section, so the anchors have
-// to line up. Catch a drifting translation here rather than in a dead link.
-guides.forEach((guide, index) => {
-  const anchors = (entry: Guide) => entry.sections.map((section) => section.id).join(", ");
-  if (anchors(icelandicGuides[index]) !== anchors(guide)) {
-    throw new Error(
-      `${guide.slug}: en.md and is.md disagree on sections — "${anchors(guide)}" vs "${anchors(icelandicGuides[index])}"`,
-    );
-  }
-});
+// The markdown sits outside the bundler's module graph, so the dev server has no
+// way to know this module's output changed when a guide is edited. Reading per
+// call keeps `npm run dev` one refresh away from an edit; a build sees fixed
+// content, so there it is read once.
+export function guidesFor(language: GuideLanguage): Guide[] {
+  if (process.env.NODE_ENV === "development") return loadAll()[language];
+  return (cached ??= loadAll())[language];
+}

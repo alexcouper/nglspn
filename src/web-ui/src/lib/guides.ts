@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
-import { guides, icelandicGuides, type Guide } from "@/content/guides";
+import { guidesFor, type Guide, type GuideLanguage } from "@/content/guides";
 import { SITE_URL } from "@/lib/constants";
 
-export type GuideLanguage = "en" | "is";
+export type { GuideLanguage };
 
 export const guideCopy = {
   en: {
@@ -54,7 +54,7 @@ export function guideUrl(language: GuideLanguage, slug = ""): string {
 }
 
 export function localizedGuides(language: GuideLanguage): Guide[] {
-  return language === "is" ? icelandicGuides : guides;
+  return guidesFor(language);
 }
 
 export function localizedGuide(language: GuideLanguage, slug: string): Guide | undefined {

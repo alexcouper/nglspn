@@ -96,11 +96,26 @@ result claims. Examples are identified; external claims link to their source.
 
 ## Editorial maintenance and distribution
 
-Source content lives in `src/web-ui/src/content/guides.ts` and `guides-is.ts`.
-The Icelandic file translates the complete articles while sharing identities,
-anchors, relationships, and substantive update dates. Keep both versions in
-sync when behavior changes. The tests catch broken guide links, orphaned
-topics, missing sections, metadata inconsistencies, and sitemap omissions.
+Guide content is one directory per guide under
+`src/web-ui/src/content/guides/`, nested the way the hub/spoke tree is: a hub
+directory holds `en.md`, `is.md` and `structure.json`, and each of its spokes is
+a subdirectory with the same three files. Edit the prose in the markdown.
+
+- **`en.md` / `is.md`** — the article itself. Frontmatter carries `title`,
+  `description`, `summary` and the call-to-action `action` label. The body is
+  sections, each opening `## Heading {#anchor}`. The anchor is written out
+  because both languages share it: a reader switching language stays on the
+  section they were reading, so `src/content/guides.ts` refuses to load if the
+  two files disagree on the anchor list.
+- **`structure.json`** — only what prose cannot carry: `order` among its
+  siblings, `updated`, the `related` slugs, and the `action.href` the label
+  points at. `kind` and `parent` come from the directory tree rather than being
+  restated, so moving a directory moves the guide.
+
+Adding a guide means adding a directory with those three files; nothing else
+enumerates them. Keep both languages in sync when behaviour changes. The tests
+catch broken guide links, orphaned topics, missing sections, metadata
+inconsistencies, and sitemap omissions.
 
 Have an Icelandic-speaking editor review phrasing before release. Recheck
 platform instructions whenever publishing, following, or competition entry

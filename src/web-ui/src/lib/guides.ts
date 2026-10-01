@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { guides, type Guide } from "@/content/guides";
-import { icelandicGuides } from "@/content/guides-is";
+import { guides, icelandicGuides, type Guide } from "@/content/guides";
 import { SITE_URL } from "@/lib/constants";
 
 export type GuideLanguage = "en" | "is";

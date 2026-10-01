@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { GuideArticle } from "@/components/guides/GuidePages";
-import { icelandicGuides } from "@/content/guides-is";
+import { icelandicGuides } from "@/content/guides";
 import { guideMetadata, localizedGuide } from "@/lib/guides";
 
 export const dynamicParams = false;

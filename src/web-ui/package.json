@@ -25,6 +25,7 @@
     "@opentelemetry/sdk-node": "^0.211.0",
     "@plausible-analytics/tracker": "^0.4.4",
     "@tailwindcss/typography": "^0.5.19",
+    "gray-matter": "^4.0.3",
     "lexical": "^0.35.0",
     "mdast-util-directive": "^3.1.0",
     "next": "16.1.6",

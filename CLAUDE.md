@@ -122,6 +122,7 @@ When testing authenticated features:
 |-----------|------|
 | Django backend | `src/django-backend/` |
 | Web UI | `src/web-ui/` |
+| Community guide content | `src/web-ui/src/content/guides/` — one directory per guide: `en.md`, `is.md`, `structure.json` ([how to edit](docs/2026-09-29-community-content-strategy.md#editorial-maintenance-and-distribution)) |
 | CI pipeline | `.github/workflows/ci.yml` |
 | Shared make fragment | `scripts/app-common.mk` |
 | Change plans | `openspec/changes/<name>/` |

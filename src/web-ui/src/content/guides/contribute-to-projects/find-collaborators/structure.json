@@ -1,0 +1,11 @@
+{
+  "order": 2,
+  "updated": "2026-09-29",
+  "related": [
+    "contribute-to-projects/first-contribution",
+    "share-a-side-project/get-useful-feedback"
+  ],
+  "action": {
+    "href": "/my-projects"
+  }
+}

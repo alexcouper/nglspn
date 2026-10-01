@@ -51,6 +51,12 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // Guide content is read from disk by src/content/guides.ts. Every guide route
+  // is prerendered, so the reads happen at build time, but tracing the directory
+  // keeps a future runtime read from failing in the standalone image alone.
+  outputFileTracingIncludes: {
+    "/guides/[[...slug]]": ["./src/content/guides/**/*"],
+  },
   images: {
     formats: ["image/avif", "image/webp"],
     minimumCacheTTL: 2592000,

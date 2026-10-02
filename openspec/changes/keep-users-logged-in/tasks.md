@@ -49,7 +49,7 @@ Design: [`design.md`](design.md).
 
 ## 3. Web UI: API client
 
-- [ ] 3.1 `src/lib/api/base.ts`: stop storing `refresh_token`; keep the legacy
+- [x] 3.1 `src/lib/api/base.ts`: stop storing `refresh_token`; keep the legacy
   read of it for the one-shot body migration and remove it from localStorage
   after the first refresh attempt; send `credentials: "include"` on login,
   refresh and logout; dispatch `auth:refreshed` after a successful refresh.
@@ -58,16 +58,16 @@ Design: [`design.md`](design.md).
   "no refresh token at all" case now calls the endpoint; the "persists the new
   access token" case still holds; add the migration case (body sent once, local
   copy removed) and the `auth:refreshed` event.
-- [ ] 3.2 `src/lib/api/auth.ts`: `login` stores only the access token; add
+- [x] 3.2 `src/lib/api/auth.ts`: `login` stores only the access token; add
   `logout()` calling `POST /api/auth/logout`. Update `src/test/factories.ts`
   and `src/test/helpers.ts` so fixtures no longer set or assert `refresh_token`.
   Verify `make test` in `src/web-ui/`.
-- [ ] 3.3 `npm run generate-types` and fix any type errors from the changed
+- [x] 3.3 `npm run generate-types` and fix any type errors from the changed
   `Token` schema; verify `make lint` passes.
 
 ## 4. Web UI: auth context and startup recovery
 
-- [ ] 4.1 `src/contexts/auth.tsx`: on `AuthTransientError` (or a network error)
+- [x] 4.1 `src/contexts/auth.tsx`: on `AuthTransientError` (or a network error)
   during `checkAuth`, retry after 1 s, 3 s and 8 s with `isLoading` true; on
   `AuthExpiredError` stop. After exhausting retries keep the token and register
   listeners for `online`, `visibilitychange` (visible) and `auth:refreshed`
@@ -75,9 +75,9 @@ Design: [`design.md`](design.md).
   fake timers: 503 then 200 shows the user with no logged-out state in between;
   three failures leave the token in place; `online` after failures recovers;
   `auth:refreshed` recovers; 401 from refresh clears immediately.
-- [ ] 4.2 `logout` in the context calls `api.auth.logout()` and clears the
+- [x] 4.2 `logout` in the context calls `api.auth.logout()` and clears the
   access token locally whether it resolves or rejects. Test both branches.
-- [ ] 4.3 Verify `useRequireAuth` does not redirect while the check is retrying
+- [x] 4.3 Verify `useRequireAuth` does not redirect while the check is retrying
   (token held, `isLoading` true): add a test in a new
   `src/hooks/useRequireAuth.test.tsx`.
 

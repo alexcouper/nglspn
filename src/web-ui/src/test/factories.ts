@@ -1,27 +1,55 @@
 import type {
   ReviewCompetitionDetailResponse,
   ReviewProject,
+  User,
 } from "@/lib/api";
-
-export interface TokenPair {
-  access: string;
-  refresh: string;
-}
 
 let tokenCounter = 0;
 
-export function makeTokenPair(overrides: Partial<TokenPair> = {}): TokenPair {
+export function makeAccessToken(): string {
   tokenCounter += 1;
-  return {
-    access: `access-token-${tokenCounter}`,
-    refresh: `refresh-token-${tokenCounter}`,
-    ...overrides,
-  };
+  return `access-token-${tokenCounter}`;
 }
 
-export function seedTokens(tokens: TokenPair) {
-  localStorage.setItem("access_token", tokens.access);
-  localStorage.setItem("refresh_token", tokens.refresh);
+/** Signed in, as far as the browser can tell: an access token in localStorage. */
+export function seedAccessToken(token: string = makeAccessToken()): string {
+  localStorage.setItem("access_token", token);
+  return token;
+}
+
+/**
+ * A refresh token left behind by a version of the web UI that kept it in
+ * localStorage. Nothing stores one any more; only the one-shot migration to the
+ * cookie reads it.
+ */
+export function seedLegacyRefreshToken(): string {
+  tokenCounter += 1;
+  const token = `legacy-refresh-token-${tokenCounter}`;
+  localStorage.setItem("refresh_token", token);
+  return token;
+}
+
+let userCounter = 0;
+
+export function makeUser(overrides: Partial<User> = {}): User {
+  userCounter += 1;
+  return {
+    id: `user-${userCounter}`,
+    email: `user${userCounter}@example.com`,
+    first_name: "Test",
+    last_name: `User ${userCounter}`,
+    info: "",
+    is_verified: true,
+    is_system_user: false,
+    avatar_url: null,
+    created_at: "2026-01-01T00:00:00Z",
+    groups: [],
+    opt_in_to_external_promotions: true,
+    discussion_email_frequency: "hourly",
+    article_email_frequency: "hourly",
+    pending_onboarding_steps: [],
+    ...overrides,
+  };
 }
 
 let reviewProjectCounter = 0;

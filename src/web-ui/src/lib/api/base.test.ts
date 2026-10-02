@@ -1,26 +1,48 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   APIClient,
   ApiRequestError,
   AuthExpiredError,
   AuthTransientError,
 } from "./base";
-import { makeTokenPair, seedTokens, type TokenPair } from "@/test/factories";
+import { seedAccessToken, seedLegacyRefreshToken } from "@/test/factories";
 import {
   expectLoggedOut,
+  expectNoStoredRefreshToken,
   expectStillLoggedIn,
   jsonResponse,
   mockFetchSequence,
   networkError,
+  requestsTo,
+  type FetchMock,
 } from "@/test/helpers";
 
+const newAccess = "fresh-access-token";
+
+const accessExpired = () => jsonResponse({ status: 401 });
+const refreshSucceeds = () =>
+  jsonResponse({ body: { access_token: newAccess, token_type: "bearer" } });
+const refreshRejected = () =>
+  jsonResponse({ status: 401, body: { detail: "Invalid or expired refresh token" } });
+const refreshUnavailable = () =>
+  jsonResponse({ status: 503, body: { detail: "Service Unavailable" } });
+
+function refreshRequests(fetchMock: FetchMock) {
+  return requestsTo(fetchMock, "/api/auth/refresh");
+}
+
+function listenFor(eventName: string) {
+  const listener = vi.fn();
+  window.addEventListener(eventName, listener);
+  return listener;
+}
+
 describe("APIClient", () => {
-  let tokens: TokenPair;
+  let accessToken: string;
   let client: APIClient;
 
   beforeEach(() => {
-    tokens = makeTokenPair();
-    seedTokens(tokens);
+    accessToken = seedAccessToken();
     client = new APIClient();
   });
 
@@ -30,9 +52,9 @@ describe("APIClient", () => {
 
       await client.request("/api/anything");
 
-      const init = fetchMock.mock.calls[0][1] as RequestInit;
+      const [{ init }] = requestsTo(fetchMock);
       const headers = init.headers as Record<string, string>;
-      expect(headers["Authorization"]).toBe(`Bearer ${tokens.access}`);
+      expect(headers["Authorization"]).toBe(`Bearer ${accessToken}`);
     });
 
     it("returns the parsed JSON body", async () => {
@@ -42,15 +64,22 @@ describe("APIClient", () => {
 
       expect(result.hello).toBe("world");
     });
+
+    it("does not send cookies to endpoints that never read them", async () => {
+      const fetchMock = mockFetchSequence(jsonResponse({ body: { ok: true } }));
+
+      await client.request("/api/anything");
+
+      const [{ init }] = requestsTo(fetchMock);
+      expect(init.credentials).toBeUndefined();
+    });
   });
 
   describe("when the access token has expired", () => {
-    const newAccess = "fresh-access-token";
-
     it("refreshes the access token and retries the original request", async () => {
       const fetchMock = mockFetchSequence(
-        jsonResponse({ status: 401 }),
-        jsonResponse({ body: { access_token: newAccess, token_type: "bearer" } }),
+        accessExpired(),
+        refreshSucceeds(),
         jsonResponse({ body: { hello: "world" } }),
       );
 
@@ -58,57 +87,100 @@ describe("APIClient", () => {
 
       expect(result.hello).toBe("world");
       expect(fetchMock).toHaveBeenCalledTimes(3);
-      const retryInit = fetchMock.mock.calls[2][1] as RequestInit;
-      const retryHeaders = retryInit.headers as Record<string, string>;
+      const retryHeaders = requestsTo(fetchMock)[2].init.headers as Record<string, string>;
       expect(retryHeaders["Authorization"]).toBe(`Bearer ${newAccess}`);
     });
 
-    it("persists the new access token to localStorage", async () => {
-      mockFetchSequence(
-        jsonResponse({ status: 401 }),
-        jsonResponse({ body: { access_token: newAccess } }),
+    it("lets the browser attach the refresh cookie and sends no body", async () => {
+      const fetchMock = mockFetchSequence(
+        accessExpired(),
+        refreshSucceeds(),
         jsonResponse({ body: {} }),
       );
 
       await client.request("/api/anything");
 
+      const [{ init }] = refreshRequests(fetchMock);
+      expect(init.method).toBe("POST");
+      expect(init.credentials).toBe("include");
+      expect(init.body).toBeUndefined();
+    });
+
+    it("persists the new access token to localStorage", async () => {
+      mockFetchSequence(accessExpired(), refreshSucceeds(), jsonResponse({ body: {} }));
+
+      await client.request("/api/anything");
+
       expect(localStorage.getItem("access_token")).toBe(newAccess);
-      expect(localStorage.getItem("refresh_token")).toBe(tokens.refresh);
+    });
+
+    it("never stores a refresh token", async () => {
+      mockFetchSequence(accessExpired(), refreshSucceeds(), jsonResponse({ body: {} }));
+
+      await client.request("/api/anything");
+
+      expectNoStoredRefreshToken();
+    });
+
+    it("announces the successful refresh", async () => {
+      const refreshed = listenFor("auth:refreshed");
+      mockFetchSequence(accessExpired(), refreshSucceeds(), jsonResponse({ body: {} }));
+
+      await client.request("/api/anything");
+
+      expect(refreshed).toHaveBeenCalledTimes(1);
     });
 
     it("only attempts to refresh once per request", async () => {
       const fetchMock = mockFetchSequence(
-        jsonResponse({ status: 401 }),
-        jsonResponse({ body: { access_token: newAccess } }),
-        jsonResponse({ status: 401 }),
+        accessExpired(),
+        refreshSucceeds(),
+        accessExpired(),
       );
 
       await expect(client.request("/api/anything")).rejects.toThrow("Unauthorized");
       expect(fetchMock).toHaveBeenCalledTimes(3);
     });
+
+    it("shares one refresh between requests that expire together", async () => {
+      const fetchMock = mockFetchSequence(
+        accessExpired(),
+        accessExpired(),
+        refreshSucceeds(),
+        jsonResponse({ body: {} }),
+        jsonResponse({ body: {} }),
+      );
+
+      await Promise.all([client.request("/api/one"), client.request("/api/two")]);
+
+      expect(refreshRequests(fetchMock)).toHaveLength(1);
+    });
   });
 
   describe("when the refresh token is genuinely invalid", () => {
     it("clears tokens after a 401 from the refresh endpoint", async () => {
-      mockFetchSequence(
-        jsonResponse({ status: 401 }),
-        jsonResponse({ status: 401, body: { detail: "Invalid or expired refresh token" } }),
-      );
+      mockFetchSequence(accessExpired(), refreshRejected());
 
       await expect(client.request("/api/anything")).rejects.toThrow("Unauthorized");
       expectLoggedOut();
     });
 
     it("throws AuthExpiredError so callers can say the session ended", async () => {
-      mockFetchSequence(
-        jsonResponse({ status: 401 }),
-        jsonResponse({ status: 401, body: { detail: "Invalid or expired refresh token" } }),
-      );
+      mockFetchSequence(accessExpired(), refreshRejected());
 
       const err = await client.request("/api/anything").catch((e) => e);
 
       expect(err).toBeInstanceOf(AuthExpiredError);
       expect(err).not.toBeInstanceOf(AuthTransientError);
+    });
+
+    it("does not announce a refresh", async () => {
+      const refreshed = listenFor("auth:refreshed");
+      mockFetchSequence(accessExpired(), refreshRejected());
+
+      await client.request("/api/anything").catch(() => {});
+
+      expect(refreshed).not.toHaveBeenCalled();
     });
   });
 
@@ -118,60 +190,51 @@ describe("APIClient", () => {
     // downstream would start telling people they had been logged out when they
     // had not.
     it("throws AuthTransientError, not AuthExpiredError", async () => {
-      mockFetchSequence(
-        jsonResponse({ status: 401 }),
-        jsonResponse({ status: 503, body: { detail: "Service Unavailable" } }),
-      );
+      mockFetchSequence(accessExpired(), refreshUnavailable());
 
       const err = await client.request("/api/anything").catch((e) => e);
 
       expect(err).toBeInstanceOf(AuthTransientError);
       expect(err).not.toBeInstanceOf(AuthExpiredError);
-      expectStillLoggedIn(tokens);
+      expectStillLoggedIn(accessToken);
     });
 
     it("does not clear tokens when fetch throws a network error", async () => {
-      mockFetchSequence(
-        jsonResponse({ status: 401 }),
-        networkError("offline"),
-      );
+      mockFetchSequence(accessExpired(), networkError("offline"));
 
       await expect(client.request("/api/anything")).rejects.toThrow();
 
-      expectStillLoggedIn(tokens);
+      expectStillLoggedIn(accessToken);
     });
 
     it("does not clear tokens when the refresh endpoint returns 503", async () => {
-      mockFetchSequence(
-        jsonResponse({ status: 401 }),
-        jsonResponse({ status: 503, body: { detail: "Service Unavailable" } }),
-      );
+      mockFetchSequence(accessExpired(), refreshUnavailable());
 
       await expect(client.request("/api/anything")).rejects.toThrow();
 
-      expectStillLoggedIn(tokens);
+      expectStillLoggedIn(accessToken);
     });
 
     it("does not clear tokens when the refresh endpoint returns 500", async () => {
       mockFetchSequence(
-        jsonResponse({ status: 401 }),
+        accessExpired(),
         jsonResponse({ status: 500, body: { detail: "Internal Server Error" } }),
       );
 
       await expect(client.request("/api/anything")).rejects.toThrow();
 
-      expectStillLoggedIn(tokens);
+      expectStillLoggedIn(accessToken);
     });
 
     it("does not clear tokens when the refresh endpoint is rate-limited (429)", async () => {
       mockFetchSequence(
-        jsonResponse({ status: 401 }),
+        accessExpired(),
         jsonResponse({ status: 429, body: { detail: "Too Many Requests" } }),
       );
 
       await expect(client.request("/api/anything")).rejects.toThrow();
 
-      expectStillLoggedIn(tokens);
+      expectStillLoggedIn(accessToken);
     });
   });
 
@@ -195,16 +258,155 @@ describe("APIClient", () => {
     });
   });
 
-  describe("when there is no refresh token at all", () => {
-    it("clears tokens and rejects without calling the refresh endpoint", async () => {
-      localStorage.removeItem("refresh_token");
-      const clientWithoutRefresh = new APIClient();
-      const fetchMock = mockFetchSequence(jsonResponse({ status: 401 }));
+  describe("when a refresh token is still in localStorage from before the cookie", () => {
+    let legacyToken: string;
 
-      await expect(clientWithoutRefresh.request("/api/anything")).rejects.toThrow("Unauthorized");
+    beforeEach(() => {
+      legacyToken = seedLegacyRefreshToken();
+      client = new APIClient();
+    });
 
-      expect(fetchMock).toHaveBeenCalledTimes(1);
+    it("sends it in the refresh body so the backend can move it into the cookie", async () => {
+      const fetchMock = mockFetchSequence(
+        accessExpired(),
+        refreshSucceeds(),
+        jsonResponse({ body: {} }),
+      );
+
+      await client.request("/api/anything");
+
+      const [{ init }] = refreshRequests(fetchMock);
+      expect(JSON.parse(init.body as string)).toEqual({ refresh_token: legacyToken });
+      expect(init.credentials).toBe("include");
+    });
+
+    it("removes the stored copy once the refresh succeeds", async () => {
+      mockFetchSequence(accessExpired(), refreshSucceeds(), jsonResponse({ body: {} }));
+
+      await client.request("/api/anything");
+
+      expectNoStoredRefreshToken();
+    });
+
+    it("removes the stored copy when the refresh is rejected", async () => {
+      mockFetchSequence(accessExpired(), refreshRejected());
+
+      await client.request("/api/anything").catch(() => {});
+
+      expectNoStoredRefreshToken();
+    });
+
+    it("removes the stored copy when the refresh fails transiently", async () => {
+      mockFetchSequence(accessExpired(), networkError("offline"));
+
+      await client.request("/api/anything").catch(() => {});
+
+      expectNoStoredRefreshToken();
+    });
+
+    it("sends it only once", async () => {
+      const fetchMock = mockFetchSequence(
+        accessExpired(),
+        refreshUnavailable(),
+        accessExpired(),
+        refreshSucceeds(),
+        jsonResponse({ body: {} }),
+      );
+
+      await client.request("/api/anything").catch(() => {});
+      await client.request("/api/anything");
+
+      const [first, second] = refreshRequests(fetchMock);
+      expect(first.init.body).toBeDefined();
+      expect(second.init.body).toBeUndefined();
+    });
+
+    it("is not handed to a client created after the migration", async () => {
+      mockFetchSequence(accessExpired(), refreshSucceeds(), jsonResponse({ body: {} }));
+      await client.request("/api/anything");
+
+      const laterClient = new APIClient();
+      const fetchMock = mockFetchSequence(
+        accessExpired(),
+        refreshSucceeds(),
+        jsonResponse({ body: {} }),
+      );
+      await laterClient.request("/api/anything");
+
+      expect(refreshRequests(fetchMock)[0].init.body).toBeUndefined();
+    });
+  });
+
+  describe("when no refresh token is held locally", () => {
+    // The refresh token is an HttpOnly cookie now: script cannot see whether
+    // one exists, so the only way to find out is to ask.
+    it("still calls the refresh endpoint", async () => {
+      const fetchMock = mockFetchSequence(
+        accessExpired(),
+        refreshSucceeds(),
+        jsonResponse({ body: { hello: "world" } }),
+      );
+
+      const result = await client.request<{ hello: string }>("/api/anything");
+
+      expect(refreshRequests(fetchMock)).toHaveLength(1);
+      expect(result.hello).toBe("world");
+    });
+
+    it("clears tokens when the backend says there is no session", async () => {
+      mockFetchSequence(accessExpired(), refreshRejected());
+
+      await expect(client.request("/api/anything")).rejects.toThrow("Unauthorized");
+
       expectLoggedOut();
+    });
+  });
+
+  describe("refreshSession", () => {
+    it("resolves and stores the access token when the cookie is accepted", async () => {
+      mockFetchSequence(refreshSucceeds());
+
+      await client.refreshSession();
+
+      expect(localStorage.getItem("access_token")).toBe(newAccess);
+      expect(client.isAuthenticated()).toBe(true);
+    });
+
+    it("throws AuthExpiredError when there is no session to refresh", async () => {
+      mockFetchSequence(refreshRejected());
+
+      await expect(client.refreshSession()).rejects.toBeInstanceOf(AuthExpiredError);
+    });
+
+    it("throws AuthTransientError when the backend cannot be reached", async () => {
+      mockFetchSequence(networkError("offline"));
+
+      await expect(client.refreshSession()).rejects.toBeInstanceOf(AuthTransientError);
+    });
+  });
+
+  describe("setSession", () => {
+    it("stores only the access token", () => {
+      client.setSession(newAccess);
+
+      expect(localStorage.getItem("access_token")).toBe(newAccess);
+      expectNoStoredRefreshToken();
+    });
+
+    it("discards a refresh token left over from before the cookie", async () => {
+      seedLegacyRefreshToken();
+      client = new APIClient();
+
+      client.setSession(newAccess);
+
+      expectNoStoredRefreshToken();
+      const fetchMock = mockFetchSequence(
+        accessExpired(),
+        refreshSucceeds(),
+        jsonResponse({ body: {} }),
+      );
+      await client.request("/api/anything");
+      expect(refreshRequests(fetchMock)[0].init.body).toBeUndefined();
     });
   });
 });

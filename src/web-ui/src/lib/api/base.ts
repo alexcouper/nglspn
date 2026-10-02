@@ -38,23 +38,26 @@ type RefreshOutcome = "refreshed" | "invalid" | "transient";
 
 export class APIClient {
   private accessToken: string | null = null;
-  private refreshToken: string | null = null;
+  // The refresh token is an HttpOnly cookie on the API host; script never sees
+  // it. This is only ever a copy left in localStorage by a version of the web
+  // UI that kept it there. It is sent once in the refresh body, which makes the
+  // backend answer with the cookie, and is dropped whatever the outcome.
+  private legacyRefreshToken: string | null = null;
   private isRefreshing: boolean = false;
   private refreshPromise: Promise<RefreshOutcome> | null = null;
 
   constructor() {
     if (typeof window !== "undefined") {
       this.accessToken = localStorage.getItem("access_token");
-      this.refreshToken = localStorage.getItem("refresh_token");
+      this.legacyRefreshToken = localStorage.getItem("refresh_token");
     }
   }
 
-  setTokens(access: string, refresh: string) {
-    this.accessToken = access;
-    this.refreshToken = refresh;
+  // After a login. The refresh token arrived as a cookie on the same response.
+  setSession(access: string) {
+    this.setAccessToken(access);
+    this.dropLegacyRefreshToken();
     if (typeof window !== "undefined") {
-      localStorage.setItem("access_token", access);
-      localStorage.setItem("refresh_token", refresh);
       document.cookie = "logged_in=true; path=/; SameSite=Lax";
     }
   }
@@ -66,12 +69,18 @@ export class APIClient {
     }
   }
 
+  private dropLegacyRefreshToken() {
+    this.legacyRefreshToken = null;
+    if (typeof window !== "undefined") {
+      localStorage.removeItem("refresh_token");
+    }
+  }
+
   clearTokens() {
     this.accessToken = null;
-    this.refreshToken = null;
+    this.dropLegacyRefreshToken();
     if (typeof window !== "undefined") {
       localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
       document.cookie = "logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
     }
   }
@@ -80,24 +89,40 @@ export class APIClient {
     return !!this.accessToken;
   }
 
-  private async attemptTokenRefresh(): Promise<RefreshOutcome> {
-    if (!this.refreshToken) {
-      return "invalid";
+  // Holding no access token does not mean there is no session: the refresh
+  // cookie is invisible to script and outlives localStorage (Safari purges the
+  // latter after seven days without a visit). Asking is the only way to know.
+  async refreshSession(): Promise<void> {
+    const outcome = await this.attemptTokenRefresh();
+    if (outcome === "invalid") {
+      throw new AuthExpiredError();
     }
+    if (outcome === "transient") {
+      throw new AuthTransientError();
+    }
+  }
 
+  private async attemptTokenRefresh(): Promise<RefreshOutcome> {
     if (this.isRefreshing && this.refreshPromise) {
       return this.refreshPromise;
     }
 
     this.isRefreshing = true;
     this.refreshPromise = (async (): Promise<RefreshOutcome> => {
+      const legacyRefreshToken = this.legacyRefreshToken;
       try {
         const response = await fetch(`${API_BASE_URL}/api/auth/refresh`, {
           method: "POST",
+          // Sends the refresh cookie and lets the response replace it.
+          credentials: "include",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ refresh_token: this.refreshToken }),
+          ...(legacyRefreshToken && {
+            body: JSON.stringify({ refresh_token: legacyRefreshToken }),
+          }),
         });
 
+        // Only the backend can say the session is over. Anything else leaves
+        // the cookie where it is, to be tried again.
         if (response.status === 401) {
           return "invalid";
         }
@@ -108,10 +133,16 @@ export class APIClient {
 
         const data = await response.json();
         this.setAccessToken(data.access_token);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new Event("auth:refreshed"));
+        }
         return "refreshed";
       } catch {
         return "transient";
       } finally {
+        if (legacyRefreshToken) {
+          this.dropLegacyRefreshToken();
+        }
         this.isRefreshing = false;
         this.refreshPromise = null;
       }

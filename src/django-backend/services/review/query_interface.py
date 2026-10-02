@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from uuid import UUID
 
-from apps.projects.models import Project
+from apps.projects.models import Competition, Project
 from services.review.tally import (
     MarginMatrix,
     ProjectId,
@@ -47,6 +47,18 @@ class ReviewerProjects:
     pool: list[ReviewProjectItem] = field(default_factory=list)
 
 
+@dataclass(frozen=True)
+class ReviewCompetition:
+    """A competition as one user sees it from the review side."""
+
+    competition: Competition
+    # As `effective_status` reports it, so it may be "ended".
+    status: str
+    # False once the competition has left voting, or for a past reviewer who
+    # has since lost access; such a user may only read.
+    can_write: bool
+
+
 class ReviewQueryInterface(ABC):
     @abstractmethod
     def get_competition_tally(self, competition_id: UUID) -> CompetitionTally:
@@ -65,3 +77,30 @@ class ReviewQueryInterface(ABC):
         `ranked` is in saved position order; `pool` is in an order that is
         stable for this reviewer and uncorrelated with any other reviewer's.
         """
+
+    @abstractmethod
+    def can_review(self, user_id: UUID, competition_id: UUID) -> bool:
+        """Whether the user may rank and set status in the competition now.
+
+        True when the competition is in voting, the user is active and not a
+        system user, and the user is a member of its reviewer group.
+        """
+
+    @abstractmethod
+    def review_competitions_for(self, user_id: UUID) -> list[ReviewCompetition]:
+        """Competitions the user can review now, plus any they have a review in.
+
+        Newest first by start date.
+        """
+
+    @abstractmethod
+    def get_review_competition(
+        self, user_id: UUID, competition_id: UUID
+    ) -> ReviewCompetition | None:
+        """One competition from the review side, or None if the user can
+        neither review it nor has a review in it."""
+
+    @abstractmethod
+    def can_view_review_project(self, user_id: UUID, project_id: UUID) -> bool:
+        """Whether the project is in a competition the user can review or has
+        a review in."""

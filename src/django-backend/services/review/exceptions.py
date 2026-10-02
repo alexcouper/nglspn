@@ -6,11 +6,11 @@ class ReviewError(Exception):
 
 
 class ReviewerNotAssignedError(ReviewError):
-    """The user is not assigned as a reviewer for the competition."""
+    """The user may not review the competition and has no review in it."""
 
 
 class ReviewClosedError(ReviewError):
-    """The reviewer's review is completed or ended, so the ballot is fixed."""
+    """The user's review is fixed: completed, or its competition left voting."""
 
 
 class DuplicateProjectError(ReviewError):

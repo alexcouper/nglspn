@@ -9,11 +9,13 @@ from hamcrest import (
     equal_to,
     has_entries,
     has_length,
+    is_,
 )
 
 from api.auth.jwt import create_access_token
 from apps.projects.models import (
     CompetitionReviewer,
+    CompetitionStatus,
     ImageVariant,
     ProjectRanking,
     ProjectStatus,
@@ -21,51 +23,106 @@ from apps.projects.models import (
 )
 from tests.factories import (
     CompetitionFactory,
-    CompetitionReviewerFactory,
     ProjectCategoryFactory,
     ProjectFactory,
     ProjectImageFactory,
     ProjectRankingFactory,
+    ReviewerGroupFactory,
     UserFactory,
+    review_of,
+    voting_competition,
 )
+
+
+def headers_for(user) -> dict:
+    return {"HTTP_AUTHORIZATION": f"Bearer {create_access_token(user.id)}"}
+
+
+def listed_statuses(client, auth_headers) -> list[str]:
+    response = client.get("/api/my/reviews/competitions", **auth_headers)
+    return [c["my_review_status"] for c in response.json()["competitions"]]
+
+
+def put_ballot(client, auth_headers, competition, projects):
+    return client.put(
+        f"/api/my/reviews/competitions/{competition.id}/rankings",
+        data=json.dumps({"project_ids": [str(p.id) for p in projects]}),
+        content_type="application/json",
+        **auth_headers,
+    )
+
+
+def put_status(client, auth_headers, competition, status: str):
+    return client.put(
+        f"/api/my/reviews/competitions/{competition.id}/status",
+        data=json.dumps({"status": status}),
+        content_type="application/json",
+        **auth_headers,
+    )
+
+
+def close(competition) -> None:
+    competition.status = CompetitionStatus.CLOSED
+    competition.save()
 
 
 @pytest.mark.django_db
 class TestListMyReviewCompetitions:
-    def test_returns_empty_list_when_not_assigned_to_any_competition(
+    def test_returns_empty_list_when_nothing_is_open_or_reviewed(
         self, client, user, auth_headers
     ) -> None:
-        CompetitionFactory()  # Competition exists but user not assigned
+        CompetitionFactory(status=CompetitionStatus.ACCEPTING_APPLICATIONS)
+        CompetitionFactory(status=CompetitionStatus.CLOSED)
 
         response = client.get("/api/my/reviews/competitions", **auth_headers)
 
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json(), has_entries(competitions=[]))
 
-    def test_returns_ended_status_for_swept_reviews(
+    def test_an_unfinished_review_reads_as_ended_once_the_competition_closes(
         self, client, user, auth_headers
     ) -> None:
-        competition = CompetitionFactory()
-        CompetitionReviewerFactory(
-            user=user, competition=competition, status=ReviewStatus.ENDED
+        competition = voting_competition()
+        review_of(user, competition, status=ReviewStatus.IN_PROGRESS)
+        close(competition)
+
+        assert_that(listed_statuses(client, auth_headers), equal_to(["ended"]))
+
+    def test_lists_an_open_competition_to_a_user_who_registered_after_it_opened(
+        self, client, db
+    ) -> None:
+        voting_competition(name="Open round")
+        newcomer = UserFactory()
+
+        response = client.get("/api/my/reviews/competitions", **headers_for(newcomer))
+
+        assert_that(
+            response.json()["competitions"],
+            contains_exactly(
+                has_entries(name="Open round", my_review_status="in_progress")
+            ),
         )
 
-        response = client.get("/api/my/reviews/competitions", **auth_headers)
-
-        assert_that(response.status_code, equal_to(200))
-        competitions = response.json()["competitions"]
-        assert_that(competitions, has_length(1))
-        assert_that(competitions[0]["my_review_status"], equal_to("ended"))
-
-    def test_returns_competitions_user_is_assigned_to(
+    def test_omits_a_panel_competition_the_user_is_not_on(
         self, client, user, auth_headers
     ) -> None:
-        competition1 = CompetitionFactory(name="Competition A")
-        competition2 = CompetitionFactory(name="Competition B")
-        CompetitionFactory(name="Competition C")  # Not assigned
+        voting_competition(group=ReviewerGroupFactory(members=[UserFactory()]))
 
-        CompetitionReviewerFactory(user=user, competition=competition1)
-        CompetitionReviewerFactory(user=user, competition=competition2)
+        assert_that(listed_statuses(client, auth_headers), equal_to([]))
+
+    def test_lists_closed_competitions_the_user_has_a_review_in(
+        self, client, user, auth_headers
+    ) -> None:
+        competition1 = CompetitionFactory(
+            name="Competition A", status=CompetitionStatus.CLOSED
+        )
+        competition2 = CompetitionFactory(
+            name="Competition B", status=CompetitionStatus.CLOSED
+        )
+        CompetitionFactory(name="Competition C", status=CompetitionStatus.CLOSED)
+
+        review_of(user, competition1)
+        review_of(user, competition2)
 
         response = client.get("/api/my/reviews/competitions", **auth_headers)
 
@@ -78,12 +135,10 @@ class TestListMyReviewCompetitions:
     def test_returns_image_url_when_competition_has_image(
         self, client, user, auth_headers
     ) -> None:
-        competition = CompetitionFactory(name="Competition With Image")
+        competition = voting_competition(name="Competition With Image")
         # Set image field directly (simulates uploaded file path in DB)
         competition.image = "test-competition-id/test-image.jpg"
         competition.save()
-
-        CompetitionReviewerFactory(user=user, competition=competition)
 
         response = client.get("/api/my/reviews/competitions", **auth_headers)
 
@@ -101,38 +156,28 @@ class TestListMyReviewCompetitions:
     def test_includes_my_review_status_in_response(
         self, client, user, auth_headers
     ) -> None:
-        competition = CompetitionFactory()
-        CompetitionReviewerFactory(
-            user=user, competition=competition, status=ReviewStatus.IN_PROGRESS
-        )
+        competition = voting_competition()
+        review_of(user, competition, status=ReviewStatus.IN_PROGRESS)
 
-        response = client.get("/api/my/reviews/competitions", **auth_headers)
-
-        assert_that(response.status_code, equal_to(200))
-        competitions = response.json()["competitions"]
-        assert_that(competitions[0]["my_review_status"], equal_to("in_progress"))
+        assert_that(listed_statuses(client, auth_headers), equal_to(["in_progress"]))
 
     def test_includes_completed_status_in_response(
         self, client, user, auth_headers
     ) -> None:
-        competition = CompetitionFactory()
-        CompetitionReviewerFactory(
-            user=user, competition=competition, status=ReviewStatus.COMPLETED
-        )
+        competition = voting_competition()
+        review_of(user, competition, status=ReviewStatus.COMPLETED)
 
-        response = client.get("/api/my/reviews/competitions", **auth_headers)
-
-        assert_that(response.status_code, equal_to(200))
-        competitions = response.json()["competitions"]
-        assert_that(competitions[0]["my_review_status"], equal_to("completed"))
+        assert_that(listed_statuses(client, auth_headers), equal_to(["completed"]))
 
 
 @pytest.mark.django_db
 class TestGetMyReviewCompetition:
-    def test_returns_404_when_not_assigned_to_competition(
+    def test_returns_404_for_a_competition_not_yet_voting(
         self, client, user, auth_headers
     ) -> None:
-        competition = CompetitionFactory()
+        competition = CompetitionFactory(
+            status=CompetitionStatus.ACCEPTING_APPLICATIONS
+        )
 
         response = client.get(
             f"/api/my/reviews/competitions/{competition.id}", **auth_headers
@@ -140,20 +185,65 @@ class TestGetMyReviewCompetition:
 
         assert_that(response.status_code, equal_to(404))
 
-    def test_cannot_see_projects_from_unassigned_competition(
+    def test_returns_404_for_a_closed_competition_without_a_review(
         self, client, user, auth_headers
     ) -> None:
-        # User is assigned to competition1 but not competition2
+        competition = CompetitionFactory(status=CompetitionStatus.CLOSED)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_a_past_reviewer_can_read_their_closed_ballot(
+        self, client, user, auth_headers
+    ) -> None:
+        first, second = ProjectFactory(title="First"), ProjectFactory(title="Second")
+        competition = voting_competition(projects=[first, second])
+        review_of(
+            user, competition, status=ReviewStatus.COMPLETED, ranked=[second, first]
+        )
+        close(competition)
+
+        response = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            [p["title"] for p in response.json()["ranked_projects"]],
+            equal_to(["Second", "First"]),
+        )
+
+    def test_opening_an_open_ballot_starts_no_review(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        competition = voting_competition(projects=[project])
+
+        ballot = client.get(
+            f"/api/my/reviews/competitions/{competition.id}", **auth_headers
+        )
+        detail = client.get(f"/api/my/reviews/projects/{project.id}", **auth_headers)
+
+        assert_that(ballot.status_code, equal_to(200))
+        assert_that(ballot.json()["my_review_status"], equal_to("in_progress"))
+        assert_that(detail.status_code, equal_to(200))
+        assert_that(CompetitionReviewer.objects.filter(user=user).exists(), is_(False))
+
+    def test_cannot_see_projects_from_a_panel_competition_the_user_is_not_on(
+        self, client, user, auth_headers
+    ) -> None:
         project1 = ProjectFactory(title="Project in my competition")
         project2 = ProjectFactory(title="Project in other competition")
 
-        competition1 = CompetitionFactory(name="My Competition", projects=[project1])
-        competition2 = CompetitionFactory(name="Other Competition", projects=[project2])
+        voting_competition(name="My Competition", projects=[project1])
+        panel = ReviewerGroupFactory(members=[UserFactory()])
+        competition2 = voting_competition(
+            name="Other Competition", group=panel, projects=[project2]
+        )
 
-        CompetitionReviewerFactory(user=user, competition=competition1)
-        # Note: user is NOT assigned to competition2
-
-        # Trying to access competition2 should return 404
         response = client.get(
             f"/api/my/reviews/competitions/{competition2.id}", **auth_headers
         )
@@ -166,8 +256,8 @@ class TestGetMyReviewCompetition:
     ) -> None:
         project1 = ProjectFactory(title="Project A")
         project2 = ProjectFactory(title="Project B")
-        competition = CompetitionFactory(projects=[project1, project2])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project1, project2])
+        review_of(user, competition)
 
         response = client.get(
             f"/api/my/reviews/competitions/{competition.id}", **auth_headers
@@ -184,8 +274,8 @@ class TestGetMyReviewCompetition:
     ) -> None:
         project1 = ProjectFactory(title="Project A")
         project2 = ProjectFactory(title="Project B")
-        competition = CompetitionFactory(projects=[project1, project2])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project1, project2])
+        review_of(user, competition)
 
         # User has ranked project1 but not project2
         ProjectRankingFactory(
@@ -212,8 +302,8 @@ class TestGetMyReviewCompetition:
         self, client, user, auth_headers
     ) -> None:
         first, second = ProjectFactory(title="First"), ProjectFactory(title="Second")
-        competition = CompetitionFactory(projects=[first, second])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[first, second])
+        review_of(user, competition)
         ProjectRankingFactory(
             reviewer=user, competition=competition, project=second, position=2
         )
@@ -233,10 +323,10 @@ class TestGetMyReviewCompetition:
         reviewer1 = UserFactory()
         reviewer2 = UserFactory()
         project = ProjectFactory()
-        competition = CompetitionFactory(projects=[project])
+        competition = voting_competition(projects=[project])
 
-        CompetitionReviewerFactory(user=reviewer1, competition=competition)
-        CompetitionReviewerFactory(user=reviewer2, competition=competition)
+        review_of(reviewer1, competition)
+        review_of(reviewer2, competition)
 
         # Reviewer2 has ranked the project
         ProjectRankingFactory(
@@ -259,7 +349,7 @@ class TestGetMyReviewCompetition:
         assert_that(data["pool_projects"][0]["my_ranking"], equal_to(None))
 
     def test_returns_401_when_not_authenticated(self, client) -> None:
-        competition = CompetitionFactory()
+        competition = voting_competition()
 
         response = client.get(f"/api/my/reviews/competitions/{competition.id}")
 
@@ -268,10 +358,8 @@ class TestGetMyReviewCompetition:
     def test_includes_my_review_status_in_response(
         self, client, user, auth_headers
     ) -> None:
-        competition = CompetitionFactory()
-        CompetitionReviewerFactory(
-            user=user, competition=competition, status=ReviewStatus.COMPLETED
-        )
+        competition = voting_competition()
+        review_of(user, competition, status=ReviewStatus.COMPLETED)
 
         response = client.get(
             f"/api/my/reviews/competitions/{competition.id}", **auth_headers
@@ -302,8 +390,8 @@ class TestGetMyReviewCompetition:
             height=600,
             file_size=12345,
         )
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
 
         response = client.get(
             f"/api/my/reviews/competitions/{competition.id}", **auth_headers
@@ -325,8 +413,8 @@ class TestGetMyReviewCompetition:
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(category=ProjectCategoryFactory(name="Conservation"))
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
 
         response = client.get(
             f"/api/my/reviews/competitions/{competition.id}", **auth_headers
@@ -341,8 +429,8 @@ class TestGetMyReviewCompetition:
     def test_category_name_is_null_when_the_project_has_no_category(
         self, client, user, auth_headers
     ) -> None:
-        competition = CompetitionFactory(projects=[ProjectFactory(category=None)])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[ProjectFactory(category=None)])
+        review_of(user, competition)
 
         response = client.get(
             f"/api/my/reviews/competitions/{competition.id}", **auth_headers
@@ -360,8 +448,8 @@ class TestGetMyReviewCompetition:
         in_use = ProjectImageFactory(
             project=project, is_usage=True, storage_key="in-use.jpg"
         )
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
 
         response = client.get(
             f"/api/my/reviews/competitions/{competition.id}", **auth_headers
@@ -377,8 +465,8 @@ class TestGetMyReviewCompetition:
     ) -> None:
         project = ProjectFactory()
         main = ProjectImageFactory(project=project, is_main=True)
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
 
         response = client.get(
             f"/api/my/reviews/competitions/{competition.id}", **auth_headers
@@ -394,8 +482,8 @@ class TestGetMyReviewCompetition:
     ) -> None:
         project = ProjectFactory()
         ProjectImageFactory(project=project, is_main=True, upload_status="pending")
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
 
         response = client.get(
             f"/api/my/reviews/competitions/{competition.id}", **auth_headers
@@ -412,8 +500,8 @@ class TestGetMyReviewCompetition:
     def test_avoids_n_plus_one_queries_when_loading_projects_with_images(
         self, client, user, auth_headers, django_assert_max_num_queries
     ) -> None:
-        competition = CompetitionFactory()
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition()
+        review_of(user, competition)
 
         for i in range(3):
             project = ProjectFactory(title=f"Project {i}")
@@ -432,8 +520,9 @@ class TestGetMyReviewCompetition:
                 file_size=1234,
             )
 
-        # Budget covers auth, assignment, competition, the service's projects
-        # query + 2 prefetches, rankings, and a small allowance for middleware.
+        # Budget covers auth, competition, review row, access check, the
+        # service's projects query + 2 prefetches, rankings, and a small
+        # allowance for middleware.
         # N+1 over 3 projects would add at least 6 more queries (images +
         # variants per project).
         with django_assert_max_num_queries(10):
@@ -447,18 +536,12 @@ class TestGetMyReviewCompetition:
 
 @pytest.mark.django_db
 class TestUpdateRankings:
-    def test_returns_404_when_not_assigned_to_competition(
-        self, client, user, auth_headers
-    ) -> None:
+    def test_returns_404_for_a_panel_outsider(self, client, user, auth_headers) -> None:
         project = ProjectFactory()
-        competition = CompetitionFactory(projects=[project])
+        panel = ReviewerGroupFactory(members=[UserFactory()])
+        competition = voting_competition(group=panel, projects=[project])
 
-        response = client.put(
-            f"/api/my/reviews/competitions/{competition.id}/rankings",
-            data=json.dumps({"project_ids": [str(project.id)]}),
-            content_type="application/json",
-            **auth_headers,
-        )
+        response = put_ballot(client, auth_headers, competition, [project])
 
         assert_that(response.status_code, equal_to(404))
 
@@ -467,8 +550,8 @@ class TestUpdateRankings:
     ) -> None:
         project_in_competition = ProjectFactory()
         project_not_in_competition = ProjectFactory()
-        competition = CompetitionFactory(projects=[project_in_competition])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project_in_competition])
+        review_of(user, competition)
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/rankings",
@@ -487,10 +570,8 @@ class TestUpdateRankings:
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory()
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(
-            user=user, competition=competition, status=ReviewStatus.COMPLETED
-        )
+        competition = voting_competition(projects=[project])
+        review_of(user, competition, status=ReviewStatus.COMPLETED)
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/rankings",
@@ -505,34 +586,44 @@ class TestUpdateRankings:
             equal_to("Cannot update rankings for a closed review"),
         )
 
-    def test_returns_400_when_review_has_ended(
+    def test_returns_400_once_a_winner_is_assigned(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory()
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(
-            user=user, competition=competition, status=ReviewStatus.ENDED
-        )
+        competition = voting_competition(projects=[project])
+        review_of(user, competition, ranked=[project])
+        competition.winner = project
+        competition.save()
 
-        response = client.put(
-            f"/api/my/reviews/competitions/{competition.id}/rankings",
-            data=json.dumps({"project_ids": [str(project.id)]}),
-            content_type="application/json",
-            **auth_headers,
-        )
+        response = put_ballot(client, auth_headers, competition, [])
 
         assert_that(response.status_code, equal_to(400))
         assert_that(
             response.json()["detail"],
             equal_to("Cannot update rankings for a closed review"),
+        )
+        assert_that(ProjectRanking.objects.filter(reviewer=user).count(), equal_to(1))
+
+    def test_the_first_ballot_starts_the_review(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory()
+        competition = voting_competition(projects=[project])
+
+        response = put_ballot(client, auth_headers, competition, [project])
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            CompetitionReviewer.objects.get(user=user, competition=competition).status,
+            equal_to(ReviewStatus.IN_PROGRESS),
         )
 
     def test_returns_400_when_a_project_is_listed_twice(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory()
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/rankings",
@@ -550,8 +641,8 @@ class TestUpdateRankings:
 
     def test_empty_payload_clears_the_ballot(self, client, user, auth_headers) -> None:
         project = ProjectFactory()
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
         ProjectRankingFactory(
             reviewer=user, competition=competition, project=project, position=1
         )
@@ -575,8 +666,8 @@ class TestUpdateRankings:
         project1 = ProjectFactory()
         project2 = ProjectFactory()
         project3 = ProjectFactory()
-        competition = CompetitionFactory(projects=[project1, project2, project3])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project1, project2, project3])
+        review_of(user, competition)
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/rankings",
@@ -608,8 +699,8 @@ class TestUpdateRankings:
     def test_replaces_existing_rankings(self, client, user, auth_headers) -> None:
         project1 = ProjectFactory()
         project2 = ProjectFactory()
-        competition = CompetitionFactory(projects=[project1, project2])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project1, project2])
+        review_of(user, competition)
 
         # Create initial rankings
         ProjectRankingFactory(
@@ -646,8 +737,8 @@ class TestUpdateRankings:
 
     def test_returns_success_response(self, client, user, auth_headers) -> None:
         project = ProjectFactory()
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/rankings",
@@ -660,7 +751,7 @@ class TestUpdateRankings:
         assert_that(response.json(), equal_to({"success": True}))
 
     def test_returns_401_when_not_authenticated(self, client) -> None:
-        competition = CompetitionFactory()
+        competition = voting_competition()
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/rankings",
@@ -673,27 +764,45 @@ class TestUpdateRankings:
 
 @pytest.mark.django_db
 class TestUpdateReviewStatus:
-    def test_returns_404_when_not_assigned_to_competition(
-        self, client, user, auth_headers
-    ) -> None:
-        competition = CompetitionFactory()
+    def test_returns_404_for_a_panel_outsider(self, client, user, auth_headers) -> None:
+        panel = ReviewerGroupFactory(members=[UserFactory()])
+        competition = voting_competition(group=panel)
 
-        response = client.put(
-            f"/api/my/reviews/competitions/{competition.id}/status",
-            data=json.dumps({"status": "completed"}),
-            content_type="application/json",
-            **auth_headers,
-        )
+        response = put_status(client, auth_headers, competition, "completed")
 
         assert_that(response.status_code, equal_to(404))
+
+    def test_completing_without_a_review_is_a_counted_abstention(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = voting_competition()
+
+        response = put_status(client, auth_headers, competition, "completed")
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            CompetitionReviewer.objects.get(user=user, competition=competition).status,
+            equal_to(ReviewStatus.COMPLETED),
+        )
+
+    def test_returns_400_once_the_competition_has_closed(
+        self, client, user, auth_headers
+    ) -> None:
+        competition = voting_competition()
+        review = review_of(user, competition)
+        close(competition)
+
+        response = put_status(client, auth_headers, competition, "completed")
+
+        assert_that(response.status_code, equal_to(400))
+        review.refresh_from_db()
+        assert_that(review.status, equal_to(ReviewStatus.IN_PROGRESS))
 
     def test_successfully_updates_status_to_completed(
         self, client, user, auth_headers
     ) -> None:
-        competition = CompetitionFactory()
-        CompetitionReviewerFactory(
-            user=user, competition=competition, status=ReviewStatus.IN_PROGRESS
-        )
+        competition = voting_competition()
+        review_of(user, competition, status=ReviewStatus.IN_PROGRESS)
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/status",
@@ -711,10 +820,8 @@ class TestUpdateReviewStatus:
     def test_successfully_updates_status_to_in_progress(
         self, client, user, auth_headers
     ) -> None:
-        competition = CompetitionFactory()
-        CompetitionReviewerFactory(
-            user=user, competition=competition, status=ReviewStatus.COMPLETED
-        )
+        competition = voting_competition()
+        review_of(user, competition, status=ReviewStatus.COMPLETED)
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/status",
@@ -730,10 +837,8 @@ class TestUpdateReviewStatus:
         assert_that(assignment.status, equal_to(ReviewStatus.IN_PROGRESS))
 
     def test_returns_success_response(self, client, user, auth_headers) -> None:
-        competition = CompetitionFactory()
-        CompetitionReviewerFactory(
-            user=user, competition=competition, status=ReviewStatus.IN_PROGRESS
-        )
+        competition = voting_competition()
+        review_of(user, competition, status=ReviewStatus.IN_PROGRESS)
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/status",
@@ -746,7 +851,7 @@ class TestUpdateReviewStatus:
         assert_that(response.json(), equal_to({"success": True}))
 
     def test_returns_401_when_not_authenticated(self, client) -> None:
-        competition = CompetitionFactory()
+        competition = voting_competition()
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/status",
@@ -757,10 +862,8 @@ class TestUpdateReviewStatus:
         assert_that(response.status_code, equal_to(401))
 
     def test_rejects_ended_payload(self, client, user, auth_headers) -> None:
-        competition = CompetitionFactory()
-        reviewer = CompetitionReviewerFactory(
-            user=user, competition=competition, status=ReviewStatus.IN_PROGRESS
-        )
+        competition = voting_competition()
+        reviewer = review_of(user, competition, status=ReviewStatus.IN_PROGRESS)
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/status",
@@ -786,17 +889,29 @@ class TestGetReviewProject:
         assert_that(response.status_code, equal_to(404))
         assert_that(response.json(), has_entries(detail="Project not found"))
 
-    def test_returns_404_when_user_not_assigned_to_review_competition_with_project(
+    def test_returns_404_for_a_project_in_a_closed_competition_without_a_review(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(status=ProjectStatus.PENDING)
-        # Competition exists but user not assigned
-        CompetitionFactory(projects=[project])
+        CompetitionFactory(status=CompetitionStatus.CLOSED, projects=[project])
 
         response = client.get(f"/api/my/reviews/projects/{project.id}", **auth_headers)
 
         assert_that(response.status_code, equal_to(404))
         assert_that(response.json(), has_entries(detail="Project not found"))
+
+    def test_returns_a_project_in_a_closed_competition_the_user_reviewed(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(status=ProjectStatus.PENDING)
+        competition = CompetitionFactory(
+            status=CompetitionStatus.CLOSED, projects=[project]
+        )
+        review_of(user, competition)
+
+        response = client.get(f"/api/my/reviews/projects/{project.id}", **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
 
     def test_returns_project_when_user_is_assigned_reviewer(
         self, client, user, auth_headers
@@ -806,8 +921,8 @@ class TestGetReviewProject:
             description="Test description",
             status=ProjectStatus.PENDING,
         )
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
 
         response = client.get(f"/api/my/reviews/projects/{project.id}", **auth_headers)
 
@@ -820,8 +935,8 @@ class TestGetReviewProject:
     def test_returns_project_images(self, client, user, auth_headers) -> None:
         project = ProjectFactory(status=ProjectStatus.PENDING)
         image = ProjectImageFactory(project=project, upload_status="uploaded")
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
 
         response = client.get(f"/api/my/reviews/projects/{project.id}", **auth_headers)
 
@@ -840,26 +955,24 @@ class TestGetReviewProject:
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(status=ProjectStatus.PENDING)
-        competition1 = CompetitionFactory(projects=[project])
+        competition1 = voting_competition(projects=[project])
         # Different competition without this project
-        competition2 = CompetitionFactory()
+        competition2 = voting_competition()
 
-        CompetitionReviewerFactory(user=user, competition=competition1)
-        CompetitionReviewerFactory(user=user, competition=competition2)
+        review_of(user, competition1)
+        review_of(user, competition2)
 
         response = client.get(f"/api/my/reviews/projects/{project.id}", **auth_headers)
 
         assert_that(response.status_code, equal_to(200))
 
-    def test_cannot_access_project_from_different_competition(
+    def test_cannot_access_a_project_in_a_panel_competition_the_user_is_not_on(
         self, client, user, auth_headers
     ) -> None:
         project_in_other_competition = ProjectFactory(status=ProjectStatus.PENDING)
-        my_competition = CompetitionFactory()
-        CompetitionFactory(projects=[project_in_other_competition])
-
-        CompetitionReviewerFactory(user=user, competition=my_competition)
-        # Note: user is NOT assigned to competition containing the project
+        voting_competition()
+        panel = ReviewerGroupFactory(members=[UserFactory()])
+        voting_competition(group=panel, projects=[project_in_other_competition])
 
         response = client.get(
             f"/api/my/reviews/projects/{project_in_other_competition.id}",
@@ -870,8 +983,8 @@ class TestGetReviewProject:
 
     def test_returns_404_for_rejected_project(self, client, user, auth_headers) -> None:
         project = ProjectFactory(status=ProjectStatus.REJECTED)
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
 
         response = client.get(f"/api/my/reviews/projects/{project.id}", **auth_headers)
 
@@ -879,8 +992,8 @@ class TestGetReviewProject:
 
     def test_returns_404_for_ice_box_project(self, client, user, auth_headers) -> None:
         project = ProjectFactory(status=ProjectStatus.ICE_BOX)
-        competition = CompetitionFactory(projects=[project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[project])
+        review_of(user, competition)
 
         response = client.get(f"/api/my/reviews/projects/{project.id}", **auth_headers)
 
@@ -895,10 +1008,10 @@ class TestMyReviewProjectExclusions:
         approved_project = ProjectFactory(status=ProjectStatus.APPROVED)
         pending_project = ProjectFactory(status=ProjectStatus.PENDING)
         rejected_project = ProjectFactory(status=ProjectStatus.REJECTED)
-        competition = CompetitionFactory(
+        competition = voting_competition(
             projects=[approved_project, pending_project, rejected_project]
         )
-        CompetitionReviewerFactory(user=user, competition=competition)
+        review_of(user, competition)
 
         response = client.get("/api/my/reviews/competitions", **auth_headers)
 
@@ -911,8 +1024,8 @@ class TestMyReviewProjectExclusions:
     ) -> None:
         approved_project = ProjectFactory(status=ProjectStatus.APPROVED)
         ice_box_project = ProjectFactory(status=ProjectStatus.ICE_BOX)
-        competition = CompetitionFactory(projects=[approved_project, ice_box_project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[approved_project, ice_box_project])
+        review_of(user, competition)
 
         response = client.get("/api/my/reviews/competitions", **auth_headers)
 
@@ -929,8 +1042,8 @@ class TestMyReviewProjectExclusions:
         rejected_project = ProjectFactory(
             title="Rejected", status=ProjectStatus.REJECTED
         )
-        competition = CompetitionFactory(projects=[approved_project, rejected_project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[approved_project, rejected_project])
+        review_of(user, competition)
 
         response = client.get(
             f"/api/my/reviews/competitions/{competition.id}", **auth_headers
@@ -946,8 +1059,8 @@ class TestMyReviewProjectExclusions:
     ) -> None:
         pending_project = ProjectFactory(title="Pending", status=ProjectStatus.PENDING)
         ice_box_project = ProjectFactory(title="IceBox", status=ProjectStatus.ICE_BOX)
-        competition = CompetitionFactory(projects=[pending_project, ice_box_project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[pending_project, ice_box_project])
+        review_of(user, competition)
 
         response = client.get(
             f"/api/my/reviews/competitions/{competition.id}", **auth_headers
@@ -961,8 +1074,8 @@ class TestMyReviewProjectExclusions:
     def test_cannot_rank_rejected_project(self, client, user, auth_headers) -> None:
         approved_project = ProjectFactory(status=ProjectStatus.APPROVED)
         rejected_project = ProjectFactory(status=ProjectStatus.REJECTED)
-        competition = CompetitionFactory(projects=[approved_project, rejected_project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[approved_project, rejected_project])
+        review_of(user, competition)
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/rankings",
@@ -980,8 +1093,8 @@ class TestMyReviewProjectExclusions:
     def test_cannot_rank_ice_box_project(self, client, user, auth_headers) -> None:
         approved_project = ProjectFactory(status=ProjectStatus.APPROVED)
         ice_box_project = ProjectFactory(status=ProjectStatus.ICE_BOX)
-        competition = CompetitionFactory(projects=[approved_project, ice_box_project])
-        CompetitionReviewerFactory(user=user, competition=competition)
+        competition = voting_competition(projects=[approved_project, ice_box_project])
+        review_of(user, competition)
 
         response = client.put(
             f"/api/my/reviews/competitions/{competition.id}/rankings",

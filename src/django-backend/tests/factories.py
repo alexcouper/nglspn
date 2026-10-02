@@ -18,6 +18,7 @@ from apps.projects.models import (
     Competition,
     CompetitionEntry,
     CompetitionReviewer,
+    CompetitionStatus,
     ContributorRole,
     EntrySource,
     Project,
@@ -26,6 +27,8 @@ from apps.projects.models import (
     ProjectImage,
     ProjectRanking,
     ProjectStatus,
+    ReviewerGroup,
+    ReviewStatus,
 )
 from apps.tags.models import Tag, TagCategory, TagStatus
 from apps.users.models import EmailVerificationCode, PasswordResetCode, UserAvatar
@@ -347,6 +350,46 @@ class ProjectRankingFactory(factory.django.DjangoModelFactory):
     competition = factory.SubFactory(CompetitionFactory)
     project = factory.SubFactory(ProjectFactory)
     position = factory.Sequence(lambda n: n + 1)
+
+
+class ReviewerGroupFactory(factory.django.DjangoModelFactory):
+    """A panel: explicit members only."""
+
+    class Meta:
+        model = ReviewerGroup
+        skip_postgeneration_save = True
+
+    name = factory.Sequence(lambda n: f"Panel {n}")
+    includes_all_users = False
+
+    @factory.post_generation
+    def members(self, create, extracted, **kwargs) -> None:
+        if create and extracted:
+            self.members.add(*extracted)
+
+
+def voting_competition(group: ReviewerGroup | None = None, **kwargs) -> Competition:
+    """A competition open for review. Without a group it reviews as Everyone."""
+    if group is not None:
+        kwargs["reviewer_group"] = group
+    return CompetitionFactory(status=CompetitionStatus.VOTING, **kwargs)
+
+
+def review_of(
+    user,
+    competition: Competition,
+    status: str = ReviewStatus.IN_PROGRESS,
+    ranked: list[Project] | None = None,
+) -> CompetitionReviewer:
+    """A review the user has started, with `ranked` saved in that order."""
+    review = CompetitionReviewerFactory(
+        user=user, competition=competition, status=status
+    )
+    for position, project in enumerate(ranked or [], start=1):
+        ProjectRankingFactory(
+            reviewer=user, competition=competition, project=project, position=position
+        )
+    return review
 
 
 class BroadcastEmailFactory(factory.django.DjangoModelFactory):

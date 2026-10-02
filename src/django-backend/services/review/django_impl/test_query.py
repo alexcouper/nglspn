@@ -1,8 +1,19 @@
-import pytest
-from hamcrest import assert_that, equal_to, has_length, is_not
+from datetime import date
 
-from apps.projects.models import ProjectStatus, ReviewStatus
+import pytest
+from hamcrest import (
+    assert_that,
+    contains_exactly,
+    equal_to,
+    has_length,
+    is_,
+    is_not,
+    none,
+)
+
+from apps.projects.models import CompetitionStatus, ProjectStatus, ReviewStatus
 from services.review.django_impl.query import DjangoReviewQuery
+from services.review.eligibility import REVIEW_ENDED, effective_status
 from tests.factories import (
     CompetitionFactory,
     CompetitionReviewerFactory,
@@ -10,7 +21,10 @@ from tests.factories import (
     ProjectFactory,
     ProjectImageFactory,
     ProjectRankingFactory,
+    ReviewerGroupFactory,
     UserFactory,
+    review_of,
+    voting_competition,
 )
 
 
@@ -78,9 +92,6 @@ class TestGetCompetitionTally:
             UserFactory(),
             [loser, winner],
             status=ReviewStatus.IN_PROGRESS,
-        )
-        cast_ballot(
-            competition, UserFactory(), [loser, winner], status=ReviewStatus.ENDED
         )
 
         tally = query.get_competition_tally(competition.id)
@@ -349,3 +360,195 @@ class TestUnrankedPoolOrdering:
 
         assert_that(ballot_titles(result.ranked), equal_to(titles(projects)))
         assert_that(result.pool, equal_to([]))
+
+
+NOT_VOTING = [
+    CompetitionStatus.PENDING,
+    CompetitionStatus.ACCEPTING_APPLICATIONS,
+    CompetitionStatus.CLOSED,
+]
+
+
+def listed(query, user) -> list[tuple[str, str, bool]]:
+    return [
+        (entry.competition.name, entry.status, entry.can_write)
+        for entry in query.review_competitions_for(user.id)
+    ]
+
+
+@pytest.mark.django_db
+class TestCanReview:
+    def test_any_active_user_can_review_a_voting_competition_for_everyone(
+        self, query
+    ) -> None:
+        competition = voting_competition()
+
+        assert_that(query.can_review(UserFactory().id, competition.id), is_(True))
+
+    @pytest.mark.parametrize("status", NOT_VOTING)
+    def test_nobody_can_review_a_competition_that_is_not_voting(
+        self, query, status
+    ) -> None:
+        competition = CompetitionFactory(status=status)
+
+        assert_that(query.can_review(UserFactory().id, competition.id), is_(False))
+
+    def test_an_inactive_user_cannot_review(self, query) -> None:
+        competition = voting_competition()
+        user = UserFactory(is_active=False)
+
+        assert_that(query.can_review(user.id, competition.id), is_(False))
+
+    def test_a_system_user_cannot_review(self, query) -> None:
+        competition = voting_competition()
+        user = UserFactory(is_system_user=True)
+
+        assert_that(query.can_review(user.id, competition.id), is_(False))
+
+    def test_a_panel_member_can_review_the_panels_competition(self, query) -> None:
+        member = UserFactory()
+        competition = voting_competition(group=ReviewerGroupFactory(members=[member]))
+
+        assert_that(query.can_review(member.id, competition.id), is_(True))
+
+    def test_a_non_member_cannot_review_a_panels_competition(self, query) -> None:
+        panel = ReviewerGroupFactory(members=[UserFactory(), UserFactory()])
+        competition = voting_competition(group=panel)
+
+        assert_that(query.can_review(UserFactory().id, competition.id), is_(False))
+
+    def test_an_inactive_panel_member_cannot_review(self, query) -> None:
+        member = UserFactory(is_active=False)
+        competition = voting_competition(group=ReviewerGroupFactory(members=[member]))
+
+        assert_that(query.can_review(member.id, competition.id), is_(False))
+
+
+@pytest.mark.django_db
+class TestReviewCompetitionsFor:
+    def test_lists_an_open_competition_the_user_has_not_started(self, query) -> None:
+        voting_competition(name="Open")
+
+        assert_that(
+            listed(query, UserFactory()),
+            contains_exactly(("Open", ReviewStatus.IN_PROGRESS, True)),
+        )
+
+    def test_lists_a_closed_competition_the_user_reviewed(self, query) -> None:
+        user = UserFactory()
+        closed = CompetitionFactory(name="Past", status=CompetitionStatus.CLOSED)
+        review_of(user, closed, status=ReviewStatus.COMPLETED)
+
+        assert_that(
+            listed(query, user),
+            contains_exactly(("Past", ReviewStatus.COMPLETED, False)),
+        )
+
+    def test_omits_a_closed_competition_the_user_never_reviewed(self, query) -> None:
+        CompetitionFactory(status=CompetitionStatus.CLOSED)
+
+        assert_that(listed(query, UserFactory()), equal_to([]))
+
+    def test_omits_a_panel_competition_the_user_is_not_on(self, query) -> None:
+        voting_competition(group=ReviewerGroupFactory(members=[UserFactory()]))
+
+        assert_that(listed(query, UserFactory()), equal_to([]))
+
+    def test_an_unfinished_review_reads_as_ended_once_closed(self, query) -> None:
+        user = UserFactory()
+        closed = CompetitionFactory(name="Past", status=CompetitionStatus.CLOSED)
+        review_of(user, closed, status=ReviewStatus.IN_PROGRESS)
+
+        assert_that(
+            listed(query, user), contains_exactly(("Past", REVIEW_ENDED, False))
+        )
+
+    def test_lists_a_started_open_competition_once(self, query) -> None:
+        user = UserFactory()
+        competition = voting_competition(name="Open")
+        review_of(user, competition)
+
+        assert_that(listed(query, user), has_length(1))
+
+    def test_lists_newest_first(self, query) -> None:
+        voting_competition(name="Older", start_date=date(2025, 1, 1))
+        voting_competition(name="Newer", start_date=date(2025, 6, 1))
+
+        names = [name for name, _, _ in listed(query, UserFactory())]
+
+        assert_that(names, equal_to(["Newer", "Older"]))
+
+
+@pytest.mark.django_db
+class TestGetReviewCompetition:
+    def test_is_none_for_a_closed_competition_without_a_review(self, query) -> None:
+        closed = CompetitionFactory(status=CompetitionStatus.CLOSED)
+
+        assert_that(
+            query.get_review_competition(UserFactory().id, closed.id), is_(none())
+        )
+
+    def test_is_read_only_for_a_past_reviewer(self, query) -> None:
+        user = UserFactory()
+        closed = CompetitionFactory(status=CompetitionStatus.CLOSED)
+        review_of(user, closed, status=ReviewStatus.COMPLETED)
+
+        entry = query.get_review_competition(user.id, closed.id)
+
+        assert_that(entry.can_write, is_(False))
+        assert_that(entry.status, equal_to(ReviewStatus.COMPLETED))
+
+
+@pytest.mark.django_db
+class TestCanViewReviewProject:
+    def test_allows_a_project_in_an_open_competition(self, query) -> None:
+        project = ProjectFactory()
+        voting_competition(projects=[project])
+
+        assert_that(
+            query.can_view_review_project(UserFactory().id, project.id), is_(True)
+        )
+
+    def test_allows_a_project_in_a_closed_competition_the_user_reviewed(
+        self, query
+    ) -> None:
+        user, project = UserFactory(), ProjectFactory()
+        closed = CompetitionFactory(status=CompetitionStatus.CLOSED, projects=[project])
+        review_of(user, closed)
+
+        assert_that(query.can_view_review_project(user.id, project.id), is_(True))
+
+    def test_refuses_a_project_in_a_closed_competition_the_user_never_reviewed(
+        self, query
+    ) -> None:
+        project = ProjectFactory()
+        CompetitionFactory(status=CompetitionStatus.CLOSED, projects=[project])
+
+        assert_that(
+            query.can_view_review_project(UserFactory().id, project.id), is_(False)
+        )
+
+
+VOTING, CLOSED = CompetitionStatus.VOTING, CompetitionStatus.CLOSED
+IN_PROGRESS, COMPLETED = ReviewStatus.IN_PROGRESS, ReviewStatus.COMPLETED
+
+
+class TestEffectiveStatus:
+    @pytest.mark.parametrize(
+        ("row_status", "competition_status", "expected"),
+        [
+            (None, VOTING, IN_PROGRESS),
+            (IN_PROGRESS, VOTING, IN_PROGRESS),
+            (COMPLETED, VOTING, COMPLETED),
+            (None, CLOSED, REVIEW_ENDED),
+            (IN_PROGRESS, CLOSED, REVIEW_ENDED),
+            (COMPLETED, CLOSED, COMPLETED),
+            (IN_PROGRESS, CompetitionStatus.PENDING, REVIEW_ENDED),
+        ],
+    )
+    def test_reads_ended_only_when_voting_is_over_and_unfinished(
+        self, row_status, competition_status, expected
+    ) -> None:
+        assert_that(
+            effective_status(row_status, competition_status), equal_to(expected)
+        )

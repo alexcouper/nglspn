@@ -36,6 +36,24 @@ export class AuthExpiredError extends Error {
 
 type RefreshOutcome = "refreshed" | "invalid" | "transient";
 
+// Who the session belongs to, remembered across reloads. A refresh must never
+// change the answer: the refresh cookie is set by the API host and a forged
+// cross-site login could plant someone else's, so a refresh that comes back as
+// another user is treated as the session ending, not as a new session.
+const SESSION_USER_KEY = "session_user_id";
+
+// The `user_id` claim of an access token, read without checking the signature.
+// The backend verifies tokens; this only reads who the token says it is for.
+function userIdOf(accessToken: string): string | null {
+  try {
+    const payload = accessToken.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    const claims = JSON.parse(atob(payload));
+    return typeof claims.user_id === "string" ? claims.user_id : null;
+  } catch {
+    return null;
+  }
+}
+
 export class APIClient {
   private accessToken: string | null = null;
   private isRefreshing: boolean = false;
@@ -55,8 +73,23 @@ export class APIClient {
   setSession(access: string) {
     this.setAccessToken(access);
     if (typeof window !== "undefined") {
+      this.rememberSessionUser(access);
       document.cookie = "logged_in=true; path=/; SameSite=Lax";
     }
+  }
+
+  private rememberSessionUser(access: string) {
+    const userId = userIdOf(access);
+    if (userId) {
+      localStorage.setItem(SESSION_USER_KEY, userId);
+    }
+  }
+
+  // True when `access` is for someone other than the remembered session user.
+  // With nothing remembered (first login, or storage purged) any user is fine.
+  private isSessionUserChange(access: string): boolean {
+    const known = localStorage.getItem(SESSION_USER_KEY);
+    return known !== null && userIdOf(access) !== known;
   }
 
   private setAccessToken(access: string) {
@@ -70,6 +103,7 @@ export class APIClient {
     this.accessToken = null;
     if (typeof window !== "undefined") {
       localStorage.removeItem("access_token");
+      localStorage.removeItem(SESSION_USER_KEY);
       document.cookie = "logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax";
     }
   }
@@ -117,8 +151,18 @@ export class APIClient {
         }
 
         const data = await response.json();
+        if (typeof window !== "undefined" && this.isSessionUserChange(data.access_token)) {
+          // The cookie is not ours. Get rid of it and end the session.
+          fetch(`${API_BASE_URL}/api/auth/logout`, {
+            method: "POST",
+            credentials: "include",
+            headers: { "Content-Type": "application/json" },
+          }).catch(() => {});
+          return "invalid";
+        }
         this.setAccessToken(data.access_token);
         if (typeof window !== "undefined") {
+          this.rememberSessionUser(data.access_token);
           window.dispatchEvent(new Event("auth:refreshed"));
         }
         return "refreshed";

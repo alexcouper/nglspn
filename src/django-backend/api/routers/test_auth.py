@@ -180,7 +180,7 @@ class TestRefreshToken:
     def test_refresh_with_access_token_returns_401(self, client, access_token) -> None:
         response = refresh_with_cookie(client, access_token)
 
-        assert_refresh_rejected(response, "Invalid token type")
+        assert_refresh_rejected(response, "Invalid or expired refresh token")
 
     def test_refresh_with_nonexistent_user_returns_401(self, client, user) -> None:
         refresh_token = create_refresh_token(user)
@@ -280,6 +280,81 @@ class TestPasswordResetEndsOtherSessions:
         response = client.get("/api/auth/me", **auth_headers)
 
         assert_that(response.status_code, equal_to(200))
+
+
+# A page on another site can make the victim's browser submit a login for the
+# attacker's account. Nothing in the response is readable to it, but the
+# Set-Cookie would be stored first-party and the victim would be operating the
+# attacker's account from then on. Two independent layers stop it.
+class TestCrossSiteLogin:
+    def test_form_post_with_valid_credentials_is_refused_and_sets_no_cookie(
+        self, client, user
+    ) -> None:
+        # What `<form enctype="text/plain">` delivers: a JSON-shaped body under a
+        # content type a form can send, with no CORS preflight. The form field
+        # name is everything before the `=`, the value the trailing `"}`.
+        body = f'{{"email":"{user.email}","password":"testpassword123","x":"="}}'
+        response = client.post("/api/auth/login", data=body, content_type="text/plain")
+
+        assert_that(response.status_code, equal_to(400))
+        assert_leaves_refresh_cookie_alone(response)
+
+    def test_urlencoded_form_post_is_refused(self, client, user) -> None:
+        response = client.post(
+            "/api/auth/login",
+            data={"email": user.email, "password": "testpassword123"},
+        )
+
+        assert_that(response.status_code, equal_to(400))
+        assert_leaves_refresh_cookie_alone(response)
+
+    def test_browser_marked_cross_site_request_is_refused(self, client, user) -> None:
+        response = client.post(
+            "/api/auth/login",
+            data=json.dumps({"email": user.email, "password": "testpassword123"}),
+            content_type="application/json",
+            headers={"Sec-Fetch-Site": "cross-site"},
+        )
+
+        assert_that(response.status_code, equal_to(403))
+        assert_leaves_refresh_cookie_alone(response)
+
+    def test_same_site_request_is_allowed(self, client, user) -> None:
+        response = client.post(
+            "/api/auth/login",
+            data=json.dumps({"email": user.email, "password": "testpassword123"}),
+            content_type="application/json",
+            headers={"Sec-Fetch-Site": "same-site"},
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_sets_refresh_cookie(response)
+
+    def test_cross_site_refresh_is_refused(self, client, refresh_token) -> None:
+        client.cookies[settings.REFRESH_COOKIE_NAME] = refresh_token
+
+        response = client.post(
+            "/api/auth/refresh",
+            data="",
+            content_type="application/json",
+            headers={"Sec-Fetch-Site": "cross-site"},
+        )
+
+        assert_that(response.status_code, equal_to(403))
+        assert_leaves_refresh_cookie_alone(response)
+
+    def test_cross_site_logout_is_refused(self, client, refresh_token) -> None:
+        client.cookies[settings.REFRESH_COOKIE_NAME] = refresh_token
+
+        response = client.post(
+            "/api/auth/logout",
+            data="",
+            content_type="application/json",
+            headers={"Sec-Fetch-Site": "cross-site"},
+        )
+
+        assert_that(response.status_code, equal_to(403))
+        assert_leaves_refresh_cookie_alone(response)
 
 
 class TestLogin:

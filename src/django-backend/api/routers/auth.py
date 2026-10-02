@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from django.contrib.auth import authenticate
-from django.http import HttpRequest, HttpResponse
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from ninja import Router
 
 from api.auth.cookies import (
@@ -13,6 +13,7 @@ from api.auth.cookies import (
     read_refresh_cookie,
     set_refresh_cookie,
 )
+from api.auth.cross_site import reject_cross_site
 from api.auth.jwt import (
     create_access_token,
     create_refresh_token,
@@ -110,13 +111,20 @@ def register(
 
 
 @router.post(
-    "/login", response={200: Token, 401: Error, 429: Error}, tags=["Authentication"]
+    "/login",
+    response={200: Token, 401: Error, 403: Error, 429: Error},
+    tags=["Authentication"],
 )
 def login(
     request: HttpRequest,
     response: HttpResponse,
     payload: LoginRequest,
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
+    # Sets a cookie, so a forged cross-site request must not get this far.
+    cross_site_response = reject_cross_site(request)
+    if cross_site_response:
+        return cross_site_response
+
     rate_limit_response = check_rate_limit(request, "login", "5/m")
     if rate_limit_response:
         return rate_limit_response
@@ -151,21 +159,22 @@ def login(
 
 @router.post(
     "/refresh",
-    response={200: AccessToken, 401: Error},
+    response={200: AccessToken, 401: Error, 403: Error},
     tags=["Authentication"],
 )
 def refresh_token_endpoint(
     request: HttpRequest,
     response: HttpResponse,
 ) -> dict[str, str] | tuple[int, dict[str, str]]:
+    cross_site_response = reject_cross_site(request)
+    if cross_site_response:
+        return cross_site_response
+
     token = read_refresh_cookie(request)
     token_payload = verify_token(token) if token else None
 
-    if not token_payload:
+    if not token_payload or token_payload.get("type") != "refresh":
         return 401, {"detail": "Invalid or expired refresh token"}
-
-    if token_payload.get("type") != "refresh":
-        return 401, {"detail": "Invalid token type"}
 
     try:
         user = REPO.users.get_by_id(UUID(token_payload["user_id"]))
@@ -187,8 +196,14 @@ def refresh_token_endpoint(
     return {"access_token": create_access_token(user.id), "token_type": "bearer"}
 
 
-@router.post("/logout", response={204: None}, tags=["Authentication"])
-def logout(request: HttpRequest, response: HttpResponse) -> tuple[int, None]:
+@router.post("/logout", response={204: None, 403: Error}, tags=["Authentication"])
+def logout(
+    request: HttpRequest, response: HttpResponse
+) -> tuple[int, None] | JsonResponse:
+    cross_site_response = reject_cross_site(request)
+    if cross_site_response:
+        return cross_site_response
+
     # No auth: an expired access token must not stop someone logging out. The
     # token itself is not revoked (nothing is stored to revoke); this only
     # removes it from the browser, which a script cannot do to an HttpOnly

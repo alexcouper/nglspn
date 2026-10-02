@@ -3,6 +3,7 @@ from typing import Any
 from django.http import HttpRequest
 from ninja import NinjaAPI
 
+from api.parser import JsonOnlyParser
 from api.routers import (
     articles,
     auth,
@@ -23,6 +24,7 @@ api = NinjaAPI(
     title="Project Showcase API",
     description="API for developer project showcasing platform",
     version="1.0.0",
+    parser=JsonOnlyParser(),
 )
 
 # Add routers

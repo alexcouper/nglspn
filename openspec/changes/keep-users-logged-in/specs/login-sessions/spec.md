@@ -112,6 +112,29 @@ cancel that.
 - **WHEN** the user logged out while the backend was unreachable and later loads a page
 - **THEN** the logout is sent again and the session is not restored
 
+### Requirement: Cross-site requests cannot set or change the cookie
+The API SHALL refuse a request body that is not declared `application/json`.
+The login, refresh and logout endpoints SHALL refuse a request the browser
+marks as coming from another site. A refresh that would change the user the
+web UI knows the session belongs to SHALL end the session rather than switch
+it, and SHALL ask the backend to expire the cookie.
+
+#### Scenario: Forged form login plants no cookie
+- **WHEN** a cross-site HTML form posts valid credentials for another account to the login endpoint as `text/plain`
+- **THEN** the request is rejected and no refresh-token cookie is set
+
+#### Scenario: Browser-marked cross-site login is refused
+- **WHEN** the login endpoint receives a request with `Sec-Fetch-Site: cross-site`
+- **THEN** it responds HTTP 403 and sets no cookie
+
+#### Scenario: Same-site login is unaffected
+- **WHEN** the login endpoint receives a request with `Sec-Fetch-Site: same-site`
+- **THEN** it behaves as for any login
+
+#### Scenario: Refresh comes back as another user
+- **WHEN** the web UI knows the session user and a refresh returns an access token for someone else
+- **THEN** the new token is discarded, the access token is cleared, a logout is sent and the header shows the logged-out state
+
 ### Requirement: Logout endpoint clears the cookie
 There SHALL be a logout endpoint that expires the refresh-token cookie. It SHALL
 succeed whether or not a cookie was present. The web UI's logout action SHALL

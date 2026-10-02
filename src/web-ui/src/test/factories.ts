@@ -17,6 +17,16 @@ export function seedAccessToken(token: string = makeAccessToken()): string {
   return token;
 }
 
+/**
+ * An access token shaped like the backend's: a JWT whose payload names the
+ * user. The signature is nonsense; the client never checks it.
+ */
+export function makeAccessTokenFor(userId: string): string {
+  const encode = (value: unknown) =>
+    btoa(JSON.stringify(value)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+  return `${encode({ alg: "HS256", typ: "JWT" })}.${encode({ user_id: userId, type: "access" })}.signature`;
+}
+
 /** A refresh token left behind by a build that kept it in localStorage. */
 export function seedLegacyRefreshToken(): string {
   tokenCounter += 1;

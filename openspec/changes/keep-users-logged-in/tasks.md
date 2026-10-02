@@ -45,6 +45,14 @@ Design: [`design.md`](design.md).
 - [x] 2.6 Run `make extract-openapi`, commit `src/web-ui/backend-openapi.json`,
   and verify `make extra-tests` and `make test` pass in `src/django-backend/`.
 
+- [x] 2.7 Login CSRF (found in review): a cross-site `text/plain` form post
+  reaches the login endpoint without a preflight and would plant the
+  attacker's cookie. Add `api/parser.py` (JSON content type required, set on
+  `NinjaAPI`) and `api/auth/cross_site.py` (`Sec-Fetch-Site: cross-site` →
+  403 on login, refresh, logout). Tests in `test_auth.py`: `text/plain` and
+  urlencoded form posts with valid credentials get 400 and no `Set-Cookie`;
+  cross-site 403 on all three; same-site allowed. Regenerate OpenAPI.
+
 ## 3. Web UI: API client
 
 - [x] 3.1 `src/lib/api/base.ts`: stop storing `refresh_token` and delete a
@@ -63,6 +71,13 @@ Design: [`design.md`](design.md).
   Verify `make test` in `src/web-ui/`.
 - [x] 3.3 `npm run generate-types` and fix any type errors from the changed
   `Token` schema; verify `make lint` passes.
+
+- [x] 3.4 Pin the session user (found in review): `base.ts` remembers the
+  `user_id` claim of the access token in localStorage; a refresh that returns
+  a token for another user is treated as `invalid`, the new token is never
+  stored and a logout is sent to expire the foreign cookie. Tests in
+  `base.test.ts` for same user, different user, nothing remembered, and
+  logout forgetting the user.
 
 ## 4. Web UI: auth context and startup recovery
 

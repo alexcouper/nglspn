@@ -5,7 +5,11 @@ import {
   AuthExpiredError,
   AuthTransientError,
 } from "./base";
-import { seedAccessToken, seedLegacyRefreshToken } from "@/test/factories";
+import {
+  makeAccessTokenFor,
+  seedAccessToken,
+  seedLegacyRefreshToken,
+} from "@/test/factories";
 import {
   expectLoggedOut,
   expectNoStoredRefreshToken,
@@ -26,6 +30,7 @@ const refreshRejected = () =>
   jsonResponse({ status: 401, body: { detail: "Invalid or expired refresh token" } });
 const refreshUnavailable = () =>
   jsonResponse({ status: 503, body: { detail: "Service Unavailable" } });
+const logoutSucceeds = () => new Response(null, { status: 204 });
 
 function refreshRequests(fetchMock: FetchMock) {
   return requestsTo(fetchMock, "/api/auth/refresh");
@@ -314,6 +319,81 @@ describe("APIClient", () => {
       expectNoStoredRefreshToken();
     });
 
+  });
+
+  // The refresh cookie is set by the API host, and a forged cross-site login
+  // could plant another account's cookie in this browser. The backend refuses
+  // such logins; this is the client's own check that a refresh never quietly
+  // changes who the person is.
+  describe("when a refresh comes back as a different user", () => {
+    const sessionFor = (userId: string) => {
+      client.setSession(makeAccessTokenFor(userId));
+    };
+    const refreshAs = (userId: string) =>
+      jsonResponse({ body: { access_token: makeAccessTokenFor(userId), token_type: "bearer" } });
+
+    it("keeps the session when the user is the same", async () => {
+      sessionFor("user-1");
+      mockFetchSequence(accessExpired(), refreshAs("user-1"), jsonResponse({ body: {} }));
+
+      await client.request("/api/anything");
+
+      expect(client.isAuthenticated()).toBe(true);
+      expect(localStorage.getItem("access_token")).toBe(makeAccessTokenFor("user-1"));
+    });
+
+    it("ends the session instead of switching user", async () => {
+      sessionFor("user-1");
+      mockFetchSequence(accessExpired(), refreshAs("user-2"), logoutSucceeds());
+
+      const err = await client.request("/api/anything").catch((e) => e);
+
+      expect(err).toBeInstanceOf(AuthExpiredError);
+      expectLoggedOut();
+    });
+
+    it("never stores the other user's access token", async () => {
+      sessionFor("user-1");
+      mockFetchSequence(accessExpired(), refreshAs("user-2"), logoutSucceeds());
+
+      await client.request("/api/anything").catch(() => {});
+
+      expect(localStorage.getItem("access_token")).toBeNull();
+      expect(client.isAuthenticated()).toBe(false);
+    });
+
+    it("asks the backend to expire the foreign cookie", async () => {
+      sessionFor("user-1");
+      const fetchMock = mockFetchSequence(accessExpired(), refreshAs("user-2"), logoutSucceeds());
+
+      await client.request("/api/anything").catch(() => {});
+
+      const [logout] = requestsTo(fetchMock, "/api/auth/logout");
+      expect(logout).toBeDefined();
+      expect(logout.init.credentials).toBe("include");
+    });
+
+    it("accepts any user when nothing is remembered, and remembers it", async () => {
+      // Storage was purged; the cookie is the only thing left.
+      localStorage.clear();
+      client = new APIClient();
+      mockFetchSequence(refreshAs("user-1"));
+
+      await client.refreshSession();
+
+      expect(client.isAuthenticated()).toBe(true);
+      mockFetchSequence(accessExpired(), refreshAs("user-2"), logoutSucceeds());
+      await expect(client.request("/api/anything")).rejects.toBeInstanceOf(AuthExpiredError);
+    });
+
+    it("forgets the user on logout so another account can log in", () => {
+      sessionFor("user-1");
+
+      client.clearTokens();
+      sessionFor("user-2");
+
+      expect(localStorage.getItem("session_user_id")).toBe("user-2");
+    });
   });
 
   describe("on construction", () => {

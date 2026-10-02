@@ -103,11 +103,34 @@ ITP purposes, and it is set by an HTTP response rather than script, so the
 7-day cap does not apply. In dev both hosts are `localhost`; cookies ignore
 ports.
 
-CSRF on the auth endpoints: `SameSite=Lax` stops a cross-site POST from
-carrying the cookie at all. Belt and braces, every call sends
-`Content-Type: application/json`, which forces a preflight that a foreign
-origin fails. A CSRF'd refresh would in any case return an access token to a
-response the attacker cannot read. No CSRF token is added.
+CSRF on the auth endpoints has two halves. A forged *refresh* is harmless:
+`SameSite=Lax` keeps the cookie off a cross-site POST, and the access token
+would land in a response the attacker cannot read. A forged *login* is not:
+`SameSite` only governs when a cookie is sent, never whether a response may
+store one, so a cross-site login for the attacker's account would plant the
+attacker's refresh cookie in the victim's browser, and the victim's next
+refresh would quietly make them the attacker (login CSRF). Ninja marks every
+view `csrf_exempt` and parses any body as JSON, so an HTML form with
+`enctype="text/plain"` can deliver a valid login body with no preflight. An
+earlier version of this section assumed the JSON content type forced a
+preflight; a top-level form post never preflights.
+
+Three layers, none a CSRF token:
+
+- `api/parser.py` refuses any body not declared `application/json`. A form
+  cannot send that header; a `fetch` that does is preflighted and refused by
+  CORS, whose origin list is already exact in prod. This covers every
+  endpoint.
+- `api/auth/cross_site.py` returns 403 on login, refresh and logout when the
+  browser's `Sec-Fetch-Site` says `cross-site`. `same-site` covers
+  `naglasupan.is` → `api.naglasupan.is`; a request with no header (curl, the
+  Next.js server, old browsers) passes, so this is the second layer, not the
+  first.
+- The web UI remembers the session's `user_id` (from the access token's
+  payload, unverified; the backend verifies) and treats a refresh that comes
+  back as someone else as the session ending: it sends a logout to expire the
+  foreign cookie and clears its own state. A refresh can never change who the
+  person is without a visible re-login.
 
 `Path=/api/auth` means the cookie rides on login, refresh, logout, `/me` and
 the password endpoints. Only refresh reads it. Narrowing to `/api/auth/refresh`

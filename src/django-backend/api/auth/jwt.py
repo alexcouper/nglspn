@@ -100,10 +100,7 @@ def verify_refresh_token(token: str, user: "AbstractUser") -> datetime | None:
     if payload.get("user_id") != str(user.id):
         return None
 
-    # Tokens minted before sliding sessions carry neither `auth_time` nor
-    # `pwv`: the session start falls back to `iat` and a missing `pwv` is
-    # accepted. Both fallbacks go once those tokens have aged out.
-    started = payload.get("auth_time", payload.get("iat"))
+    started = payload.get("auth_time")
     if started is None:
         return None
 
@@ -113,7 +110,7 @@ def verify_refresh_token(token: str, user: "AbstractUser") -> datetime | None:
         return None
 
     pwv = payload.get("pwv")
-    if pwv is not None and not constant_time_compare(pwv, user.get_session_auth_hash()):
+    if pwv is None or not constant_time_compare(pwv, user.get_session_auth_hash()):
         return None
 
     return auth_time

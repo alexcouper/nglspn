@@ -30,7 +30,6 @@ from api.schemas.auth import (
     ForgotPasswordVerifyRequest,
     ForgotPasswordVerifyResponse,
     LoginRequest,
-    RefreshRequest,
     ResendVerificationResponse,
     ResetPasswordRequest,
     ResetPasswordResponse,
@@ -158,13 +157,8 @@ def login(
 def refresh_token_endpoint(
     request: HttpRequest,
     response: HttpResponse,
-    payload: RefreshRequest | None = None,
 ) -> dict[str, str] | tuple[int, dict[str, str]]:
-    # The cookie is the only source once it exists. The body is read just for
-    # browsers that logged in before the cookie did; answering them with the
-    # cookie migrates them. Remove the fallback once those tokens have expired.
-    token = read_refresh_cookie(request) or (payload and payload.refresh_token)
-
+    token = read_refresh_cookie(request)
     token_payload = verify_token(token) if token else None
 
     if not token_payload:

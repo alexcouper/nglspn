@@ -84,20 +84,21 @@ class TestVerifyRefreshToken:
 
         assert_rejected(token, user)
 
-    def test_legacy_token_without_the_new_claims_is_accepted(self, user):
-        token = make_refresh_token(user, legacy=True, issued_ago=timedelta(days=3))
+    def test_token_without_a_login_time_is_rejected(self, user):
+        assert_rejected(make_refresh_token(user, without=("auth_time",)), user)
 
-        assert_accepted(token, user)
+    def test_token_without_a_password_version_is_rejected(self, user):
+        assert_rejected(make_refresh_token(user, without=("pwv",)), user)
 
-    def test_legacy_token_counts_its_session_from_when_it_was_issued(self, user):
-        issued_ago = timedelta(days=3)
-        token = make_refresh_token(user, legacy=True, issued_ago=issued_ago)
+    def test_session_start_is_the_login_time(self, user):
+        logged_in_ago = timedelta(days=100)
+        token = make_refresh_token(user, logged_in_ago=logged_in_ago)
 
         session_start = verify_refresh_token(token, user)
 
         assert_that(
             seconds_since(session_start),
-            close_to(issued_ago.total_seconds(), delta=5),
+            close_to(logged_in_ago.total_seconds(), delta=5),
         )
 
     def test_login_time_is_preserved_across_reissue(self, user):

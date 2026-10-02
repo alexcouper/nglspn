@@ -17,17 +17,6 @@ class LoginRequest(Schema):
     password: str
 
 
-class RefreshRequest(Schema):
-    """Transition path only: the refresh token normally arrives as a cookie.
-
-    Browsers that logged in before the cookie existed still hold the token in
-    localStorage and send it here once. Remove together with the body fallback
-    in the refresh endpoint.
-    """
-
-    refresh_token: str | None = None
-
-
 class VerifyEmailRequest(Schema):
     code: str
 

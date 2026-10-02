@@ -75,23 +75,42 @@ cookie.
 - **WHEN** page script reads `document.cookie`
 - **THEN** the refresh-token cookie is not present in the result
 
-### Requirement: Legacy body refresh during transition
-For one release after this change ships, the refresh endpoint SHALL accept a
-refresh token in the JSON body when no cookie is present, and SHALL respond by
-setting the cookie so the browser is migrated. The web UI SHALL send a refresh
-token it still holds in localStorage exactly once, then delete it.
+### Requirement: Refresh tokens issued before the cookie are rejected
+The refresh endpoint SHALL read the token only from the cookie and SHALL
+ignore a token in the request body. A refresh token without the login-time and
+password-version claims SHALL be rejected. The web UI SHALL delete any refresh
+token it finds in localStorage.
 
-#### Scenario: Browser logged in before the change keeps its session
-- **WHEN** the refresh endpoint is called with no cookie and a valid refresh token in the body
-- **THEN** it responds HTTP 200 with a new access token and sets the refresh-token cookie
+#### Scenario: Token in the body is ignored
+- **WHEN** the refresh endpoint is called with no cookie and a valid refresh token in the JSON body
+- **THEN** it responds HTTP 401
 
-#### Scenario: Cookie takes precedence over the body
-- **WHEN** both a cookie and a body token are present
-- **THEN** only the cookie is verified
+#### Scenario: Token without the new claims
+- **WHEN** a refresh token carries no login time or no password version
+- **THEN** the refresh is rejected with HTTP 401
 
-#### Scenario: Web UI drops the stored token after migrating
-- **WHEN** the web UI has a refresh token in localStorage at startup
-- **THEN** it sends it once in the refresh body, and afterwards no refresh token remains in localStorage whether or not that refresh succeeded
+#### Scenario: Stale token in localStorage is removed
+- **WHEN** the web UI starts with a refresh token in localStorage
+- **THEN** the key is removed and no request carries its value
+
+### Requirement: A session is restored from the cookie alone
+When the web UI starts without an access token it SHALL ask the refresh
+endpoint once. A new access token restores the session; HTTP 401 means there is
+no session. A logout whose request did not reach the backend SHALL be repeated
+on a later start before any restore is attempted, and a successful login SHALL
+cancel that.
+
+#### Scenario: localStorage was purged but the cookie remains
+- **WHEN** a page loads with no access token and a valid refresh-token cookie
+- **THEN** the header shows the signed-in user without visiting the login page
+
+#### Scenario: No session at all
+- **WHEN** a page loads with no access token and no cookie
+- **THEN** one refresh request is made and the header shows the logged-out state
+
+#### Scenario: Logout that never reached the backend
+- **WHEN** the user logged out while the backend was unreachable and later loads a page
+- **THEN** the logout is sent again and the session is not restored
 
 ### Requirement: Logout endpoint clears the cookie
 There SHALL be a logout endpoint that expires the refresh-token cookie. It SHALL

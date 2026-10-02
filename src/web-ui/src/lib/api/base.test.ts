@@ -258,85 +258,6 @@ describe("APIClient", () => {
     });
   });
 
-  describe("when a refresh token is still in localStorage from before the cookie", () => {
-    let legacyToken: string;
-
-    beforeEach(() => {
-      legacyToken = seedLegacyRefreshToken();
-      client = new APIClient();
-    });
-
-    it("sends it in the refresh body so the backend can move it into the cookie", async () => {
-      const fetchMock = mockFetchSequence(
-        accessExpired(),
-        refreshSucceeds(),
-        jsonResponse({ body: {} }),
-      );
-
-      await client.request("/api/anything");
-
-      const [{ init }] = refreshRequests(fetchMock);
-      expect(JSON.parse(init.body as string)).toEqual({ refresh_token: legacyToken });
-      expect(init.credentials).toBe("include");
-    });
-
-    it("removes the stored copy once the refresh succeeds", async () => {
-      mockFetchSequence(accessExpired(), refreshSucceeds(), jsonResponse({ body: {} }));
-
-      await client.request("/api/anything");
-
-      expectNoStoredRefreshToken();
-    });
-
-    it("removes the stored copy when the refresh is rejected", async () => {
-      mockFetchSequence(accessExpired(), refreshRejected());
-
-      await client.request("/api/anything").catch(() => {});
-
-      expectNoStoredRefreshToken();
-    });
-
-    it("removes the stored copy when the refresh fails transiently", async () => {
-      mockFetchSequence(accessExpired(), networkError("offline"));
-
-      await client.request("/api/anything").catch(() => {});
-
-      expectNoStoredRefreshToken();
-    });
-
-    it("sends it only once", async () => {
-      const fetchMock = mockFetchSequence(
-        accessExpired(),
-        refreshUnavailable(),
-        accessExpired(),
-        refreshSucceeds(),
-        jsonResponse({ body: {} }),
-      );
-
-      await client.request("/api/anything").catch(() => {});
-      await client.request("/api/anything");
-
-      const [first, second] = refreshRequests(fetchMock);
-      expect(first.init.body).toBeDefined();
-      expect(second.init.body).toBeUndefined();
-    });
-
-    it("is not handed to a client created after the migration", async () => {
-      mockFetchSequence(accessExpired(), refreshSucceeds(), jsonResponse({ body: {} }));
-      await client.request("/api/anything");
-
-      const laterClient = new APIClient();
-      const fetchMock = mockFetchSequence(
-        accessExpired(),
-        refreshSucceeds(),
-        jsonResponse({ body: {} }),
-      );
-      await laterClient.request("/api/anything");
-
-      expect(refreshRequests(fetchMock)[0].init.body).toBeUndefined();
-    });
-  });
-
   describe("when no refresh token is held locally", () => {
     // The refresh token is an HttpOnly cookie now: script cannot see whether
     // one exists, so the only way to find out is to ask.
@@ -393,20 +314,15 @@ describe("APIClient", () => {
       expectNoStoredRefreshToken();
     });
 
-    it("discards a refresh token left over from before the cookie", async () => {
-      seedLegacyRefreshToken();
-      client = new APIClient();
+  });
 
-      client.setSession(newAccess);
+  describe("on construction", () => {
+    it("removes a refresh token left in localStorage by an older build", () => {
+      seedLegacyRefreshToken();
+
+      new APIClient();
 
       expectNoStoredRefreshToken();
-      const fetchMock = mockFetchSequence(
-        accessExpired(),
-        refreshSucceeds(),
-        jsonResponse({ body: {} }),
-      );
-      await client.request("/api/anything");
-      expect(refreshRequests(fetchMock)[0].init.body).toBeUndefined();
     });
   });
 });

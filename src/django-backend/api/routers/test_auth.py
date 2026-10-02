@@ -60,14 +60,6 @@ def refresh_with_cookie(client, token):
     return post_without_body(client, "/api/auth/refresh")
 
 
-def refresh_with_body(client, token):
-    return client.post(
-        "/api/auth/refresh",
-        data=json.dumps({"refresh_token": token}),
-        content_type="application/json",
-    )
-
-
 def reset_password(client, user, new_password):
     return client.post(
         "/api/auth/reset-password",
@@ -146,48 +138,16 @@ class TestRefreshToken:
             equal_to(verify_token(token)["auth_time"]),
         )
 
-    def test_body_token_without_cookie_refreshes_and_sets_the_cookie(
-        self, client, user, refresh_token
-    ) -> None:
-        response = refresh_with_body(client, refresh_token)
-
-        assert_refreshed_for(response, user)
-
-    def test_legacy_body_token_without_the_new_claims_is_migrated(
-        self, client, user
-    ) -> None:
-        legacy_token = make_refresh_token(
-            user, legacy=True, issued_ago=timedelta(days=3)
-        )
-
-        response = refresh_with_body(client, legacy_token)
-
-        assert_refreshed_for(response, user)
-
-    def test_cookie_wins_over_body(self, client, user, other_user) -> None:
-        client.cookies[settings.REFRESH_COOKIE_NAME] = create_refresh_token(user)
-
-        response = refresh_with_body(client, create_refresh_token(other_user))
-
-        assert_refreshed_for(response, user)
-
-    def test_invalid_cookie_is_not_rescued_by_a_valid_body_token(
-        self, client, refresh_token
-    ) -> None:
-        client.cookies[settings.REFRESH_COOKIE_NAME] = "invalid-token"
-
-        response = refresh_with_body(client, refresh_token)
-
-        assert_refresh_rejected(response)
-
     def test_refresh_without_any_token_returns_401(self, client, db) -> None:
         response = post_without_body(client, "/api/auth/refresh")
 
         assert_refresh_rejected(response, "Invalid or expired refresh token")
 
-    def test_refresh_with_empty_json_body_returns_401(self, client, db) -> None:
+    def test_token_in_the_body_is_ignored(self, client, refresh_token) -> None:
         response = client.post(
-            "/api/auth/refresh", data="{}", content_type="application/json"
+            "/api/auth/refresh",
+            data=json.dumps({"refresh_token": refresh_token}),
+            content_type="application/json",
         )
 
         assert_refresh_rejected(response, "Invalid or expired refresh token")

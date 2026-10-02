@@ -64,26 +64,27 @@ def make_refresh_token(
     *,
     issued_ago=timedelta(0),
     logged_in_ago=None,
-    legacy=False,
+    without=(),
 ):
     """A refresh token as it would look had it been minted `issued_ago` ago.
 
     `logged_in_ago` backdates the password login the session started with
-    (default: the same moment the token was issued). `legacy=True` omits the
-    `auth_time` and `pwv` claims, as tokens minted before sliding sessions did.
+    (default: the same moment the token was issued). `without` names claims to
+    leave out.
     """
     now = datetime.now(tz=UTC)
     issued = now - issued_ago
+    logged_in = issued if logged_in_ago is None else now - logged_in_ago
     payload = {
         "user_id": str(user.id),
         "exp": issued + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS),
         "iat": issued,
         "type": "refresh",
+        "auth_time": int(logged_in.timestamp()),
+        "pwv": user.get_session_auth_hash(),
     }
-    if not legacy:
-        logged_in = issued if logged_in_ago is None else now - logged_in_ago
-        payload["auth_time"] = int(logged_in.timestamp())
-        payload["pwv"] = user.get_session_auth_hash()
+    for claim in without:
+        del payload[claim]
     return jwt.encode(
         payload,
         settings.JWT_SECRET_KEY,

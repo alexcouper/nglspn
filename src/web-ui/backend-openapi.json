@@ -163,24 +163,7 @@
         },
         "tags": [
           "Authentication"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "anyOf": [
-                  {
-                    "$ref": "#/components/schemas/RefreshRequest"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              }
-            }
-          },
-          "required": false
-        }
+        ]
       }
     },
     "/api/auth/logout": {
@@ -4989,24 +4972,6 @@
           "access_token"
         ],
         "title": "AccessToken",
-        "type": "object"
-      },
-      "RefreshRequest": {
-        "description": "Transition path only: the refresh token normally arrives as a cookie.\n\nBrowsers that logged in before the cookie existed still hold the token in\nlocalStorage and send it here once. Remove together with the body fallback\nin the refresh endpoint.",
-        "properties": {
-          "refresh_token": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Refresh Token"
-          }
-        },
-        "title": "RefreshRequest",
         "type": "object"
       },
       "ArticleEmailFrequency": {

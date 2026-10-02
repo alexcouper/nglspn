@@ -17,11 +17,7 @@ export function seedAccessToken(token: string = makeAccessToken()): string {
   return token;
 }
 
-/**
- * A refresh token left behind by a version of the web UI that kept it in
- * localStorage. Nothing stores one any more; only the one-shot migration to the
- * cookie reads it.
- */
+/** A refresh token left behind by a build that kept it in localStorage. */
 export function seedLegacyRefreshToken(): string {
   tokenCounter += 1;
   const token = `legacy-refresh-token-${tokenCounter}`;

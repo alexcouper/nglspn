@@ -28,10 +28,11 @@ any comparable site.
   access token stays in localStorage as today.
 - **BREAKING**: the login response no longer includes `refresh_token` in its
   body; it arrives as a `Set-Cookie` header instead. The refresh endpoint reads
-  the cookie and no longer requires a JSON body. The only client is the web
-  UI, which changes in the same PR. For one release the refresh endpoint also
-  accepts the old body form so that already-logged-in browsers migrate to the
-  cookie instead of being logged out by the deploy.
+  only the cookie and takes no JSON body. The only client is the web UI, which
+  changes in the same PR. Browsers logged in before the deploy hold a refresh
+  token the new backend no longer accepts, so each is logged out once, at its
+  next access-token expiry, and is then in for the new lifetimes. Accepted
+  over carrying a transition path.
 - **New `POST /api/auth/logout`** that clears the cookie, since a script cannot
   delete an `HttpOnly` cookie itself.
 - **The web UI keeps a valid session visible.** When the startup check for the
@@ -51,7 +52,7 @@ host, so they still cannot).
 
 - `login-sessions`: how a session is issued, extended, stored and ended:
   token lifetimes, the refresh-token cookie, rotation on refresh, the absolute
-  cap, logout, the legacy-body transition, and the web UI's handling of
+  cap, logout, session restore from the cookie, and the web UI's handling of
   transient failures at startup.
 
 ### Modified Capabilities
@@ -70,10 +71,10 @@ scenarios still hold when the token arrives as a cookie.
   absolute-cap and cookie settings.
 - `api/auth/jwt.py`: refresh tokens carry the original login time and a
   password-version claim; verification checks both.
-- `api/routers/auth.py`: login sets the cookie, refresh rotates it and reads it
-  (falling back to the body during the transition), new logout endpoint.
-- `api/schemas/auth.py`: `Token` loses `refresh_token`; `RefreshRequest`
-  becomes optional.
+- `api/routers/auth.py`: login sets the cookie, refresh reads and rotates it,
+  new logout endpoint.
+- `api/schemas/auth.py`: `Token` loses `refresh_token`; `RefreshRequest` is
+  removed.
 - **OpenAPI**: `make extract-openapi` and commit `src/web-ui/backend-openapi.json`,
   or `make extra-tests` fails.
 - No model change, so no migration.
@@ -81,10 +82,13 @@ scenarios still hold when the token arrives as a cookie.
 **Web UI** (`src/web-ui/`)
 
 - `src/lib/api/base.ts`: refresh, login and logout send credentials; the
-  refresh token is no longer stored; a successful refresh is announced so the
-  auth context can recover.
+  refresh token is no longer stored (a copy left by an older build is
+  deleted); a successful refresh is announced so the auth context can
+  recover; with no access token the client asks the backend once whether the
+  cookie still holds a session.
 - `src/contexts/auth.tsx`: transient failures at startup retry instead of
-  leaving the user null; logout calls the backend.
+  leaving the user null; logout calls the backend and remembers a logout that
+  did not reach it.
 - Tests in `base.test.ts`, `auth.test.tsx`, `test/factories.ts` and
   `test/helpers.ts` that assert on `refresh_token` in localStorage.
 - e2e specs read `access_token` from localStorage and keep working.

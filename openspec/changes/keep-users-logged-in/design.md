@@ -75,10 +75,8 @@ password-version claim (below) gives the user a way to cut it off.
   anyway, and the point is to end sessions, not to race a reset against an
   in-flight request.
 
-Tokens minted before this change have neither claim. `auth_time` falls back
-to `iat`; a missing `pwv` is accepted. Both fallbacks can be removed once the
-old tokens have aged out (7 days after deploy), together with the legacy body
-path.
+Both claims are required. Tokens minted before this change have neither and
+are rejected, which is the one-time forced re-login the proposal accepts.
 
 ### Refresh token in a host-only cookie on the API host
 
@@ -115,22 +113,30 @@ response the attacker cannot read. No CSRF token is added.
 the password endpoints. Only refresh reads it. Narrowing to `/api/auth/refresh`
 would need a second cookie path for logout to clear; not worth it.
 
-### Transition: accept the body for one release
+### No transition path
 
-Browsers logged in today hold a refresh token in localStorage and no cookie.
-If refresh only read the cookie, every one of them would be logged out on the
-first access-token expiry after the deploy, which is the opposite of the
-point. So for one release:
+Browsers logged in before the deploy hold a refresh token in localStorage and
+no cookie. The refresh endpoint reads only the cookie, so each of them is
+logged out once, at its first access-token expiry after the deploy, and the
+`RefreshRequest` schema goes. A body fallback for one release was designed
+and then dropped: a single forced re-login was judged cheaper than carrying
+the fallback and the claim fallbacks that go with it, plus the follow-up to
+remove them. The web UI deletes the stale localStorage copy on startup, since
+it is a long-lived credential readable by any script.
 
-1. `/refresh` reads the cookie; if absent, reads `refresh_token` from the
-   body; verifies whichever it found; always sets the cookie on success.
-2. The web UI, on first refresh after the deploy, sends the localStorage
-   token in the body and deletes it from localStorage immediately, success or
-   not. From then on the cookie carries it.
+### Restoring a session with no access token
 
-The `RefreshRequest` schema keeps `refresh_token` as optional, and the
-follow-up that removes the body path also removes the schema. Both steps
-regenerate the OpenAPI file.
+The cookie is invisible to script, so an empty localStorage is not proof of
+no session: Safari purges localStorage after seven days without a visit and
+leaves the cookie. At startup with no access token the web UI calls
+`/refresh` once; a 200 restores the session, a 401 means anonymous. The cost
+is one 401 per full page load by an anonymous visitor.
+
+A logout whose request never reached the backend leaves the cookie behind,
+and this restore would sign the person straight back in. So `logout()`
+records `logout_pending` in localStorage first and clears it on success; a
+startup that finds the marker repeats the logout call instead of restoring,
+and a successful login clears it.
 
 ### Logout endpoint
 
@@ -180,11 +186,8 @@ logout cannot drift.
   must change to a proxy.
 - [Missing `Secure` in a non-DEBUG http deployment] → prod is https-only with
   HSTS. Dev runs with `DEBUG=True`.
-- [Legacy body path left in place forever] → tasks include the removal
-  follow-up with a named date, and the transition claims fallback is tied to
-  it.
-- [Two tabs both migrating a localStorage token in the body] → both succeed
-  (stateless), both receive the cookie, both delete the local copy.
+- [Every browser logged out once at deploy] → accepted; see "No transition
+  path". After that one re-login the new lifetimes apply.
 - [Startup retries hammer a backend that is coming back] → three attempts
   per tab with backoff, then event-driven only. Negligible.
 - [e2e helpers that log in through the API and stash tokens] → they call the
@@ -195,16 +198,12 @@ logout cannot drift.
 ## Migration Plan
 
 1. Deploy backend and web UI together (one image tag, as today).
-2. Already-logged-in browsers: first 401 after deploy → refresh with body
-   token → cookie set, local copy deleted. No user-visible effect.
+2. Already-logged-in browsers: first 401 after deploy → refresh rejected →
+   `/login` once. The stale localStorage token is deleted on the next load.
 3. Fresh logins get the cookie directly.
-4. After 7 days every pre-change refresh token has expired. Ship the
-   follow-up that removes the body path, the `RefreshRequest` schema, and the
-   `auth_time`/`pwv` fallbacks; regenerate OpenAPI.
-5. Rollback: revert the deploy. Browsers that migrated to the cookie hold no
-   localStorage refresh token and will be logged out on their next access
-   expiry; that is the only cost of a rollback and it is bounded to the
-   rollout window.
+4. Rollback: revert the deploy. Browsers that logged in after it hold no
+   localStorage refresh token and are logged out on their next access expiry;
+   that is the only cost of a rollback.
 
 ## Open Questions
 

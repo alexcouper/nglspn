@@ -7355,16 +7355,6 @@
                 "type": "null"
               }
             ]
-          },
-          "supersedes": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/FeedSupersededRef"
-              },
-              {
-                "type": "null"
-              }
-            ]
           }
         },
         "required": [
@@ -7375,8 +7365,7 @@
           "project",
           "competition",
           "article",
-          "discussion",
-          "supersedes"
+          "discussion"
         ],
         "title": "FeedEntryResponse",
         "type": "object"
@@ -7478,42 +7467,6 @@
           "icon_url"
         ],
         "title": "FeedProjectRef",
-        "type": "object"
-      },
-      "FeedSupersededRef": {
-        "description": "What the entry took the place of.\n\nCarries the flag an article-led entry renders above its headline: a winner\nwrite-up still reads as a competition winner, because that is what gives it\nits context.",
-        "properties": {
-          "kind": {
-            "title": "Kind",
-            "type": "string"
-          },
-          "competition": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/FeedCompetitionRef"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "project": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/FeedProjectRef"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "required": [
-          "kind",
-          "competition",
-          "project"
-        ],
-        "title": "FeedSupersededRef",
         "type": "object"
       },
       "ProjectCreate": {

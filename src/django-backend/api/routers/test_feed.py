@@ -29,12 +29,11 @@ def approved_project(**kwargs):
     )
 
 
-def published_article(*, published_at=None, about=None, title="A write-up"):
+def published_article(*, published_at=None, title="An update"):
     article = ArticleFactory(
         project=approved_project(),
         state=ArticleState.DRAFT,
         title=title,
-        about_feed_event=about,
     )
     return HANDLERS.articles.publish(article.id, published_at=published_at)
 
@@ -243,23 +242,6 @@ class TestFeedSubjectVisibility:
 
         assert entry_ids(get_feed(client)) == []
 
-    def test_a_write_up_stops_carrying_a_hidden_projects_details(self, client):
-        """The superseded side is served too, and it is a whole project ref.
-
-        Hiding the project has to reach it, or the feed keeps publishing the
-        title, tagline and icon of something the rest of the site 404s.
-        """
-        project = approved_project()
-        published_article(
-            about=FeedEvent.objects.get(project=project), title="How it was built"
-        )
-        assert get_feed(client)["lead"]["supersedes"] is not None
-
-        project.status = ProjectStatus.ICE_BOX
-        project.save(update_fields=["status"])
-
-        assert get_feed(client)["lead"]["supersedes"] is None
-
     def test_article_entry_disappears_with_its_project(self, client):
         article = published_article()
 
@@ -386,25 +368,6 @@ class TestFeedLead:
 
 @pytest.mark.django_db
 class TestFeedEntryShape:
-    def test_write_up_carries_the_flag_of_the_event_it_replaced(self, client):
-        competition = CompetitionFactory(winner=ProjectFactory())
-        winner_event = FeedEvent.objects.get(
-            competition=competition, kind=FeedEventKind.COMPETITION_WINNER
-        )
-
-        published_article(about=winner_event, title="How it was won")
-
-        payload = get_feed(client)
-        lead = payload["lead"]
-        assert lead["article"]["title"] == "How it was won"
-        assert lead["supersedes"]["kind"] == FeedEventKind.COMPETITION_WINNER
-        assert lead["supersedes"]["competition"]["name"] == competition.name
-
-    def test_standalone_article_has_no_superseded_context(self, client):
-        published_article()
-
-        assert get_feed(client)["lead"]["supersedes"] is None
-
     def test_tipoff_entry_is_distinguishable_from_a_new_project(self, client):
         approved_project(is_community_tipoff=True)
 
@@ -439,27 +402,11 @@ class TestFeedEntryShape:
         assert get_feed(client)["lead"]["article"]["listing_image_url"] is None
 
 
-def write_up_of_a_project() -> None:
-    """A write-up whose superseded event carries a project, icon and all.
-
-    The superseded side is serialised by the same code as a top-level entry, so
-    it needs the same prefetching. Kept in this fixture because a mix without it
-    cannot tell whether `supersedes` costs a query per row.
-    """
-    project = approved_project()
-    ProjectImageFactory(project=project, is_icon=True)
-    published_article(
-        about=FeedEvent.objects.get(project=project),
-        title=f"How {project.title} was built",
-    )
-
-
 def seed_one_of_each() -> None:
     published_article()
     ProjectImageFactory(project=approved_project(), is_icon=True)
     approved_project(is_community_tipoff=True)
     CompetitionFactory(winner=ProjectFactory())
-    write_up_of_a_project()
 
 
 def count_feed_queries(client) -> int:

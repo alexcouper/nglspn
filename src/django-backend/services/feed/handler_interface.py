@@ -57,16 +57,3 @@ class FeedHandlerInterface(ABC):
 
     @abstractmethod
     def set_pinned(self, event_id: UUID, *, pinned: bool) -> FeedEvent: ...
-
-    @abstractmethod
-    def link_article_to_event(
-        self,
-        article: Article,
-        event_id: UUID | None,
-    ) -> FeedEvent | None:
-        """Point an article's own event at the event it supersedes.
-
-        Returns the superseded event, or None when nothing was superseded —
-        either because no target was given, or because the target had already
-        been superseded once. Superseding is one-shot by design.
-        """

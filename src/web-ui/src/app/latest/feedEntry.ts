@@ -38,34 +38,26 @@ export interface RenderedEntry {
 /**
  * Flatten one feed entry into what a row renders.
  *
- * The three states of the design collapse here: an entry that carries an
- * article takes its headline from the article, and its flag from whatever
- * event it superseded — so a winner write-up still reads as a competition
- * winner. Everything else is a bare event.
+ * The two states of the design collapse here: an entry that carries an
+ * article takes its headline from the article and its flag from the article's
+ * project. Everything else is a bare event.
  */
 export function renderEntry(entry: FeedEntry): RenderedEntry {
   const article = entry.article;
-  const supersededKind = entry.supersedes?.kind;
 
   if (article) {
-    // An article about an event keeps the event's flag — a winner write-up
-    // still reads as a competition winner. Otherwise the project leads: which
-    // project an update is from is what makes it worth reading, and the channel
-    // it went out on is house plumbing.
-    const flag = supersededKind
-      ? (KIND_FLAGS[supersededKind] ?? article.project_title)
-      : article.project_title;
+    // The project leads: which project an update is from is what makes it
+    // worth reading, and the channel it went out on is house plumbing.
+    const flag = article.project_title;
     return {
       id: entry.id,
       flag,
       headline: article.title,
       summary: article.summary ?? "",
       href: articleHref(entry),
-      // Whatever the flag did not already say. The project is in both lines
-      // otherwise, which reads as a stutter.
-      meta: [article.project_title, article.channel_name]
-        .filter((part) => part && part !== flag)
-        .join(" · "),
+      // A channel named after its project would repeat the flag, which reads
+      // as a stutter.
+      meta: article.channel_name === flag ? "" : article.channel_name,
       imageUrl: article.listing_image_url ?? null,
       crop: article.listing_crop ?? null,
       imageShape: "listing",

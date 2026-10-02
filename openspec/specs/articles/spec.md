@@ -213,8 +213,6 @@ Authorisation ("may this user see it anyway") SHALL stay separate from visibilit
 
 Feed entries SHALL NOT be maintained on visibility changes. The entry is appended when the Article publishes and the read filter decides whether to serve it, so approving an Article writes nothing to `feed_events` and demoting one leaves `retired_at` untouched — that column means an admin withdrew an entry, which is a different fact.
 
-Supersession is the exception, because it is a claim about *another* entry. `link_article_to_event` SHALL hold a supersession only while the write-up is globally visible: a non-visible Article SHALL release whatever its entry supersedes, and take it again if it becomes visible. Without this the feed loses both entries — the bare event hidden as superseded, the write-up hidden as invisible. The `post_save` signal already re-runs on every Article save, so approval and demotion both re-evaluate the link.
-
 #### Scenario: An article awaiting review is not served publicly
 - **GIVEN** a published Article A in an approved project with `global_visibility = pending`
 - **WHEN** an anonymous client lists the project's articles or requests A by slug
@@ -245,16 +243,6 @@ Supersession is the exception, because it is a claim about *another* entry. `lin
 - **WHEN** an admin sets `global_visibility = demoted`
 - **THEN** the feed SHALL stop serving that event
 - **AND** the event's `retired_at` SHALL remain null
-
-#### Scenario: A write-up awaiting review supersedes nothing
-- **GIVEN** a feed event E and an Article A linked to it via `about_feed_event`, published with `global_visibility = pending`
-- **WHEN** the Latest feed is read
-- **THEN** E's `superseded_by` SHALL be null and the feed SHALL serve E
-
-#### Scenario: Demoting a write-up gives the superseded event back
-- **GIVEN** a globally visible Article A whose entry supersedes feed event E
-- **WHEN** an admin sets A's `global_visibility = demoted`
-- **THEN** E's `superseded_by` SHALL be null and the feed SHALL serve E again
 
 ### Requirement: Notification fan-out follows visibility
 
@@ -482,43 +470,6 @@ Notifications SHALL NOT be created for the Article's author (they don't need to 
 - **WHEN** A publishes an Article in P
 - **THEN** no Notification row SHALL be created with A as recipient for this Article
 
-### Requirement: Article links to the feed event it is about
-
-An Article SHALL be able to reference the platform event it is written about.
-The reference SHALL be settable by an administrator only, and SHALL NOT be
-settable through the publish API. The reference is optional.
-
-Setting the reference hides another party's entry from a site-wide feed, which
-makes it an editorial act rather than something an author performs on their own
-article. An author offered the choice at publish time can — by accident or
-otherwise — retire an entry that is nothing to do with them, and the API would
-have to police an event id it has no way to attribute. A missed link costs one
-duplicate pair in the feed, which is visible and correctable; a wrong link is
-neither.
-
-An Article with no reference is valid; it appears in the feed as a standalone
-entry. Superseding behaviour is defined by the `latest-feed` capability.
-
-#### Scenario: The publish API does not accept a reference
-- **GIVEN** a draft article and a live feed event
-- **WHEN** the author publishes the article
-- **THEN** the article publishes with no event reference, whatever the request
-  carries
-- **AND** the article appears in the feed as a standalone entry
-
-#### Scenario: Publishing without a reference
-- **GIVEN** a draft article about no platform event
-- **WHEN** the author publishes it
-- **THEN** the article publishes with no event reference and the publish is not
-  blocked
-
-#### Scenario: Administrator corrects a missed link
-- **GIVEN** a published article about a winner-announced event, published with no
-  reference
-- **WHEN** an administrator sets the reference
-- **THEN** the article's entry carries the event's flag
-- **AND** the bare event entry is retired
-
 ### Requirement: Article publish appends a feed event
 
 Publishing an Article SHALL append a feed event at the article's `published_at`.
@@ -545,5 +496,4 @@ Editing or deleting an Article after publish SHALL NOT append a further event.
 - **GIVEN** a published article with an entry in the feed
 - **WHEN** the article is deleted
 - **THEN** its entry no longer renders
-- **AND** any event it superseded returns to rendering as a bare event
 

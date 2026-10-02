@@ -32,7 +32,6 @@ function entry(overrides: Partial<FeedEntry> = {}): FeedEntry {
     competition: null,
     article: null,
     discussion: null,
-    supersedes: null,
     ...overrides,
   } as FeedEntry;
 }
@@ -115,43 +114,6 @@ describe("renderEntry", () => {
     );
 
     expect(rendered.meta).toBe("Updates");
-  });
-
-  it("keeps the project in the meta line when the event holds the flag", () => {
-    const rendered = renderEntry(
-      entry({
-        kind: "article_published",
-        article: articleRef({ channel_name: "Updates" }),
-        supersedes: {
-          kind: "competition_winner",
-          competition: competitionRef(),
-          project: null,
-        },
-      }),
-    );
-
-    expect(rendered.flag).toBe("Competition winner");
-    expect(rendered.meta).toBe("Naglasúpan · Updates");
-  });
-
-  it("keeps the superseded event's flag on a write-up", () => {
-    const rendered = renderEntry(
-      entry({
-        kind: "article_published",
-        article: articleRef(),
-        supersedes: {
-          kind: "competition_winner",
-          competition: competitionRef(),
-          project: null,
-        },
-      }),
-    );
-
-    expect(rendered.flag).toBe("Competition winner");
-    expect(rendered.headline).toBe("How Broadside won Chili");
-    expect(rendered.href).toBe(
-      "/projects/naglasupan/articles/how-broadside-won",
-    );
   });
 
   it("links a bare competition event by slug, as the rest of the site does", () => {

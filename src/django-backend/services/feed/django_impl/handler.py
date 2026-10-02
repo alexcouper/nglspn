@@ -171,60 +171,6 @@ class DjangoFeedHandler(FeedHandlerInterface):
                 event.save(update_fields=["is_pinned"])
         return event
 
-    def link_article_to_event(
-        self,
-        article: Article,
-        event_id: UUID | None,
-    ) -> FeedEvent | None:
-        """Point the event this article writes up at the article's own entry.
-
-        Two-way, because a supersession only holds while the write-up is being
-        served. An article awaiting review or demoted cannot stand in for what it
-        replaced — the bare event would be hidden as superseded and the article's
-        entry hidden as invisible, so the feed would show neither. Called from the
-        post_save signal, so approving or demoting the article re-runs this and
-        the link follows.
-        """
-        with transaction.atomic():
-            superseding = FeedEvent.objects.filter(article=article).first()
-            if superseding is None:
-                return None
-
-            # Hand back everything this write-up currently stands in for but no
-            # longer should — it is invisible again, or an admin re-pointed the
-            # link or cleared it. Nothing else can give a stale target back:
-            # `superseded_by` is readonly on the FeedEvent form, so an event left
-            # covered by the wrong write-up would stay out of the feed for good.
-            #
-            # The new target is spared so a re-save is a no-op rather than a
-            # release-and-retake, and so `link_article_to_event` stays idempotent
-            # under the post_save signal that calls it on every article write.
-            held = FeedEvent.objects.filter(superseded_by=superseding)
-            if article.is_globally_visible and event_id is not None:
-                held = held.exclude(pk=event_id)
-            held.update(superseded_by=None)
-
-            # Nothing to take: the article is not being served, or there is no
-            # link. An invisible one can take its target again on approval —
-            # the release above has just handed it back.
-            if not article.is_globally_visible or event_id is None:
-                return None
-
-            target = (
-                FeedEvent.objects.select_for_update()
-                .filter(pk=event_id, superseded_by__isnull=True)
-                .exclude(pk=superseding.pk)
-                .first()
-            )
-            # Already superseded once, or absent: the article stands on its own.
-            # Superseding is one-shot by design.
-            if target is None:
-                return None
-
-            target.superseded_by = superseding
-            target.save(update_fields=["superseded_by"])
-            return target
-
     def _append(
         self,
         kind: str,

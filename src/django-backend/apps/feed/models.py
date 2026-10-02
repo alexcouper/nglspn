@@ -36,7 +36,6 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
         """
         return self.filter(
             occurred_at__lte=timezone.now(),
-            superseded_by__isnull=True,
             retired_at__isnull=True,
         ).visible_subject()
 
@@ -76,16 +75,6 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
         # and that registry reaches back into this module.
         from services.images.django_impl.query import gallery_prefetch  # noqa: PLC0415
 
-        # The superseded side goes through the same visibility rule as the rows
-        # themselves. Without it a write-up keeps publishing the title, tagline
-        # and icon of the project whose entry it replaced, long after that
-        # project was rejected or iced — `renderable()` only reaches the row's
-        # own subject, not the one hanging off `supersedes`.
-        superseded = models.Prefetch(
-            "supersedes",
-            queryset=FeedEvent.objects.visible_subject(),
-        )
-
         return self.select_related(
             "project",
             "project__category",
@@ -104,20 +93,6 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
             # a row whose upload never completed.
             gallery_prefetch("project__images"),
             "project__images__variants",
-            # An article-led row renders the flag of the event it took the place
-            # of, so the reverse side is needed too — prefetched rather than
-            # walked per row.
-            superseded,
-            "supersedes__competition",
-            "supersedes__competition__winner",
-            "supersedes__project",
-            "supersedes__project__category",
-            # The superseded project is serialised by the same `_project_ref`
-            # as a top-level one, icon and all, so it needs the same gallery
-            # prefetch — otherwise every write-up of a project costs two extra
-            # queries and the page's cost stops being flat in the row count.
-            gallery_prefetch("supersedes__project__images"),
-            "supersedes__project__images__variants",
         )
 
 
@@ -126,8 +101,7 @@ class FeedEvent(models.Model):
 
     The stream is append-only and ordered by ``occurred_at``: an entry's
     position is fixed once written, which is what lets the read path paginate on
-    a stable cursor. A later write-up does not re-date its event — it appends
-    its own and points the older one at it via ``superseded_by``.
+    a stable cursor.
     """
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -163,18 +137,7 @@ class FeedEvent(models.Model):
         related_name="feed_events",
     )
 
-    # Points at the event that took this one's place. SET_NULL rather than
-    # CASCADE on purpose: deleting the superseding article deletes its event,
-    # and this row must come back into the feed rather than vanish with it.
-    superseded_by = models.ForeignKey(
-        "self",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="supersedes",
-    )
-    # Set when an admin withdraws an entry — distinct from being superseded,
-    # which is the system's own doing.
+    # Set when an admin withdraws an entry.
     retired_at = models.DateTimeField(null=True, blank=True)
     is_pinned = models.BooleanField(default=False)
 
@@ -191,10 +154,10 @@ class FeedEvent(models.Model):
                 name="feed_events_occurred_idx",
             ),
             # The read path always filters to renderable rows; a partial index
-            # keeps retired and superseded history out of the hot path.
+            # keeps retired history out of the hot path.
             models.Index(
                 fields=["-occurred_at"],
-                condition=Q(superseded_by__isnull=True, retired_at__isnull=True),
+                condition=Q(retired_at__isnull=True),
                 name="feed_events_live_idx",
             ),
         ]
@@ -247,9 +210,7 @@ class FeedEvent(models.Model):
         """What the entry is about, for admin labels.
 
         Kind and date alone do not identify a row — a week with two approvals
-        renders two identical "Project published @ 2026-08-14" options in the
-        `Article.about_feed_event` autocomplete, which is the one place someone
-        has to pick the right event out of a list.
+        would list two identical "Project published @ 2026-08-14" entries.
         """
         for candidate in (
             self.article,

@@ -45,19 +45,6 @@ class FeedDiscussionRef(Schema):
     excerpt: str
 
 
-class FeedSupersededRef(Schema):
-    """What the entry took the place of.
-
-    Carries the flag an article-led entry renders above its headline: a winner
-    write-up still reads as a competition winner, because that is what gives it
-    its context.
-    """
-
-    kind: str
-    competition: FeedCompetitionRef | None
-    project: FeedProjectRef | None
-
-
 class FeedEntryResponse(Schema):
     """One row of the feed.
 
@@ -73,7 +60,6 @@ class FeedEntryResponse(Schema):
     competition: FeedCompetitionRef | None
     article: FeedArticleRef | None
     discussion: FeedDiscussionRef | None
-    supersedes: FeedSupersededRef | None
 
     @staticmethod
     def resolve_project(obj: Any) -> dict[str, Any] | None:
@@ -111,18 +97,6 @@ class FeedEntryResponse(Schema):
             "project_slug": discussion.project.slug,
             "project_title": discussion.project.title,
             "excerpt": derive_summary(discussion.body),
-        }
-
-    @staticmethod
-    def resolve_supersedes(obj: Any) -> dict[str, Any] | None:
-        # Prefetched by REPO.feed — do not read this without with_sources().
-        superseded = next(iter(obj.supersedes.all()), None)
-        if superseded is None:
-            return None
-        return {
-            "kind": superseded.kind,
-            "competition": _competition_ref(superseded.competition),
-            "project": _project_ref(superseded.project),
         }
 
 

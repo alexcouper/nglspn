@@ -35,7 +35,6 @@ class FeedEventAdmin(admin.ModelAdmin):
         "kind",
         "occurred_at",
         "created_at",
-        "superseded_by",
         "is_pinned",
         "retired_at",
     )
@@ -52,8 +51,6 @@ class FeedEventAdmin(admin.ModelAdmin):
 
     @admin.display(description="State")
     def state(self, obj: FeedEvent) -> str:
-        if obj.superseded_by_id is not None:
-            return "superseded"
         if obj.retired_at is not None:
             return "retired"
         # Competition milestones are appended as soon as their date is known, so

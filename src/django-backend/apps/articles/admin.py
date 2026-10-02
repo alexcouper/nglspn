@@ -43,7 +43,6 @@ class ArticleAdmin(admin.ModelAdmin):
         "channel",
         "author",
         "listing_image",
-        "about_feed_event",
     )
 
     fieldsets = (
@@ -75,18 +74,6 @@ class ArticleAdmin(admin.ModelAdmin):
                 ),
             },
         ),
-        (
-            "Latest feed",
-            {
-                "fields": ("about_feed_event",),
-                "description": (
-                    "The platform event this article is a write-up of. Setting "
-                    "it retires the bare event so the feed shows one entry "
-                    "instead of two. Only takes effect while that event has "
-                    "not already been superseded."
-                ),
-            },
-        ),
         ("Render", {"fields": ("render_link",)}),
         ("Audit", {"fields": ("created_at", "updated_at")}),
     )
@@ -114,8 +101,8 @@ class ArticleAdmin(admin.ModelAdmin):
         self, request: HttpRequest, queryset: QuerySet[Article], value: str
     ) -> None:
         # Through the handler, not queryset.update(): approving stamps
-        # approved_at, enqueues the fan-out and re-runs the feed's supersession
-        # link, none of which a bulk write would do.
+        # approved_at and enqueues the fan-out, neither of which a bulk write
+        # would do.
         changed = 0
         for article in queryset:
             if article.global_visibility == value:

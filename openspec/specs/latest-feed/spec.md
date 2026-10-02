@@ -4,8 +4,7 @@
 The append-only stream of platform events rendered at `/latest`. Covers the
 `FeedEvent` model and its automatic appenders (article published, project
 approved, tipoff, competition milestones), admin promotion of a discussion,
-superseding — an article about an event replaces that event's entry rather than
-adding a second row — cursor paging, and the freshness-gated lead story.
+cursor paging, and the freshness-gated lead story.
 
 ## Requirements
 ### Requirement: Latest tab and route
@@ -31,35 +30,28 @@ landing view: `/` continues to redirect to `/projects`, not to `/latest`.
 
 ### Requirement: Feed entry states
 
-Each feed entry SHALL render as one of three states, sharing a single row
-component: a bare event (flag, title, date), an event with a write-up (event
-flag, article headline, listing image, standfirst), or a standalone article
-(channel name as flag, then as above).
+Each feed entry SHALL render as one of two states, sharing a single row
+component: a bare event (flag, title, date), or an article (the article's
+project as flag, article headline, listing image, standfirst).
 
 A bare event SHALL link to the project or competition it concerns. An entry
-carrying an article SHALL link to that article.
+carrying an article SHALL link to that article. An article about something the
+feed also carries as a bare event is a second entry; nothing merges the two.
 
-#### Scenario: Bare event with no write-up
+#### Scenario: Bare event
 - **GIVEN** a competition whose winner has been announced and no article about it
 - **WHEN** the feed renders that entry
 - **THEN** it shows the flag "Competition winner", the competition or project
   title, and the event date
 - **AND** following the entry opens that project or competition
 
-#### Scenario: Event carrying a write-up
-- **GIVEN** a winner-announced event superseded by an article titled "How
-  Broadside won Chili"
+#### Scenario: Article
+- **GIVEN** a published article on a project
 - **WHEN** the feed renders that entry
-- **THEN** the flag still reads "Competition winner"
+- **THEN** the flag is the project's title
 - **AND** the headline is the article's title, shown with its listing image and
   summary
 - **AND** following the entry opens the article
-
-#### Scenario: Standalone article
-- **GIVEN** a published article on a project, about no platform event
-- **WHEN** the feed renders that entry
-- **THEN** the flag is the article's channel name
-- **AND** the entry is otherwise identical in shape to a write-up entry
 
 #### Scenario: Article without a listing image
 - **GIVEN** a published article with no listing image
@@ -152,39 +144,6 @@ deliberate act. Promotion SHALL never happen automatically.
 - **GIVEN** a promoted discussion entry in the feed
 - **WHEN** an administrator retires it
 - **THEN** it no longer renders in the feed
-
-### Requirement: Superseding
-
-An article about a platform event SHALL supersede that event's entry rather than
-adding a second entry. A superseded event SHALL be retired — excluded from
-rendering but retained in the stream.
-
-Superseding SHALL be one-shot: once an event has been superseded, a further
-article referencing the same event SHALL appear as its own entry.
-
-#### Scenario: Write-up supersedes its event
-- **GIVEN** a winner-announced event in the feed
-- **WHEN** an article linked to that event is published
-- **THEN** the feed shows one entry, at the article's publish time, carrying the
-  event's flag and the article's headline
-- **AND** the original bare event no longer renders
-
-#### Scenario: Superseded event is retained
-- **GIVEN** a superseded winner-announced event
-- **WHEN** an administrator inspects the stream
-- **THEN** the original event row is still present and marked as superseded
-
-#### Scenario: Second article about the same event
-- **GIVEN** a winner-announced event already superseded by an article
-- **WHEN** a second article linked to the same event is published
-- **THEN** the second article appears as its own entry
-- **AND** the first entry is unaffected
-
-#### Scenario: Article published without an event link
-- **GIVEN** a winner-announced event in the feed
-- **WHEN** an article about it is published with no event link set
-- **THEN** both entries render — the duplicate is visible rather than silent
-- **AND** an administrator can link them afterwards, retiring the bare event
 
 ### Requirement: Append-only ordering and pagination
 

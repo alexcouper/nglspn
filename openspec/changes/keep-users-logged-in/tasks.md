@@ -83,23 +83,23 @@ Design: [`design.md`](design.md).
 
 ## 5. Integration
 
-- [ ] 5.1 Run both services (`make dev` each, `make seed`), log in through the
+- [x] 5.1 Run both services (`make dev` each, `make seed`), log in through the
   UI, and confirm in devtools: `Set-Cookie` on login with `HttpOnly; SameSite=Lax;
   Path=/api/auth`, no `refresh_token` in localStorage, and that after the access
   token is deleted from localStorage a page reload lands signed in without
   visiting `/login`.
-- [ ] 5.2 Transition check: seed localStorage with a refresh token minted by the
+- [x] 5.2 Transition check: seed localStorage with a refresh token minted by the
   old code path (or by a direct call to `create_refresh_token` without the new
   claims), delete the access token, reload, and confirm the session survives,
   the cookie is set and the localStorage key is gone.
-- [ ] 5.3 Transient check: stop the backend, reload a signed-in page, confirm
+- [x] 5.3 Transient check: stop the backend, reload a signed-in page, confirm
   the header shows the placeholder rather than "Log in", start the backend
   within 12 s, and confirm the header resolves to the signed-in user without a
   reload.
-- [ ] 5.4 Run `cd src/web-ui && npx playwright test e2e/login.spec.ts` against
+- [x] 5.4 Run `cd src/web-ui && npx playwright test e2e/login.spec.ts` against
   the running stack and confirm it passes; fix any helper that expected
   `refresh_token` in a login response body.
-- [ ] 5.5 Update `docs/2026-09-23-frequent-relogin-causes.md` with a one-line
+- [x] 5.5 Update `docs/2026-09-23-frequent-relogin-causes.md` with a one-line
   status pointing at this change, and correct its claim that a cookie would let
   server components authenticate (it is host-only on the API host).
 - [ ] 5.6 Open a follow-up issue dated 7 days after the deploy to remove the

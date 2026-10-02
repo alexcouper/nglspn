@@ -5,6 +5,10 @@ session actually lives and dies today, and ranks the reasons a returning user
 lands on `/login` (or sees a logged-out header) far more often than on other
 sites.
 
+**Status, 2026-10-02:** causes 1, 2 and 3 are fixed by the OpenSpec change
+[`keep-users-logged-in`](../openspec/changes/keep-users-logged-in/proposal.md);
+everything below describes the behaviour before it.
+
 ## How a session works today
 
 There is no server-side session. Login returns two JWTs and the browser keeps
@@ -114,9 +118,16 @@ In order of effect:
    logged-out header. `checkAuth` already has the distinction
    (`AuthTransientError` vs `AuthExpiredError`); it just throws it away.
 3. **Move the refresh token to an `HttpOnly`, `Secure`, `SameSite=Lax` cookie**
-   set by the backend. That fixes the Safari purge, takes the long-lived
-   credential out of reach of any script, and lets server components
-   authenticate (which `ArticleAuthoringRoute.tsx:23` currently notes they
-   cannot). It is the larger change: CORS credentials, a CSRF story for the
-   refresh endpoint, and the `api.naglasupan.is` / `naglasupan.is` split
-   means the cookie has to be scoped to the parent domain.
+   set by the backend. That fixes the Safari purge and takes the long-lived
+   credential out of reach of any script. It is the larger change: CORS
+   credentials and a CSRF story for the refresh endpoint.
+
+   It does **not** let server components authenticate
+   (`ArticleAuthoringRoute.tsx:23` notes they cannot, and that still holds).
+   The cookie is host-only on `api.naglasupan.is`, so the browser never sends
+   it to the Next.js server on `naglasupan.is`, and server components call the
+   API without a browser in between. An earlier version of this document
+   claimed otherwise, and said the cookie had to be scoped to the parent
+   domain; it does not, because the browser talks to the API host directly and
+   the two hosts are same-site. Authenticating server components would take a
+   same-origin API proxy, which is a separate change.

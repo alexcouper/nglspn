@@ -168,12 +168,34 @@
           "content": {
             "application/json": {
               "schema": {
-                "$ref": "#/components/schemas/RefreshRequest"
+                "anyOf": [
+                  {
+                    "$ref": "#/components/schemas/RefreshRequest"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             }
           },
-          "required": true
+          "required": false
         }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "api_routers_auth_logout",
+        "summary": "Logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          }
+        },
+        "tags": [
+          "Authentication"
+        ]
       }
     },
     "/api/auth/me": {
@@ -4916,10 +4938,6 @@
             "title": "Access Token",
             "type": "string"
           },
-          "refresh_token": {
-            "title": "Refresh Token",
-            "type": "string"
-          },
           "token_type": {
             "default": "bearer",
             "title": "Token Type",
@@ -4932,7 +4950,6 @@
         },
         "required": [
           "access_token",
-          "refresh_token",
           "is_verified"
         ],
         "title": "Token",
@@ -4975,15 +4992,20 @@
         "type": "object"
       },
       "RefreshRequest": {
+        "description": "Transition path only: the refresh token normally arrives as a cookie.\n\nBrowsers that logged in before the cookie existed still hold the token in\nlocalStorage and send it here once. Remove together with the body fallback\nin the refresh endpoint.",
         "properties": {
           "refresh_token": {
-            "title": "Refresh Token",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Refresh Token"
           }
         },
-        "required": [
-          "refresh_token"
-        ],
         "title": "RefreshRequest",
         "type": "object"
       },

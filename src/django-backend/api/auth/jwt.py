@@ -4,6 +4,7 @@ from uuid import UUID
 
 import jwt
 from django.conf import settings
+from django.utils.crypto import constant_time_compare
 
 from services import REPO
 
@@ -26,13 +27,26 @@ def create_access_token(user_id: str) -> str:
     )
 
 
-def create_refresh_token(user_id: str) -> str:
+def create_refresh_token(
+    user: "AbstractUser",
+    *,
+    auth_time: datetime | None = None,
+) -> str:
+    """Mint a refresh token for `user`.
+
+    `auth_time` is the password login the session started with. A re-issue
+    passes on what `verify_refresh_token` returned, so the absolute cap keeps
+    counting from the original login; a login leaves it out.
+    """
     now = datetime.now(tz=UTC)
     payload = {
-        "user_id": str(user_id),
+        "user_id": str(user.id),
         "exp": now + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS),
         "iat": now,
         "type": "refresh",
+        "auth_time": int((auth_time or now).timestamp()),
+        # Changes with the password, so a reset ends every other session.
+        "pwv": user.get_session_auth_hash(),
     }
     return jwt.encode(
         payload,
@@ -70,6 +84,39 @@ def verify_token(token: str) -> dict[str, Any] | None:
         return None
     except jwt.InvalidTokenError:
         return None
+
+
+def verify_refresh_token(token: str, user: "AbstractUser") -> datetime | None:
+    """Return when the session behind `token` began, or None if it is over.
+
+    A token is good for `user` while it is a refresh token of theirs, inside
+    its idle expiry, inside the absolute cap, and minted under their current
+    password.
+    """
+    payload = verify_token(token)
+    if not payload or payload.get("type") != "refresh":
+        return None
+
+    if payload.get("user_id") != str(user.id):
+        return None
+
+    # Tokens minted before sliding sessions carry neither `auth_time` nor
+    # `pwv`: the session start falls back to `iat` and a missing `pwv` is
+    # accepted. Both fallbacks go once those tokens have aged out.
+    started = payload.get("auth_time", payload.get("iat"))
+    if started is None:
+        return None
+
+    auth_time = datetime.fromtimestamp(started, tz=UTC)
+    absolute_lifetime = timedelta(days=settings.JWT_SESSION_ABSOLUTE_DAYS)
+    if datetime.now(tz=UTC) - auth_time > absolute_lifetime:
+        return None
+
+    pwv = payload.get("pwv")
+    if pwv is not None and not constant_time_compare(pwv, user.get_session_auth_hash()):
+        return None
+
+    return auth_time
 
 
 def get_user_from_token(token: str) -> "AbstractUser | None":

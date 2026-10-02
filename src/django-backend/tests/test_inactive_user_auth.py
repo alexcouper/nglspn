@@ -1,6 +1,7 @@
 import json
 
 import pytest
+from django.conf import settings
 from hamcrest import assert_that, equal_to
 
 from api.auth.jwt import create_access_token, create_refresh_token
@@ -24,12 +25,11 @@ class TestInactiveUserAuth:
 
     def test_inactive_user_token_refresh_returns_401(self, client):
         inactive = UserFactory(is_active=False)
-        refresh = create_refresh_token(inactive.id)
+        refresh = create_refresh_token(inactive)
 
+        client.cookies[settings.REFRESH_COOKIE_NAME] = refresh
         response = client.post(
-            "/api/auth/refresh",
-            data=json.dumps({"refresh_token": refresh}),
-            content_type="application/json",
+            "/api/auth/refresh", data="", content_type="application/json"
         )
 
         assert_that(response.status_code, equal_to(401))

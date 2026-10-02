@@ -238,7 +238,16 @@ AUTH_USER_MODEL = "users.User"
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", SECRET_KEY)
 JWT_ALGORITHM = "HS256"
 JWT_ACCESS_TOKEN_EXPIRE_MINUTES = 30
-JWT_REFRESH_TOKEN_EXPIRE_DAYS = 7
+# Idle lifetime: every refresh re-issues the token with this much time again.
+JWT_REFRESH_TOKEN_EXPIRE_DAYS = 30
+# Absolute lifetime, counted from the password login the session started with.
+JWT_SESSION_ABSOLUTE_DAYS = 365
+
+# The refresh token travels as a host-only cookie scoped to the auth endpoints
+# (api/auth/cookies.py owns the remaining attributes).
+REFRESH_COOKIE_NAME = "refresh_token"
+REFRESH_COOKIE_PATH = "/api/auth"
+REFRESH_COOKIE_SECURE = not DEBUG
 
 # CORS Settings
 CORS_ALLOW_ALL_ORIGINS = DEBUG

@@ -3,7 +3,6 @@ from ninja import Schema
 
 class Token(Schema):
     access_token: str
-    refresh_token: str
     token_type: str = "bearer"  # noqa: S105
     is_verified: bool
 
@@ -19,7 +18,14 @@ class LoginRequest(Schema):
 
 
 class RefreshRequest(Schema):
-    refresh_token: str
+    """Transition path only: the refresh token normally arrives as a cookie.
+
+    Browsers that logged in before the cookie existed still hold the token in
+    localStorage and send it here once. Remove together with the body fallback
+    in the refresh endpoint.
+    """
+
+    refresh_token: str | None = None
 
 
 class VerifyEmailRequest(Schema):

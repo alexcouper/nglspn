@@ -21,7 +21,6 @@ class FeedEventAdmin(admin.ModelAdmin):
     list_filter = ("kind", "is_pinned", "occurred_at")
     search_fields = (
         "project__title",
-        "competition__name",
         "article__title",
         "discussion__body",
     )
@@ -39,7 +38,7 @@ class FeedEventAdmin(admin.ModelAdmin):
         "retired_at",
     )
     ordering = ("-occurred_at",)
-    autocomplete_fields = ("project", "competition", "article", "discussion")
+    autocomplete_fields = ("project", "article", "discussion")
     actions = ("pin_as_lead", "unpin", "retire_entries", "restore_entries")
 
     def get_queryset(self, request: HttpRequest) -> QuerySet[FeedEvent]:
@@ -53,9 +52,9 @@ class FeedEventAdmin(admin.ModelAdmin):
     def state(self, obj: FeedEvent) -> str:
         if obj.retired_at is not None:
             return "retired"
-        # Competition milestones are appended as soon as their date is known, so
-        # the admin holds rows the feed has not reached yet. Without this they
-        # read as live and an admin goes looking for them on /latest.
+        # An article published with a future `published_at` has a row the feed
+        # has not reached yet. Without this it reads as live and an admin goes
+        # looking for it on /latest.
         if obj.occurred_at > timezone.now():
             return "scheduled"
         return "live"

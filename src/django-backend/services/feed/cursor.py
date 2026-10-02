@@ -1,9 +1,9 @@
 """The pagination cursor for the Latest feed.
 
-`occurred_at` alone is not a cursor. Competition milestones are dates, so the
-appender maps them to local midnight and two competitions that opened on the
-same day land on the identical timestamp. Paging with `occurred_at < ?` then
-drops every row that ties with the page boundary, silently.
+`occurred_at` alone is not a cursor. Nothing stops two entries sharing one — a
+bulk approval stamps every project with the same `approved_at` — and paging
+with `occurred_at < ?` then drops every row that ties with the page boundary,
+silently.
 
 The cursor therefore carries both keys the stream is ordered by —
 `(occurred_at, created_at)` — and the read path compares them as a pair.

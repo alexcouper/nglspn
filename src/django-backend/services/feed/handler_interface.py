@@ -10,14 +10,14 @@ if TYPE_CHECKING:
     from apps.articles.models import Article
     from apps.discussions.models import Discussion
     from apps.feed.models import FeedEvent
-    from apps.projects.models import Competition, Project
+    from apps.projects.models import Project
 
 
 class FeedHandlerInterface(ABC):
     """Writes to the append-only feed stream.
 
-    Every append is idempotent on its (kind, subject) pair, so a source firing
-    twice — or the backfill running again — adds nothing.
+    Every append is idempotent on its subject, so a source firing twice — or
+    the backfill running again — adds nothing.
     """
 
     @abstractmethod
@@ -25,21 +25,6 @@ class FeedHandlerInterface(ABC):
 
     @abstractmethod
     def append_project_published(self, project: Project) -> FeedEvent | None: ...
-
-    @abstractmethod
-    def append_competition_opened(
-        self, competition: Competition
-    ) -> FeedEvent | None: ...
-
-    @abstractmethod
-    def append_competition_submissions_closed(
-        self, competition: Competition
-    ) -> FeedEvent | None: ...
-
-    @abstractmethod
-    def append_competition_winner(
-        self, competition: Competition
-    ) -> FeedEvent | None: ...
 
     @abstractmethod
     def promote_discussion(

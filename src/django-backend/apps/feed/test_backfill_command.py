@@ -1,4 +1,4 @@
-from datetime import date, timedelta
+from datetime import timedelta
 from io import StringIO
 
 import pytest
@@ -7,10 +7,10 @@ from django.utils import timezone
 
 from apps.articles.models import ArticleState
 from apps.emails.models import SentEmail
-from apps.feed.models import FeedEvent, FeedEventKind
+from apps.feed.models import FeedEvent
 from apps.notifications.models import Notification
 from apps.projects.models import ProjectStatus
-from tests.factories import ArticleFactory, CompetitionFactory, ProjectFactory
+from tests.factories import ArticleFactory, ProjectFactory
 
 
 def run_backfill() -> None:
@@ -55,35 +55,6 @@ class TestBackfill:
 
         assert FeedEvent.objects.filter(project=ancient).exists()
 
-    def test_seeds_competition_milestones(self):
-        competition = CompetitionFactory(
-            start_date=date(2025, 1, 1), winner=ProjectFactory()
-        )
-        wipe_stream()
-
-        run_backfill()
-
-        kinds = set(
-            FeedEvent.objects.filter(competition=competition).values_list(
-                "kind", flat=True
-            )
-        )
-        assert FeedEventKind.COMPETITION_OPENED in kinds
-        assert FeedEventKind.COMPETITION_WINNER in kinds
-
-    def test_seeds_the_closing_of_a_competition_with_no_winner(self):
-        competition = CompetitionFactory(
-            start_date=date(2025, 1, 1), submission_deadline=date(2025, 1, 31)
-        )
-        wipe_stream()
-
-        run_backfill()
-
-        closed = FeedEvent.objects.get(
-            competition=competition, kind=FeedEventKind.COMPETITION_SUBMISSIONS_CLOSED
-        )
-        assert closed.occurred_at.date() == date(2025, 1, 31)
-
     def test_skips_unapproved_projects(self):
         pending = ProjectFactory(status=ProjectStatus.PENDING)
         wipe_stream()
@@ -106,7 +77,6 @@ class TestBackfill:
 class TestBackfillIdempotency:
     def test_running_twice_changes_nothing(self):
         approved_project()
-        CompetitionFactory(start_date=date(2025, 1, 1), winner=ProjectFactory())
         wipe_stream()
         run_backfill()
         after_first = set(FeedEvent.objects.values_list("id", flat=True))
@@ -134,7 +104,6 @@ class TestBackfillIdempotency:
 class TestBackfillIsSilent:
     def test_fires_no_notifications_and_no_email(self):
         approved_project()
-        CompetitionFactory(start_date=date(2025, 1, 1), winner=ProjectFactory())
         wipe_stream()
         notifications_before = Notification.objects.count()
         emails_before = SentEmail.objects.count()
@@ -157,22 +126,16 @@ class TestBackfillDryRun:
 
     def test_reports_what_a_real_run_would_append(self):
         approved_project()
-        # Opened and won — two milestones, not three: announcing a winner is
-        # what closed it, so there is no separate closure to report.
-        CompetitionFactory(start_date=date(2025, 1, 1), winner=ProjectFactory())
         wipe_stream()
 
         report = dry_run_backfill()
 
         assert "would append 1 project entries" in report
-        assert "2 competition entries" in report
 
     def test_reports_nothing_once_the_stream_is_already_covered(self):
         approved_project()
-        CompetitionFactory(start_date=date(2025, 1, 1), winner=ProjectFactory())
         run_backfill()
 
         report = dry_run_backfill()
 
         assert "would append 0 project entries" in report
-        assert "0 competition entries" in report

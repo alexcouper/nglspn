@@ -3,8 +3,8 @@
 ## Purpose
 The append-only stream of platform events rendered at `/latest`. Covers the
 `FeedEvent` model and its automatic appenders (article published, project
-approved, tipoff, competition milestones), admin promotion of a discussion,
-cursor paging, and the freshness-gated lead story.
+approved, tipoff), admin promotion of a discussion, cursor paging, and the
+freshness-gated lead story.
 
 ## Requirements
 ### Requirement: Latest tab and route
@@ -34,16 +34,16 @@ Each feed entry SHALL render as one of two states, sharing a single row
 component: a bare event (flag, title, date), or an article (the article's
 project as flag, article headline, listing image, standfirst).
 
-A bare event SHALL link to the project or competition it concerns. An entry
-carrying an article SHALL link to that article. An article about something the
-feed also carries as a bare event is a second entry; nothing merges the two.
+A bare event SHALL link to the project it concerns. An entry carrying an article
+SHALL link to that article. An article about something the feed also carries as
+a bare event is a second entry; nothing merges the two.
 
 #### Scenario: Bare event
-- **GIVEN** a competition whose winner has been announced and no article about it
-- **WHEN** the feed renders that entry
-- **THEN** it shows the flag "Competition winner", the competition or project
-  title, and the event date
-- **AND** following the entry opens that project or competition
+- **GIVEN** an approved project
+- **WHEN** the feed renders its entry
+- **THEN** it shows the flag "New project", the project's title, and the event
+  date
+- **AND** following the entry opens that project
 
 #### Scenario: Article
 - **GIVEN** a published article on a project
@@ -62,27 +62,18 @@ feed also carries as a bare event is a second entry; nothing merges the two.
 ### Requirement: Automatic event sources
 
 The system SHALL append a feed event when any of the following occurs: an
-article is published, a project is published, a project is recorded as a
-community tipoff, or a competition opens, closes its entries, or has its winners
-announced.
+article is published, a project is published, or a project is recorded as a
+community tipoff.
 
-A competition's three beats are its start date, its submission deadline — when
-entries close and voting opens — and its winner announcement. Voting *ending*
-SHALL NOT append an event: it is the one moment with nothing for a reader to do,
-and the winner announcement follows it.
+Competitions SHALL NOT append feed events. A competition opening, its entries
+closing and its winner being announced are shown on the competition's own pages,
+not in the feed.
 
 Appending SHALL be the only way rows enter the stream; no source writes
 retroactively except the launch backfill.
 
-A milestone that is a date rather than an act — a competition opening, and its
-entries closing — SHALL be appended as soon as the date is known and SHALL NOT
-render until that date has arrived. Nothing fires on the day: the date passing
-saves no record, so a source that waited for one would never append at all, and
-one that appended late would have to backdate the entry into history readers
-have already paged past.
-
-A rescheduled milestone SHALL move with its date while the entry is still
-unrendered, and SHALL stay where it is once the feed has served it.
+An entry whose `occurred_at` is still ahead — an article published with a future
+`published_at` — SHALL NOT render until that time has arrived.
 
 #### Scenario: Article publish appends an event
 - **WHEN** a contributor publishes an article
@@ -94,37 +85,16 @@ unrendered, and SHALL stay where it is once the feed has served it.
 - **THEN** a feed event is appended and the entry renders with the flag "New
   project" and the project's category
 
-#### Scenario: Competition milestones append events
-- **WHEN** a competition opens, closes its entries, or announces winners
-- **THEN** one feed event is appended per milestone
-- **AND** the entries-closed event is dated to the submission deadline, not the
-  voting end date
+#### Scenario: Competition activity appends nothing
+- **WHEN** a competition is created, passes its submission deadline, or has a
+  winner assigned
+- **THEN** no feed event is appended
 
-#### Scenario: A competition set up before it opens
-- **GIVEN** a competition whose start date is a fortnight away
-- **WHEN** it is created
-- **THEN** its opening event is appended, dated to that start date
-- **AND** the feed does not serve it
-- **AND** the feed serves it once the start date has passed, with nothing having
-  saved the competition in between
-
-#### Scenario: The submission deadline passing closes entries
-- **GIVEN** a competition whose submission deadline passes and which is not
-  saved again
-- **WHEN** the date arrives
-- **THEN** the feed serves its entries-closed event, dated to that deadline
-
-#### Scenario: A milestone rescheduled before anyone sees it
-- **GIVEN** a competition whose opening event has not been served yet
-- **WHEN** its start date is changed
-- **THEN** the entry moves to the new date
-
-#### Scenario: A decided competition announces no beat it never reached
-- **GIVEN** a competition whose submission deadline is still ahead
-- **WHEN** a winner is assigned
-- **THEN** the feed carries the winner event and no entries-closed event
-- **AND** a competition whose deadline had already passed keeps the
-  entries-closed event it had already been served
+#### Scenario: A future-dated article waits for its day
+- **GIVEN** an article published with a `published_at` a fortnight away
+- **WHEN** the feed is read before that time
+- **THEN** the feed does not serve its entry
+- **AND** `next_cursor` does not report a further page on its account
 
 #### Scenario: Discussion activity appends nothing
 - **WHEN** a discussion thread is created or replied to
@@ -153,10 +123,11 @@ references is edited.
 
 Reads SHALL be cursor-paginated, so that paging through the feed serves each
 entry exactly once. The cursor SHALL identify a position in the stream rather
-than a point in time: competition milestones are dates, so entries sharing an
-`occurred_at` to the microsecond are routine, and a cursor of `occurred_at`
-alone drops every entry tied with the page boundary. The cursor SHALL be opaque
-to callers, who pass back what the previous response gave them.
+than a point in time: a bulk approval stamps every project with one
+`approved_at`, so entries can share an `occurred_at` to the microsecond, and a
+cursor of `occurred_at` alone drops every entry tied with the page boundary. The
+cursor SHALL be opaque to callers, who pass back what the previous response gave
+them.
 
 #### Scenario: Editing an article does not move its entry
 - **GIVEN** a published article whose entry sits in last week's group
@@ -262,10 +233,10 @@ of text and a link to Discover.
 
 ### Requirement: Launch backfill
 
-The launch backfill SHALL seed the stream from existing projects, tipoffs and
-competitions using each record's original timestamp, covering their full history
-with no cut-off date. Articles are out of its scope: article entries enter the
-stream only through the publish path.
+The launch backfill SHALL seed the stream from existing projects and tipoffs
+using each record's original timestamp, covering their full history with no
+cut-off date. Articles are out of its scope: article entries enter the stream
+only through the publish path.
 
 The backfill SHALL be idempotent — running it more than once SHALL NOT produce
 duplicate entries, and a second run SHALL append only events its earlier runs
@@ -274,8 +245,7 @@ did not cover.
 The backfill SHALL NOT fire any notification, in-app or email.
 
 #### Scenario: Backfill run
-- **GIVEN** existing published projects, tipoffs and competitions predating this
-  change
+- **GIVEN** existing published projects and tipoffs predating this change
 - **WHEN** the backfill runs
 - **THEN** feed events exist at those records' original timestamps
 - **AND** no in-app notification and no email is generated

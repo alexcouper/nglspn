@@ -12,12 +12,6 @@ class FeedEventKind(models.TextChoices):
     ARTICLE_PUBLISHED = "article_published", "Article published"
     PROJECT_PUBLISHED = "project_published", "Project published"
     PROJECT_TIPOFF = "project_tipoff", "Community tipoff"
-    COMPETITION_OPENED = "competition_opened", "Competition opened"
-    COMPETITION_SUBMISSIONS_CLOSED = (
-        "competition_submissions_closed",
-        "Competition submissions closed",
-    )
-    COMPETITION_WINNER = "competition_winner", "Competition winner announced"
     DISCUSSION_PROMOTED = "discussion_promoted", "Discussion promoted"
 
 
@@ -25,14 +19,9 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
     def renderable(self) -> "FeedEventQuerySet":
         """The rows the feed serves right now.
 
-        The clock is part of the filter. Competition milestones are dates, and
-        nothing saves a competition when one of its dates simply comes round —
-        `post_save` fires when someone edits the row, which is not the same
-        moment. The appender therefore writes the entry as soon as the date is
-        known, and it waits here until `occurred_at` arrives.
-
-        This is what makes an eagerly appended future entry safe: it is in the
-        table, ordered where it belongs, and invisible until its day.
+        The clock is part of the filter: an article published with a
+        `published_at` still ahead of us has its entry in the table, ordered
+        where it belongs, and invisible until its day.
         """
         return self.filter(
             occurred_at__lte=timezone.now(),
@@ -54,8 +43,6 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
         then come out of one rule — approving needs no feed write at all, and the
         `articles` join is already in the query for `article__project__status`
         and for `with_sources()`, so this costs no round trip.
-
-        Competition entries have no such state and are left alone.
         """
         approved = ProjectStatus.APPROVED
         return self.filter(
@@ -69,7 +56,7 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
         """Pull every entity a row can render from, in one query.
 
         A feed page mixes kinds, so there is no single shape to select; joining
-        all four is still one round trip and cheaper than resolving per row.
+        all three is still one round trip and cheaper than resolving per row.
         """
         # Local import: `services` builds the whole handler registry on import,
         # and that registry reaches back into this module.
@@ -78,8 +65,6 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
         return self.select_related(
             "project",
             "project__category",
-            "competition",
-            "competition__winner",
             "article",
             "article__channel",
             "article__project",
@@ -110,13 +95,6 @@ class FeedEvent(models.Model):
 
     project = models.ForeignKey(
         "projects.Project",
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="feed_events",
-    )
-    competition = models.ForeignKey(
-        "projects.Competition",
         on_delete=models.CASCADE,
         null=True,
         blank=True,
@@ -178,12 +156,6 @@ class FeedEvent(models.Model):
                 condition=Q(article__isnull=False),
                 name="feed_events_article_uniq",
             ),
-            # A competition legitimately produces several: opened, closed, won.
-            models.UniqueConstraint(
-                fields=("kind", "competition"),
-                condition=Q(competition__isnull=False),
-                name="feed_events_kind_competition_uniq",
-            ),
             models.UniqueConstraint(
                 fields=("discussion",),
                 condition=Q(discussion__isnull=False),
@@ -193,7 +165,6 @@ class FeedEvent(models.Model):
                 condition=(
                     Q(project__isnull=False)
                     | Q(article__isnull=False)
-                    | Q(competition__isnull=False)
                     | Q(discussion__isnull=False)
                 ),
                 name="feed_events_has_subject",
@@ -212,12 +183,7 @@ class FeedEvent(models.Model):
         Kind and date alone do not identify a row — a week with two approvals
         would list two identical "Project published @ 2026-08-14" entries.
         """
-        for candidate in (
-            self.article,
-            self.competition,
-            self.project,
-            self.discussion,
-        ):
+        for candidate in (self.article, self.project, self.discussion):
             if candidate is not None:
                 return str(candidate)
         return "—"

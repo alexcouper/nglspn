@@ -410,11 +410,10 @@ class Competition(models.Model):
         blank=True,
         related_name="won_competitions",
     )
-    # When the winner was announced. Assigning a winner used to record no time
-    # at all — it only flipped `status` to CLOSED — which left the Latest feed
-    # with no honest timestamp for its winners-announced event. Set on the first
+    # When the winner was announced. Assigning a winner otherwise records no
+    # time at all — it only flips `status` to CLOSED. Set on the first
     # assignment and left alone afterwards, so editing a competition years later
-    # doesn't relocate its entry in the feed.
+    # doesn't re-date the announcement.
     winner_announced_at = models.DateTimeField(null=True, blank=True)
     status = models.CharField(
         max_length=30,
@@ -450,8 +449,8 @@ class Competition(models.Model):
     def _stamp_winner_announced_at(self, save_kwargs: dict[str, Any]) -> None:
         """Set the announcement time on first assignment; clear it on removal.
 
-        Deliberately not moved when the winner changes: the feed entry belongs
-        where the announcement happened, not where it was last corrected.
+        Deliberately not moved when the winner changes: the announcement is
+        dated to when it happened, not to when it was last corrected.
         """
         if self.winner_id is None:
             new_value = None

@@ -12,7 +12,6 @@ from services import HANDLERS
 from services.feed.django_impl.query import MAX_PAGE_SIZE
 from tests.factories import (
     ArticleFactory,
-    CompetitionFactory,
     ProjectFactory,
     ProjectImageFactory,
     UserFactory,
@@ -108,7 +107,7 @@ class TestFeedPaging:
         assert len(seen) == len(set(seen)) == 7
 
     def test_paging_keeps_entries_that_share_an_occurred_at(self, client):
-        """Competition milestones are dates, so exact ties are routine.
+        """A bulk approval stamps every project with one `approved_at`.
 
         A cursor of `occurred_at` alone drops every row tied with the page
         boundary — the rows do not reappear on the next page, they are gone.
@@ -181,31 +180,21 @@ class TestFeedPaging:
         assert len(seen) == len(set(seen)) == total
 
     def test_an_entry_dated_in_the_future_is_not_served_yet(self, client):
-        """Competition milestones are appended as soon as their date is known,
-        so the table holds rows the feed has not reached. The clock is what
-        reveals them — nothing saves a competition on the day it opens.
+        """An article published with a `published_at` still ahead of us has its
+        entry in the table already. The clock is what reveals it.
         """
-        CompetitionFactory(
-            start_date=(timezone.now() + timedelta(days=14)).date(),
-            submission_deadline=(timezone.now() + timedelta(days=44)).date(),
-            voting_end_date=(timezone.now() + timedelta(days=60)).date(),
-        )
+        article = published_article(published_at=timezone.now() + timedelta(days=14))
+        event = FeedEvent.objects.get(article=article)
 
-        payload = get_feed(client)
-
-        assert served_ids(payload) == []
+        assert str(event.id) not in served_ids(get_feed(client))
 
     def test_a_scheduled_entry_does_not_hold_the_cursor_open(self, client):
         """`next_cursor` reports the end of the stream, not the end of the
         table: a page of nothing followed by a cursor would leave the Show more
         button on a feed with nothing left behind it.
         """
-        CompetitionFactory(
-            start_date=(timezone.now() + timedelta(days=14)).date(),
-            submission_deadline=(timezone.now() + timedelta(days=44)).date(),
-            voting_end_date=(timezone.now() + timedelta(days=60)).date(),
-        )
-        approved_project()
+        # The article's project is the one entry the feed can serve.
+        published_article(published_at=timezone.now() + timedelta(days=14))
 
         payload = get_feed(client, limit=1)
 
@@ -406,7 +395,6 @@ def seed_one_of_each() -> None:
     published_article()
     ProjectImageFactory(project=approved_project(), is_icon=True)
     approved_project(is_community_tipoff=True)
-    CompetitionFactory(winner=ProjectFactory())
 
 
 def count_feed_queries(client) -> int:

@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import datetime
 from typing import TYPE_CHECKING
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
-from django.utils.dateparse import parse_date, parse_datetime
+from django.utils.dateparse import parse_datetime
 
 from apps.feed.models import FeedEvent, FeedEventKind
 from apps.projects.models import ProjectStatus
@@ -13,35 +12,26 @@ from services.feed.exceptions import FeedEventNotFoundError
 from services.feed.handler_interface import FeedHandlerInterface
 
 if TYPE_CHECKING:
+    import datetime
     from uuid import UUID
 
     from apps.articles.models import Article
     from apps.discussions.models import Discussion
-    from apps.projects.models import Competition, Project
+    from apps.projects.models import Project
 
 
-def as_datetime(
-    value: datetime.date | datetime.datetime | str | None,
-) -> datetime.datetime:
-    """Competition milestones are dates; the stream is ordered by datetimes.
-
-    Midnight is imprecise for history and exact for anything from here on,
-    which is the right way round.
+def as_datetime(value: datetime.datetime | str | None) -> datetime.datetime:
+    """The aware datetime an entry is ordered by.
 
     Strings are accepted because a field assigned a literal has not been coerced
-    to a date by the time post_save fires — the instance still holds what the
-    caller set, so appending straight from it would see `"2026-01-15"`.
+    by the time post_save fires — the instance still holds what the caller set,
+    so appending straight from it would see `"2026-01-15T09:00:00Z"`.
     """
+    if isinstance(value, str):
+        value = parse_datetime(value)
     if value is None:
         return timezone.now()
-    if isinstance(value, str):
-        value = parse_datetime(value) or parse_date(value)
-        if value is None:
-            return timezone.now()
-    if isinstance(value, datetime.datetime):
-        return value if timezone.is_aware(value) else timezone.make_aware(value)
-    naive = datetime.datetime.combine(value, datetime.time.min)
-    return timezone.make_aware(naive, timezone.get_default_timezone())
+    return value if timezone.is_aware(value) else timezone.make_aware(value)
 
 
 class DjangoFeedHandler(FeedHandlerInterface):
@@ -71,56 +61,6 @@ class DjangoFeedHandler(FeedHandlerInterface):
             kind,
             occurred_at=as_datetime(project.approved_at or project.created_at),
             project=project,
-        )
-
-    def append_competition_opened(self, competition: Competition) -> FeedEvent | None:
-        """A competition opens on its start date, which is usually still ahead.
-
-        Appended as soon as the date is known rather than when it arrives:
-        nothing saves a competition on the morning it opens, so waiting for a
-        save meant the event never fired for the ordinary case of setting one
-        up in advance. `renderable()` holds it out of the feed until the day.
-        """
-        return self._append_dated(
-            FeedEventKind.COMPETITION_OPENED,
-            occurred_at=as_datetime(competition.start_date),
-            competition=competition,
-        )
-
-    def append_competition_submissions_closed(
-        self, competition: Competition
-    ) -> FeedEvent | None:
-        """Entries close and voting starts — the middle beat worth a row.
-
-        `submission_deadline`, not `voting_end_date`. Voting *ending* is the one
-        moment in a competition's life with nothing for a reader to do, and the
-        winner announcement lands right behind it; submissions closing is the
-        one that asks for something — go and vote. `status` is no use for
-        either: it only reaches CLOSED when someone assigns a winner, weeks
-        later, so an entry keyed off it has to be backdated into history readers
-        have already paged past.
-        """
-        if competition.winner_id is not None:
-            # A decided competition does not announce a beat it never reached.
-            # Only ever cancels one nobody has seen — a deadline that passed
-            # before the winner was picked is real chronology and stays.
-            self._drop_unsurfaced(
-                FeedEventKind.COMPETITION_SUBMISSIONS_CLOSED, competition
-            )
-            return None
-        return self._append_dated(
-            FeedEventKind.COMPETITION_SUBMISSIONS_CLOSED,
-            occurred_at=as_datetime(competition.submission_deadline),
-            competition=competition,
-        )
-
-    def append_competition_winner(self, competition: Competition) -> FeedEvent | None:
-        if competition.winner_id is None:
-            return None
-        return self._append(
-            FeedEventKind.COMPETITION_WINNER,
-            occurred_at=as_datetime(competition.winner_announced_at),
-            competition=competition,
         )
 
     def promote_discussion(
@@ -183,8 +123,7 @@ class DjangoFeedHandler(FeedHandlerInterface):
         The unique constraints are the real guard; catching IntegrityError
         rather than checking first keeps concurrent appends safe.
         """
-        lookup = self._idempotency_lookup(kind, subject)
-        existing = FeedEvent.objects.filter(**lookup).first()
+        existing = FeedEvent.objects.filter(**subject).first()
         if existing is not None:
             return existing
         try:
@@ -193,56 +132,7 @@ class DjangoFeedHandler(FeedHandlerInterface):
                     kind=kind, occurred_at=occurred_at, **subject
                 )
         except IntegrityError:
-            return FeedEvent.objects.filter(**lookup).first()
-
-    def _append_dated(
-        self,
-        kind: str,
-        *,
-        occurred_at: datetime.datetime,
-        **subject,
-    ) -> FeedEvent | None:
-        """Append a milestone whose date may still be ahead of us, or move it.
-
-        A scheduled entry has been seen by nobody, so correcting the date it was
-        scheduled for moves it. Once it has surfaced the append-only rule takes
-        over: its position is what a reader's cursor is measured against, and
-        moving it would serve it twice or not at all.
-        """
-        event = self._append(kind, occurred_at=occurred_at, **subject)
-        if (
-            event is not None
-            and event.occurred_at != occurred_at
-            and event.occurred_at > timezone.now()
-        ):
-            event.occurred_at = occurred_at
-            event.save(update_fields=["occurred_at"])
-        return event
-
-    @staticmethod
-    def _drop_unsurfaced(kind: str, competition: Competition) -> None:
-        """Delete a scheduled entry that is no longer going to happen.
-
-        Deleted rather than retired: `retired_at` records an admin withdrawing
-        something the site had published, and the stream keeps superseded and
-        retired rows so it stays possible to explain why a row sits where it
-        does. An entry that never surfaced has no such history to preserve, and
-        removing it leaves the unique constraint free if the reason it was
-        cancelled is itself undone.
-        """
-        FeedEvent.objects.filter(
-            kind=kind,
-            competition=competition,
-            occurred_at__gt=timezone.now(),
-        ).delete()
-
-    @staticmethod
-    def _idempotency_lookup(kind: str, subject: dict) -> dict:
-        # Competitions carry several milestones, so kind is part of their
-        # identity. Everything else gets one entry per subject.
-        if "competition" in subject:
-            return {"kind": kind, **subject}
-        return dict(subject)
+            return FeedEvent.objects.filter(**subject).first()
 
     @staticmethod
     def _get(event_id: UUID) -> FeedEvent:

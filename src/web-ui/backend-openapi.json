@@ -7223,42 +7223,6 @@
         "title": "FeedArticleRef",
         "type": "object"
       },
-      "FeedCompetitionRef": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "slug": {
-            "title": "Slug",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          },
-          "winner_slug": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Winner Slug"
-          }
-        },
-        "required": [
-          "id",
-          "slug",
-          "name",
-          "winner_slug"
-        ],
-        "title": "FeedCompetitionRef",
-        "type": "object"
-      },
       "FeedDiscussionRef": {
         "properties": {
           "id": {
@@ -7326,16 +7290,6 @@
               }
             ]
           },
-          "competition": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/FeedCompetitionRef"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "article": {
             "anyOf": [
               {
@@ -7363,7 +7317,6 @@
           "occurred_at",
           "is_pinned",
           "project",
-          "competition",
           "article",
           "discussion"
         ],

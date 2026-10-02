@@ -29,7 +29,6 @@ function entry(overrides: Partial<FeedEntry> = {}): FeedEntry {
     occurred_at: "2026-08-10T09:00:00Z",
     is_pinned: false,
     project: null,
-    competition: null,
     article: null,
     discussion: null,
     ...overrides,
@@ -59,16 +58,6 @@ function articleRef(overrides = {}) {
     project_title: "Naglasúpan",
     listing_image_url: "https://example.test/lead.jpg",
     listing_crop: null,
-    ...overrides,
-  };
-}
-
-function competitionRef(overrides = {}) {
-  return {
-    id: "00000000-0000-0000-0000-0000000000c1",
-    slug: "chili",
-    name: "Chili",
-    winner_slug: "broadside",
     ...overrides,
   };
 }
@@ -116,28 +105,25 @@ describe("renderEntry", () => {
     expect(rendered.meta).toBe("Updates");
   });
 
-  it("links a bare competition event by slug, as the rest of the site does", () => {
-    const rendered = renderEntry(
-      entry({ kind: "competition_winner", competition: competitionRef() }),
-    );
-
-    expect(rendered.flag).toBe("Competition winner");
-    expect(rendered.headline).toBe("Chili has a winner");
-    expect(rendered.href).toBe("/competitions/chili");
-  });
-
-  it("flags each competition milestone with its own wording", () => {
+  it("flags a promoted discussion with its own wording", () => {
     // The kinds are the backend's strings verbatim. KIND_FLAGS falls back to
     // "Update" on a miss, so a rename on either side degrades quietly rather
     // than failing — this is what notices.
-    const flagFor = (kind: string) =>
-      renderEntry(entry({ kind, competition: competitionRef() })).flag;
-
-    expect(flagFor("competition_opened")).toBe("Competition");
-    expect(flagFor("competition_submissions_closed")).toBe(
-      "Submissions closed",
+    const rendered = renderEntry(
+      entry({
+        kind: "discussion_promoted",
+        discussion: {
+          id: "00000000-0000-0000-0000-0000000000d1",
+          project_slug: "hverfid",
+          project_title: "Hverfið",
+          excerpt: "Who has a spare ladder?",
+        },
+      }),
     );
-    expect(flagFor("competition_winner")).toBe("Competition winner");
+
+    expect(rendered.flag).toBe("Discussion");
+    expect(rendered.headline).toBe("Who has a spare ladder?");
+    expect(rendered.href).toBe("/projects/hverfid/discussions");
   });
 
   it("has no link when an article has no slug yet", () => {

@@ -19,13 +19,6 @@ class FeedProjectRef(Schema):
     icon_url: str | None
 
 
-class FeedCompetitionRef(Schema):
-    id: UUID
-    slug: str
-    name: str
-    winner_slug: str | None
-
-
 class FeedArticleRef(Schema):
     id: UUID
     slug: str | None
@@ -57,17 +50,12 @@ class FeedEntryResponse(Schema):
     occurred_at: datetime
     is_pinned: bool
     project: FeedProjectRef | None
-    competition: FeedCompetitionRef | None
     article: FeedArticleRef | None
     discussion: FeedDiscussionRef | None
 
     @staticmethod
     def resolve_project(obj: Any) -> dict[str, Any] | None:
         return _project_ref(obj.project)
-
-    @staticmethod
-    def resolve_competition(obj: Any) -> dict[str, Any] | None:
-        return _competition_ref(obj.competition)
 
     @staticmethod
     def resolve_article(obj: Any) -> dict[str, Any] | None:
@@ -122,16 +110,4 @@ def _project_ref(project: Any) -> dict[str, Any] | None:
         # same in both places. Reads the prefetched gallery — never call this
         # without FeedEvent.objects.with_sources().
         "icon_url": variant_url(resolve_image_by_purpose(project, "icon"), "thumb"),
-    }
-
-
-def _competition_ref(competition: Any) -> dict[str, Any] | None:
-    if competition is None:
-        return None
-    winner = competition.winner
-    return {
-        "id": competition.id,
-        "slug": competition.slug,
-        "name": competition.name,
-        "winner_slug": winner.slug if winner is not None else None,
     }

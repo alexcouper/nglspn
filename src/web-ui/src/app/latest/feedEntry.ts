@@ -9,9 +9,6 @@ const KIND_FLAGS: Record<string, string> = {
   article_published: "Update",
   project_published: "New project",
   project_tipoff: "Tipoff",
-  competition_opened: "Competition",
-  competition_submissions_closed: "Submissions closed",
-  competition_winner: "Competition winner",
   discussion_promoted: "Discussion",
 };
 
@@ -24,7 +21,7 @@ export interface RenderedEntry {
   summary: string;
   /** Where the row goes when followed. Null when the subject has no page. */
   href: string | null;
-  /** Secondary line: project, category, competition. */
+  /** Secondary line: project, category, channel. */
   meta: string;
   imageUrl: string | null;
   crop: ListingCrop;
@@ -90,18 +87,12 @@ function articleHref(entry: FeedEntry): string | null {
 }
 
 function bareHeadline(entry: FeedEntry): string {
-  if (entry.competition) {
-    return entry.kind === "competition_winner" && entry.competition.winner_slug
-      ? `${entry.competition.name} has a winner`
-      : entry.competition.name;
-  }
   if (entry.project) return entry.project.title;
   if (entry.discussion) return entry.discussion.excerpt;
   return "";
 }
 
 function bareHref(entry: FeedEntry): string | null {
-  if (entry.competition) return `/competitions/${entry.competition.slug}`;
   if (entry.project?.slug) return `/projects/${entry.project.slug}`;
   if (entry.discussion?.project_slug) {
     return `/projects/${entry.discussion.project_slug}/discussions`;

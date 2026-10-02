@@ -1,9 +1,9 @@
 """Appends feed events from the things that happen elsewhere.
 
-Signals rather than service-layer calls on purpose: competitions are decided in
-Django admin, projects are approved there too, and articles publish through the
-API. One hook per source catches all three paths, and it is also what lets the
-backfill and the live path share a single appender.
+Signals rather than service-layer calls on purpose: projects are approved in
+Django admin and articles publish through the API. One hook per source catches
+both paths, and it is also what lets the backfill and the live path share a
+single appender.
 """
 
 from typing import Any
@@ -12,7 +12,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from apps.articles.models import Article, ArticleState
-from apps.projects.models import Competition, Project, ProjectStatus
+from apps.projects.models import Project, ProjectStatus
 from services import HANDLERS
 
 
@@ -29,14 +29,3 @@ def append_on_project_approval(sender: Any, instance: Project, **kwargs: Any) ->
     if instance.status != ProjectStatus.APPROVED:
         return
     HANDLERS.feed.append_project_published(instance)
-
-
-@receiver(post_save, sender=Competition)
-def append_on_competition_change(
-    sender: Any, instance: Competition, **kwargs: Any
-) -> None:
-    handler = HANDLERS.feed
-    handler.append_competition_opened(instance)
-    handler.append_competition_submissions_closed(instance)
-    if instance.winner_id is not None:
-        handler.append_competition_winner(instance)

@@ -116,6 +116,12 @@ components explicitly cannot authenticate as a result — see the comment at
 "fix this" item. But it is what makes S2 expensive, and the two should be
 weighed together rather than separately.
 
+**Update, 2026-10-02:** the OpenSpec change
+[`keep-users-logged-in`](../openspec/changes/keep-users-logged-in/proposal.md)
+moves the refresh token into an `HttpOnly` cookie on the API host. Only the
+30-minute access token is still in `localStorage`, so a script can no longer
+read the whole session. Server components still cannot authenticate.
+
 ### S4. `src/app/old/**` is a live, unmaintained public route tree
 
 Eight files, ~1,100 lines, **zero inbound references** from anywhere in `src/`

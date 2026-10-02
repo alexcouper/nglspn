@@ -5,13 +5,20 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 from django.contrib.auth import authenticate
-from django.http import HttpRequest
+from django.http import HttpRequest, HttpResponse, JsonResponse
 from ninja import Router
 
+from api.auth.cookies import (
+    clear_refresh_cookie,
+    read_refresh_cookie,
+    set_refresh_cookie,
+)
+from api.auth.cross_site import reject_cross_site
 from api.auth.jwt import (
     create_access_token,
     create_refresh_token,
     create_reset_token,
+    verify_refresh_token,
     verify_token,
 )
 from api.auth.security import auth
@@ -24,7 +31,6 @@ from api.schemas.auth import (
     ForgotPasswordVerifyRequest,
     ForgotPasswordVerifyResponse,
     LoginRequest,
-    RefreshRequest,
     ResendVerificationResponse,
     ResetPasswordRequest,
     ResetPasswordResponse,
@@ -105,12 +111,20 @@ def register(
 
 
 @router.post(
-    "/login", response={200: Token, 401: Error, 429: Error}, tags=["Authentication"]
+    "/login",
+    response={200: Token, 401: Error, 403: Error, 429: Error},
+    tags=["Authentication"],
 )
 def login(
     request: HttpRequest,
+    response: HttpResponse,
     payload: LoginRequest,
 ) -> dict[str, Any] | tuple[int, dict[str, str]]:
+    # Sets a cookie, so a forged cross-site request must not get this far.
+    cross_site_response = reject_cross_site(request)
+    if cross_site_response:
+        return cross_site_response
+
     rate_limit_response = check_rate_limit(request, "login", "5/m")
     if rate_limit_response:
         return rate_limit_response
@@ -134,12 +148,10 @@ def login(
         except Exception:
             logger.exception("Failed to send verification email during login")
 
-    access_token = create_access_token(user.id)
-    refresh_token = create_refresh_token(user.id)
+    set_refresh_cookie(response, create_refresh_token(user))
 
     return {
-        "access_token": access_token,
-        "refresh_token": refresh_token,
+        "access_token": create_access_token(user.id),
         "token_type": "bearer",
         "is_verified": user.is_verified,
     }
@@ -147,20 +159,22 @@ def login(
 
 @router.post(
     "/refresh",
-    response={200: AccessToken, 401: Error},
+    response={200: AccessToken, 401: Error, 403: Error},
     tags=["Authentication"],
 )
 def refresh_token_endpoint(
     request: HttpRequest,
-    payload: RefreshRequest,
+    response: HttpResponse,
 ) -> dict[str, str] | tuple[int, dict[str, str]]:
-    token_payload = verify_token(payload.refresh_token)
+    cross_site_response = reject_cross_site(request)
+    if cross_site_response:
+        return cross_site_response
 
-    if not token_payload:
+    token = read_refresh_cookie(request)
+    token_payload = verify_token(token) if token else None
+
+    if not token_payload or token_payload.get("type") != "refresh":
         return 401, {"detail": "Invalid or expired refresh token"}
-
-    if token_payload.get("type") != "refresh":
-        return 401, {"detail": "Invalid token type"}
 
     try:
         user = REPO.users.get_by_id(UUID(token_payload["user_id"]))
@@ -170,9 +184,32 @@ def refresh_token_endpoint(
     if not user.is_active or user.is_system_user:
         return 401, {"detail": "Account is inactive"}
 
-    access_token = create_access_token(user.id)
+    auth_time = verify_refresh_token(token, user)
+    if auth_time is None:
+        return 401, {"detail": "Invalid or expired refresh token"}
 
-    return {"access_token": access_token, "token_type": "bearer"}
+    # Sliding expiry: the new token gets a fresh idle lifetime but keeps the
+    # original login time. The old one is not revoked and dies at its own
+    # expiry, so two tabs refreshing with the same token both succeed.
+    set_refresh_cookie(response, create_refresh_token(user, auth_time=auth_time))
+
+    return {"access_token": create_access_token(user.id), "token_type": "bearer"}
+
+
+@router.post("/logout", response={204: None, 403: Error}, tags=["Authentication"])
+def logout(
+    request: HttpRequest, response: HttpResponse
+) -> tuple[int, None] | JsonResponse:
+    cross_site_response = reject_cross_site(request)
+    if cross_site_response:
+        return cross_site_response
+
+    # No auth: an expired access token must not stop someone logging out. The
+    # token itself is not revoked (nothing is stored to revoke); this only
+    # removes it from the browser, which a script cannot do to an HttpOnly
+    # cookie.
+    clear_refresh_cookie(response)
+    return 204, None
 
 
 @router.get(

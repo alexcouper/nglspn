@@ -75,7 +75,7 @@ def access_token(user):
 
 @pytest.fixture
 def refresh_token(user):
-    return create_refresh_token(user.id)
+    return create_refresh_token(user)
 
 
 @pytest.fixture

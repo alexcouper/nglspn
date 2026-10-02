@@ -108,6 +108,16 @@
               }
             }
           },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Too Many Requests",
             "content": {
@@ -159,21 +169,46 @@
                 }
               }
             }
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
           }
         },
         "tags": [
           "Authentication"
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/RefreshRequest"
+        ]
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "operationId": "api_routers_auth_logout",
+        "summary": "Logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "403": {
+            "description": "Forbidden",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
               }
             }
-          },
-          "required": true
-        }
+          }
+        },
+        "tags": [
+          "Authentication"
+        ]
       }
     },
     "/api/auth/me": {
@@ -4916,10 +4951,6 @@
             "title": "Access Token",
             "type": "string"
           },
-          "refresh_token": {
-            "title": "Refresh Token",
-            "type": "string"
-          },
           "token_type": {
             "default": "bearer",
             "title": "Token Type",
@@ -4932,7 +4963,6 @@
         },
         "required": [
           "access_token",
-          "refresh_token",
           "is_verified"
         ],
         "title": "Token",
@@ -4972,19 +5002,6 @@
           "access_token"
         ],
         "title": "AccessToken",
-        "type": "object"
-      },
-      "RefreshRequest": {
-        "properties": {
-          "refresh_token": {
-            "title": "Refresh Token",
-            "type": "string"
-          }
-        },
-        "required": [
-          "refresh_token"
-        ],
-        "title": "RefreshRequest",
         "type": "object"
       },
       "ArticleEmailFrequency": {

@@ -1,5 +1,5 @@
 import type { components } from "../api-types";
-import { ApiRequestError, type APIClient } from "./base";
+import { ApiRequestError, AuthExpiredError, type APIClient } from "./base";
 
 export type TokenResponse = components["schemas"]["Token"];
 export type User = components["schemas"]["UserResponse"];
@@ -12,6 +12,12 @@ export type ForgotPasswordResponse = components["schemas"]["ForgotPasswordRespon
 export type ForgotPasswordVerifyResponse = components["schemas"]["ForgotPasswordVerifyResponse"];
 export type ForgotPasswordVerifyError = components["schemas"]["ForgotPasswordVerifyError"];
 export type ResetPasswordResponse = components["schemas"]["ResetPasswordResponse"];
+
+// Set from the moment a logout clears this browser until the backend has
+// expired the refresh cookie. Script cannot delete an HttpOnly cookie, so a
+// logout whose request failed leaves the cookie behind; without this marker
+// restoreSession() would sign the person straight back in on the next load.
+const LOGOUT_PENDING_KEY = "logout_pending";
 
 export class VerifyCodeError extends Error {
   constructor(
@@ -43,10 +49,36 @@ export class AuthClient {
   async login(email: string, password: string): Promise<TokenResponse> {
     const response = await this.client.request<TokenResponse>("/api/auth/login", {
       method: "POST",
+      // Without this the browser discards the refresh cookie the response sets.
+      credentials: "include",
       body: JSON.stringify({ email, password }),
     });
-    this.client.setTokens(response.access_token, response.refresh_token);
+    this.client.setSession(response.access_token);
+    localStorage.removeItem(LOGOUT_PENDING_KEY);
     return response;
+  }
+
+  // Expires the refresh cookie in this browser. It does not revoke the token:
+  // the backend keeps no record of sessions to revoke.
+  async logout(): Promise<void> {
+    localStorage.setItem(LOGOUT_PENDING_KEY, "1");
+    await this.client.request("/api/auth/logout", {
+      method: "POST",
+      credentials: "include",
+    });
+    localStorage.removeItem(LOGOUT_PENDING_KEY);
+  }
+
+  // For a browser holding no access token. The refresh cookie may still be
+  // there (it outlives localStorage), in which case this ends with an access
+  // token in hand. Throws AuthExpiredError when there is no session, and
+  // AuthTransientError when the backend could not be asked.
+  async restoreSession(): Promise<void> {
+    if (localStorage.getItem(LOGOUT_PENDING_KEY)) {
+      await this.logout().catch(() => {});
+      throw new AuthExpiredError();
+    }
+    await this.client.refreshSession();
   }
 
   async getCurrentUser(): Promise<User> {

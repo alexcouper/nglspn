@@ -2,6 +2,7 @@ from datetime import timedelta
 from unittest.mock import patch
 
 import pytest
+from django.conf import settings
 from django.utils import timezone
 
 from api.auth.jwt import create_reset_token, verify_token
@@ -245,7 +246,7 @@ class TestResetTokenCannotAccessProtectedEndpoints:
             data={"email": user.email, "password": "testpassword123"},
             content_type="application/json",
         )
-        refresh_token = login_response.json()["refresh_token"]
+        refresh_token = login_response.cookies[settings.REFRESH_COOKIE_NAME].value
 
         response = client.get(
             "/api/auth/me",

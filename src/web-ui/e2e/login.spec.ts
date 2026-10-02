@@ -38,7 +38,7 @@ test.describe("Login", () => {
 
     // Should show error message
     await expect(page.locator(".bg-red-50")).toBeVisible();
-    await expect(page.locator(".bg-red-50")).toContainText(/invalid|failed|unauthorized/i);
+    await expect(page.locator(".bg-red-50")).toContainText("Email or password is incorrect");
   });
 
   test("should navigate to register page", async ({ page }) => {

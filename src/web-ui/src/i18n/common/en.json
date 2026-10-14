@@ -1,0 +1,71 @@
+{
+  "meta": {
+    "title": "naglasúpan",
+    "description": "Byggjum, deilum, vöxum saman"
+  },
+  "nav": {
+    "openMenu": "Open menu",
+    "closeMenu": "Close menu",
+    "projects": "Projects",
+    "competitions": "Competitions",
+    "guides": "Guides",
+    "continueOnboarding": "Continue onboarding",
+    "myProjects": "My Projects",
+    "profile": "Profile",
+    "notifications": "Notifications",
+    "following": "Following",
+    "settings": "Settings",
+    "logIn": "Log in",
+    "logOut": "Log out",
+    "register": "Register",
+    "userMenu": "User menu"
+  },
+  "footer": {
+    "label": "Footer",
+    "guides": "Guides",
+    "guidesIcelandic": "Leiðarvísar",
+    "about": "About",
+    "privacy": "Privacy",
+    "discord": "Discord"
+  },
+  "loading": "Loading...",
+  "actions": {
+    "save": "Save",
+    "saving": "Saving...",
+    "cancel": "Cancel",
+    "close": "Close",
+    "delete": "Delete",
+    "deleting": "Deleting...",
+    "edit": "Edit",
+    "remove": "Remove",
+    "back": "Back",
+    "continue": "Continue",
+    "done": "Done",
+    "confirm": "Confirm",
+    "retry": "Try again",
+    "publish": "Publish",
+    "publishing": "Publishing...",
+    "unpublish": "Unpublish",
+    "loadMore": "Load more",
+    "viewAll": "View all",
+    "dismiss": "Dismiss",
+    "copy": "Copy",
+    "copied": "Copied",
+    "upload": "Upload",
+    "uploading": "Uploading...",
+    "sending": "Sending...",
+    "share": "Share",
+    "search": "Search"
+  },
+  "errors": {
+    "somethingWentWrong": "Something went wrong",
+    "temporaryIssue": "This may be a temporary issue.",
+    "notFound": "Not found",
+    "tryAgainLater": "Try again in a moment."
+  },
+  "states": {
+    "loading": "Loading...",
+    "saving": "Saving...",
+    "empty": "Nothing here yet"
+  }
+}

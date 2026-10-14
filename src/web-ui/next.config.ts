@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import createNextIntlPlugin from "next-intl/plugin";
 
 const isDev = process.env.NODE_ENV === "development";
 
@@ -82,4 +83,8 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default nextConfig;
+// Wires src/i18n/request.ts into the server runtime (getTranslations,
+// getLocale and the provider's inherited messages).
+const withNextIntl = createNextIntlPlugin("./src/i18n/request.ts");
+
+export default withNextIntl(nextConfig);

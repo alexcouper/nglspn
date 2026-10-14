@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import { Avatar } from "./Avatar";
 
@@ -9,6 +10,7 @@ export function UserMenu() {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const { logout, user } = useAuth();
+  const t = useTranslations("common.nav");
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -27,7 +29,7 @@ export function UserMenu() {
       <button
         onClick={() => setIsOpen(!isOpen)}
         className="flex items-center gap-2 text-sm text-slate-400 hover:text-white transition-colors"
-        aria-label="User menu"
+        aria-label={t("userMenu")}
       >
         {user ? (
           <Avatar
@@ -49,28 +51,28 @@ export function UserMenu() {
                 className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Profile
+                {t("profile")}
               </Link>
               <Link
                 href="/notifications"
                 className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Notifications
+                {t("notifications")}
               </Link>
               <Link
                 href="/profile/following"
                 className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Following
+                {t("following")}
               </Link>
               <Link
                 href="/profile/settings"
                 className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                 onClick={() => setIsOpen(false)}
               >
-                Settings
+                {t("settings")}
               </Link>
               <div className="border-t border-border my-1" />
             </>
@@ -82,7 +84,7 @@ export function UserMenu() {
             }}
             className="block w-full text-left px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
           >
-            Log out
+            {t("logOut")}
           </button>
         </div>
       )}

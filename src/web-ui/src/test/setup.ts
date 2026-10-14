@@ -1,5 +1,40 @@
 import { afterEach, vi } from "vitest";
 
+// Components read their copy through next-intl, whose hooks need a provider.
+// Tests mount components bare with createRoot, so instead of wrapping every
+// mount, the hooks are replaced with translators over the real English
+// messages. Tests keep asserting on the visible English text.
+vi.mock("next-intl", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next-intl")>();
+  const { messages } = await import("@/i18n/messages");
+  const locale = "en";
+  return {
+    ...actual,
+    useLocale: () => locale,
+    useFormatter: () => actual.createFormatter({ locale }),
+    useTranslations: (namespace?: string) =>
+      actual.createTranslator({ locale, messages, namespace } as never),
+  };
+});
+
+vi.mock("next-intl/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next-intl/server")>();
+  const { createTranslator, createFormatter } = await import("next-intl");
+  const { messages } = await import("@/i18n/messages");
+  const locale = "en";
+  return {
+    ...actual,
+    getLocale: async () => locale,
+    getFormatter: async () => createFormatter({ locale }),
+    getTranslations: async (namespace?: string | { namespace?: string }) =>
+      createTranslator({
+        locale,
+        messages,
+        namespace: typeof namespace === "string" ? namespace : namespace?.namespace,
+      } as never),
+  };
+});
+
 // React requires this to be set so act() works without a warning.
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

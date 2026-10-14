@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import { PinInput } from "@/components/PinInput";
 
@@ -9,6 +10,7 @@ interface VerifyEmailStepProps {
 }
 
 export function VerifyEmailStep({ onComplete }: VerifyEmailStepProps) {
+  const t = useTranslations("auth.verifyEmail");
   const { user, verifyEmail, resendVerification } = useAuth();
   const [isVerifying, setIsVerifying] = useState(false);
   const [error, setError] = useState("");
@@ -32,13 +34,13 @@ export function VerifyEmailStep({ onComplete }: VerifyEmailStepProps) {
         await verifyEmail(code);
         onComplete();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Verification failed. Please try again.");
+        setError(err instanceof Error ? err.message : t("errors.verifyFailed"));
         setInputKey((k) => k + 1);
       } finally {
         setIsVerifying(false);
       }
     },
-    [verifyEmail, onComplete]
+    [verifyEmail, onComplete, t]
   );
 
   const handleResend = async () => {
@@ -51,7 +53,7 @@ export function VerifyEmailStep({ onComplete }: VerifyEmailStepProps) {
       setError("");
       setTimeout(() => setResendSuccess(false), 3000);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to resend code");
+      setError(err instanceof Error ? err.message : t("errors.resendFailed"));
     }
   };
 
@@ -59,10 +61,10 @@ export function VerifyEmailStep({ onComplete }: VerifyEmailStepProps) {
     <>
       <div className="text-center mb-8">
         <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-          Verify your email
+          {t("title")}
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          We sent a 6-digit code to {user?.email}
+          {t("subtitle", { email: user?.email ?? "" })}
         </p>
       </div>
 
@@ -76,7 +78,7 @@ export function VerifyEmailStep({ onComplete }: VerifyEmailStepProps) {
 
           {resendSuccess && (
             <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-2.5 rounded-lg text-sm text-center">
-              Code sent!
+              {t("codeSent")}
             </div>
           )}
 
@@ -90,11 +92,11 @@ export function VerifyEmailStep({ onComplete }: VerifyEmailStepProps) {
           </div>
 
           {isVerifying && (
-            <p className="text-center text-muted-foreground text-sm">Verifying...</p>
+            <p className="text-center text-muted-foreground text-sm">{t("verifying")}</p>
           )}
 
           <p className="text-center text-muted-foreground text-sm">
-            Didn&apos;t receive the code?{" "}
+            {t("noCode")}{" "}
             <button
               onClick={handleResend}
               disabled={resendCooldown > 0}
@@ -104,7 +106,7 @@ export function VerifyEmailStep({ onComplete }: VerifyEmailStepProps) {
                   : "text-accent hover:text-accent-hover"
               }`}
             >
-              {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend"}
+              {resendCooldown > 0 ? t("resendIn", { seconds: resendCooldown }) : t("resend")}
             </button>
           </p>
         </div>

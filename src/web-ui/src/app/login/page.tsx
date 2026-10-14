@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import { getPostAuthDestination } from "@/lib/auth-routing";
 import { api, VerifyCodeError } from "@/lib/api";
@@ -16,6 +17,7 @@ export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
+  const t = useTranslations("auth.login");
   const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
   const [flowState, setFlowState] = useState<FlowState>("login");
   const [email, setEmail] = useState("");
@@ -57,8 +59,8 @@ export default function LoginPage() {
       // not that a session ran out. "Sign in again" would be nonsense here.
       setError(
         err instanceof AuthExpiredError
-          ? "Email or password is incorrect."
-          : describeApiError(err, "Couldn't log you in."),
+          ? t("errors.invalidCredentials")
+          : describeApiError(err, t("errors.loginFailed")),
       );
     } finally {
       setIsLoading(false);
@@ -74,7 +76,7 @@ export default function LoginPage() {
       await api.auth.forgotPassword(email);
       setFlowState("code");
     } catch (err) {
-      setError(describeApiError(err, "Couldn't send a reset code."));
+      setError(describeApiError(err, t("errors.sendCodeFailed")));
     } finally {
       setIsLoading(false);
     }
@@ -94,14 +96,14 @@ export default function LoginPage() {
           setAttemptsRemaining(err.attemptsRemaining);
           setError(err.message);
         } else {
-          setError(describeApiError(err, "Couldn't check that code."));
+          setError(describeApiError(err, t("errors.checkCodeFailed")));
         }
         setPinKey((k) => k + 1);
       } finally {
         setIsLoading(false);
       }
     },
-    [email]
+    [email, t]
   );
 
   const handleResetSubmit = async (e: React.FormEvent) => {
@@ -111,10 +113,10 @@ export default function LoginPage() {
 
     try {
       await api.auth.resetPassword(resetToken, newPassword);
-      setSuccessMessage("Password updated. Please log in.");
+      setSuccessMessage(t("passwordUpdated"));
       goToLogin();
     } catch (err) {
-      setError(describeApiError(err, "Couldn't reset your password."));
+      setError(describeApiError(err, t("errors.resetFailed")));
     } finally {
       setIsLoading(false);
     }
@@ -123,13 +125,13 @@ export default function LoginPage() {
   const renderTitle = () => {
     switch (flowState) {
       case "login":
-        return { heading: "Welcome back", sub: "Log in to manage your projects" };
+        return { heading: t("title"), sub: t("subtitle") };
       case "forgot":
-        return { heading: "Forgotten password?", sub: "Enter your email to receive a reset code" };
+        return { heading: t("forgotTitle"), sub: t("forgotSubtitle") };
       case "code":
-        return { heading: "Enter your code", sub: `We sent a 6-digit code to ${email}` };
+        return { heading: t("codeTitle"), sub: t("codeSubtitle", { email }) };
       case "reset":
-        return { heading: "Set new password", sub: "Choose a new password for your account" };
+        return { heading: t("resetTitle"), sub: t("resetSubtitle") };
     }
   };
 
@@ -161,7 +163,7 @@ export default function LoginPage() {
           {flowState === "login" && (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label htmlFor="email" className="label">Email</label>
+                <label htmlFor="email" className="label">{t("email")}</label>
                 <input
                   id="email"
                   name="email"
@@ -171,12 +173,12 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input"
-                  placeholder="you@example.com"
+                  placeholder={t("emailPlaceholder")}
                 />
               </div>
 
               <div>
-                <label htmlFor="password" className="label">Password</label>
+                <label htmlFor="password" className="label">{t("password")}</label>
                 <input
                   id="password"
                   name="password"
@@ -194,7 +196,7 @@ export default function LoginPage() {
                 disabled={isLoading}
                 className="w-full btn-primary py-2.5"
               >
-                {isLoading ? "Logging in..." : "Log In"}
+                {isLoading ? t("submitting") : t("submit")}
               </button>
 
               <p className="text-center text-sm text-muted-foreground">
@@ -203,7 +205,7 @@ export default function LoginPage() {
                   onClick={() => { setFlowState("forgot"); setError(""); setSuccessMessage(""); }}
                   className="text-accent hover:text-accent-hover font-medium transition-colors"
                 >
-                  Forgotten password?
+                  {t("forgotLink")}
                 </button>
               </p>
             </form>
@@ -212,7 +214,7 @@ export default function LoginPage() {
           {flowState === "forgot" && (
             <form onSubmit={handleForgotSubmit} className="space-y-4">
               <div>
-                <label htmlFor="forgot-email" className="label">Email</label>
+                <label htmlFor="forgot-email" className="label">{t("email")}</label>
                 <input
                   id="forgot-email"
                   name="email"
@@ -222,7 +224,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   className="input"
-                  placeholder="you@example.com"
+                  placeholder={t("emailPlaceholder")}
                 />
               </div>
 
@@ -231,7 +233,7 @@ export default function LoginPage() {
                 disabled={isLoading}
                 className="w-full btn-primary py-2.5"
               >
-                {isLoading ? "Sending..." : "Continue"}
+                {isLoading ? t("sendingCode") : t("sendCode")}
               </button>
 
               <p className="text-center text-sm text-muted-foreground">
@@ -240,7 +242,7 @@ export default function LoginPage() {
                   onClick={goToLogin}
                   className="text-accent hover:text-accent-hover font-medium transition-colors"
                 >
-                  Back to login
+                  {t("backToLogin")}
                 </button>
               </p>
             </form>
@@ -258,12 +260,12 @@ export default function LoginPage() {
               </div>
 
               {isLoading && (
-                <p className="text-center text-muted-foreground text-sm">Verifying...</p>
+                <p className="text-center text-muted-foreground text-sm">{t("verifying")}</p>
               )}
 
               {attemptsRemaining !== null && attemptsRemaining > 0 && (
                 <p className="text-center text-muted-foreground text-sm">
-                  {attemptsRemaining} {attemptsRemaining === 1 ? "attempt" : "attempts"} remaining
+                  {t("attemptsRemaining", { count: attemptsRemaining })}
                 </p>
               )}
 
@@ -273,7 +275,7 @@ export default function LoginPage() {
                   onClick={goToLogin}
                   className="text-accent hover:text-accent-hover font-medium transition-colors"
                 >
-                  Back to login
+                  {t("backToLogin")}
                 </button>
               </p>
             </div>
@@ -282,7 +284,7 @@ export default function LoginPage() {
           {flowState === "reset" && (
             <form onSubmit={handleResetSubmit} className="space-y-4">
               <div>
-                <label htmlFor="new-password" className="label">New password</label>
+                <label htmlFor="new-password" className="label">{t("newPassword")}</label>
                 <input
                   id="new-password"
                   name="new-password"
@@ -300,7 +302,7 @@ export default function LoginPage() {
                 disabled={isLoading}
                 className="w-full btn-primary py-2.5"
               >
-                {isLoading ? "Saving..." : "Set password"}
+                {isLoading ? t("settingPassword") : t("setPassword")}
               </button>
 
               <p className="text-center text-sm text-muted-foreground">
@@ -309,7 +311,7 @@ export default function LoginPage() {
                   onClick={goToLogin}
                   className="text-accent hover:text-accent-hover font-medium transition-colors"
                 >
-                  Back to login
+                  {t("backToLogin")}
                 </button>
               </p>
             </form>
@@ -317,9 +319,9 @@ export default function LoginPage() {
 
           {flowState === "login" && (
             <p className="mt-6 text-center text-sm text-muted-foreground">
-              Don&apos;t have an account?{" "}
+              {t("noAccount")}{" "}
               <Link href={next ? `/register?next=${encodeURIComponent(next)}` : "/register"} className="text-accent hover:text-accent-hover font-medium transition-colors">
-                Create one
+                {t("createOne")}
               </Link>
             </p>
           )}

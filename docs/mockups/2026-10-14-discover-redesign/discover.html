@@ -1,0 +1,133 @@
+<!doctype html><meta charset="utf-8"><title>Discover redesign — Recent, then the spotlight</title>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="shell.css">
+<style>
+  /* Tier 1 — Recent. Three slots: the two newest articles from anyone, and the
+     open competition. 1 + 2 geometry from option A: the newest piece is the
+     big one, the second sits top-right, the competition bottom-right. */
+  .hero { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  .hero-side { display: grid; grid-template-rows: 1fr auto; gap: 16px; }
+  .hero-lead .shot { aspect-ratio: 16/9; }
+  .hero-lead .body { padding: 18px 20px 20px; }
+  .kicker { display: flex; gap: 8px; align-items: baseline; font-size: 12.5px; color: var(--muted); }
+  .kicker .who { font-weight: 500; color: var(--ink); }
+  .hero-small { position: relative; min-height: 190px; }
+  .hero-small img, .hero-small > div:first-child { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .hero-small .body { position: absolute; inset: auto 0 0 0; padding: 16px;
+    background: linear-gradient(to top, rgba(15,23,42,.9), rgba(15,23,42,.5) 60%, transparent); color: #fff; }
+  .hero-small .kicker, .hero-small .kicker .who { color: #e2e8f0; }
+
+  /* The competition slot is a different kind of thing — state with a verb, not
+     a piece of writing — so it is not dressed as an article card. */
+  .comp { display: grid; grid-template-columns: 96px 1fr; background: var(--paper);
+          border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  .comp img { width: 96px; height: 100%; object-fit: cover; }
+  .comp .body { padding: 14px 16px; display: flex; flex-direction: column; gap: 3px; }
+  .state { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: #047857; }
+  .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+  .comp h3 { margin: 0; }
+  .comp .line { font-size: 12.5px; color: var(--muted); }
+  .comp .foot { margin-top: auto; padding-top: 10px; display: flex; align-items: center; gap: 12px; }
+  .cta { background: var(--accent); color: #fff; font-size: 12.5px; font-weight: 500; padding: 6px 12px; border-radius: 6px; }
+  .prize { font-size: 12.5px; font-weight: 600; color: #047857; font-variant-numeric: tabular-nums; }
+
+  /* Tier 2 — Spotlight. Only the spotlighted pieces not already in tier 1. */
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; align-items: start; }
+  .three .body { padding: 13px 15px 16px; }
+
+  .rail { display: grid; grid-auto-flow: column; grid-auto-columns: 232px; gap: 14px; overflow: hidden; align-items: start; }
+  .icon { width: 44px; height: 44px; border-radius: 9px; overflow: hidden; flex: 0 0 auto; background: var(--rule-soft); }
+  .icon img { width: 100%; height: 100%; object-fit: cover; }
+</style>
+<div id="r"></div>
+<script src="data.js"></script><script src="shell.js"></script>
+<script>
+// Tier 1 takes the two newest articles regardless of channel or author.
+const recent = ARTICLES.slice(0, 2);
+// Tier 2 is every spotlighted article not already shown above. On 14 Oct the
+// newest article is itself a review, so it leaves the spotlight for the hero.
+const shown = new Set(recent.map((a) => a.title));
+const spotlight = REVIEWS.filter((a) => !shown.has(a.title)).slice(0, 3);
+
+const isReview = (a) => a.channel === "Reviews";
+const kicker = (a) => `<div class="kicker"><span class="who">${esc(isReview(a) ? "Review" : "Naglasúpan")}</span><span>${fmtDate(a.date)}</span></div>`;
+
+const leadCard = (a) => `
+  <a class="tile hero-lead">
+    <img class="shot" src="${a.img}" alt="">
+    <div class="body">
+      ${kicker(a)}
+      <h2 class="t-sub" style="margin:6px 0 6px">${esc(a.title)}</h2>
+      <p class="t-body measure" style="margin:0">${esc(a.summary)}</p>
+    </div>
+  </a>`;
+
+const smallCard = (a) => `
+  <a class="tile hero-small">
+    <img src="${a.img}" alt="">
+    <div class="body">
+      ${kicker(a)}
+      <h3 class="t-item" style="margin:4px 0 0">${esc(a.title)}</h3>
+    </div>
+  </a>`;
+
+const compCard = `
+  <a class="comp">
+    <img src="${COMP_OPEN.image}" alt="">
+    <div class="body">
+      <span class="state"><span class="dot"></span>Open for entries</span>
+      <h3 class="t-item">${esc(COMP_OPEN.name)}</h3>
+      <span class="line">${COMP_OPEN.daysLeft} days left &middot; ${COMP_OPEN.entries} entered so far</span>
+      <div class="foot"><span class="cta">Enter your project</span><span class="prize">${esc(COMP_OPEN.prize)}</span></div>
+    </div>
+  </a>`;
+
+const reviewCard = (a) => `
+  <a class="tile">
+    <img class="shot" src="${a.img}" alt="">
+    <div class="body">
+      <div class="kicker"><span>${fmtDate(a.date)}</span></div>
+      <h3 class="t-item" style="margin:5px 0 4px">${esc(a.title.replace("Project Review: ", ""))}</h3>
+      <p class="t-small" style="margin:0">${esc(a.summary)}</p>
+    </div>
+  </a>`;
+
+const iconRow = (p) => `
+  <a class="tile" style="padding:11px 12px;display:flex;gap:11px;align-items:flex-start">
+    ${p.icon ? `<div class="icon"><img src="${p.icon}" alt=""></div>` : placeholder(p.title, "icon")}
+    <div style="min-width:0">
+      <div class="t-item" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.title)}</div>
+      <div class="t-small" style="margin-top:2px">${taglineOr(p)}</div>
+    </div>
+  </a>`;
+
+document.getElementById("r").innerHTML =
+  frame("#102 Option F — Recent, then the spotlight",
+        "Top: the two newest articles from anyone, plus the open competition. Spotlight: the spotlighted pieces not already up top. On 14 Oct the Næsta stig review is newest, so it leads and leaves the spotlight.") +
+  shell("discover") + `
+  <div class="page"><div class="wrap">
+
+    <section class="sec">
+      <div class="hero">
+        ${leadCard(recent[0])}
+        <div class="hero-side">
+          ${smallCard(recent[1])}
+          ${compCard}
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head"><h2 class="t-section">In the spotlight</h2>
+        <span class="sec-note">We try a project and write it up</span><a class="more">All reviews</a></div>
+      <div class="three">${spotlight.map(reviewCard).join("")}</div>
+    </section>
+
+    <section class="sec">
+      <div class="sec-head"><h2 class="t-section">New arrivals</h2><a class="more">All projects</a></div>
+      <div class="rail">${OUTDOORS.slice(0, 5).map(iconRow).join("")}</div>
+    </section>
+
+  </div></div>`;
+</script>

@@ -30,6 +30,7 @@ import {
 import "@mdxeditor/editor/style.css";
 import "./article-markdown.css";
 import { useRef } from "react";
+import { useTranslations } from "next-intl";
 import { articleCodeMirrorExtensions } from "./article-codemirror-theme";
 import { ArticleImageDialog } from "./ArticleImageDialog";
 import {
@@ -57,6 +58,7 @@ export function ArticleEditor({
   onChange,
 }: Props) {
   const editorRef = useRef<MDXEditorMethods>(null);
+  const t = useTranslations("articles.editor");
   const { status, uploadImage, dismissError } = useImageUploadStatus(
     projectRef,
     articleId,
@@ -85,13 +87,13 @@ export function ArticleEditor({
           codeBlockPlugin({ defaultCodeBlockLanguage: "ts" }),
           codeMirrorPlugin({
             codeBlockLanguages: {
-              "": "Plain text",
+              "": t("languages.plainText"),
               ts: "TypeScript",
               js: "JavaScript",
               tsx: "TSX",
               jsx: "JSX",
               python: "Python",
-              bash: "Shell",
+              bash: t("languages.shell"),
               css: "CSS",
               html: "HTML",
               json: "JSON",

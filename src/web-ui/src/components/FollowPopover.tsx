@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { ChannelFollowState, FollowWithPreferences } from "@/lib/api/follows";
 import { useToasts } from "@/contexts/toasts";
@@ -18,6 +19,7 @@ export function FollowPopover({
   onClose,
   onUnfollow,
 }: FollowPopoverProps) {
+  const t = useTranslations("projects.followPopover");
   const popoverRef = useRef<HTMLDivElement>(null);
   const [follow, setFollow] = useState<FollowWithPreferences | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -33,12 +35,12 @@ export function FollowPopover({
       })
       .catch(() => {
         if (cancelled) return;
-        setLoadError("Couldn't load preferences");
+        setLoadError(t("loadFailed"));
       });
     return () => {
       cancelled = true;
     };
-  }, [projectSlug]);
+  }, [projectSlug, t]);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -81,7 +83,7 @@ export function FollowPopover({
     } catch {
       showToast({
         kind: "error",
-        title: "Couldn't unfollow",
+        title: t("unfollowFailed"),
         ttlMs: 5_000,
       });
     }
@@ -93,7 +95,7 @@ export function FollowPopover({
       className="absolute right-0 mt-2 w-72 bg-white rounded-lg shadow-lg border border-border z-20"
     >
       <div className="px-3 py-2 border-b border-border text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-        Channels
+        {t("channels")}
       </div>
       <div className="p-1">
         {loadError && (
@@ -103,7 +105,7 @@ export function FollowPopover({
         )}
         {!loadError && !follow && (
           <div className="px-3 py-3 text-sm text-muted-foreground">
-            Loading…
+            {t("loading")}
           </div>
         )}
         {follow && (
@@ -119,7 +121,7 @@ export function FollowPopover({
           onClick={handleUnfollow}
           className="text-sm text-red-600 hover:text-red-700 transition-colors"
         >
-          Unfollow
+          {t("unfollow")}
         </button>
       </div>
     </div>

@@ -3,32 +3,37 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
+import { useTranslations } from "next-intl";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api, type Project } from "@/lib/api";
 import { describeApiError } from "@/lib/api/errors";
 import { pickVariant } from "@/lib/utils";
 
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    pending: "badge-warning",
-    approved: "badge-success",
-    rejected: "badge-error",
-  };
+const STATUS_STYLES: Record<string, string> = {
+  pending: "badge-warning",
+  approved: "badge-success",
+  rejected: "badge-error",
+};
 
-  const labels: Record<string, string> = {
-    pending: "Pending",
-    approved: "Approved",
-    rejected: "Rejected",
-  };
+const STATUS_KEYS: Record<string, "pending" | "approved" | "rejected"> = {
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations("my-projects.list.status");
+  const key = STATUS_KEYS[status];
 
   return (
-    <span className={`badge ${styles[status] || "badge-neutral"}`}>
-      {labels[status] || status}
+    <span className={`badge ${STATUS_STYLES[status] || "badge-neutral"}`}>
+      {key ? t(key) : status}
     </span>
   );
 }
 
 function ProjectCard({ project }: { project: Project }) {
+  const t = useTranslations("my-projects.list");
   const mainImage =
     project.images?.find((img) => img.is_main) || project.images?.[0];
   const thumbUrl = mainImage ? pickVariant(mainImage.variants, "thumb") : null;
@@ -45,14 +50,14 @@ function ProjectCard({ project }: { project: Project }) {
               /* eslint-disable-next-line @next/next/no-img-element */
               <img
                 src={thumbUrl}
-                alt={project.title || "Project image"}
+                alt={project.title || t("projectImageAlt")}
                 className="absolute inset-0 w-full h-full object-contain"
                 loading="lazy"
               />
             ) : (
               <Image
                 src={mainImage.url}
-                alt={project.title || "Project image"}
+                alt={project.title || t("projectImageAlt")}
                 fill
                 className="object-contain"
                 sizes="128px"
@@ -64,7 +69,7 @@ function ProjectCard({ project }: { project: Project }) {
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0 flex-1">
               <h2 className="font-medium text-foreground truncate group-hover:text-accent transition-colors">
-                {project.title || "Untitled Project"}
+                {project.title || t("untitled")}
               </h2>
               <p className="text-muted-foreground text-xs truncate mt-0.5">
                 {project.website_url}
@@ -86,6 +91,7 @@ function ProjectCard({ project }: { project: Project }) {
 }
 
 export function ProjectsList() {
+  const t = useTranslations("my-projects.list");
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [projects, setProjects] = useState<Project[]>([]);
   const [tipOffs, setTipOffs] = useState<Project[]>([]);
@@ -110,7 +116,7 @@ export function ProjectsList() {
       },
       (err) => {
         if (!cancelled) {
-          setError(describeApiError(err, "Couldn't load your projects."));
+          setError(describeApiError(err, t("errors.loadFailed")));
           setIsLoading(false);
         }
       }
@@ -119,7 +125,7 @@ export function ProjectsList() {
     return () => {
       cancelled = true;
     };
-  }, [isReady]);
+  }, [isReady, t]);
 
   if (authLoading || isLoading) {
     return (
@@ -147,7 +153,7 @@ export function ProjectsList() {
           {error}
         </div>
         <Link href="/" className="text-sm text-accent hover:text-accent-hover transition-colors">
-          Back to home
+          {t("backToHome")}
         </Link>
       </div>
     );
@@ -156,10 +162,10 @@ export function ProjectsList() {
   return (
     <>
       <section>
-        <h2 className="text-sm font-medium text-muted-foreground mb-3">My Projects</h2>
+        <h2 className="text-sm font-medium text-muted-foreground mb-3">{t("projectsHeading")}</h2>
         {projects.length === 0 ? (
           <div className="bg-white rounded-xl border border-border p-8 text-center">
-            <p className="text-muted-foreground text-sm">You haven&apos;t submitted any projects yet.</p>
+            <p className="text-muted-foreground text-sm">{t("empty")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -172,7 +178,7 @@ export function ProjectsList() {
 
       {tipOffs.length > 0 && (
         <section className="mt-8" data-testid="tip-offs-section">
-          <h2 className="text-sm font-medium text-muted-foreground mb-3">Tip Offs</h2>
+          <h2 className="text-sm font-medium text-muted-foreground mb-3">{t("tipOffsHeading")}</h2>
           <div className="space-y-3">
             {tipOffs.map((project) => (
               <ProjectCard key={project.id} project={project} />
@@ -183,7 +189,7 @@ export function ProjectsList() {
 
       <div className="mt-8 text-center">
         <Link href="/create" className="btn-primary">
-          {projects.length === 0 ? "Create your first project" : "Create a project"}
+          {projects.length === 0 ? t("createFirst") : t("create")}
         </Link>
       </div>
     </>

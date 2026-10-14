@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
@@ -35,6 +36,7 @@ export function FeaturedSection({ projects }: FeaturedSectionProps) {
 }
 
 export function LargeHeroCard({ project }: { project: DiscoverProject }) {
+  const tb = useTranslations("projects.tipoffBadge");
   const imageUrl = project.hero_banner_url || project.in_use_image_url;
 
   return (
@@ -59,7 +61,7 @@ export function LargeHeroCard({ project }: { project: DiscoverProject }) {
                 {project.category_name}
               </span>
             )}
-            {project.is_community_tipoff && <TipoffBadge size="sm" label="Tipoff" />}
+            {project.is_community_tipoff && <TipoffBadge size="sm" label={tb("short")} />}
           </div>
           <h3 className="text-lg font-semibold text-white mt-1 group-hover:text-accent-subtle transition-colors">
             {project.title}
@@ -74,6 +76,7 @@ export function LargeHeroCard({ project }: { project: DiscoverProject }) {
 }
 
 function SmallHeroCard({ project }: { project: DiscoverProject }) {
+  const tb = useTranslations("projects.tipoffBadge");
   const imageUrl = project.hero_banner_url || project.in_use_image_url;
 
   return (
@@ -96,7 +99,7 @@ function SmallHeroCard({ project }: { project: DiscoverProject }) {
 
           {project.is_community_tipoff && (
             <div className="absolute top-2 right-2">
-              <TipoffBadge size="sm" label="Tipoff" />
+              <TipoffBadge size="sm" label={tb("short")} />
             </div>
           )}
 

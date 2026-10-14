@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { TagGrouped, TagWithCategory } from "@/lib/api";
 import type { SelectedTag } from "@/components/TagSelector";
@@ -14,6 +15,8 @@ export function TagSidebarSelector({
   selectedTagIds,
   onChange,
 }: TagSidebarSelectorProps) {
+  const t = useTranslations("my-projects.tagSidebar");
+  const tc = useTranslations("common.actions");
   const [groupedTags, setGroupedTags] = useState<TagGrouped[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,11 +32,11 @@ export function TagSidebarSelector({
       const data = await api.tags.listGrouped();
       setGroupedTags(data);
     } catch {
-      setError("Failed to load tags");
+      setError(t("errors.loadFailed"));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadTags();
@@ -101,7 +104,7 @@ export function TagSidebarSelector({
       setSuggestName("");
       setSuggestingFor(null);
     } catch {
-      setError("Failed to suggest tag");
+      setError(t("errors.suggestFailed"));
     } finally {
       setIsSuggesting(false);
     }
@@ -123,7 +126,7 @@ export function TagSidebarSelector({
 
   return (
     <div className="space-y-3">
-      <h3 className="text-sm font-medium text-foreground">Tags</h3>
+      <h3 className="text-sm font-medium text-foreground">{t("heading")}</h3>
       {groupedTags.map((group) => {
         const isExpanded = expandedCategories.has(group.category.id);
         const selectedInCategory = group.tags.filter((t) =>
@@ -143,7 +146,7 @@ export function TagSidebarSelector({
                 onClick={() => toggleExpanded(group.category.id)}
                 className="text-xs text-accent hover:text-accent-hover transition-colors"
               >
-                {isExpanded ? "Done" : "+ Add"}
+                {isExpanded ? tc("done") : t("addTags")}
               </button>
             </div>
 
@@ -158,7 +161,7 @@ export function TagSidebarSelector({
                     <button
                       onClick={() => removeTag(tag.id)}
                       className="hover:bg-white/20 rounded-full p-0.5 -mr-0.5 transition-colors"
-                      aria-label={`Remove ${tag.name}`}
+                      aria-label={t("removeTag", { name: tag.name })}
                     >
                       <svg
                         className="w-3 h-3"
@@ -191,7 +194,7 @@ export function TagSidebarSelector({
                       >
                         {tag.name}
                         {tag.status === "pending" && (
-                          <span className="opacity-75" title="Pending review">
+                          <span className="opacity-75" title={t("pendingReview")}>
                             {" "}
                             *
                           </span>
@@ -207,7 +210,7 @@ export function TagSidebarSelector({
                       type="text"
                       value={suggestName}
                       onChange={(e) => setSuggestName(e.target.value)}
-                      placeholder="Tag name"
+                      placeholder={t("namePlaceholder")}
                       className="flex-1 min-w-0 px-2 py-1 text-xs border border-border rounded focus:outline-none focus:ring-1 focus:ring-accent"
                       autoFocus
                       onKeyDown={(e) => {
@@ -224,7 +227,7 @@ export function TagSidebarSelector({
                       disabled={isSuggesting || !suggestName.trim()}
                       className="px-2 py-1 text-xs bg-accent text-white rounded hover:bg-accent/90 disabled:opacity-50"
                     >
-                      {isSuggesting ? "..." : "Add"}
+                      {isSuggesting ? "..." : t("add")}
                     </button>
                     <button
                       onClick={() => {
@@ -233,7 +236,7 @@ export function TagSidebarSelector({
                       }}
                       className="text-xs text-muted-foreground hover:text-foreground"
                     >
-                      Cancel
+                      {tc("cancel")}
                     </button>
                   </div>
                 ) : (
@@ -241,7 +244,7 @@ export function TagSidebarSelector({
                     onClick={() => setSuggestingFor(group.category.id)}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    + Suggest new
+                    {t("suggestNew")}
                   </button>
                 )}
               </div>

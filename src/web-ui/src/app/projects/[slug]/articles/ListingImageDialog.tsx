@@ -2,6 +2,7 @@
 
 import { useMemo, useRef, useState } from "react";
 import { ArrowPathIcon, PhotoIcon } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 import { Dialog } from "@/components/Dialog";
 import { ImageCropper, defaultCrop } from "@/components/ImageCropper";
 import type { CropRect } from "@/components/CroppedImage";
@@ -27,9 +28,6 @@ type CroppableImage = ProjectImage & { width: number; height: number };
 function isCroppable(image: ProjectImage): image is CroppableImage {
   return Boolean(image.width && image.height);
 }
-
-const UNCROPPABLE =
-  "We couldn't read that image's dimensions, so there's nothing to frame yet. Try another image.";
 
 interface Props {
   // Slug or id — whatever the article editor addresses the project by. Article
@@ -60,6 +58,8 @@ export function ListingImageDialog({
   onRemove,
   onClose,
 }: Props) {
+  const t = useTranslations("articles.listingImageDialog");
+  const tc = useTranslations("common.actions");
   const [selected, setSelected] = useState<CroppableImage | null>(() => {
     const current = images.find((image) => image.id === currentImageId);
     return current && isCroppable(current) ? current : null;
@@ -96,7 +96,7 @@ export function ListingImageDialog({
   // reopens on its stored crop.
   function openFraming(image: ProjectImage) {
     if (!isCroppable(image)) {
-      setError(UNCROPPABLE);
+      setError(t("uncroppable"));
       return;
     }
     setError("");
@@ -129,12 +129,10 @@ export function ListingImageDialog({
       className="max-w-3xl max-h-[calc(100vh-4rem)] flex flex-col"
     >
       <h2 id={TITLE_ID} className="shrink-0 text-lg font-semibold text-foreground">
-        {step === "pick" ? "Choose a listing image" : "Frame the card"}
+        {step === "pick" ? t("pickTitle") : t("frameTitle")}
       </h2>
       <p className="mt-1 shrink-0 text-sm text-muted-foreground">
-        {step === "pick"
-          ? "Pick one of this article's images, or upload a new one."
-          : "Drag to move the image, and zoom to change how much of it is used."}
+        {step === "pick" ? t("pickDescription") : t("frameDescription")}
       </p>
 
       <div className="mt-4 min-h-0 flex-1 overflow-y-auto">
@@ -156,7 +154,7 @@ export function ListingImageDialog({
               value={crop}
               onChange={setCrop}
               lockRatio={CARD_RATIO}
-              previewLabel="Card"
+              previewLabel={t("framePreviewLabel")}
             />
           )
         )}
@@ -177,14 +175,14 @@ export function ListingImageDialog({
             }}
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
           >
-            Remove image
+            {t("removeImage")}
           </button>
         ) : (
           <button
             onClick={() => setStep("pick")}
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
           >
-            Back
+            {tc("back")}
           </button>
         )}
         <div className="flex gap-2">
@@ -192,7 +190,7 @@ export function ListingImageDialog({
             onClick={handleCancel}
             className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
           >
-            Cancel
+            {tc("cancel")}
           </button>
           {step === "pick" ? (
             <button
@@ -200,7 +198,7 @@ export function ListingImageDialog({
               disabled={!selected}
               className="px-4 py-2 text-sm font-medium rounded-lg bg-accent text-white hover:bg-accent/90 disabled:opacity-50"
             >
-              Next
+              {t("next")}
             </button>
           ) : (
             <button
@@ -223,7 +221,7 @@ export function ListingImageDialog({
               }}
               className="px-4 py-2 text-sm font-medium rounded-lg bg-accent text-white hover:bg-accent/90"
             >
-              Use it
+              {t("useIt")}
             </button>
           )}
         </div>
@@ -247,6 +245,7 @@ function PickStep({
   onSelect: (image: CroppableImage) => void;
   onFile: (file: File) => void;
 }) {
+  const t = useTranslations("articles.listingImageDialog");
   // Without recorded dimensions there is nothing to frame, so those images are
   // not offered.
   const selectable = images.filter(isCroppable);
@@ -298,7 +297,7 @@ function PickStep({
           <PhotoIcon className="h-6 w-6" />
         )}
         <span className="text-sm">
-          {isUploading ? "Uploading…" : "Upload new"}
+          {isUploading ? t("uploading") : t("uploadNew")}
         </span>
       </button>
     </div>

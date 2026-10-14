@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import type { Project, ProjectImage } from "@/lib/api";
 import { ImageDropZone, UploadProgress } from "@/components/ImageUpload";
 import { ImageRoleDialog } from "@/components/ImageRoleDialog";
@@ -48,43 +49,47 @@ interface EditProjectContentProps {
 
 const MAX_IMAGES = 10;
 
-function StatusBadge({ status }: { status: string }) {
-  const styles: Record<string, string> = {
-    draft: "badge-neutral",
-    pending: "badge-warning",
-    approved: "badge-success",
-    rejected: "badge-error",
-  };
+const STATUS_STYLES: Record<string, string> = {
+  draft: "badge-neutral",
+  pending: "badge-warning",
+  approved: "badge-success",
+  rejected: "badge-error",
+};
 
-  const labels: Record<string, string> = {
-    draft: "Draft",
-    pending: "Pending Review",
-    approved: "Approved",
-    rejected: "Rejected",
-  };
+const STATUS_KEYS: Record<string, "draft" | "pending" | "approved" | "rejected"> = {
+  draft: "draft",
+  pending: "pending",
+  approved: "approved",
+  rejected: "rejected",
+};
+
+function StatusBadge({ status }: { status: string }) {
+  const t = useTranslations("my-projects.editContent.status");
+  const key = STATUS_KEYS[status];
 
   return (
-    <span className={`badge ${styles[status] || "badge-neutral"}`}>
-      {labels[status] || status}
+    <span className={`badge ${STATUS_STYLES[status] || "badge-neutral"}`}>
+      {key ? t(key) : status}
     </span>
   );
 }
 
 function RoleBadges({ image }: { image: ProjectImage }) {
-  const badges: { label: string; color: string }[] = [];
-  if (image.is_main) badges.push({ label: "M", color: "bg-accent" });
-  if (image.is_hero) badges.push({ label: "H", color: "bg-indigo-500" });
-  if (image.is_usage) badges.push({ label: "U", color: "bg-emerald-500" });
+  const t = useTranslations("my-projects.editContent.roleBadges");
+  const badges: { role: "main" | "hero" | "usage"; color: string }[] = [];
+  if (image.is_main) badges.push({ role: "main", color: "bg-accent" });
+  if (image.is_hero) badges.push({ role: "hero", color: "bg-indigo-500" });
+  if (image.is_usage) badges.push({ role: "usage", color: "bg-emerald-500" });
   if (badges.length === 0) return null;
 
   return (
     <div className="absolute top-1 right-1 flex gap-0.5">
       {badges.map((b) => (
         <span
-          key={b.label}
+          key={b.role}
           className={`${b.color} text-white w-5 h-5 rounded text-[10px] font-bold flex items-center justify-center`}
         >
-          {b.label}
+          {t(b.role)}
         </span>
       ))}
     </div>
@@ -109,6 +114,7 @@ export function EditProjectContent({
   competitionError,
   onEnterCompetition,
 }: EditProjectContentProps) {
+  const t = useTranslations("my-projects.editContent");
   const authorName = getAuthorName(project.creator);
   const [roleDialogImage, setRoleDialogImage] = useState<ProjectImage | null>(
     null
@@ -195,46 +201,47 @@ export function EditProjectContent({
   const tabs = [
     {
       id: "description",
-      label: "Description",
+      label: t("tabs.description"),
       content: (
         <div>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-              Markdown
+              {t("markdown")}
             </span>
           </div>
           <textarea
             value={formData.description}
             onChange={(e) => handleChange("description", e.target.value)}
             className="w-full min-h-[70vh] resize-y rounded-lg border border-border bg-white px-3.5 py-2.5 text-sm text-foreground leading-relaxed placeholder:text-[#94a3b8] focus:outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/12 transition-[border-color,box-shadow]"
-            placeholder="Tell us about your project..."
+            placeholder={t("descriptionPlaceholder")}
           />
         </div>
       ),
     },
     {
       id: "articles",
-      label: "Articles",
+      label: t("tabs.articles"),
       content: (
         <MyProjectArticles projectSlugOrId={project.slug ?? project.id} />
       ),
     },
     {
       id: "settings",
-      label: "Settings",
+      label: t("tabs.settings"),
       content: (
         <div className="space-y-6" data-testid="settings-tab">
           <div className="space-y-4">
             <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">Status:</span>
+              <span className="text-sm text-muted-foreground">{t("statusLabel")}</span>
               <StatusBadge status={project.status} />
             </div>
             <div className="text-sm text-muted-foreground">
-              Submitted{" "}
-              {new Date(project.created_at).toLocaleDateString("en-US", {
-                year: "numeric",
-                month: "long",
-                day: "numeric",
+              {t("submittedOn", {
+                date: new Date(project.created_at).toLocaleDateString("en-US", {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                }),
               })}
             </div>
           </div>

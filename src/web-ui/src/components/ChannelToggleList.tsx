@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { ChannelFollowState } from "@/lib/api/follows";
 
 interface ChannelToggleListProps {
@@ -13,8 +14,9 @@ export function ChannelToggleList({
   channels,
   onToggle,
 }: ChannelToggleListProps) {
+  const t = useTranslations("projects.channelToggleList");
   return (
-    <div role="group" aria-label="Channels">
+    <div role="group" aria-label={t("label")}>
       {channels.map((channel) => (
         <label
           key={channel.channel_id}

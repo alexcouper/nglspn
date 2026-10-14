@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { ArticleRenderContent } from "./ArticleRenderContent";
 import { socialCard } from "@/lib/social-card";
 import {
@@ -27,14 +28,20 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { slug, articleSlug } = await params;
   try {
-    const article = await fetchArticleBySlug(slug, articleSlug);
+    const [t, article] = await Promise.all([
+      getTranslations("articles.page"),
+      fetchArticleBySlug(slug, articleSlug),
+    ]);
     // Never the body: that is markdown, and `## headings`, `**bold**` and
     // `[links](url)` would go verbatim into the meta tags. `summary` is the
     // authored standfirst; `summary_display` is the server's plain-text
     // excerpt of the body, which is what this wanted in the first place.
     const description = truncate(article.summary || article.summary_display);
     return {
-      title: `${article.title} — ${article.project.title}`,
+      title: t("metaTitle", {
+        articleTitle: article.title,
+        projectTitle: article.project.title,
+      }),
       description,
       // The uncropped original. The author's 16:9 framing is applied in CSS at
       // render time (see CroppedImage), so there is no cropped file to point a

@@ -4,6 +4,7 @@ import { useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 import { StarIcon, TrashIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
+import { useTranslations } from "next-intl";
 import type { ProjectImage } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
 
@@ -20,6 +21,7 @@ export function ImageGallery({
   onSetMain,
   onDelete,
 }: ImageGalleryProps) {
+  const t = useTranslations("images.gallery");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const openLightbox = useCallback((index: number) => {
@@ -79,13 +81,13 @@ export function ImageGallery({
             /* eslint-disable-next-line @next/next/no-img-element */
             <img
               src={mainVariantUrl}
-              alt="Main project image"
+              alt={t("mainImageAlt")}
               className="absolute inset-0 w-full h-full object-contain"
             />
           ) : (
             <Image
               src={mainImage.url}
-              alt="Main project image"
+              alt={t("mainImageAlt")}
               fill
               className="object-contain"
               sizes="(max-width: 768px) 100vw, 50vw"
@@ -96,12 +98,12 @@ export function ImageGallery({
             <div className="absolute top-2 right-2 flex gap-1">
               <span className="bg-accent text-white px-2 py-1 rounded text-xs font-medium flex items-center gap-1">
                 <StarIconSolid className="w-3 h-3" />
-                Main
+                {t("mainBadge")}
               </span>
               <button
                 onClick={() => onDelete?.(mainImage.id)}
                 className="p-1.5 bg-red-500 text-white rounded hover:bg-red-600 transition-colors"
-                title="Delete image"
+                title={t("deleteImage")}
               >
                 <TrashIcon className="w-4 h-4" />
               </button>
@@ -146,7 +148,7 @@ export function ImageGallery({
                         onSetMain?.(image.id);
                       }}
                       className="p-2 bg-white rounded-full hover:bg-muted transition-colors"
-                      title="Set as main image"
+                      title={t("setAsMain")}
                     >
                       <StarIcon className="w-4 h-4 text-foreground" />
                     </button>
@@ -156,7 +158,7 @@ export function ImageGallery({
                         onDelete?.(image.id);
                       }}
                       className="p-2 bg-white rounded-full hover:bg-muted transition-colors"
-                      title="Delete image"
+                      title={t("deleteImage")}
                     >
                       <TrashIcon className="w-4 h-4 text-red-500" />
                     </button>
@@ -178,7 +180,7 @@ export function ImageGallery({
           <button
             onClick={closeLightbox}
             className="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors"
-            title="Close (Esc)"
+            title={t("close")}
           >
             <XMarkIcon className="w-8 h-8" />
           </button>
@@ -191,7 +193,7 @@ export function ImageGallery({
                 goToPrevious();
               }}
               className="absolute left-4 p-2 text-white/70 hover:text-white transition-colors"
-              title="Previous (Left Arrow)"
+              title={t("previous")}
             >
               <ChevronLeftIcon className="w-10 h-10" />
             </button>
@@ -232,7 +234,7 @@ export function ImageGallery({
                 goToNext();
               }}
               className="absolute right-4 p-2 text-white/70 hover:text-white transition-colors"
-              title="Next (Right Arrow)"
+              title={t("next")}
             >
               <ChevronRightIcon className="w-10 h-10" />
             </button>
@@ -241,7 +243,7 @@ export function ImageGallery({
           {/* Image counter */}
           {images.length > 1 && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm">
-              {lightboxIndex + 1} / {images.length}
+              {t("counter", { current: lightboxIndex + 1, total: images.length })}
             </div>
           )}
         </div>

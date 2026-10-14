@@ -2,6 +2,7 @@
 
 import { useRef } from "react";
 import { CameraIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 import type { ProjectImage } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
 import { TipoffBadge } from "@/components/TipoffBadge";
@@ -26,6 +27,7 @@ export function EditableProjectBanner({
   onIconFilesSelected,
   onDeleteIcon,
 }: EditableProjectBannerProps) {
+  const t = useTranslations("my-projects.banner");
   const iconInputRef = useRef<HTMLInputElement>(null);
 
   const handleChange = (field: keyof ProjectFormData, value: string) => {
@@ -58,7 +60,7 @@ export function EditableProjectBanner({
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={iconUrl}
-                alt="Project icon"
+                alt={t("iconAlt")}
                 className="w-14 h-14 rounded-lg object-cover cursor-pointer border border-border"
                 onClick={handleIconClick}
               />
@@ -76,7 +78,7 @@ export function EditableProjectBanner({
             <button
               onClick={handleIconClick}
               className="w-14 h-14 rounded-lg border-2 border-dashed border-border hover:border-accent flex items-center justify-center text-muted-foreground hover:text-accent transition-colors"
-              title="Upload project icon (256x256 recommended)"
+              title={t("uploadIcon")}
             >
               <CameraIcon className="w-5 h-5" />
             </button>
@@ -96,20 +98,20 @@ export function EditableProjectBanner({
             type="text"
             value={formData.title}
             onChange={(e) => handleChange("title", e.target.value)}
-            placeholder="Project Title"
+            placeholder={t("titlePlaceholder")}
             className="w-full text-2xl sm:text-3xl font-semibold text-foreground tracking-tight bg-transparent border-0 border-b border-dashed border-border outline-none placeholder:text-muted-foreground/50 focus:ring-0 focus:border-accent px-0 py-1 transition-colors"
           />
           <input
             type="text"
             value={formData.tagline}
             onChange={(e) => handleChange("tagline", e.target.value)}
-            placeholder="A short tagline for your project"
+            placeholder={t("taglinePlaceholder")}
             maxLength={200}
             className="w-full text-foreground text-base mt-1 bg-transparent border-0 border-b border-dashed border-border outline-none placeholder:text-muted-foreground/50 focus:ring-0 focus:border-accent px-0 py-1 transition-colors"
           />
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground mt-3">
             {isTipoff ? (
-              <TipoffBadge label="Community tipoff" withTooltip />
+              <TipoffBadge label={t("communityTipoff")} withTooltip />
             ) : (
               <span className="text-foreground">{authorName}</span>
             )}
@@ -118,7 +120,7 @@ export function EditableProjectBanner({
               type="url"
               value={formData.website_url}
               onChange={(e) => handleChange("website_url", e.target.value)}
-              placeholder="https://your-project.com"
+              placeholder={t("urlPlaceholder")}
               className="bg-transparent border-0 border-b border-dashed border-border outline-none placeholder:text-muted-foreground/50 focus:ring-0 focus:border-accent px-0 py-1 min-w-0 flex-1 transition-colors"
             />
           </div>

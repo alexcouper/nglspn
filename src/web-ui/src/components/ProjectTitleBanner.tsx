@@ -2,6 +2,7 @@
 
 import { Fragment } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { Project } from "@/lib/api";
 import { getAuthorName } from "@/lib/utils";
 import { FollowButton } from "@/components/FollowButton";
@@ -13,6 +14,7 @@ interface ProjectTitleBannerProps {
 }
 
 export function ProjectTitleBanner({ project, iconUrl }: ProjectTitleBannerProps) {
+  const t = useTranslations("projects.titleBanner");
   const displayOwners = project.contributors.filter(
     (c) => c.role === "owner" && c.full_edit && !c.user.is_system_user
   );
@@ -26,7 +28,7 @@ export function ProjectTitleBanner({ project, iconUrl }: ProjectTitleBannerProps
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={iconUrl}
-              alt={`${project.title} icon`}
+              alt={t("iconAlt", { title: project.title })}
               className="w-14 h-14 rounded-lg object-cover border border-border"
             />
           </div>
@@ -35,7 +37,7 @@ export function ProjectTitleBanner({ project, iconUrl }: ProjectTitleBannerProps
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-              {project.title || "Untitled Project"}
+              {project.title || t("untitled")}
             </h1>
             {project.slug && <FollowButton projectSlug={project.slug} />}
           </div>
@@ -62,7 +64,7 @@ export function ProjectTitleBanner({ project, iconUrl }: ProjectTitleBannerProps
           )}
           {displayOwners.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-sm text-muted-foreground mt-2">
-              <span>by</span>
+              <span>{t("by")}</span>
               {displayOwners.map((contributor, i) => (
                 <Fragment key={contributor.user.id}>
                   <Link

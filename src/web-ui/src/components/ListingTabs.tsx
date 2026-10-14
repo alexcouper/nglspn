@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { CategoryItem } from "@/lib/api";
 
 // Shared chrome rather than part of the projects page: /latest and /projects are
@@ -12,6 +13,7 @@ interface ListingTabsProps {
 }
 
 export function ListingTabs({ categories, active }: ListingTabsProps) {
+  const t = useTranslations("projects.listingTabs");
   const withProjects = categories.filter((c) => c.project_count > 0);
 
   return (
@@ -19,13 +21,13 @@ export function ListingTabs({ categories, active }: ListingTabsProps) {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 flex items-center gap-6">
         <nav
           className="flex gap-6 overflow-x-auto scrollbar-hide flex-1"
-          aria-label="Section tabs"
+          aria-label={t("label")}
         >
-          <TabLink href="/latest" active={active.kind === "latest"} label="Latest" />
+          <TabLink href="/latest" active={active.kind === "latest"} label={t("latest")} />
           <TabLink
             href="/projects"
             active={active.kind === "discover"}
-            label="Discover"
+            label={t("discover")}
           />
           {withProjects.map((cat) => (
             <TabLink
@@ -40,7 +42,7 @@ export function ListingTabs({ categories, active }: ListingTabsProps) {
           href="/create"
           className="hidden sm:inline-block shrink-0 text-sm font-medium bg-accent hover:bg-accent-hover text-white px-3.5 py-1.5 rounded-md transition-colors duration-150"
         >
-          Create a project
+          {t("createProject")}
         </Link>
       </div>
     </div>

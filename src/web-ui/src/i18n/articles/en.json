@@ -1,1 +1,125 @@
-{}
+{
+  "authoring": {
+    "tabs": {
+      "content": "Content",
+      "listing": "Listing settings"
+    },
+    "tablistLabel": "Article editor",
+    "notAllowed": {
+      "title": "Not allowed",
+      "body": "You need full edit access on this project to author articles."
+    },
+    "openFailed": {
+      "title": "Couldn't open this article",
+      "fallback": "The article is no longer available."
+    },
+    "backToProject": "Back to project",
+    "modeEditArticle": "Edit article",
+    "modeEditDraft": "Edit draft",
+    "confirmDelete": "Delete this article? This cannot be undone.",
+    "saveDraft": "Save draft",
+    "deleteArticle": "Delete article",
+    "titlePlaceholder": "Article title"
+  },
+  "route": {
+    "openProjectFailed": {
+      "title": "Couldn't open this project",
+      "fallback": "Couldn't open this project."
+    },
+    "backToMyProjects": "Back to my projects"
+  },
+  "load": {
+    "openFailed": "Couldn't open this article."
+  },
+  "mutations": {
+    "saved": "Saved",
+    "draftSaved": "Draft saved",
+    "errors": {
+      "saveFailed": "Couldn't save this article.",
+      "notReadyToPublish": "Article is not ready to publish.",
+      "deleteFailed": "Couldn't delete this article."
+    }
+  },
+  "leaveGuard": {
+    "prompt": "You have unsaved changes to this article. Leave without saving?"
+  },
+  "cardPreview": {
+    "tablistLabel": "Card preview",
+    "lead": "As lead story",
+    "grid": "In the grid"
+  },
+  "editor": {
+    "languages": {
+      "plainText": "Plain text",
+      "shell": "Shell"
+    }
+  },
+  "gallery": {
+    "empty": "Empty gallery",
+    "previous": "Previous image",
+    "next": "Next image",
+    "showImage": "Show image {number}",
+    "position": "{current} / {total}"
+  },
+  "galleryEditor": {
+    "moveLeft": "Move image left",
+    "moveRight": "Move image right",
+    "removeImage": "Remove image from gallery",
+    "dropHint": "Drop an image here to add it to the gallery"
+  },
+  "channelDropdown": {
+    "label": "Channel",
+    "noChannels": "No channels available"
+  },
+  "imageAltDialog": {
+    "title": "Image alt text",
+    "description": "Describe the image for readers using a screen reader, and for when it fails to load.",
+    "altText": "Alt text"
+  },
+  "imageUpload": {
+    "uploading": "Uploading image…",
+    "failed": "Image upload failed: {message}",
+    "failedFallback": "Image upload failed"
+  },
+  "insertImage": {
+    "button": "Insert image"
+  },
+  "listingImageDialog": {
+    "pickTitle": "Choose a listing image",
+    "pickDescription": "Pick one of this article's images, or upload a new one.",
+    "frameTitle": "Frame the card",
+    "frameDescription": "Drag to move the image, and zoom to change how much of it is used.",
+    "framePreviewLabel": "Card",
+    "uncroppable": "We couldn't read that image's dimensions, so there's nothing to frame yet. Try another image.",
+    "removeImage": "Remove image",
+    "next": "Next",
+    "useIt": "Use it",
+    "uploading": "Uploading…",
+    "uploadNew": "Upload new"
+  },
+  "listingSettings": {
+    "summary": "Summary",
+    "summaryHint": "Leave empty to use the start of the article.",
+    "summaryCount": "{count}/{max}",
+    "image": "Image",
+    "noImage": "No image",
+    "mode": {
+      "auto": "Following the first image in this article.",
+      "chosen": "Your choice.",
+      "none": "This article shows no image in listings."
+    },
+    "changeImage": "Change…",
+    "chooseImage": "Choose an image…"
+  },
+  "publishDialog": {
+    "title": "Publish article",
+    "description": "Publishing makes the article visible to everyone on the project page."
+  },
+  "render": {
+    "draftBadge": "Draft — visible only to the author and project editors",
+    "byline": "by <link>{name}</link>"
+  },
+  "page": {
+    "metaTitle": "{articleTitle} — {projectTitle}"
+  }
+}

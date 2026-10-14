@@ -1,15 +1,17 @@
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const t = await getTranslations("about.what");
   return (
     <section className="bg-muted py-20 px-4 sm:px-6">
       <div className="max-w-5xl mx-auto">
         <div className="text-center mb-14">
           <h2 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight mb-3">
-            Supporting Iceland&apos;s builder ecosystem
+            {t("title")}
           </h2>
           <p className="text-muted-foreground max-w-lg mx-auto">
-            Everything you need to share your work and grow with the community.
+            {t("subtitle")}
           </p>
         </div>
 
@@ -21,10 +23,10 @@ export default function AboutPage() {
               </svg>
             </div>
             <h3 className="font-semibold text-foreground mb-2">
-              Show Your Work
+              {t("showWork.title")}
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              A space to showcase your side projects and early-stage ideas to the Icelandic tech community.
+              {t("showWork.description")}
             </p>
           </div>
 
@@ -35,10 +37,10 @@ export default function AboutPage() {
               </svg>
             </div>
             <h3 className="font-semibold text-foreground mb-2">
-              Get Feedback
+              {t("feedback.title")}
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Receive valuable feedback from fellow builders and compete for prizes in community competitions.
+              {t("feedback.description")}
             </p>
           </div>
 
@@ -49,27 +51,25 @@ export default function AboutPage() {
               </svg>
             </div>
             <h3 className="font-semibold text-foreground mb-2">
-              Share & Grow
+              {t("shareGrow.title")}
             </h3>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Share your experience and skills. Learn from others. Grow your project with the community.
+              {t("shareGrow.description")}
             </p>
           </div>
         </div>
 
         <section className="mt-12 rounded-xl border border-border bg-white p-7">
-          <h2 className="text-xl font-semibold tracking-tight">Why the name Naglasúpan?</h2>
+          <h2 className="text-xl font-semibold tracking-tight">{t("name.title")}</h2>
           <p className="mt-3 max-w-3xl leading-relaxed text-muted-foreground">
-            The name comes from the story of nail soup: a shared meal made
-            possible by many small contributions. The same idea brings people
-            building software in Iceland together here.
+            {t("name.text")}
           </p>
           <div className="mt-4 flex flex-wrap gap-x-6 gap-y-3 text-sm">
             <Link href="/guides/iceland-developer-community#why-the-name" className="text-accent-hover underline underline-offset-4">
-              The story behind Naglasúpan
+              {t("name.storyLink")}
             </Link>
             <Link href="/is/guides/iceland-developer-community#why-the-name" lang="is" hrefLang="is" className="text-accent-hover underline underline-offset-4">
-              Sagan á bak við Naglasúpuna
+              {t("name.storyLinkIcelandic")}
             </Link>
           </div>
         </section>

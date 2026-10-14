@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import type { WinnerProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
@@ -11,13 +12,14 @@ interface WinnersSectionProps {
 }
 
 export function WinnersSection({ winners }: WinnersSectionProps) {
+  const t = useTranslations("projects.winners");
   if (winners.length === 0) return null;
 
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-foreground">
-          Competition Winners
+          {t("title")}
         </h2>
       </div>
       <HorizontalScroll>
@@ -30,6 +32,7 @@ export function WinnersSection({ winners }: WinnersSectionProps) {
 }
 
 function WinnerCard({ winner }: { winner: WinnerProject }) {
+  const t = useTranslations("projects.winners");
   const imageUrl = winner.hero_banner_url || winner.in_use_image_url;
 
   return (
@@ -51,7 +54,7 @@ function WinnerCard({ winner }: { winner: WinnerProject }) {
           )}
           {/* Winner badge */}
           <span className="absolute top-2 right-2 bg-amber-400 text-amber-900 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
-            Winner
+            {t("badge")}
           </span>
         </div>
         <div className="p-3.5 flex-1 flex flex-col">

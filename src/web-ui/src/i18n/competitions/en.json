@@ -1,1 +1,157 @@
-{}
+{
+  "index": {
+    "title": "Competitions",
+    "subtitle": "Community competitions and their results"
+  },
+  "list": {
+    "pastCompetitions": "Past Competitions",
+    "pendingProjects": "{count, plural, one {# pending project} other {# pending projects}}",
+    "empty": "No competitions found.",
+    "projectCount": "{count, plural, one {# project} other {# projects}}",
+    "prize": "{amount} kr.",
+    "errors": {
+      "loadFailed": "Failed to fetch competitions"
+    }
+  },
+  "detail": {
+    "metadata": {
+      "description": "{name} — {start} to {end}"
+    }
+  },
+  "error": {
+    "loadFailed": "We couldn't load this competition. This may be a temporary issue."
+  },
+  "reveal": {
+    "prize": "{amount} kr. prize",
+    "projectCount": "{count, plural, one {# project} other {# projects}}",
+    "ctaTitle": "Got a project you're working on?",
+    "ctaEnterExisting": "Enter one you've already added and compete in {name}",
+    "ctaShareNew": "Share your project with the community and compete in {name}",
+    "submitProject": "Submit a Project",
+    "votingRankBelow": "Voting is in progress. Rank the projects below to help pick the winner.",
+    "votingByMembers": "Voting is in progress. Selected members are ranking the projects.",
+    "winner": "Winner",
+    "winnerBadge": "Winner",
+    "allProjects": "All Projects",
+    "noProjects": "No projects yet — be the first to submit!",
+    "untitled": "Untitled",
+    "errors": {
+      "rankingLoadFailed": "Failed to load ranking"
+    }
+  },
+  "enterProjectDialog": {
+    "title": "Enter a project in {name}",
+    "deadline": "Deadline {date}",
+    "loading": "Loading your projects...",
+    "alreadyInRound": "Already in this round",
+    "untitledProject": "Untitled Project",
+    "states": {
+      "approved": "Live in the round",
+      "pending": "Awaiting review",
+      "rejected": "Not approved",
+      "iceBox": "On ice",
+      "draft": "Draft"
+    },
+    "orCreate": "Or <link>create a project</link> — you'll be offered this round when you publish it.",
+    "nothingElseEligible": "Nothing else of yours can enter this round.",
+    "noneEligible": "None of your projects can enter this round. Anything already in this run of competitions can't enter again.",
+    "noProjectsYet": "You haven't added a project yet.",
+    "createHint": "Create a project and you'll be offered this round when you submit it.",
+    "enter": "Enter",
+    "entering": "Entering...",
+    "createProject": "Create a project",
+    "errors": {
+      "loadFailed": "Couldn't load your projects.",
+      "enterFailed": "Couldn't enter this project."
+    }
+  },
+  "myRanking": {
+    "title": "My Ranking",
+    "loggedOutPrompt": "Voting is open. Log in to rank these projects and help pick the winner.",
+    "logInToVote": "Log in to vote",
+    "createAccount": "Create an account",
+    "saving": "Saving…",
+    "instructions": "Rank your favourite projects, best first. Add the ones you want to back for the {competitionName} prize and leave the rest unranked.",
+    "rankedTab": "My ranking ({count})",
+    "unrankedTab": "Unranked ({count})",
+    "submit": "Submit Ranking",
+    "lockedIn": "Your ranking is locked in.",
+    "reopen": "Reopen ranking",
+    "status": {
+      "submitted": "Submitted",
+      "votingEnded": "Voting ended",
+      "inProgress": "In progress"
+    },
+    "errors": {
+      "saveFailed": "Failed to save rankings",
+      "notSubmittedUnsaved": "Your ranking could not be saved, so it was not submitted. Try again.",
+      "submitFailed": "Failed to submit ranking",
+      "reopenFailed": "Failed to reopen ranking"
+    }
+  },
+  "rankingList": {
+    "emptyReadOnly": "You ranked no projects.",
+    "emptyEditable": "Nothing ranked yet. Add the projects you want to back.",
+    "poolEmpty": "Every project is in your ranking.",
+    "untitled": "Untitled",
+    "fallbackName": "project",
+    "removeLabel": "Remove {name} from my ranking",
+    "moveUpLabel": "Move {name} up",
+    "moveDownLabel": "Move {name} down",
+    "dragLabel": "Drag {name} to reorder",
+    "addLabel": "Add {name} to my ranking",
+    "rank": "Rank"
+  },
+  "submitRankingDialog": {
+    "titleEmpty": "Submit without ranking anything?",
+    "title": "Submit your ranking?",
+    "bodyEmpty": "You have not ranked any projects, so none will be counted as your preference. You can reopen your review later if voting is still open.",
+    "body": "Your ranking will be locked in. You can reopen it later if voting is still open.",
+    "submitting": "Submitting...",
+    "submitEmpty": "Submit empty ballot",
+    "submit": "Submit Ranking"
+  },
+  "highlight": {
+    "prize": "{amount} ISK",
+    "daysRemaining": "{count, plural, one {# day} other {# days}} remaining",
+    "daysAgo": "{count}d ago",
+    "projectCount": "{count, plural, one {# project} other {# projects}}",
+    "comingSoon": "More competitions coming soon"
+  },
+  "statusBadge": {
+    "open": "Open",
+    "voting": "Voting",
+    "completed": "Completed"
+  },
+  "projectCompetitions": {
+    "title": "Competitions",
+    "won": "Won",
+    "entered": "Entered {date}",
+    "otherRounds": "Other rounds open now",
+    "deadline": "Deadline {date}",
+    "alreadyInSeries": "Already in this run of competitions with {name}.",
+    "earlierRound": "an earlier round",
+    "enterIn": "Enter in {name}",
+    "noOtherRound": "No other round is open right now.",
+    "noRoundOpen": "No round is currently open. This project can enter the next one.",
+    "reasons": {
+      "projectStatus": "This project can't enter competitions while it's not live.",
+      "projectDraft": "Publish this project before it can enter a competition."
+    },
+    "errors": {
+      "enterFailed": "Couldn't enter this competition. Please try again."
+    }
+  },
+  "enterCompetitionDialog": {
+    "title": "That's it sent. Enter it in a competition?",
+    "approvalNote": "It goes live once we've reviewed it. Entering now is fine — it joins {count, plural, one {the round} other {a round}} on approval.",
+    "deadline": "Deadline {date}",
+    "enterLater": "You can enter from the project's page at any time while a round is open.",
+    "notNow": "Not now",
+    "enter": "Enter",
+    "entering": "Entering...",
+    "errors": {
+      "enterFailed": "Couldn't enter this competition. Please try again."
+    }
+  }
+}

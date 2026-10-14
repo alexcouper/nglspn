@@ -1,12 +1,17 @@
+import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { ListingTabs } from "@/components/ListingTabs";
 import { fetchCategories, fetchFeedPage } from "@/lib/api/server";
 
 import { LatestFeed } from "./LatestFeed";
 
-export const metadata = {
-  title: "Latest",
-  description: "What's happened on Naglasúpan lately.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("feed.page");
+  return {
+    title: t("metaTitle"),
+    description: t("metaDescription"),
+  };
+}
 
 export default async function LatestPage() {
   const [categories, feed] = await Promise.all([

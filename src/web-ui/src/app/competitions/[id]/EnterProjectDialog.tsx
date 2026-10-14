@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { Dialog } from "@/components/Dialog";
 import { ChoiceList, type Choice } from "@/components/ChoiceList";
@@ -29,19 +30,26 @@ function isEnteredIn(project: Project, competitionId: string): boolean {
   );
 }
 
+type Translate = ReturnType<typeof useTranslations<"competitions.enterProjectDialog">>;
+
 // What the contributor is waiting on. A pending project is *in* the round —
 // it appears in the round's list once approved, because that list filters to
 // approved. Saying nothing about it read as a refusal.
-const STATE_LABELS: Record<string, string> = {
-  approved: "Live in the round",
-  pending: "Awaiting review",
-  rejected: "Not approved",
-  ice_box: "On ice",
-  draft: "Draft",
-};
-
-function stateLabel(project: Project): string {
-  return STATE_LABELS[project.status] ?? project.status;
+function stateLabel(project: Project, t: Translate): string {
+  switch (project.status) {
+    case "approved":
+      return t("states.approved");
+    case "pending":
+      return t("states.pending");
+    case "rejected":
+      return t("states.rejected");
+    case "ice_box":
+      return t("states.iceBox");
+    case "draft":
+      return t("states.draft");
+    default:
+      return project.status;
+  }
 }
 
 function thumbnailFor(project: Project): string | null {
@@ -52,10 +60,10 @@ function thumbnailFor(project: Project): string | null {
   return chosen ? (pickVariant(chosen.variants, "thumb") ?? chosen.url) : null;
 }
 
-function toChoice(project: Project): Choice {
+function toChoice(project: Project, t: Translate): Choice {
   return {
     id: project.id,
-    title: project.title || "Untitled Project",
+    title: project.title || t("untitledProject"),
     subtitle: project.tagline,
     imageUrl: thumbnailFor(project),
   };
@@ -76,12 +84,15 @@ export function EnterProjectDialog({
   onClose,
   onEntered,
 }: EnterProjectDialogProps) {
+  const t = useTranslations("competitions.enterProjectDialog");
+  const tc = useTranslations("common.actions");
   const [candidates, setCandidates] = useState<Project[] | null>(null);
   const [alreadyIn, setAlreadyIn] = useState<Project[]>([]);
   const [hasAnyProject, setHasAnyProject] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [isEntering, setIsEntering] = useState(false);
   const [error, setError] = useState("");
+  const loadFailedMessage = t("errors.loadFailed");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -106,14 +117,14 @@ export function EnterProjectDialog({
         setHasAnyProject(false);
         setAlreadyIn([]);
         setCandidates([]);
-        setError(describeApiError(err, "Couldn't load your projects."));
+        setError(describeApiError(err, loadFailedMessage));
       },
     );
 
     return () => {
       cancelled = true;
     };
-  }, [isOpen, competition.id]);
+  }, [isOpen, competition.id, loadFailedMessage]);
 
   const handleEnter = async () => {
     if (!selectedId) return;
@@ -123,7 +134,7 @@ export function EnterProjectDialog({
       await api.myProjects.enterCompetition(selectedId, competition.id);
       onEntered();
     } catch (err) {
-      setError(describeApiError(err, "Couldn't enter this project."));
+      setError(describeApiError(err, t("errors.enterFailed")));
     } finally {
       setIsEntering(false);
     }
@@ -138,10 +149,10 @@ export function EnterProjectDialog({
         id="enter-project-title"
         className="text-base font-semibold text-foreground"
       >
-        Enter a project in {competition.name}
+        {t("title", { name: competition.name })}
       </h2>
       <p className="text-sm text-muted-foreground mt-1 mb-4">
-        Deadline {formatDate(competition.submission_deadline)}
+        {t("deadline", { date: formatDate(competition.submission_deadline) })}
       </p>
 
       {error && (
@@ -151,7 +162,7 @@ export function EnterProjectDialog({
       )}
 
       {isLoading && (
-        <p className="text-sm text-muted-foreground">Loading your projects...</p>
+        <p className="text-sm text-muted-foreground">{t("loading")}</p>
       )}
 
       {/* Where they already stand, before what they can do about it. Without
@@ -160,7 +171,7 @@ export function EnterProjectDialog({
       {!isLoading && alreadyIn.length > 0 && (
         <div className="mb-5">
           <h3 className="text-muted-foreground text-xs font-medium uppercase tracking-wide mb-2">
-            Already in this round
+            {t("alreadyInRound")}
           </h3>
           <ul className="divide-y divide-border">
             {alreadyIn.map((project) => (
@@ -169,10 +180,10 @@ export function EnterProjectDialog({
                 className="py-2 flex items-center justify-between gap-3"
               >
                 <span className="text-sm text-foreground truncate">
-                  {project.title || "Untitled Project"}
+                  {project.title || t("untitledProject")}
                 </span>
                 <span className="text-xs text-muted-foreground flex-shrink-0">
-                  {stateLabel(project)}
+                  {stateLabel(project, t)}
                 </span>
               </li>
             ))}
@@ -184,19 +195,21 @@ export function EnterProjectDialog({
         <>
           <ChoiceList
             name="enter-project"
-            choices={(candidates ?? []).map(toChoice)}
+            choices={(candidates ?? []).map((project) => toChoice(project, t))}
             selectedId={selectedId}
             onSelect={setSelectedId}
           />
           <p className="text-xs text-muted-foreground mt-4 mb-5">
-            Or{" "}
-            <Link
-              href="/create"
-              className="text-accent hover:text-accent-hover transition-colors"
-            >
-              create a project
-            </Link>{" "}
-            — you&apos;ll be offered this round when you publish it.
+            {t.rich("orCreate", {
+              link: (chunks) => (
+                <Link
+                  href="/create"
+                  className="text-accent hover:text-accent-hover transition-colors"
+                >
+                  {chunks}
+                </Link>
+              ),
+            })}
           </p>
         </>
       )}
@@ -204,12 +217,11 @@ export function EnterProjectDialog({
       {!isLoading && !hasCandidates && (
         <p className="text-sm text-muted-foreground mb-5">
           {alreadyIn.length > 0
-            ? "Nothing else of yours can enter this round."
+            ? t("nothingElseEligible")
             : hasAnyProject
-              ? "None of your projects can enter this round. Anything already in this run of competitions can't enter again."
-              : "You haven't added a project yet."}{" "}
-          Create a project and you&apos;ll be offered this round when you
-          submit it.
+              ? t("noneEligible")
+              : t("noProjectsYet")}{" "}
+          {t("createHint")}
         </p>
       )}
 
@@ -220,7 +232,7 @@ export function EnterProjectDialog({
           disabled={isEntering}
           className="btn-secondary"
         >
-          Close
+          {tc("close")}
         </button>
         {!isLoading && hasCandidates ? (
           <button
@@ -229,12 +241,12 @@ export function EnterProjectDialog({
             disabled={isEntering || selectedId === null}
             className="btn-primary"
           >
-            {isEntering ? "Entering..." : "Enter"}
+            {isEntering ? t("entering") : t("enter")}
           </button>
         ) : (
           !isLoading && (
             <Link href="/create" className="btn-primary">
-              Create a project
+              {t("createProject")}
             </Link>
           )
         )}

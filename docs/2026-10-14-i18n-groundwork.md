@@ -20,6 +20,9 @@ translation job, not a rewrite.
 - **Lint ratchet.** `eslint-rules/no-hardcoded-ui-strings.mjs` fails on text
   written into JSX. Files that have not been moved over yet are listed in
   `eslint-rules/i18n-pending.mjs` with the rule off; that list only shrinks.
+  Every component was moved over in the first pass, so the list is empty and
+  the rule applies everywhere under `src/`. The mechanism stays for the case
+  where a large pre-i18n component has to land wholesale.
 
 The previous attempt (April 2026: translations app, inline editing, dynamic
 loading) was removed for doing too much at once. This is deliberately the
@@ -81,12 +84,34 @@ counterparts.
 checks that every `src/i18n/<area>/` has an `en.json` and is imported by
 `messages.ts`, and that the pending list names only files that still exist.
 
-## Moving a file over
+## Adding or moving a string
 
-1. Add the strings to the area's `en.json` under a key for the component.
-2. Replace the JSX text and readable attributes with `t(...)`.
-3. Delete the file's line from `eslint-rules/i18n-pending.mjs`.
+1. Add it to the area's `en.json` under a key for the component.
+2. Render it with `t(...)` — in JSX, or wherever the sentence is decided.
+3. If the file was on `eslint-rules/i18n-pending.mjs`, delete its line.
 4. `npx eslint <file>`, `npx tsc --noEmit`, and the file's vitest tests.
+
+A missing key throws in development and in tests (`onError` in
+`src/i18n/request.ts` and the test shim); in production it renders the key
+path and logs, as next-intl does by default.
+
+### Effects that need a translated string
+
+`t` from the real hook is memoised per namespace, and the test shim caches one
+translator per namespace for the same reason, so `t` can sit in a dependency
+array. Several fetch effects nonetheless resolve the string first
+(`const loadFailed = t("errors.loadFailed")`) and depend on that: a string is
+stable by value whatever produces it. Either is fine; do not drop `t` from the
+array to silence `react-hooks/exhaustive-deps`.
+
+## One exception: the guide chrome
+
+`/guides` and `/is/guides` render the same components in two languages with no
+locale routing, and `guideMetadata` needs the copy synchronously. So
+`src/lib/guides.ts` imports `src/i18n/guides/en.json` directly for the English
+table and keeps the Icelandic table inline, typed against the English keys so
+they cannot drift. It is the one place that reads a message file without `t`.
+It collapses into the normal path once an `is.json` and locale detection exist.
 
 ## Not done here, on purpose
 
@@ -98,9 +123,28 @@ checks that every `src/i18n/<area>/` has an `en.json` and is imported by
   excluded from the rule outright, not pending. It gets folded in when locale
   routing exists.
 - **Locale switching, Icelandic messages, inline editing.** See #103's scope.
+- **Shared library strings:** `getAuthorName`'s `"Anonymous"` and the `"other"`
+  tag group in `src/lib/utils.ts`; `ImageValidationError` messages in
+  `src/lib/uploadImage.ts`; `NotAnImageError` in `src/lib/avatarBlob.ts`. Same
+  treatment as above: error codes mapped to `t` at the call site.
+- **Duplicates across areas**, left so the first pass rendered byte-identical
+  English: `Untitled` / `Untitled Project`, `Deadline {date}`, `Back to home`,
+  the `{count, plural, …projects}` message, and the split between `...` and
+  `…` (`common.actions.saving` uses three dots; several areas kept a local
+  `Saving…`). Worth one consolidation pass into `common` before translation
+  starts, so Icelandic is written once.
+- **Hardcoded formatting locales** (`toLocaleDateString("en-US", …)`,
+  `Intl.NumberFormat("is-IS")`) stay as they were. They should follow the
+  request locale through `useFormatter` once there is more than one.
 
 ## Cost
 
 The next-intl runtime (ICU parser and formatter) adds about 12 kB gzipped to
 the shared client chunk every route loads. `bundle-budgets.json` was raised for
 the two routes that were already within that margin of their budget.
+
+The provider also serialises every message into each page's RSC payload: all
+areas together are about 43 kB of JSON before compression, a quarter of it the
+`about` prose that only server components read. Acceptable for one language;
+if it starts to matter, pass the provider a `pick` of the areas client
+components use rather than the whole object.

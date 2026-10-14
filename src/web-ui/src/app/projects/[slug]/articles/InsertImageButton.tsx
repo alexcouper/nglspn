@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import { useTranslations } from "next-intl";
 import { PhotoIcon } from "@heroicons/react/24/outline";
 import { ButtonWithTooltip, insertImage$, usePublisher } from "@mdxeditor/editor";
 import { ALLOWED_IMAGE_TYPES } from "@/lib/uploadImage";
@@ -9,6 +10,7 @@ import { ALLOWED_IMAGE_TYPES } from "@/lib/uploadImage";
 // the configured imageUploadHandler and inserts the node with empty alt text;
 // alt text is set afterwards via the image's settings button.
 export function InsertImageButton() {
+  const t = useTranslations("articles.insertImage");
   const insertImage = usePublisher(insertImage$);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -27,7 +29,7 @@ export function InsertImageButton() {
         }}
       />
       <ButtonWithTooltip
-        title="Insert image"
+        title={t("button")}
         onClick={() => inputRef.current?.click()}
       >
         <PhotoIcon className="w-5 h-5" />

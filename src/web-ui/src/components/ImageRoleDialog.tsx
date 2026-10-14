@@ -2,6 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { XMarkIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 import type { ProjectImage, DiscoverProject } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
 import { LargeHeroCard } from "@/app/projects/sections/FeaturedSection";
@@ -24,30 +25,15 @@ interface ImageRoleDialogProps {
 
 interface RoleConfig {
   key: "is_main" | "is_hero" | "is_usage";
-  label: string;
-  description: string;
-  dimensions: string;
+  // Message key under images.roleDialog.roles; label, description and
+  // dimensions hang off it.
+  name: "main" | "hero" | "usage";
 }
 
 const ROLES: RoleConfig[] = [
-  {
-    key: "is_main",
-    label: "Main",
-    description: "Shown at the top of your project page",
-    dimensions: "Best at 16:9 (1920\u00d71080 or 1280\u00d7720)",
-  },
-  {
-    key: "is_hero",
-    label: "Hero",
-    description: "Shown when your project is featured on the homepage",
-    dimensions: "Best at 16:9 (1920\u00d71080 or 1280\u00d7720)",
-  },
-  {
-    key: "is_usage",
-    label: "Usage",
-    description: "Shown on the New Arrivals section",
-    dimensions: "Best at 4:3 (960\u00d7720)",
-  },
+  { key: "is_main", name: "main" },
+  { key: "is_hero", name: "hero" },
+  { key: "is_usage", name: "usage" },
 ];
 
 export function ImageRoleDialog({
@@ -60,6 +46,7 @@ export function ImageRoleDialog({
   onUpdateRoles,
   onDelete,
 }: ImageRoleDialogProps) {
+  const t = useTranslations("images.roleDialog");
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   const roles = {
@@ -90,7 +77,7 @@ export function ImageRoleDialog({
   const previewProject: DiscoverProject = {
     id: projectId,
     slug: null,
-    title: projectTitle || "Untitled Project",
+    title: projectTitle || t("untitledProject"),
     tagline: projectTagline || "",
     icon_url: null,
     hero_banner_url: imageUrl,
@@ -107,7 +94,7 @@ export function ImageRoleDialog({
       {/* Header */}
       <div className="flex items-center justify-between -mt-2 mb-4">
         <h2 className="text-lg font-semibold text-foreground">
-          Image Settings
+          {t("title")}
         </h2>
         <button
           onClick={onClose}
@@ -131,7 +118,7 @@ export function ImageRoleDialog({
         {/* Role toggles with previews */}
         <div className="space-y-4">
           <h3 className="text-sm font-medium text-foreground">
-            Display Roles
+            {t("displayRoles")}
           </h3>
 
           {ROLES.map((role) => (
@@ -146,14 +133,14 @@ export function ImageRoleDialog({
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-medium text-foreground">
-                      {role.label}
+                      {t(`roles.${role.name}.label`)}
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      {role.dimensions}
+                      {t(`roles.${role.name}.dimensions`)}
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    {role.description}
+                    {t(`roles.${role.name}.description`)}
                   </p>
                 </div>
               </label>
@@ -166,12 +153,12 @@ export function ImageRoleDialog({
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img
                         src={imageUrl}
-                        alt="Main preview"
+                        alt={t("mainPreviewAlt")}
                         className="w-full h-auto object-contain"
                       />
                     </div>
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      Top of project page
+                      {t("mainPreviewCaption")}
                     </p>
                   </div>
                 )}
@@ -205,7 +192,7 @@ export function ImageRoleDialog({
             }`}
           >
             <TrashIcon className="w-4 h-4" />
-            {confirmDelete ? "Click again to confirm" : "Delete image"}
+            {confirmDelete ? t("confirmDelete") : t("deleteImage")}
           </button>
         </div>
       </div>

@@ -5,6 +5,7 @@ import {
   XCircleIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 
 interface UploadProgressItem {
   imageId: string;
@@ -19,6 +20,7 @@ interface UploadProgressProps {
 }
 
 export function UploadProgress({ uploads }: UploadProgressProps) {
+  const t = useTranslations("images.uploadProgress");
   if (uploads.length === 0) {
     return null;
   }
@@ -55,10 +57,10 @@ export function UploadProgress({ uploads }: UploadProgressProps) {
               </div>
             )}
             {upload.status === "processing" && (
-              <p className="text-xs text-muted-foreground">Processing...</p>
+              <p className="text-xs text-muted-foreground">{t("processing")}</p>
             )}
             {upload.status === "complete" && (
-              <p className="text-xs text-green-600">Complete</p>
+              <p className="text-xs text-green-600">{t("complete")}</p>
             )}
             {upload.error && (
               <p className="text-xs text-red-500">{upload.error}</p>

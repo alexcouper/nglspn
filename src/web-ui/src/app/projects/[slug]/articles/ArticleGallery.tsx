@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useTranslations } from "next-intl";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
@@ -30,6 +31,7 @@ interface Props {
  * (`GalleryDirectiveDescriptor`) so the two cannot drift apart.
  */
 export function ArticleGallery({ images, controls, footer }: Props) {
+  const t = useTranslations("articles.gallery");
   const [index, setIndex] = useState(0);
 
   // Held across a change of image rather than cleared, because the browser
@@ -71,7 +73,7 @@ export function ArticleGallery({ images, controls, footer }: Props) {
   if (images.length === 0) {
     return controls ? (
       <div className="my-6 rounded-lg border border-dashed border-border py-10 text-center text-sm text-muted-foreground">
-        Empty gallery
+        {t("empty")}
       </div>
     ) : null;
   }
@@ -126,13 +128,13 @@ export function ArticleGallery({ images, controls, footer }: Props) {
 
         <GalleryArrow
           side="left"
-          label="Previous image"
+          label={t("previous")}
           disabled={atStart}
           onClick={() => setIndex(current - 1)}
         />
         <GalleryArrow
           side="right"
-          label="Next image"
+          label={t("next")}
           disabled={atEnd}
           onClick={() => setIndex(current + 1)}
         />
@@ -143,7 +145,7 @@ export function ArticleGallery({ images, controls, footer }: Props) {
           <button
             key={position}
             type="button"
-            aria-label={`Show image ${position + 1}`}
+            aria-label={t("showImage", { number: position + 1 })}
             aria-current={position === current}
             onClick={() => setIndex(position)}
             className={`h-1.5 w-1.5 rounded-full transition-colors ${dotClass(
@@ -156,7 +158,7 @@ export function ArticleGallery({ images, controls, footer }: Props) {
 
       <div className={`px-4 pb-3 text-center text-sm ${captionClass}`}>
         <span className="tabular-nums">
-          {current + 1} / {images.length}
+          {t("position", { current: current + 1, total: images.length })}
         </span>
         {image.alt && <span className="ml-2">{image.alt}</span>}
       </div>

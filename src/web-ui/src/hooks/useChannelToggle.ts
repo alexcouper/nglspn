@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { ChannelFollowState } from "@/lib/api/follows";
 import { useToasts } from "@/contexts/toasts";
@@ -28,6 +29,7 @@ export function useChannelToggle({
   setChannels,
   onProjectUnfollowed,
 }: UseChannelToggleOptions) {
+  const t = useTranslations("projects.channelToggle");
   const { showToast } = useToasts();
 
   return useCallback(
@@ -55,11 +57,11 @@ export function useChannelToggle({
         write(channel.followed);
         showToast({
           kind: "error",
-          title: "Couldn't update channel",
+          title: t("updateFailed"),
           ttlMs: 5_000,
         });
       }
     },
-    [projectSlug, setChannels, onProjectUnfollowed, showToast]
+    [projectSlug, setChannels, onProjectUnfollowed, showToast, t]
   );
 }

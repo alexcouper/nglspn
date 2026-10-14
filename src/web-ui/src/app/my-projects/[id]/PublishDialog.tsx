@@ -1,9 +1,11 @@
 "use client";
 
-const FIELD_LABELS: Record<string, string> = {
-  title: "A title",
-  description: "A description",
-  main_image: "A main image",
+import { useTranslations } from "next-intl";
+
+const FIELD_KEYS: Record<string, "title" | "description" | "mainImage"> = {
+  title: "title",
+  description: "description",
+  main_image: "mainImage",
 };
 
 interface PublishDialogProps {
@@ -13,6 +15,8 @@ interface PublishDialogProps {
 }
 
 export function PublishDialog({ isOpen, missing, onClose }: PublishDialogProps) {
+  const t = useTranslations("my-projects.publishDialog");
+  const tc = useTranslations("common.actions");
   if (!isOpen) return null;
 
   return (
@@ -27,22 +31,23 @@ export function PublishDialog({ isOpen, missing, onClose }: PublishDialogProps) 
         onClick={(e) => e.stopPropagation()}
       >
         <h2 className="text-lg font-semibold text-foreground">
-          Not quite ready to publish
+          {t("title")}
         </h2>
         <p className="text-sm text-muted-foreground mt-2">
-          Before publishing, please add:
+          {t("intro")}
         </p>
         <ul className="mt-3 space-y-1 text-sm text-foreground list-disc list-inside">
-          {missing.map((field) => (
-            <li key={field}>{FIELD_LABELS[field] ?? field}</li>
-          ))}
+          {missing.map((field) => {
+            const key = FIELD_KEYS[field];
+            return <li key={field}>{key ? t(`missing.${key}`) : field}</li>;
+          })}
         </ul>
         <div className="mt-6 flex justify-end">
           <button
             onClick={onClose}
             className="btn-primary text-sm py-2 px-4"
           >
-            Close
+            {tc("close")}
           </button>
         </div>
       </div>

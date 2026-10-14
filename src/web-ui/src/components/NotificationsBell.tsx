@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useNotifications } from "@/contexts/notifications";
 import { buildDeepLink, groupKey } from "@/lib/notifications";
 import { NotificationGroupItem } from "./NotificationGroupItem";
@@ -9,6 +10,7 @@ import { NotificationGroupItem } from "./NotificationGroupItem";
 const POPOVER_LIMIT = 5;
 
 export function NotificationsBell() {
+  const t = useTranslations("notifications.bell");
   const { summary, groups, refreshGroups, markArticleRead } = useNotifications();
   const [open, setOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -46,7 +48,7 @@ export function NotificationsBell() {
     <div ref={containerRef} className="relative">
       <button
         type="button"
-        aria-label="Notifications"
+        aria-label={t("label")}
         onClick={() => setOpen((prev) => !prev)}
         className="relative p-1.5 -mr-1.5 text-slate-400 hover:text-white transition-colors"
       >
@@ -74,23 +76,23 @@ export function NotificationsBell() {
       {open && (
         <div
           role="dialog"
-          aria-label="Notifications"
+          aria-label={t("title")}
           className="absolute right-0 mt-2 w-80 max-w-[90vw] bg-white shadow-lg rounded-lg border border-slate-200 z-50"
         >
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between">
-            <span className="text-sm font-medium text-slate-900">Notifications</span>
+            <span className="text-sm font-medium text-slate-900">{t("title")}</span>
             <Link
               href="/notifications"
               className="text-xs text-accent hover:underline"
               onClick={() => setOpen(false)}
             >
-              See all
+              {t("seeAll")}
             </Link>
           </div>
           <div className="max-h-96 overflow-y-auto">
             {visibleGroups.length === 0 ? (
               <div className="px-4 py-8 text-center text-sm text-slate-500">
-                You&apos;re all caught up
+                {t("caughtUp")}
               </div>
             ) : (
               visibleGroups.map((group) => (

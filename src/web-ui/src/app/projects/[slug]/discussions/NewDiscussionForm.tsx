@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { NewDiscussionModal } from "@/components/NewDiscussionModal";
 
 interface NewDiscussionFormProps {
@@ -8,6 +9,7 @@ interface NewDiscussionFormProps {
 }
 
 export function NewDiscussionForm({ onSubmit }: NewDiscussionFormProps) {
+  const t = useTranslations("discussions.newDiscussion");
   const [modalOpen, setModalOpen] = useState(false);
 
   return (
@@ -18,7 +20,7 @@ export function NewDiscussionForm({ onSubmit }: NewDiscussionFormProps) {
         className="w-full bg-white rounded-xl border border-border p-4 flex items-center gap-3 cursor-pointer hover:border-[#cbd5e1] transition-colors text-left"
       >
         <div className="flex-1 border border-border rounded-full px-4 py-2.5 text-sm text-muted-foreground">
-          Start a discussion
+          {t("start")}
         </div>
       </button>
 

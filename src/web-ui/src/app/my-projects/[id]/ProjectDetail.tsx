@@ -10,6 +10,7 @@ import {
   TrashIcon,
   ArrowPathIcon,
 } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
@@ -39,6 +40,8 @@ interface ProjectDetailProps {
 
 export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const router = useRouter();
+  const t = useTranslations("my-projects.detail");
+  const tc = useTranslations("common.actions");
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState("");
@@ -128,7 +131,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       },
       (err) => {
         if (!cancelled) {
-          setError(describeApiError(err, "Couldn't open this project."));
+          setError(describeApiError(err, t("errors.openFailed")));
           setIsLoading(false);
         }
       }
@@ -137,7 +140,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
     return () => {
       cancelled = true;
     };
-  }, [isReady, projectId, formInitialized]);
+  }, [isReady, projectId, formInitialized, t]);
 
   // Reports whether the entry landed, because callers act on it: the
   // post-publish dialog navigates away on success and has to stay put
@@ -151,7 +154,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       } catch (err) {
         entered = false;
         setCompetitionError(
-          describeApiError(err, "Couldn't enter this competition.")
+          describeApiError(err, t("errors.enterCompetitionFailed"))
         );
       }
 
@@ -167,7 +170,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       }
       return entered;
     },
-    [projectId]
+    [projectId, t]
   );
 
   const handleFormChange = useCallback((data: ProjectFormData) => {
@@ -202,10 +205,10 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           color: t.color,
         })) || []
       );
-      setSuccessMessage("Project saved successfully!");
+      setSuccessMessage(t("saved"));
       setTimeout(() => setSuccessMessage(""), 3000);
     } catch (err) {
-      setError(describeApiError(err, "Couldn't save this project."));
+      setError(describeApiError(err, t("errors.saveFailed")));
     } finally {
       setIsSaving(false);
     }
@@ -252,7 +255,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           return;
         }
       }
-      setError(describeApiError(err, "Couldn't publish this project."));
+      setError(describeApiError(err, t("errors.publishFailed")));
     } finally {
       setIsPublishing(false);
     }
@@ -268,7 +271,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       await api.myProjects.delete(project.id);
       router.push("/my-projects");
     } catch (err) {
-      setError(describeApiError(err, "Couldn't delete this project."));
+      setError(describeApiError(err, t("errors.deleteFailed")));
       setIsDeleting(false);
       setShowDeleteDialog(false);
     }
@@ -296,7 +299,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         })
       );
     } catch (err) {
-      setError(describeApiError(err, "Couldn't update this image."));
+      setError(describeApiError(err, t("errors.updateImageFailed")));
     }
   };
 
@@ -305,7 +308,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       await api.myProjects.deleteImage(projectId, imageId);
       setImages((prev) => prev.filter((img) => img.id !== imageId));
     } catch (err) {
-      setError(describeApiError(err, "Couldn't delete this icon."));
+      setError(describeApiError(err, t("errors.deleteIconFailed")));
     }
   };
 
@@ -314,7 +317,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
       await api.myProjects.deleteImage(projectId, imageId);
       setImages((prev) => prev.filter((img) => img.id !== imageId));
     } catch (err) {
-      setError(describeApiError(err, "Couldn't delete this image."));
+      setError(describeApiError(err, t("errors.deleteImageFailed")));
     }
   };
 
@@ -370,7 +373,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
         </div>
         <div>
           <Link href="/my-projects" className="text-sm text-accent hover:text-accent-hover transition-colors">
-            Back to my projects
+            {t("backToMyProjects")}
           </Link>
         </div>
       </div>
@@ -380,9 +383,9 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   if (!project) {
     return (
       <div className="text-center py-12">
-        <p className="text-muted-foreground text-sm mb-4">Project not found</p>
+        <p className="text-muted-foreground text-sm mb-4">{t("notFound")}</p>
         <Link href="/my-projects" className="text-sm text-accent hover:text-accent-hover transition-colors">
-          Back to my projects
+          {t("backToMyProjects")}
         </Link>
       </div>
     );
@@ -396,7 +399,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           <div className="flex items-center gap-1">
             <button
               onClick={() => setViewMode("edit")}
-              title="Edit"
+              title={tc("edit")}
               className={`p-2 rounded-lg transition-colors ${
                 viewMode === "edit"
                   ? "bg-accent-subtle text-accent"
@@ -407,7 +410,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
             </button>
             <button
               onClick={() => setViewMode("preview")}
-              title="Preview"
+              title={t("preview")}
               className={`p-2 rounded-lg transition-colors ${
                 viewMode === "preview"
                   ? "bg-accent-subtle text-accent"
@@ -435,7 +438,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
               ) : (
                 <span className="flex items-center gap-1.5">
                   <CloudArrowUpIcon className="w-4 h-4" />
-                  Save
+                  {tc("save")}
                 </span>
               )}
             </button>
@@ -448,13 +451,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
                 {isPublishing ? (
                   <ArrowPathIcon className="w-4 h-4 animate-spin" />
                 ) : (
-                  "Publish"
+                  tc("publish")
                 )}
               </button>
             )}
             <button
               onClick={() => setShowDeleteDialog(true)}
-              title="Delete"
+              title={tc("delete")}
               className="p-2 rounded-lg text-muted-foreground border border-border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
             >
               <TrashIcon className="w-4 h-4" />
@@ -496,13 +499,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
 
       <div className="py-6 text-center">
         <Link href="/my-projects" className="text-sm text-accent hover:text-accent-hover transition-colors">
-          Back to my projects
+          {t("backToMyProjects")}
         </Link>
       </div>
 
       <DeleteConfirmationDialog
         isOpen={showDeleteDialog}
-        projectTitle={project.title || "Untitled Project"}
+        projectTitle={project.title || t("untitled")}
         onConfirm={handleDelete}
         onCancel={() => setShowDeleteDialog(false)}
         isDeleting={isDeleting}

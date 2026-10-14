@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { ArticleListingImage } from "@/components/ArticleListingImage";
 import type { FeedEntry } from "@/lib/api";
@@ -18,7 +19,8 @@ interface Props {
 // less in it — no image, no standfirst — which is the point of modelling
 // entries as stories rather than as articles-and-other-things.
 export function FeedRow({ entry, variant }: Props) {
-  const rendered = renderEntry(entry);
+  const t = useTranslations("feed.row");
+  const rendered = renderEntry(entry, (key) => t(`flags.${key}`));
   const isLead = variant === "lead";
 
   const body = isLead ? (

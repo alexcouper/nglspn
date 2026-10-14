@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useToasts, type Toast, type ToastKind } from "@/contexts/toasts";
 
 const KIND_STYLES: Record<ToastKind, string> = {
@@ -22,6 +23,7 @@ function defaultBody(toast: Toast) {
 }
 
 export function ToastContainer() {
+  const tc = useTranslations("common.actions");
   const { toasts, dismissToast } = useToasts();
 
   if (toasts.length === 0) return null;
@@ -48,7 +50,7 @@ export function ToastContainer() {
             {toast.body ?? defaultBody(toast)}
             <button
               type="button"
-              aria-label="Dismiss"
+              aria-label={tc("dismiss")}
               onClick={(event) => {
                 event.stopPropagation();
                 dismissToast(toast.id);

@@ -1,5 +1,6 @@
 import { permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { ProjectDetailContent } from "./ProjectDetailContent";
 import { socialCard } from "@/lib/social-card";
 import { SITE_URL } from "@/lib/constants";
@@ -16,11 +17,12 @@ interface PageProps {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const { slug } = await params;
   try {
+    const t = await getTranslations("projects.projectDetail");
     const project = await fetchProject(slug);
     const canonicalSlug = project.slug ?? slug;
     const mainImage = project.images?.find((img) => img.is_main) || project.images?.[0];
     const title = project.tagline
-      ? `${project.title} — ${project.tagline}`
+      ? t("metaTitle", { title: project.title, tagline: project.tagline })
       : project.title;
     const description = project.description
       ? project.description.length > 100

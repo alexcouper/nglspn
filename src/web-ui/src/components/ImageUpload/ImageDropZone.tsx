@@ -2,6 +2,10 @@
 
 import { useState, useCallback, useRef } from "react";
 import { CloudArrowUpIcon, PhotoIcon } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
+import { MAX_IMAGE_SIZE } from "@/lib/uploadImage";
+
+const MAX_IMAGE_SIZE_MB = MAX_IMAGE_SIZE / (1024 * 1024);
 
 interface ImageDropZoneProps {
   onFilesSelected: (files: FileList) => void;
@@ -16,6 +20,7 @@ export function ImageDropZone({
   maxFiles = 10,
   currentCount = 0,
 }: ImageDropZoneProps) {
+  const t = useTranslations("images.dropZone");
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dragCounterRef = useRef(0);
@@ -112,23 +117,22 @@ export function ImageDropZone({
         )}
 
         <p className="text-sm text-muted-foreground">
-          {isDragging ? (
-            "Drop images here"
-          ) : (
-            <>
-              <span className="text-accent font-medium">Click to upload</span>
-              {" or drag and drop"}
-            </>
-          )}
+          {isDragging
+            ? t("dropHere")
+            : t.rich("uploadPrompt", {
+                action: (chunks) => (
+                  <span className="text-accent font-medium">{chunks}</span>
+                ),
+              })}
         </p>
 
-        <p className="text-xs text-muted-foreground/70">PNG, JPG, WebP, GIF up to 10MB</p>
-        <p className="text-xs text-muted-foreground/70">Main image is best at 16:9 ratio (e.g. 1920×1080 or 1280×720)</p>
+        <p className="text-xs text-muted-foreground/70">{t("formats", { maxSizeMb: MAX_IMAGE_SIZE_MB })}</p>
+        <p className="text-xs text-muted-foreground/70">{t("mainImageHint")}</p>
 
         <p className="text-xs text-muted-foreground/50">
           {remainingSlots > 0
-            ? `${remainingSlots} of ${maxFiles} slots remaining`
-            : "Maximum images reached"}
+            ? t("slotsRemaining", { remaining: remainingSlots, max: maxFiles })
+            : t("maximumReached")}
         </p>
       </div>
     </div>

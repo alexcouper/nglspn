@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { Article, Channel } from "@/lib/api";
 import { describeApiError } from "@/lib/api/errors";
@@ -28,6 +29,10 @@ export function useArticleLoad({
   onLoaded,
   onError,
 }: Options) {
+  const t = useTranslations("articles.load");
+  // Resolved outside the effect so the effect depends on a string, which is
+  // stable by value, rather than on the translator function.
+  const openFailed = t("openFailed");
   const [channels, setChannels] = useState<Channel[]>([]);
   const [article, setArticle] = useState<Article | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,7 +57,7 @@ export function useArticleLoad({
         setIsLoading(false);
       } catch (err) {
         if (cancelled) return;
-        onError(describeApiError(err, "Couldn't open this article."));
+        onError(describeApiError(err, openFailed));
         setIsLoading(false);
       }
     }
@@ -61,7 +66,7 @@ export function useArticleLoad({
     return () => {
       cancelled = true;
     };
-  }, [articleId, projectRef, onLoaded, onError]);
+  }, [articleId, projectRef, onLoaded, onError, openFailed]);
 
   return { channels, article, setArticle, isLoading };
 }

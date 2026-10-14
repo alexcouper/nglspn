@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ArticleCard } from "@/components/ArticleCard";
 import type { ArticleListItem } from "@/lib/api";
 import { api } from "@/lib/api";
@@ -30,6 +31,7 @@ export function publishedNewestFirst(
 }
 
 export function ArticlesList({ projectSlug, initialArticles }: Props) {
+  const t = useTranslations("projects.articlesList");
   const [articles, setArticles] = useState<ArticleListItem[] | null>(() =>
     initialArticles ? publishedNewestFirst(initialArticles) : null,
   );
@@ -46,12 +48,12 @@ export function ArticlesList({ projectSlug, initialArticles }: Props) {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to load articles");
+        setError(err instanceof Error ? err.message : t("loadFailed"));
       });
     return () => {
       cancelled = true;
     };
-  }, [projectSlug, initialArticles]);
+  }, [projectSlug, initialArticles, t]);
 
   if (error) {
     return (
@@ -73,7 +75,7 @@ export function ArticlesList({ projectSlug, initialArticles }: Props) {
   }
   if (articles.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground">No articles yet.</p>
+      <p className="text-sm text-muted-foreground">{t("empty")}</p>
     );
   }
 

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
 
@@ -13,6 +14,8 @@ import { api } from "@/lib/api";
  */
 export default function CreateProjectPage() {
   const router = useRouter();
+  const t = useTranslations("my-projects.create");
+  const tc = useTranslations("common");
   const { isReady, isLoading: authLoading } = useRequireAuth();
   const [url, setUrl] = useState("");
   const [iOwnThis, setIOwnThis] = useState(true);
@@ -26,7 +29,7 @@ export default function CreateProjectPage() {
     try {
       new URL(url);
     } catch {
-      setError("Please enter a valid URL");
+      setError(t("errors.invalidUrl"));
       return;
     }
 
@@ -39,7 +42,7 @@ export default function CreateProjectPage() {
       });
       router.push(`/my-projects/${project.id}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to submit project");
+      setError(err instanceof Error ? err.message : t("errors.submitFailed"));
     } finally {
       setIsLoading(false);
     }
@@ -48,7 +51,7 @@ export default function CreateProjectPage() {
   if (authLoading || !isReady) {
     return (
       <main className="min-h-screen bg-muted flex items-center justify-center pt-14">
-        <div className="text-muted-foreground text-sm">Loading...</div>
+        <div className="text-muted-foreground text-sm">{tc("loading")}</div>
       </main>
     );
   }
@@ -58,10 +61,10 @@ export default function CreateProjectPage() {
       <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
         <div className="max-w-lg mx-auto">
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            Create a project
+            {t("title")}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Add it as a draft, then publish it when it&apos;s ready.
+            {t("subtitle")}
           </p>
         </div>
       </section>
@@ -70,7 +73,7 @@ export default function CreateProjectPage() {
         <div className="max-w-lg mx-auto">
           <div className="bg-white border border-border rounded-xl p-6">
             <h2 className="text-foreground font-semibold mb-4">
-              Start a new project
+              {t("formTitle")}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
               {error && (
@@ -80,7 +83,7 @@ export default function CreateProjectPage() {
               )}
 
               <div>
-                <label htmlFor="url" className="label">Project URL</label>
+                <label htmlFor="url" className="label">{t("urlLabel")}</label>
                 <input
                   id="url"
                   type="url"
@@ -88,12 +91,12 @@ export default function CreateProjectPage() {
                   value={url}
                   onChange={(e) => setUrl(e.target.value)}
                   className="input"
-                  placeholder="https://your-project.com"
+                  placeholder={t("urlPlaceholder")}
                 />
               </div>
 
               <fieldset className="space-y-2">
-                <legend className="label mb-1">Who made this project?</legend>
+                <legend className="label mb-1">{t("ownershipLegend")}</legend>
                 <label htmlFor="ownership-mine" className="flex items-start gap-2 cursor-pointer">
                   <input
                     id="ownership-mine"
@@ -104,8 +107,8 @@ export default function CreateProjectPage() {
                     className="mt-1"
                   />
                   <span className="text-sm">
-                    <span className="text-foreground font-medium">Mine</span>
-                    <span className="block text-xs text-muted-foreground">I made this project.</span>
+                    <span className="text-foreground font-medium">{t("mine")}</span>
+                    <span className="block text-xs text-muted-foreground">{t("mineDescription")}</span>
                   </span>
                 </label>
                 <label htmlFor="ownership-tipoff" className="flex items-start gap-2 cursor-pointer">
@@ -118,8 +121,8 @@ export default function CreateProjectPage() {
                     className="mt-1"
                   />
                   <span className="text-sm">
-                    <span className="text-foreground font-medium">Tipoff</span>
-                    <span className="block text-xs text-muted-foreground">Someone else made this — I&apos;m flagging it for the community.</span>
+                    <span className="text-foreground font-medium">{t("tipoff")}</span>
+                    <span className="block text-xs text-muted-foreground">{t("tipoffDescription")}</span>
                   </span>
                 </label>
               </fieldset>
@@ -129,13 +132,13 @@ export default function CreateProjectPage() {
                 disabled={isLoading}
                 className="w-full btn-primary py-2.5"
               >
-                {isLoading ? "Creating..." : "Create Draft"}
+                {isLoading ? t("submitting") : t("submit")}
               </button>
             </form>
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
               <Link href="/" className="text-accent hover:text-accent-hover font-medium transition-colors">
-                Back to home
+                {t("backToHome")}
               </Link>
             </p>
           </div>

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowRightIcon, CameraIcon } from "@heroicons/react/24/outline";
 import { ArrowPathIcon } from "@heroicons/react/24/solid";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
@@ -40,6 +41,8 @@ interface Framing {
 // at /profile/settings. Save returns to the public page, which is the preview.
 export default function ProfilePage() {
   const router = useRouter();
+  const t = useTranslations("profile.edit");
+  const tc = useTranslations("common.actions");
   const { isLoading: authLoading } = useRequireAuth();
   const { user, isAuthenticated, refreshUser } = useAuth();
 
@@ -75,7 +78,7 @@ export default function ProfilePage() {
   const handleSave = async () => {
     if (!formData || !user) return;
     if (!formData.first_name.trim() && !formData.last_name.trim()) {
-      setError("At least one name (first or last) is required");
+      setError(t("errors.nameRequired"));
       return;
     }
     setIsSaving(true);
@@ -89,7 +92,7 @@ export default function ProfilePage() {
       await refreshUser();
       router.push(publicPath);
     } catch (err) {
-      setError(describeApiError(err, "Couldn't save your profile."));
+      setError(describeApiError(err, t("errors.saveFailed")));
       setIsSaving(false);
     }
   };
@@ -102,7 +105,7 @@ export default function ProfilePage() {
       setFraming({ source, crop: null });
     } catch (err) {
       setAvatarError(
-        err instanceof NotAnImageError ? err.message : "Couldn't read that file.",
+        err instanceof NotAnImageError ? err.message : t("errors.readFileFailed"),
       );
     } finally {
       // So picking the same file again still fires onChange.
@@ -126,7 +129,7 @@ export default function ProfilePage() {
       await uploadAvatar(blob);
       await refreshUser();
     } catch (err) {
-      setAvatarError(describeApiError(err, "Couldn't upload that photo."));
+      setAvatarError(describeApiError(err, t("errors.uploadFailed")));
     } finally {
       setAvatarBusy(false);
     }
@@ -139,7 +142,7 @@ export default function ProfilePage() {
       await api.auth.removeAvatar();
       await refreshUser();
     } catch (err) {
-      setAvatarError(describeApiError(err, "Couldn't remove the photo."));
+      setAvatarError(describeApiError(err, t("errors.removePhotoFailed")));
     } finally {
       setAvatarBusy(false);
     }
@@ -180,7 +183,7 @@ export default function ProfilePage() {
               />
               <button
                 type="button"
-                aria-label="Change photo"
+                aria-label={t("changePhoto")}
                 disabled={avatarBusy}
                 onClick={() => fileInputRef.current?.click()}
                 className="absolute -right-1 -bottom-1 w-11 h-11 rounded-full bg-white border border-border shadow-sm flex items-center justify-center text-foreground hover:bg-muted disabled:opacity-50"
@@ -194,14 +197,14 @@ export default function ProfilePage() {
             </div>
             <div className="min-w-0">
               <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-                Edit profile
+                {t("title")}
               </h1>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-2">
                 <label
                   htmlFor="avatar-file"
                   className="btn-secondary !py-1.5 !px-3.5 text-sm cursor-pointer"
                 >
-                  Upload photo
+                  {t("uploadPhoto")}
                 </label>
                 <input
                   ref={fileInputRef}
@@ -219,12 +222,12 @@ export default function ProfilePage() {
                     disabled={avatarBusy}
                     className="btn-ghost text-sm"
                   >
-                    Remove
+                    {tc("remove")}
                   </button>
                 )}
               </div>
               <p className="text-xs text-muted-foreground mt-1.5">
-                JPG, PNG or WebP. You will be asked to frame it as a square.
+                {t("photoHint")}
               </p>
               {avatarError && (
                 <p className="text-xs text-red-600 mt-1.5" role="alert">
@@ -235,7 +238,7 @@ export default function ProfilePage() {
           </div>
           <div className="flex items-center gap-3">
             <Link href={publicPath} className="btn-secondary flex-1 sm:flex-none">
-              Cancel
+              {tc("cancel")}
             </Link>
             <button
               type="button"
@@ -243,7 +246,7 @@ export default function ProfilePage() {
               disabled={isSaving}
               className="btn-primary flex-1 sm:flex-none"
             >
-              {isSaving ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : "Save changes"}
+              {isSaving ? <ArrowPathIcon className="w-4 h-4 animate-spin" /> : t("saveChanges")}
             </button>
           </div>
         </div>
@@ -266,17 +269,16 @@ export default function ProfilePage() {
           >
             <div>
               <h2 className="text-base font-semibold text-foreground tracking-tight">
-                Name and about
+                {t("nameAndAbout")}
               </h2>
               <p className="text-[13px] text-muted-foreground mt-1">
-                Shown on your public profile and linked from every project you
-                contribute to. Your projects and articles are listed there automatically.
+                {t("nameAndAboutHint")}
               </p>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label htmlFor="firstName" className="label">First name</label>
+                <label htmlFor="firstName" className="label">{t("firstName")}</label>
                 <input
                   type="text"
                   id="firstName"
@@ -287,7 +289,7 @@ export default function ProfilePage() {
                 />
               </div>
               <div>
-                <label htmlFor="lastName" className="label">Last name</label>
+                <label htmlFor="lastName" className="label">{t("lastName")}</label>
                 <input
                   type="text"
                   id="lastName"
@@ -298,14 +300,14 @@ export default function ProfilePage() {
                 />
               </div>
             </div>
-            <p className="text-xs text-muted-foreground -mt-2">At least one of the two is required.</p>
+            <p className="text-xs text-muted-foreground -mt-2">{t("oneNameRequired")}</p>
 
             <div>
               <div className="flex items-center justify-between mb-1.5">
-                <label htmlFor="info" className="label mb-0">About</label>
+                <label htmlFor="info" className="label mb-0">{t("about")}</label>
                 <div
                   role="tablist"
-                  aria-label="About editor mode"
+                  aria-label={t("aboutEditorMode")}
                   className="flex rounded-lg border border-border overflow-hidden"
                 >
                   {(["write", "preview"] as const).map((mode) => (
@@ -321,7 +323,7 @@ export default function ProfilePage() {
                           : "bg-white text-muted-foreground hover:bg-muted hover:text-foreground"
                       }`}
                     >
-                      {mode === "write" ? "Write" : "Preview"}
+                      {mode === "write" ? t("write") : t("preview")}
                     </button>
                   ))}
                 </div>
@@ -333,22 +335,22 @@ export default function ProfilePage() {
                   value={formData.info}
                   onChange={(e) => setField("info", e.target.value)}
                   className="input resize-none"
-                  placeholder="Tell us about yourself..."
+                  placeholder={t("aboutPlaceholder")}
                 />
               ) : (
                 <div
                   className="rounded-lg border border-border bg-muted/40 px-4 py-3 min-h-[11rem]"
                   data-testid="about-preview"
                 >
-                  <ProfileAbout info={formData.info} emptyText="Nothing to preview yet." />
+                  <ProfileAbout info={formData.info} emptyText={t("nothingToPreview")} />
                 </div>
               )}
               <div className="flex items-center justify-between mt-1.5">
                 <p className="text-xs text-muted-foreground">
-                  Markdown: paragraphs, lists and links. Images are not shown.
+                  {t("markdownHint")}
                 </p>
                 <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                  Markdown
+                  {t("markdownBadge")}
                 </span>
               </div>
             </div>
@@ -359,9 +361,9 @@ export default function ProfilePage() {
             className="card block px-6 py-4 flex items-center justify-between gap-4 hover:border-accent/50"
           >
             <span>
-              <span className="block text-sm font-medium text-foreground">Account settings</span>
+              <span className="block text-sm font-medium text-foreground">{t("accountSettings")}</span>
               <span className="block text-[13px] text-muted-foreground mt-0.5">
-                Email preferences and privacy. {user.email}
+                {t("accountSettingsHint", { email: user.email })}
               </span>
             </span>
             <ArrowRightIcon className="w-4 h-4 text-muted-foreground shrink-0" />
@@ -378,11 +380,10 @@ export default function ProfilePage() {
         {framing && (
           <>
             <h2 id={CROP_TITLE_ID} className="text-base font-semibold text-foreground">
-              Frame your photo
+              {t("framePhotoTitle")}
             </h2>
             <p className="text-sm text-muted-foreground mt-1 mb-4">
-              Drag to move, scroll or use the slider to zoom. The square is what
-              everyone sees.
+              {t("framePhotoHint")}
             </p>
             <ImageCropper
               src={framing.source.dataUrl}
@@ -392,7 +393,7 @@ export default function ProfilePage() {
               onChange={(crop) => setFraming({ source: framing.source, crop })}
               lockRatio={1}
               minSourceWidth={400}
-              previewLabel="Avatar"
+              previewLabel={t("avatarPreviewLabel")}
             />
             <div className="mt-5 flex justify-end gap-2">
               <button
@@ -400,14 +401,14 @@ export default function ProfilePage() {
                 onClick={() => setFraming(null)}
                 className="px-4 py-2 text-sm font-medium text-muted-foreground hover:text-foreground"
               >
-                Cancel
+                {tc("cancel")}
               </button>
               <button
                 type="button"
                 onClick={handleCropConfirmed}
                 className="px-4 py-2 text-sm font-medium rounded-lg bg-accent text-white hover:bg-accent/90"
               >
-                Use it
+                {t("useIt")}
               </button>
             </div>
           </>

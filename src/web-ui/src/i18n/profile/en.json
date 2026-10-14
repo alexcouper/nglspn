@@ -1,1 +1,105 @@
-{}
+{
+  "edit": {
+    "title": "Edit profile",
+    "changePhoto": "Change photo",
+    "uploadPhoto": "Upload photo",
+    "photoHint": "JPG, PNG or WebP. You will be asked to frame it as a square.",
+    "saveChanges": "Save changes",
+    "nameAndAbout": "Name and about",
+    "nameAndAboutHint": "Shown on your public profile and linked from every project you contribute to. Your projects and articles are listed there automatically.",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "oneNameRequired": "At least one of the two is required.",
+    "about": "About",
+    "aboutEditorMode": "About editor mode",
+    "write": "Write",
+    "preview": "Preview",
+    "aboutPlaceholder": "Tell us about yourself...",
+    "nothingToPreview": "Nothing to preview yet.",
+    "markdownHint": "Markdown: paragraphs, lists and links. Images are not shown.",
+    "markdownBadge": "Markdown",
+    "accountSettings": "Account settings",
+    "accountSettingsHint": "Email preferences and privacy. {email}",
+    "framePhotoTitle": "Frame your photo",
+    "framePhotoHint": "Drag to move, scroll or use the slider to zoom. The square is what everyone sees.",
+    "avatarPreviewLabel": "Avatar",
+    "useIt": "Use it",
+    "errors": {
+      "nameRequired": "At least one name (first or last) is required",
+      "saveFailed": "Couldn't save your profile.",
+      "readFileFailed": "Couldn't read that file.",
+      "uploadFailed": "Couldn't upload that photo.",
+      "removePhotoFailed": "Couldn't remove the photo."
+    }
+  },
+  "about": {
+    "nothingWritten": "Nothing written yet."
+  },
+  "settings": {
+    "title": "Account settings",
+    "backToEdit": "Edit profile",
+    "signedInAs": "Signed in as {email}. Emails and privacy; nothing here is shown on your profile.",
+    "emailPreferences": {
+      "title": "Email preferences",
+      "hint": "Choose which project channels email you on the <link>Following</link> page; control how often emails are sent below."
+    },
+    "discussionEmails": {
+      "label": "Discussion emails",
+      "description": "How often to email you when someone comments on a discussion you're in."
+    },
+    "articleEmails": {
+      "label": "Article emails",
+      "description": "How often to summarise new articles from projects you follow."
+    },
+    "frequency": {
+      "immediate": "Every time",
+      "hourly": "Hourly",
+      "daily": "Daily",
+      "weekly": "Weekly",
+      "never": "Never"
+    },
+    "privacy": {
+      "title": "Privacy",
+      "hint": "Manage your privacy preferences"
+    },
+    "externalPromotions": {
+      "label": "External promotions",
+      "description": "Allow your participation to be featured on external platforms like LinkedIn"
+    }
+  },
+  "following": {
+    "title": "Following",
+    "intro": "Projects you follow and their channels. Expand a project to change which channels you're subscribed to; dropping the last one unfollows the project.",
+    "empty": "You aren't following any projects yet. <link>Discover projects</link>.",
+    "channelCount": "{followed} of {total, plural, one {# channel} other {# channels}}",
+    "channelsFor": "Channels for {title}",
+    "unfollow": "Unfollow",
+    "errors": {
+      "loadFailed": "Couldn't load followed projects",
+      "unfollowFailed": "Couldn't unfollow"
+    }
+  },
+  "public": {
+    "notFoundTitle": "User not found",
+    "notFoundHint": "There is no profile at this address.",
+    "errorTitle": "Profile",
+    "joined": "Joined {month}",
+    "projectCount": "{count, plural, one {# project} other {# projects}}",
+    "articleCount": "{count, plural, one {# article} other {# articles}}",
+    "editProfile": "Edit profile",
+    "about": "About",
+    "projects": "Projects",
+    "articles": "Articles",
+    "noProjects": "No projects yet.",
+    "noArticles": "No articles yet.",
+    "roles": {
+      "owner": "Owner",
+      "tipster": "Tipped off"
+    },
+    "errors": {
+      "loadFailed": "Failed to fetch profile",
+      "projectsFailed": "Couldn't load projects. Try again in a moment.",
+      "articlesFailed": "Couldn't load articles. Try again in a moment."
+    }
+  }
+}

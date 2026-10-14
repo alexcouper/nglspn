@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import type { CategoryItem, DiscoverProject } from "@/lib/api";
 import { api } from "@/lib/api";
@@ -26,6 +27,7 @@ export function CategoryRowsSection({ categories }: CategoryRowsSectionProps) {
 }
 
 function CategoryRow({ category }: { category: CategoryItem }) {
+  const t = useTranslations("projects.categoryRows");
   const [projects, setProjects] = useState<DiscoverProject[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -49,7 +51,7 @@ function CategoryRow({ category }: { category: CategoryItem }) {
           href={`/projects?category=${category.slug}`}
           className="text-sm text-accent hover:text-accent-hover font-medium"
         >
-          See all
+          {t("seeAll")}
         </Link>
       </div>
       {loading ? (
@@ -76,6 +78,7 @@ function IconCard({
   project: DiscoverProject;
   iconSize: number;
 }) {
+  const tb = useTranslations("projects.tipoffBadge");
   const iconUrl = project.icon_url;
 
   return (
@@ -108,7 +111,7 @@ function IconCard({
           </h3>
           {project.is_community_tipoff && (
             <div className="mt-0.5">
-              <TipoffBadge size="sm" label="Tipoff" />
+              <TipoffBadge size="sm" label={tb("short")} />
             </div>
           )}
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">

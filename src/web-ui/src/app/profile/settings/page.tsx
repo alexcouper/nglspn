@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { ArrowLeftIcon } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { Settings } from "./Settings";
@@ -10,6 +11,7 @@ import { Settings } from "./Settings";
 // editor; the public fields and the private preferences have nothing to do
 // with each other, and the editor now navigates away on Save.
 export default function SettingsPage() {
+  const t = useTranslations("profile.settings");
   const { isLoading: authLoading } = useRequireAuth();
   const { user, isAuthenticated } = useAuth();
 
@@ -34,14 +36,13 @@ export default function SettingsPage() {
             className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground mb-3"
           >
             <ArrowLeftIcon className="w-4 h-4" />
-            Edit profile
+            {t("backToEdit")}
           </Link>
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            Account settings
+            {t("title")}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Signed in as {user.email}. Emails and privacy; nothing here is shown
-            on your profile.
+            {t("signedInAs", { email: user.email })}
           </p>
         </div>
       </section>

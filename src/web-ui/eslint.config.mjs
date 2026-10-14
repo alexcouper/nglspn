@@ -28,12 +28,17 @@ const eslintConfig = defineConfig([
       "nglspn/no-hardcoded-ui-strings": ["error", { allow: ["naglasúpan"] }],
     },
   },
-  {
-    // Paths are globs to ESLint, so the [slug] in route directories has to be
-    // escaped or it is read as a character class.
-    files: I18N_PENDING_FILES.map((file) => file.replace(/[[\]]/g, "\\$&")),
-    rules: { "nglspn/no-hardcoded-ui-strings": "off" },
-  },
+  // ESLint rejects a config block with an empty `files`, so the exemption only
+  // exists while there is something to exempt. Paths are globs, so the [slug]
+  // in route directories has to be escaped or it is read as a character class.
+  ...(I18N_PENDING_FILES.length > 0
+    ? [
+        {
+          files: I18N_PENDING_FILES.map((file) => file.replace(/[[\]]/g, "\\$&")),
+          rules: { "nglspn/no-hardcoded-ui-strings": "off" },
+        },
+      ]
+    : []),
 ]);
 
 export default eslintConfig;

@@ -24,6 +24,7 @@ import {
   PlusIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 import type { ReviewProject } from "@/lib/api";
 import { ProjectTile } from "@/components/ProjectTile";
 
@@ -41,6 +42,7 @@ export function RankingList({
   onReorder,
   onRemove,
 }: RankingListProps) {
+  const t = useTranslations("competitions.rankingList");
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -71,9 +73,7 @@ export function RankingList({
         className="bg-white rounded-xl border border-dashed border-border p-6 text-center"
       >
         <p className="text-muted-foreground text-sm">
-          {readOnly
-            ? "You ranked no projects."
-            : "Nothing ranked yet. Add the projects you want to back."}
+          {readOnly ? t("emptyReadOnly") : t("emptyEditable")}
         </p>
       </div>
     );
@@ -134,6 +134,8 @@ function RankingCard({
   onMoveDown,
   onRemove,
 }: RankingCardProps) {
+  const t = useTranslations("competitions.rankingList");
+  const name = project.title || t("fallbackName");
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: project.id, disabled: readOnly });
 
@@ -175,7 +177,7 @@ function RankingCard({
             type="button"
             onClick={onRemove}
             data-testid="remove-button"
-            aria-label={`Remove ${project.title || "project"} from my ranking`}
+            aria-label={t("removeLabel", { name })}
             className="absolute top-1.5 right-1.5 z-10 flex items-center justify-center p-2 sm:p-1.5 rounded-full bg-white/85 backdrop-blur-sm shadow-sm text-slate-500 hover:text-red-600 hover:bg-white transition-colors"
           >
             <XMarkIcon className="w-4 h-4" />
@@ -190,7 +192,7 @@ function RankingCard({
               type="button"
               onClick={onMoveUp}
               disabled={isFirst}
-              aria-label={`Move ${project.title || "project"} up`}
+              aria-label={t("moveUpLabel", { name })}
               className={CONTROL_BUTTON_CLASS}
             >
               <ChevronUpIcon className="w-5 h-5 sm:w-4 sm:h-4" />
@@ -201,7 +203,7 @@ function RankingCard({
               {...attributes}
               {...listeners}
               type="button"
-              aria-label={`Drag ${project.title || "project"} to reorder`}
+              aria-label={t("dragLabel", { name })}
               className="hidden sm:flex cursor-grab active:cursor-grabbing p-1 text-slate-300 hover:text-slate-500 transition-colors touch-none"
             >
               <Bars3Icon className="w-4 h-4" />
@@ -212,7 +214,7 @@ function RankingCard({
               type="button"
               onClick={onMoveDown}
               disabled={isLast}
-              aria-label={`Move ${project.title || "project"} down`}
+              aria-label={t("moveDownLabel", { name })}
               className={CONTROL_BUTTON_CLASS}
             >
               <ChevronDownIcon className="w-5 h-5 sm:w-4 sm:h-4" />
@@ -232,6 +234,7 @@ interface PoolListProps {
 
 /** Projects the reviewer has not ranked. Order comes from the server. */
 export function PoolList({ projects, readOnly, onAdd }: PoolListProps) {
+  const t = useTranslations("competitions.rankingList");
   if (projects.length === 0) {
     return (
       <div
@@ -239,7 +242,7 @@ export function PoolList({ projects, readOnly, onAdd }: PoolListProps) {
         className="bg-white rounded-xl border border-dashed border-border p-6 text-center"
       >
         <p className="text-muted-foreground text-sm">
-          Every project is in your ranking.
+          {t("poolEmpty")}
         </p>
       </div>
     );
@@ -263,11 +266,11 @@ export function PoolList({ projects, readOnly, onAdd }: PoolListProps) {
                 type="button"
                 onClick={() => onAdd(project)}
                 data-testid="add-button"
-                aria-label={`Add ${project.title || "project"} to my ranking`}
+                aria-label={t("addLabel", { name: project.title || t("fallbackName") })}
                 className="inline-flex items-center justify-center gap-1 btn-secondary text-sm px-3 py-2 min-w-[44px] min-h-[44px] sm:min-h-0"
               >
                 <PlusIcon className="w-4 h-4" />
-                <span className="hidden sm:inline">Rank</span>
+                <span className="hidden sm:inline">{t("rank")}</span>
               </button>
             </ControlCluster>
           )}
@@ -313,12 +316,13 @@ function ProjectCardTile({
   project: ReviewProject;
   dimmed: boolean;
 }) {
+  const t = useTranslations("competitions.rankingList");
   return (
     <ProjectTile
       id={project.id}
       href={`/projects/${project.slug ?? project.id}`}
       imageUrl={project.in_use_image_url || project.hero_banner_url || null}
-      title={project.title || "Untitled"}
+      title={project.title || t("untitled")}
       tagline={project.tagline}
       categoryName={project.category_name}
       dimmed={dimmed}

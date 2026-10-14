@@ -1,11 +1,29 @@
 import { describe, expect, it } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
+import { createTranslator } from "next-intl";
 
 import type { FeedEntry } from "@/lib/api";
+import { messages } from "@/i18n/messages";
 
 import { FeedRow } from "./FeedRow";
-import { groupByWeek, renderEntry, weekLabel } from "./feedEntry";
+import {
+  groupByWeek,
+  renderEntry as renderEntryWith,
+  weekLabel as weekLabelWith,
+  type FlagKey,
+  type WeekLabelKey,
+} from "./feedEntry";
+
+// The pure helpers take their copy from the caller. Tests resolve it from the
+// real English messages so they keep asserting on what the page shows.
+const flags = createTranslator({ locale: "en", messages, namespace: "feed.row.flags" });
+const weekLabels = createTranslator({ locale: "en", messages, namespace: "feed.list" });
+
+const renderEntry = (feedEntry: FeedEntry) =>
+  renderEntryWith(feedEntry, (key: FlagKey) => flags(key));
+const weekLabel = (startsAt: Date, now: Date) =>
+  weekLabelWith(startsAt, (key: WeekLabelKey) => weekLabels(key), now);
 
 async function mount(element: React.ReactElement) {
   const container = document.createElement("div");

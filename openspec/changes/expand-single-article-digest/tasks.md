@@ -71,6 +71,8 @@ All paths are relative to `src/django-backend/`.
 - [x] 5.3 `make test`
 - [x] 5.4 `uv run python manage.py makemigrations --check --dry-run` — no model
   change, so nothing to make.
-- [ ] 5.5 Open the admin preview for a recipient with one real article and
-  check it in at least one mail client via a test send. Check an article with
-  a gallery, a code fence and a table.
+- [ ] 5.5 Send all three layouts to a real mail client and check an article
+  with a gallery, a code fence and a table:
+  `uv run python manage.py send_article_digest_sample --to <address>`
+  (`--layout` for one, `--article <slug>` to pick the lead). Builds from the
+  newest published articles, logs nothing, leaves no rows behind.

@@ -64,30 +64,48 @@ class ArticleDigestEmail:
     context: dict
 
 
+def _relations(prefix: str) -> tuple[list[str], list]:
+    """Everything the builder reads off an article, as select/prefetch lookups.
+
+    `prefix` walks the lookups across a relation: `"article__"` from a
+    Notification queryset, `""` from an Article queryset.
+    """
+    select = [
+        f"{prefix}project",
+        f"{prefix}channel",
+        f"{prefix}author",
+        f"{prefix}listing_image",
+    ]
+    prefetch = [
+        f"{prefix}listing_image__variants",
+        # Body images, for the medium-variant substitution.
+        f"{prefix}images__variants",
+        # `get_project_icon_url` falls back to `images[0]` with no filtering of
+        # its own, so the prefetch is the only thing keeping an article figure
+        # or a failed upload out of the project icon.
+        gallery_prefetch(f"{prefix}project__images"),
+    ]
+    return select, prefetch
+
+
 def with_article_digest_relations(
     queryset: QuerySet[Notification],
 ) -> QuerySet[Notification]:
-    """Everything the builder reads, fetched up front.
+    """A Notification queryset with everything the builder reads fetched up front.
 
     Shared by the digest worker and the admin preview so neither can miss a
     relation and pay for it once per article.
     """
-    return queryset.select_related(
-        "recipient",
-        "article",
-        "article__project",
-        "article__channel",
-        "article__author",
-        "article__listing_image",
-    ).prefetch_related(
-        "article__listing_image__variants",
-        # Body images, for the medium-variant substitution.
-        "article__images__variants",
-        # `get_project_icon_url` falls back to `images[0]` with no filtering of
-        # its own, so the prefetch is the only thing keeping an article figure
-        # or a failed upload out of the project icon.
-        gallery_prefetch("article__project__images"),
+    select, prefetch = _relations("article__")
+    return queryset.select_related("recipient", "article", *select).prefetch_related(
+        *prefetch
     )
+
+
+def with_article_relations(queryset: QuerySet[Article]) -> QuerySet[Article]:
+    """The same, for callers that start from articles rather than notifications."""
+    select, prefetch = _relations("")
+    return queryset.select_related(*select).prefetch_related(*prefetch)
 
 
 def build_article_digest(

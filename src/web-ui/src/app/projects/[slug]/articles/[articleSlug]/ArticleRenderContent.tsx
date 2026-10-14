@@ -12,20 +12,42 @@ import remarkDirective from "remark-directive";
 import remarkGfm from "remark-gfm";
 import { ArticleGallery } from "../ArticleGallery";
 import { galleryImagesFromElement } from "../gallery-hast";
+import { readingMinutes } from "../read-time";
 import { remarkGallery } from "../remark-gallery";
 import { articleSanitizeSchema } from "../sanitize-schema";
 import "../article-markdown.css";
+import { ArticleOnward } from "./ArticleOnward";
+import type { Onward } from "./onward";
+import type { Origin } from "./origin";
+import { CroppedImage } from "@/components/CroppedImage";
 import { useAuth } from "@/contexts/auth";
 import { useNotifications } from "@/contexts/notifications";
 import type { Article, Project } from "@/lib/api";
-import { formatDate, getAuthorName } from "@/lib/utils";
+import { formatDate, getAuthorName, pickVariant } from "@/lib/utils";
 
 interface Props {
   project: Project;
   article: Article;
+  /** Where the back control goes, resolved on the server from `?from=`. */
+  origin: Origin;
+  /** What the reader is handed at the end. Null when there is nothing to offer. */
+  onward: Onward | null;
+  articleCount: number;
+  channelCount: number;
 }
 
-export function ArticleRenderContent({ project, article }: Props) {
+// A title past this many characters is five lines of display type before the
+// reader has read a word, so it steps down a size.
+const LONG_TITLE = 70;
+
+export function ArticleRenderContent({
+  project,
+  article,
+  origin,
+  onward,
+  articleCount,
+  channelCount,
+}: Props) {
   const t = useTranslations("articles.render");
   const { isAuthenticated } = useAuth();
   // Through the context, not api.notifications directly: it refreshes the
@@ -37,11 +59,15 @@ export function ArticleRenderContent({ project, article }: Props) {
     ? new Date(article.published_at)
     : null;
   const isDraft = article.state !== "published";
-  // A const binding, so the narrowing below survives into the byline's link
-  // callback.
-  const author = article.author;
 
   const projectSlug = project.slug ?? project.id;
+  const iconImage = project.images?.find((img) => img.is_icon);
+  const iconUrl = iconImage
+    ? pickVariant(iconImage.variants, "thumb") ?? iconImage.url
+    : null;
+
+  const standfirst = article.summary || article.summary_display;
+  const isLongTitle = article.title.length > LONG_TITLE;
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -51,70 +77,135 @@ export function ArticleRenderContent({ project, article }: Props) {
   }, [article.id, isAuthenticated, markArticleRead]);
 
   return (
-    <article className="sm:py-8 sm:px-6">
+    <>
       {/*
-        Breadcrumb sits above the panel so the article body itself opens with
-        its title. On mobile (< sm) the panel is full-bleed and the breadcrumb
-        needs `px-4` to align with the panel's inner content padding; on
-        desktop it picks up the panel's `sm:px-10` content alignment.
+        No panel and no muted field: the article is the page. The masthead and
+        the image band run to the full 6xl the nav and the listing tabs use,
+        while the body keeps a 40rem measure — which is what stops the page
+        reading as an island without making the prose unreadably wide.
       */}
-      <div className="max-w-3xl mx-auto px-4 pt-4 pb-3 sm:px-10 sm:pt-0 sm:pb-4">
-        <Link
-          href={`/projects/${projectSlug}#articles`}
-          className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground transition-colors"
-        >
-          <ChevronLeftIcon className="w-4 h-4" />
-          {project.title}
-        </Link>
-      </div>
-
-      {/*
-        Mobile (< sm): full-bleed — no rounded corners, no border, no outer
-        padding. Article fills viewport edge-to-edge.
-        Desktop (>= sm): centered panel, rounded, bordered, padded — the
-        article is the only on-page surface besides the nav bar.
-      */}
-      <div className="max-w-3xl mx-auto bg-white sm:rounded-xl sm:border sm:border-border px-4 py-6 sm:px-10 sm:py-10">
-        {isDraft && (
-          <div className="mb-4 inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
-            {t("draftBadge")}
+      <header className="px-4 sm:px-6 pt-4 sm:pt-10">
+        <div className="max-w-6xl mx-auto">
+          <div className="mb-6 sm:mb-10">
+            <Link
+              href={origin.href}
+              className="inline-flex items-center gap-1.5 pl-2 pr-3 py-1.5 text-sm font-medium rounded-full border border-border bg-white hover:border-accent hover:text-accent transition-colors"
+            >
+              <ChevronLeftIcon className="w-4 h-4" />
+              {origin.label}
+            </Link>
           </div>
-        )}
 
-        <h1 className="text-3xl sm:text-4xl font-semibold text-foreground tracking-tight">
-          {article.title}
-        </h1>
+          {/*
+            Centred above sm, left-aligned below it: a centred headline
+            wrapping over six lines on a phone reads as a poster rather than
+            as something to start reading.
+          */}
+          <div className="sm:text-center">
+            {isDraft && (
+              <div className="mb-4 inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
+                {t("draftBadge")}
+              </div>
+            )}
 
-        <div className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          {publishedAt && (
-            <time dateTime={publishedAt.toISOString()}>
-              {formatDate(publishedAt)}
-            </time>
-          )}
-          {author && !author.is_system_user && (
-            <span>
-              {t.rich("byline", {
-                name: getAuthorName(author),
-                link: (chunks) => (
-                  <Link
-                    href={`/users/${author.id}`}
-                    className="text-foreground hover:text-accent transition-colors"
-                  >
-                    {chunks}
-                  </Link>
-                ),
-              })}
-            </span>
-          )}
-          <span className="font-semibold uppercase tracking-wide text-accent text-xs">
-            {article.channel.name}
-          </span>
+            <Link
+              href={`/projects/${projectSlug}`}
+              className="inline-flex items-center gap-2 text-sm font-medium hover:text-accent transition-colors"
+            >
+              {iconUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={iconUrl}
+                  alt=""
+                  className="w-6 h-6 rounded object-cover border border-border"
+                />
+              )}
+              {project.title}
+              <span className="text-muted-foreground font-normal">
+                · {article.channel.name}
+              </span>
+            </Link>
+
+            <h1
+              className={`mt-4 font-semibold tracking-tight text-balance sm:mx-auto ${
+                isLongTitle
+                  ? "text-[1.625rem] sm:text-4xl sm:max-w-[40rem]"
+                  : "text-3xl sm:text-5xl sm:max-w-[46rem]"
+              }`}
+            >
+              {article.title}
+            </h1>
+
+            {standfirst && (
+              <p className="mt-4 text-lg text-muted-foreground sm:mx-auto sm:max-w-[34rem] text-pretty">
+                {standfirst}
+              </p>
+            )}
+
+            <div className="mt-7 inline-flex items-center gap-2.5 text-sm text-muted-foreground">
+              {article.author && !article.author.is_system_user && (
+                <span className="w-8 h-8 rounded-full bg-accent-subtle text-accent-hover grid place-items-center text-xs font-semibold shrink-0">
+                  {initials(getAuthorName(article.author))}
+                </span>
+              )}
+              <span>
+                {article.author && !article.author.is_system_user && (
+                  <>
+                    <Link
+                      href={`/users/${article.author.id}`}
+                      className="text-foreground font-medium hover:text-accent transition-colors"
+                    >
+                      {getAuthorName(article.author)}
+                    </Link>
+                    {" · "}
+                  </>
+                )}
+                {publishedAt && (
+                  <time dateTime={publishedAt.toISOString()}>
+                    {formatDate(publishedAt)}
+                  </time>
+                )}
+                {publishedAt && " · "}
+                {readingMinutes(article.body)} min read
+              </span>
+            </div>
+
+            {/*
+              With no image there is nothing to mark where the cover ends, so
+              the rule does it — the same device an imageless lead card uses in
+              ArticleCard, rather than a new one invented here.
+            */}
+            {!article.listing_image_url && (
+              <div className="mt-8 sm:mt-10 h-[3px] w-12 rounded-full bg-accent sm:mx-auto" />
+            )}
+          </div>
         </div>
+      </header>
 
-        {/* No image band above the body. The listing image describes the
-            article in a list; an author who wants an image at the top of the
-            piece inserts one into the body. */}
-        <div className="markdown markdown-article mt-8">
+      {article.listing_image_url && (
+        <figure className="max-w-6xl mx-auto px-4 sm:px-6 mt-6 sm:mt-10">
+          {/*
+            Height-capped, and centred inside the cap so what gets clipped is
+            shared top and bottom. An uncropped listing image is 16:9, which at
+            the full 6xl is over 600px tall — enough that the body would start
+            below the first screenful on a laptop and the reader would scroll
+            past a whole viewport of picture before reaching a sentence.
+          */}
+          <div className="rounded-lg sm:rounded-xl overflow-hidden max-h-[30rem] flex items-center">
+            <CroppedImage
+              src={article.listing_image_url}
+              alt=""
+              crop={article.listing_crop}
+              priority
+              className="w-full"
+              testId="article-listing-image"
+            />
+          </div>
+        </figure>
+      )}
+
+      <main className="max-w-[40rem] mx-auto px-4 sm:px-6 pt-8 sm:pt-12 pb-12 sm:pb-16">
+        <div className="markdown markdown-article">
           <ReactMarkdown
             // remarkDirective parses `:::gallery`; remarkGallery must follow
             // it, because it is what turns those nodes into something
@@ -171,7 +262,25 @@ export function ArticleRenderContent({ project, article }: Props) {
             {article.body}
           </ReactMarkdown>
         </div>
-      </div>
-    </article>
+      </main>
+
+      {onward && (
+        <ArticleOnward
+          onward={onward}
+          project={project}
+          iconUrl={iconUrl}
+          articleCount={articleCount}
+          channelCount={channelCount}
+        />
+      )}
+    </>
   );
+}
+
+function initials(name: string): string {
+  return name
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("");
 }

@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { ArticleCard } from "@/components/ArticleCard";
 import type { ArticleListItem } from "@/lib/api";
 import { api } from "@/lib/api";
+import { publishedNewestFirst } from "@/lib/article-listing";
 
 interface Props {
   projectSlug: string;
@@ -13,21 +14,6 @@ interface Props {
   // itself a client component (the my-projects preview), which falls back to
   // fetching.
   initialArticles?: ArticleListItem[] | null;
-}
-
-// The reader's view: published only, newest first. Applied to the server's
-// response as well as the client's — an authenticated author gets their own
-// drafts back from the same endpoint.
-export function publishedNewestFirst(
-  articles: ArticleListItem[],
-): ArticleListItem[] {
-  return articles
-    .filter((a) => a.state === "published" && a.slug)
-    .sort((x, y) => {
-      const xt = x.published_at ? new Date(x.published_at).getTime() : 0;
-      const yt = y.published_at ? new Date(y.published_at).getTime() : 0;
-      return yt - xt;
-    });
 }
 
 export function ArticlesList({ projectSlug, initialArticles }: Props) {

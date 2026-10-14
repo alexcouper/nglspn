@@ -110,6 +110,10 @@ describe("renderEntry", () => {
 
     expect(rendered.flag).toBe("Naglasúpan");
     expect(rendered.hasArticle).toBe(true);
+    // Carries the origin so the article knows to offer the feed as the way back.
+    expect(rendered.href).toBe(
+      "/projects/naglasupan/articles/how-broadside-won?from=latest",
+    );
   });
 
   it("does not repeat the project in the meta line below it", () => {

@@ -2,16 +2,27 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { ArticleRenderContent } from "./ArticleRenderContent";
+import { buildOnward } from "./onward";
+import { ORIGIN_PARAM, resolveOrigin } from "./origin";
 import { socialCard } from "@/lib/social-card";
 import {
   fetchArticleBySlug,
+  fetchFeedPage,
+  fetchProjectArticles,
   getProjectOr404,
   ApiNotFoundError,
 } from "@/lib/api/server";
+import { publishedNewestFirst } from "@/lib/article-listing";
 
 interface PageProps {
   params: Promise<{ slug: string; articleSlug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
+
+// The metadata only ever addresses the article, so it takes the half of the
+// props it uses rather than making its callers supply a search query it would
+// ignore.
+type MetadataProps = Pick<PageProps, "params">;
 
 // What search results and social cards have room for.
 const DESCRIPTION_MAX = 160;
@@ -25,7 +36,7 @@ function truncate(text: string): string {
 
 export async function generateMetadata({
   params,
-}: PageProps): Promise<Metadata> {
+}: MetadataProps): Promise<Metadata> {
   const { slug, articleSlug } = await params;
   try {
     const [t, article] = await Promise.all([
@@ -58,7 +69,10 @@ export async function generateMetadata({
   }
 }
 
-export default async function ArticleRenderPage({ params }: PageProps) {
+export default async function ArticleRenderPage({
+  params,
+  searchParams,
+}: PageProps) {
   const { slug, articleSlug } = await params;
 
   // `getProjectOr404` handles the project 404; the article fetch needs its own
@@ -71,17 +85,41 @@ export default async function ArticleRenderPage({ params }: PageProps) {
   // be addressed by anyway: `publish_article` assigns one, and there is no
   // unpublish path. Previewing a draft needs a client-side route; see
   // FOLLOW_UPS.md item 7.
-  const [project, article] = await Promise.all([
+  //
+  // The project's other articles are fetched alongside rather than after: the
+  // onward section is content, so it belongs in the server HTML. A failure
+  // there costs the reader the hand-off, not the article.
+  const [project, article, siblings, query] = await Promise.all([
     getProjectOr404(slug),
     fetchArticleBySlug(slug, articleSlug).catch((err) => {
       if (err instanceof ApiNotFoundError) notFound();
       throw err;
     }),
+    fetchProjectArticles(slug).catch(() => null),
+    searchParams,
   ]);
 
+  const published = publishedNewestFirst(siblings ?? []);
+  const hasOthers = published.some((a) => a.id !== article.id);
+
+  // Only when the project has nothing else to offer. Most articles never pay
+  // for this call.
+  const feed = hasOthers
+    ? null
+    : await fetchFeedPage()
+        .then((page) => page.entries)
+        .catch(() => null);
+
   return (
-    <main className="min-h-screen bg-muted pt-14">
-      <ArticleRenderContent project={project} article={article} />
+    <main className="min-h-screen bg-white pt-14">
+      <ArticleRenderContent
+        project={project}
+        article={article}
+        origin={resolveOrigin(query[ORIGIN_PARAM], project)}
+        onward={buildOnward({ project, article, siblings, feed })}
+        articleCount={published.length}
+        channelCount={new Set(published.map((a) => a.channel.id)).size}
+      />
     </main>
   );
 }

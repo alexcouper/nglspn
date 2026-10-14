@@ -185,19 +185,19 @@ export function ArticleRenderContent({
       {article.listing_image_url && (
         <figure className="max-w-6xl mx-auto px-4 sm:px-6 mt-6 sm:mt-10">
           {/*
-            Height-capped, and centred inside the cap so what gets clipped is
-            shared top and bottom. An uncropped listing image is 16:9, which at
-            the full 6xl is over 600px tall — enough that the body would start
-            below the first screenful on a laptop and the reader would scroll
-            past a whole viewport of picture before reaching a sentence.
+            Width-capped, not height-capped. A listing image is framed by the
+            crop the author chose, so its aspect is theirs and the height
+            follows from the width — bounding the height instead would mean
+            clipping their framing. At the full 6xl a 16:9 crop is over 600px
+            tall, enough that the body starts below the first screenful on a
+            laptop; at 52rem it is under 470px and nothing is cut.
           */}
-          <div className="rounded-lg sm:rounded-xl overflow-hidden max-h-[30rem] flex items-center">
+          <div className="max-w-[52rem] mx-auto rounded-lg sm:rounded-xl overflow-hidden">
             <CroppedImage
               src={article.listing_image_url}
               alt=""
               crop={article.listing_crop}
               priority
-              className="w-full"
               testId="article-listing-image"
             />
           </div>

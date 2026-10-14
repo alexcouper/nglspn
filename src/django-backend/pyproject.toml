@@ -28,6 +28,7 @@ dependencies = [
     "opentelemetry-instrumentation-sqlite3>=0.48b0",
     "python-json-logger>=4.0.0",
     "django-tasks-db>=0.12",
+    "nh3>=0.3.7",
 ]
 
 [project.optional-dependencies]

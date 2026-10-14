@@ -175,3 +175,62 @@ class TestPreviewDigestDetailView:
             list(response.content.decode().split("No unsent")),
             has_length(2),
         )
+
+
+@pytest.mark.django_db
+class TestPreviewDigestLayouts:
+    def _preview(self, admin_client, recipient_id, query=""):
+        return admin_client.get(
+            reverse(
+                "admin:notifications_notification_preview_digest_detail",
+                args=["article", recipient_id],
+            )
+            + query
+        )
+
+    def test_one_article_previews_the_single_layout_with_its_body(self, admin_client):
+        notification = _unsent_article_notification()
+        notification.article.body = "## In the email\n\nWhole body."
+        notification.article.save()
+
+        response = self._preview(admin_client, notification.recipient_id)
+
+        body = response.content.decode()
+        assert_that(body, contains_string("<h2>In the email</h2>"))
+        assert_that(body, contains_string("Whole body."))
+
+    def test_layout_override_forces_the_list_layout(self, admin_client):
+        notification = _unsent_article_notification()
+
+        response = self._preview(
+            admin_client, notification.recipient_id, "?layout=list"
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            response.content.decode(),
+            contains_string(
+                "Here are the latest articles from the projects you follow"
+            ),
+        )
+
+    def test_unknown_layout_is_a_404(self, admin_client):
+        notification = _unsent_article_notification()
+
+        response = self._preview(
+            admin_client, notification.recipient_id, "?layout=bogus"
+        )
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_text_preview_leads_with_the_subject(self, admin_client):
+        notification = _unsent_article_notification()
+
+        response = self._preview(
+            admin_client, notification.recipient_id, "?format=text"
+        )
+
+        assert_that(
+            response.content.decode(),
+            contains_string(f"Subject: {notification.article.project.title}: "),
+        )

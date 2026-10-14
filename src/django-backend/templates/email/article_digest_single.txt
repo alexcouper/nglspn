@@ -1,0 +1,10 @@
+{{ article.article_title }}
+{{ article.channel_name }} on {{ article.project_title }}{% if article.published_at %} - {{ article.published_at|date:"j F Y" }}{% endif %}{% if article.author_name %} - by {{ article.author_name }}{% endif %}
+
+{{ article.body_markdown }}
+
+Read on Naglasúpan: {{ article.article_url }}
+
+---
+
+Change your article email frequency: {{ profile_url }}

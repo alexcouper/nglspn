@@ -13,17 +13,16 @@ from apps.emails.models import (
     SentEmail,
     SentEmailType,
 )
-from services.articles.summary import derive_summary
 from services.email import EMAIL_LOGO_URL
 from services.email.handler_interface import EmailHandlerInterface
 
 from . import render_email
+from .article_digest import build_article_digest
 from .query import DjangoEmailQuery
 
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
-    from apps.articles.models import Article
     from apps.discussions.models import Discussion
     from apps.emails.models import BroadcastEmail
     from apps.notifications.models import Notification
@@ -94,52 +93,6 @@ def build_digest_groups(notifications: Sequence[Notification]) -> list[dict]:
         {k: v for k, v in g.items() if not k.startswith("_")}
         for g in groups_dict.values()
     ]
-
-
-ARTICLE_DIGEST_EXCERPT_MAX = 500
-
-
-def _digest_article_image_url(article: Article) -> str | None:
-    from services import REPO  # noqa: PLC0415
-
-    hero = article.listing_image
-    if hero is not None:
-        variants = list(hero.variants.all())
-        thumb = next((v for v in variants if v.size == "thumb"), None)
-        return thumb.url if thumb else hero.url
-    return REPO.project.get_project_icon_url(article.project)
-
-
-def build_article_digest_entries(notifications: Sequence[Notification]) -> list[dict]:
-    """Build the per-article context entries for the article digest template."""
-    entries = []
-    for n in notifications:
-        article = n.article
-        project = article.project
-        # Same excerpt the listing card shows: the email is plain text, so the
-        # markdown body has to be flattened rather than pasted in raw.
-        body_excerpt = article.summary or derive_summary(
-            article.body or "", limit=ARTICLE_DIGEST_EXCERPT_MAX
-        )
-        project_slug_or_id = project.slug or project.id
-        article_slug_or_id = article.slug or article.id
-        entries.append(
-            {
-                "project_title": project.title,
-                "project_url": (
-                    f"{settings.FRONTEND_URL}/projects/{project_slug_or_id}"
-                ),
-                "channel_name": article.channel.name,
-                "article_title": article.title,
-                "article_image_url": _digest_article_image_url(article),
-                "body_excerpt": body_excerpt,
-                "article_url": (
-                    f"{settings.FRONTEND_URL}/projects/{project_slug_or_id}"
-                    f"/articles/{article_slug_or_id}"
-                ),
-            }
-        )
-    return entries
 
 
 class DjangoEmailHandler(EmailHandlerInterface):
@@ -486,17 +439,10 @@ class DjangoEmailHandler(EmailHandlerInterface):
 
         recipient = notifications[0].recipient
 
-        context = {
-            "recipient_name": recipient.first_name or "there",
-            "entries": build_article_digest_entries(notifications),
-            "site_url": settings.FRONTEND_URL,
-            "profile_url": f"{settings.FRONTEND_URL}/profile",
-            "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
-            "current_year": timezone.now().year,
-        }
-        html, text = render_email("article_digest", context)
+        digest = build_article_digest(notifications)
+        html, text = render_email(digest.template_name, digest.context)
 
-        subject = "New articles - Naglasúpan"
+        subject = digest.subject
         email = EmailMultiAlternatives(
             subject=subject,
             body=text,

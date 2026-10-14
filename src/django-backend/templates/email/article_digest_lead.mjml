@@ -1,0 +1,31 @@
+{% extends "email/base.mjml" %}
+
+{% block title %}{{ lead.article_title }}, and {{ entries|length }} more{% endblock %}
+
+{% block content %}
+<mj-section background-color="#ffffff" border-radius="12px" padding="0">
+  <mj-column>
+    <mj-text padding="28px 32px 20px">
+      {% with article=lead %}{% include "email/_article_byline.mjml" %}{% endwith %}
+    </mj-text>
+    <mj-divider border-color="#f1f5f9" border-width="1px" padding="0 32px" />
+    <mj-text padding="20px 32px 0" font-size="15px" line-height="1.7" color="#334155">
+      {{ lead.body_html|safe }}
+    </mj-text>
+    <mj-button href="{{ lead.article_url }}" align="center" padding="24px 32px 28px" width="100%">
+      {% if lead.truncated %}Continue reading{% else %}Read on Naglasúpan{% endif %}
+    </mj-button>
+    <mj-divider border-color="#f1f5f9" border-width="1px" padding="0 32px" />
+    <mj-text padding="24px 32px 16px">
+      <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #475569;">
+        Also new from the projects you follow:
+      </p>
+    </mj-text>
+    <mj-text padding="0 32px 28px">
+      {% include "email/_article_digest_entries.mjml" %}
+    </mj-text>
+  </mj-column>
+</mj-section>
+{% endblock %}
+
+{% block footer_extra %}{% include "email/_article_digest_footer.mjml" %}{% endblock %}

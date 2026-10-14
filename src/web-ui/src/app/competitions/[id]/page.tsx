@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { CompetitionReveal } from "./CompetitionReveal";
 import { fetchCompetition, ApiNotFoundError } from "@/lib/api/server";
 import { socialCard } from "@/lib/social-card";
@@ -13,6 +14,7 @@ export async function generateMetadata({
 }: PageProps): Promise<Metadata> {
   const { id } = await params;
   try {
+    const t = await getTranslations("competitions.detail");
     const competition = await fetchCompetition(id);
     const start = new Date(competition.start_date).toLocaleDateString("en-US", {
       month: "short",
@@ -24,7 +26,11 @@ export async function generateMetadata({
       day: "numeric",
       year: "numeric",
     });
-    const description = `${competition.name} — ${start} to ${end}`;
+    const description = t("metadata.description", {
+      name: competition.name,
+      start,
+      end,
+    });
     return {
       title: competition.name,
       description,

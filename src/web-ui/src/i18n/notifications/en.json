@@ -1,0 +1,40 @@
+{
+  "page": {
+    "metaTitle": "Notifications - naglasúpan",
+    "title": "Notifications",
+    "subtitle": "Discussions on your projects and threads you've joined"
+  },
+  "feed": {
+    "caughtUp": "You're all caught up",
+    "noUnread": "No unread notifications.",
+    "markSelectedRead": "Mark selected as read",
+    "markAllRead": "Mark all as read",
+    "selectNotification": "Select notification"
+  },
+  "bell": {
+    "label": "Notifications",
+    "title": "Notifications",
+    "seeAll": "See all",
+    "caughtUp": "You're all caught up"
+  },
+  "groupItem": {
+    "timestampWithUnread": "{time} · {count} unread",
+    "headline": {
+      "articlePublished": "{project} published {title}",
+      "articlePublishedInChannel": "{project} published {title} in {channel}",
+      "untitledArticle": "an article",
+      "discussionStarted": "{author} started a discussion on {project}",
+      "someone": "Someone",
+      "newReplies": "New replies on {project}",
+      "replied": "{name} replied on {project}",
+      "repliedWithOthers": "{name} and {count, plural, one {# other} other {# others}} replied on {project}"
+    },
+    "relative": {
+      "justNow": "just now",
+      "minutesAgo": "{count}m ago",
+      "hoursAgo": "{count}h ago",
+      "daysAgo": "{count}d ago",
+      "weeksAgo": "{count}w ago"
+    }
+  }
+}

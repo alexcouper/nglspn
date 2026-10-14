@@ -1,0 +1,159 @@
+{
+  "layout": {
+    "kicker": "Iceland's builder community",
+    "heading": "Shine a light on<br></br>your work",
+    "intro": "A platform for Icelandic developers to showcase side projects, get feedback from the community, and compete for recognition.",
+    "tabsLabel": "About tabs",
+    "tabs": {
+      "what": "What",
+      "why": "Why",
+      "prizes": "Prizes",
+      "contact": "Contact"
+    }
+  },
+  "what": {
+    "title": "Supporting Iceland's builder ecosystem",
+    "subtitle": "Everything you need to share your work and grow with the community.",
+    "showWork": {
+      "title": "Show Your Work",
+      "description": "A space to showcase your side projects and early-stage ideas to the Icelandic tech community."
+    },
+    "feedback": {
+      "title": "Get Feedback",
+      "description": "Receive valuable feedback from fellow builders and compete for prizes in community competitions."
+    },
+    "shareGrow": {
+      "title": "Share & Grow",
+      "description": "Share your experience and skills. Learn from others. Grow your project with the community."
+    },
+    "name": {
+      "title": "Why the name Naglasúpan?",
+      "text": "The name comes from the story of nail soup: a shared meal made possible by many small contributions. The same idea brings people building software in Iceland together here.",
+      "storyLink": "The story behind Naglasúpan",
+      "storyLinkIcelandic": "Sagan á bak við Naglasúpuna"
+    }
+  },
+  "contact": {
+    "title": "Get in touch",
+    "discord": "Discord",
+    "email": "Email"
+  },
+  "prizes": {
+    "eligibilityTitle": "Eligibility",
+    "eligibility": {
+      "whoAndStage": "Projects must be built by Iceland-based developers. Projects can be at any stage of development, from idea to launched product.",
+      "anySoftware": "The aim is to encourage general software development too, so web apps, mobile apps, desktop apps, libraries, CLIs, etc are all fair game.",
+      "sideProjects": "Initially the focus is on side projects, but if you have a full time project that you're working on that you're willing to share and get feedback on, that's fine too."
+    },
+    "selectionTitle": "Prize giving and selection",
+    "selection": {
+      "communityVote": "Winners are selected by the community. During each competition's voting phase, registered members rank the entered projects, and the rankings are aggregated to decide the winner.",
+      "frequency": "Prize frequency will be variable dependent on uptake, but somewhere in the weekly-monthly range.",
+      "sizes": "Prize sizes and quantity will depend on sponsorships, but we're good for a few months at least.",
+      "getInTouch": "If you'd like to help shape how competitions are run, get in touch via [discord]({discordUrl}) or [email](mailto:{email})."
+    },
+    "readyPrompt": "Ready to submit your project?",
+    "getStarted": "Get started"
+  },
+  "why": {
+    "ambition": {
+      "beMoreAmbitious": "We should be more ambitious in terms of what we can achieve here in Iceland.",
+      "fragileIdeas": "There are lots of people here with side projects that they're working on, or with ideas that seem too fragile to see the light of day. But we need them.",
+      "whyWeNeedThem": "We need them for the **solutions** they bring, for the **learning** and **collaboration** opportunities they offer, for the **jobs** they may create, and for the shared **infrastructure** they may facilitate the creation of.",
+      "whatNaglasupanDoes": "Naglasúpan serves as a space that encourages Iceland-based developers to ship the things they're working on, to show it to others and to get feedback on it."
+    },
+    "pocTitle": "PoC cost is almost zero",
+    "poc": {
+      "cheaperThanEver": "We live at a time where POC creation has never been cheaper.",
+      "needsIntro": "What we need is",
+      "needs": {
+        "building": "to encourage more building",
+        "feedback": "to provide accelerated feedback",
+        "adoption": "to promote adoption of built products: wins in the community are wins for all of us."
+      }
+    },
+    "seniorTitle": "Senior developer gap",
+    "senior": {
+      "aiCloning": "Developing with AI has made cloning/improving senior developers more attractive than hiring and training juniors.",
+      "extinctionEvent": "This inevitable short-termism needs addressing or Iceland faces a software development extinction event.",
+      "encourageNewer": "We need a way to encourage newer developers to build and ship things, to get feedback on them, and to grow.",
+      "communityInvests": "If companies aren't willing to invest in the next generation, the community needs to."
+    },
+    "geopoliticsTitle": "Geopolitics & Digital Sovereignty",
+    "geopolitics": {
+      "builtAndHostedHere": "Iceland would be better off if more of our key services were built and hosted here.",
+      "risk": "We face increasing geopolitical risk, and we need to take steps to mitigate that.",
+      "sharedInfrastructure": "Naglasúpan will begin by encouraging a community of builders to use each other's side projects but later hopes to identify opportunities for (and enable swarming on) building bigger shared infrastructure."
+    }
+  },
+  "privacy": {
+    "metaTitle": "Privacy Policy - Naglasúpan",
+    "title": "Privacy Policy",
+    "lastUpdated": "*Last updated: 25 February 2026*",
+    "whoWeAre": {
+      "heading": "Who we are",
+      "operator": "Naglasúpan is a community platform for Iceland-based developers. The site is operated by Codalens ehf. (KT 570125-0280), registered in Iceland.",
+      "controller": "The data controller is Codalens ehf."
+    },
+    "whatWeCollect": {
+      "heading": "What we collect",
+      "intro": "We collect the personal information you provide when you create an account or use the platform:",
+      "account": "**Account information**: your name, email address, and password.",
+      "identity": "**Identity verification**: during signup, we verify your connection to the Icelandic developer community. This may involve checking your professional background. We do not store identity documents.",
+      "content": "**Content**: anything you choose to submit, publish, or interact with on the platform.",
+      "technical": "We also collect technical data automatically when you use the site, such as your IP address and browser information. This is used for security, to operate the service, and to understand how the platform is used in aggregate."
+    },
+    "legalBasis": {
+      "heading": "Legal basis for processing",
+      "intro": "We process your personal data on the following grounds under the GDPR:",
+      "contract": "**Contract**: to provide the service you signed up for (account, content publishing, communication).",
+      "legitimateInterest": "**Legitimate interest**: to maintain security, prevent abuse, and understand platform usage in aggregate.",
+      "consent": "**Consent**: for optional features like email communications and external promotion of your content. You can withdraw consent at any time in your profile settings."
+    },
+    "howWeUse": {
+      "heading": "How we use it",
+      "purposes": "We use your data to operate and improve the platform. This includes running your account, displaying content you publish, communicating with you about things you have opted in to, and monitoring the health and performance of the service.",
+      "noThirdParty": "We do not use third-party analytics or advertising services."
+    },
+    "sharing": {
+      "heading": "Data sharing",
+      "noSale": "We do not sell your personal data.",
+      "processors": "To operate the platform, we use a limited number of third-party service providers (such as cloud hosting and email delivery). These processors only access data as necessary to provide their services and are bound by data processing agreements.",
+      "publicContent": "Content you publish on the platform is public by nature. Projects and other public content may be promoted on external channels (such as social media) to support the Icelandic developer community. You can opt out of external promotion in your profile settings."
+    },
+    "storage": {
+      "heading": "Where your data is stored",
+      "text": "Your data is stored on servers located in the EU. All data is encrypted in transit. We take appropriate technical and organisational measures to protect your personal data."
+    },
+    "retention": {
+      "heading": "Data retention",
+      "account": "We keep your personal data for as long as your account is active. If you delete your account, we will remove your personal data within 30 days. Published content that has been shared publicly may be retained in anonymised form. Backups containing personal data are purged on a rolling cycle.",
+      "logs": "We retain technical logs (such as IP addresses) for no longer than 90 days."
+    },
+    "cookies": {
+      "heading": "Cookies and tracking",
+      "text": "We use only the cookies necessary to keep you logged in. We collect anonymous performance metrics to maintain site reliability. We do not use any third-party tracking."
+    },
+    "rights": {
+      "heading": "Your rights",
+      "intro": "Under the GDPR, you have the right to:",
+      "access": "**Access** your personal data.",
+      "correct": "**Correct** inaccurate or incomplete data.",
+      "delete": "**Delete** your account and personal data.",
+      "portability": "**Data portability** — receive your data in a structured, machine-readable format.",
+      "restrict": "**Restrict processing** of your data in certain circumstances.",
+      "object": "**Object** to processing based on legitimate interest.",
+      "withdraw": "**Withdraw consent** at any time for consent-based processing.",
+      "manage": "You can manage your communication and promotion preferences in your profile settings. To exercise any of these rights, contact us.",
+      "complaint": "If you believe your data protection rights have been violated, you have the right to lodge a complaint with the Icelandic Data Protection Authority ([Persónuvernd](https://www.personuvernd.is))."
+    },
+    "changes": {
+      "heading": "Changes to this policy",
+      "text": "If we make material changes to this policy, we will notify registered users by email. The \"last updated\" date at the top of this page will always reflect the most recent revision."
+    },
+    "contact": {
+      "heading": "Contact",
+      "text": "If you have questions about this policy, contact [admin@naglasupan.is](mailto:admin@naglasupan.is)."
+    }
+  }
+}

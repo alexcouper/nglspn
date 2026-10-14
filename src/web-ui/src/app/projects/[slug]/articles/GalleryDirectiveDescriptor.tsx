@@ -12,6 +12,7 @@ import {
   type DirectiveEditorProps,
 } from "@mdxeditor/editor";
 import { $createParagraphNode } from "lexical";
+import { useTranslations } from "next-intl";
 import type { ContainerDirective } from "mdast-util-directive";
 import { ArticleGallery } from "./ArticleGallery";
 import {
@@ -30,6 +31,7 @@ function GalleryEditor({
   lexicalNode,
   parentEditor,
 }: DirectiveEditorProps<ContainerDirective>) {
+  const t = useTranslations("articles.galleryEditor");
   const images = galleryImagesFromMdast(mdastNode);
 
   const write = (next: readonly GalleryImage[]) => {
@@ -65,21 +67,21 @@ function GalleryEditor({
       controls={(index) => (
         <>
           <ControlButton
-            label="Move image left"
+            label={t("moveLeft")}
             disabled={index === 0}
             onClick={() => write(moveGalleryImage(images, index, index - 1))}
           >
             <ArrowLeftIcon className="h-4 w-4" />
           </ControlButton>
           <ControlButton
-            label="Move image right"
+            label={t("moveRight")}
             disabled={index === images.length - 1}
             onClick={() => write(moveGalleryImage(images, index, index + 1))}
           >
             <ArrowRightIcon className="h-4 w-4" />
           </ControlButton>
           <ControlButton
-            label="Remove image from gallery"
+            label={t("removeImage")}
             onClick={() => write(removeGalleryImage(images, index))}
           >
             <TrashIcon className="h-4 w-4" />
@@ -88,7 +90,7 @@ function GalleryEditor({
       )}
       footer={
         <p className="pb-3 text-center text-xs text-muted-foreground">
-          Drop an image here to add it to the gallery
+          {t("dropHint")}
         </p>
       }
     />

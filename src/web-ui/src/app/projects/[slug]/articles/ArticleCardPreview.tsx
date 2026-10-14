@@ -1,16 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { ArticleCard } from "@/components/ArticleCard";
 import type { CropRect } from "@/components/CroppedImage";
 import type { Article, ArticleListItem } from "@/lib/api";
 
 type Variant = "lead" | "grid";
 
-const VARIANTS: { key: Variant; label: string }[] = [
-  { key: "lead", label: "As lead story" },
-  { key: "grid", label: "In the grid" },
-];
+const VARIANTS: Variant[] = ["lead", "grid"];
 
 interface Props {
   article: Article;
@@ -52,6 +50,7 @@ export function toListItem(
 // One variant at a time. Stacking both showed the author the same article twice
 // in one viewport, which is what this replaced.
 export function ArticleCardPreview({ article, summary, imageUrl, crop }: Props) {
+  const t = useTranslations("articles.cardPreview");
   const [variant, setVariant] = useState<Variant>("lead");
   const item = toListItem(article, summary, imageUrl, crop);
   const projectRef = article.project.slug ?? article.project.id;
@@ -63,8 +62,8 @@ export function ArticleCardPreview({ article, summary, imageUrl, crop }: Props) 
 
   return (
     <div>
-      <div role="tablist" aria-label="Card preview" className="flex gap-1">
-        {VARIANTS.map(({ key, label }) => (
+      <div role="tablist" aria-label={t("tablistLabel")} className="flex gap-1">
+        {VARIANTS.map((key) => (
           <button
             key={key}
             role="tab"
@@ -76,7 +75,7 @@ export function ArticleCardPreview({ article, summary, imageUrl, crop }: Props) 
                 : "border-transparent text-muted-foreground hover:text-foreground"
             }`}
           >
-            {label}
+            {t(key)}
           </button>
         ))}
       </div>

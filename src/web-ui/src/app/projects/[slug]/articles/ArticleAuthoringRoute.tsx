@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { Project } from "@/lib/api";
 import { describeApiError } from "@/lib/api/errors";
@@ -26,6 +27,7 @@ interface Props {
 // review. Everything below this line already authenticates its own calls.
 export function ArticleAuthoringRoute({ projectRef, articleId }: Props) {
   const { isReady } = useRequireAuth();
+  const t = useTranslations("articles.route");
   const [project, setProject] = useState<Project | null>(null);
   const [error, setError] = useState("");
 
@@ -57,19 +59,19 @@ export function ArticleAuthoringRoute({ projectRef, articleId }: Props) {
       })
       .catch((err) => {
         if (!cancelled) {
-          setError(describeApiError(err, "Couldn't open this project."));
+          setError(describeApiError(err, t("openProjectFailed.fallback")));
         }
       });
     return () => {
       cancelled = true;
     };
-  }, [projectRef, isReady]);
+  }, [projectRef, isReady, t]);
 
   if (error) {
     return (
       <div className="max-w-2xl mx-auto py-12 px-4 text-center">
         <h1 className="text-lg font-semibold text-foreground">
-          Couldn&apos;t open this project
+          {t("openProjectFailed.title")}
         </h1>
         <p className="text-sm text-muted-foreground mt-2" role="alert">
           {error}
@@ -79,7 +81,7 @@ export function ArticleAuthoringRoute({ projectRef, articleId }: Props) {
             href="/my-projects"
             className="text-sm text-accent hover:text-accent-hover"
           >
-            Back to my projects
+            {t("backToMyProjects")}
           </Link>
         </div>
       </div>

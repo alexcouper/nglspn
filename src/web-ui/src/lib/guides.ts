@@ -1,33 +1,23 @@
 import type { Metadata } from "next";
 import { guidesFor, type Guide, type GuideLanguage } from "@/content/guides";
 import { SITE_URL } from "@/lib/constants";
+import guidesMessages from "@/i18n/guides/en.json";
 
 export type { GuideLanguage };
 
-export const guideCopy = {
-  en: {
-    label: "Community guides",
-    title: "Build something. Share what you learn.",
-    description: "Practical guides to discovering Icelandic software projects, sharing your work, and contributing to the community on Naglasúpan.",
-    intro: "A place to start, whether you have a project to share, a skill to offer, or something you’re curious to try. Find your next step in Iceland’s builder community.",
-    overview: "Overview",
-    readOverview: "Read the guide",
-    inThisGuide: "In this guide",
-    goDeeper: "Explore this topic",
-    related: "Continue reading",
-    byline: "A Naglasúpan guide",
-    updated: "Updated",
-    about: "About Naglasúpan",
-    aboutText: "Naglasúpan brings together people building software in Iceland. Discover their projects, show your own work, and help each other make progress.",
-    projects: "Explore projects",
-    purpose: "Why Naglasúpan exists",
-    correction: "Have a correction or a useful example?",
-    contact: "Get in touch",
-    language: "Guide language",
-    breadcrumb: "Breadcrumb",
-  },
+// The guide chrome is the one part of the site already rendered in two
+// languages, on /guides and /is/guides, with no locale routing to pick between
+// them. The English copy lives with the other UI strings in
+// src/i18n/guides/en.json; the Icelandic copy stays here until an is.json
+// exists and the request locale decides. Both are typed against the English
+// keys so they cannot drift apart.
+type GuideChrome = typeof guidesMessages.chrome;
+
+export const guideCopy: Record<GuideLanguage, GuideChrome> = {
+  en: guidesMessages.chrome,
   is: {
     label: "Leiðarvísar samfélagsins",
+    kicker: "Naglasúpan · Leiðarvísar samfélagsins",
     title: "Smíðaðu eitthvað. Deildu því sem þú lærir.",
     description: "Hagnýtir leiðarvísar um að finna íslensk hugbúnaðarverkefni, deila eigin verkum og leggja samfélagi Naglasúpunnar lið.",
     intro: "Upphafspunktur fyrir þig sem hefur verkefni að sýna, færni að bjóða eða langar að prófa eitthvað nýtt. Finndu næsta skref í íslensku hugbúnaðarsamfélagi.",
@@ -47,7 +37,14 @@ export const guideCopy = {
     language: "Tungumál leiðarvísis",
     breadcrumb: "Staðsetning á vefnum",
   },
-} as const;
+};
+
+// Each language named in itself, for the switcher. Autonyms are the same
+// whichever language the page is in, so they are not translated.
+export const guideLanguageNames: Record<GuideLanguage, string> = {
+  en: "English",
+  is: "Íslenska",
+};
 
 export function guideUrl(language: GuideLanguage, slug = ""): string {
   return `${language === "is" ? "/is" : ""}/guides${slug ? `/${slug}` : ""}`;

@@ -1,0 +1,24 @@
+{
+  "chrome": {
+    "label": "Community guides",
+    "kicker": "Naglasúpan · Community guides",
+    "title": "Build something. Share what you learn.",
+    "description": "Practical guides to discovering Icelandic software projects, sharing your work, and contributing to the community on Naglasúpan.",
+    "intro": "A place to start, whether you have a project to share, a skill to offer, or something you’re curious to try. Find your next step in Iceland’s builder community.",
+    "overview": "Overview",
+    "readOverview": "Read the guide",
+    "inThisGuide": "In this guide",
+    "goDeeper": "Explore this topic",
+    "related": "Continue reading",
+    "byline": "A Naglasúpan guide",
+    "updated": "Updated",
+    "about": "About Naglasúpan",
+    "aboutText": "Naglasúpan brings together people building software in Iceland. Discover their projects, show your own work, and help each other make progress.",
+    "projects": "Explore projects",
+    "purpose": "Why Naglasúpan exists",
+    "correction": "Have a correction or a useful example?",
+    "contact": "Get in touch",
+    "language": "Guide language",
+    "breadcrumb": "Breadcrumb"
+  }
+}

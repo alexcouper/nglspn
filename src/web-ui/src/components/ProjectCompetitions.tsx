@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ArrowPathIcon, TrophyIcon } from "@heroicons/react/24/outline";
 
 import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
@@ -11,18 +12,27 @@ import type {
   CompetitionStanding,
 } from "@/lib/api/my-projects";
 
+type Translate = ReturnType<typeof useTranslations<"competitions.projectCompetitions">>;
+
 // Reasons that describe the project rather than any one competition. Repeating
 // them per row is noise, so the section states them once.
 //
 // `community_project` is absent on purpose: a tipoff hides the section
 // outright rather than listing rounds it can never enter.
-const PROJECT_WIDE_REASONS: Record<string, string> = {
-  project_status: "This project can't enter competitions while it's not live.",
-  project_draft: "Publish this project before it can enter a competition.",
-};
+function projectWideReasonText(reason: string, t: Translate): string | null {
+  switch (reason) {
+    case "project_status":
+      return t("reasons.projectStatus");
+    case "project_draft":
+      return t("reasons.projectDraft");
+    default:
+      return null;
+  }
+}
 
 function projectWideReason(
-  opportunities: CompetitionOpportunity[]
+  opportunities: CompetitionOpportunity[],
+  t: Translate
 ): string | null {
   if (opportunities.length === 0) return null;
   const reasons = new Set(
@@ -31,7 +41,7 @@ function projectWideReason(
     )
   );
   if (reasons.size !== 1) return null;
-  return PROJECT_WIDE_REASONS[[...reasons][0]] ?? null;
+  return projectWideReasonText([...reasons][0], t);
 }
 
 interface ProjectCompetitionsProps {
@@ -49,13 +59,14 @@ export function ProjectCompetitions({
   onEnter,
   error,
 }: ProjectCompetitionsProps) {
+  const t = useTranslations("competitions.projectCompetitions");
   const [enteringId, setEnteringId] = useState<string | null>(null);
   // The parent reports what it knows through `error`. This covers the case it
   // can't: `onEnter` rejecting outright, which would otherwise leave the row
   // looking untouched and the failure only in the console.
   const [unreportedError, setUnreportedError] = useState("");
   const { entries, opportunities } = standing;
-  const collapsedReason = projectWideReason(opportunities);
+  const collapsedReason = projectWideReason(opportunities, t);
 
   const handleEnter = async (competitionId: string) => {
     setEnteringId(competitionId);
@@ -63,7 +74,7 @@ export function ProjectCompetitions({
     try {
       await onEnter(competitionId);
     } catch {
-      setUnreportedError("Couldn't enter this competition. Please try again.");
+      setUnreportedError(t("errors.enterFailed"));
     } finally {
       setEnteringId(null);
     }
@@ -80,7 +91,7 @@ export function ProjectCompetitions({
   // on, which is what it used to be.
   return (
     <section>
-      <h3 className="text-foreground font-medium">Competitions</h3>
+      <h3 className="text-foreground font-medium">{t("title")}</h3>
 
       {shownError && (
         <p role="alert" className="text-red-600 text-sm mt-3">
@@ -104,11 +115,11 @@ export function ProjectCompetitions({
               {wonCompetitionSlugs.includes(entry.competition.slug) && (
                 <span className="inline-flex items-center gap-1 text-amber-600 text-xs font-medium">
                   <TrophyIcon className="w-3.5 h-3.5" />
-                  Won
+                  {t("won")}
                 </span>
               )}
               <span className="text-muted-foreground text-xs">
-                Entered {formatDate(entry.entered_at)}
+                {t("entered", { date: formatDate(entry.entered_at) })}
               </span>
               <CompetitionStatusBadge
                 status={entry.competition.status}
@@ -125,7 +136,7 @@ export function ProjectCompetitions({
               already in as an opportunity, so everything here is a round it
               isn't in. */}
           <h4 className="text-muted-foreground text-xs font-medium uppercase tracking-wide mt-5">
-            Other rounds open now
+            {t("otherRounds")}
           </h4>
           {collapsedReason && (
             <p className="text-muted-foreground text-sm mt-2">
@@ -146,17 +157,18 @@ export function ProjectCompetitions({
                     {opportunity.competition.name}
                   </Link>
                   <p className="text-muted-foreground text-xs mt-0.5">
-                    Deadline{" "}
-                    {formatDate(opportunity.competition.submission_deadline)}
+                    {t("deadline", {
+                      date: formatDate(opportunity.competition.submission_deadline),
+                    })}
                   </p>
                   {!opportunity.eligible &&
                     !collapsedReason &&
                     opportunity.reason === "already_in_series" && (
                       <p className="text-muted-foreground text-xs mt-1">
-                        Already in this run of competitions with{" "}
-                        {opportunity.blocking_entry?.name ??
-                          "an earlier round"}
-                        .
+                        {t("alreadyInSeries", {
+                          name:
+                            opportunity.blocking_entry?.name ?? t("earlierRound"),
+                        })}
                       </p>
                     )}
                 </div>
@@ -169,7 +181,7 @@ export function ProjectCompetitions({
                     {enteringId === opportunity.competition.id ? (
                       <ArrowPathIcon className="w-4 h-4 animate-spin" />
                     ) : (
-                      `Enter in ${opportunity.competition.name}`
+                      t("enterIn", { name: opportunity.competition.name })
                     )}
                   </button>
                 )}
@@ -184,9 +196,7 @@ export function ProjectCompetitions({
           no round is open would be false while it sits in three of them. */}
       {opportunities.length === 0 && (
         <p className="text-muted-foreground text-sm mt-3">
-          {entries.length > 0
-            ? "No other round is open right now."
-            : "No round is currently open. This project can enter the next one."}
+          {entries.length > 0 ? t("noOtherRound") : t("noRoundOpen")}
         </p>
       )}
     </section>

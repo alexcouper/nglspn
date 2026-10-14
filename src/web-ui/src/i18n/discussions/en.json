@@ -1,0 +1,42 @@
+{
+  "list": {
+    "deletedUser": "Deleted user",
+    "anonymous": "Anonymous",
+    "edited": "(edited)",
+    "reply": "Reply",
+    "editDiscussionTitle": "Edit discussion",
+    "relative": {
+      "justNow": "just now",
+      "minutes": "{count}m",
+      "hours": "{count}h",
+      "days": "{count}d",
+      "months": "{count}mo",
+      "years": "{count}y"
+    }
+  },
+  "newDiscussion": {
+    "start": "Start a discussion"
+  },
+  "replyForm": {
+    "placeholder": "Write a reply...",
+    "submit": "Reply",
+    "keyboardHint": "<kbd>Enter</kbd> to send, <kbd>Shift + Enter</kbd> for new line"
+  },
+  "inline": {
+    "errors": {
+      "loadFailed": "Failed to load discussions"
+    },
+    "noLongerAvailable": "This discussion is no longer available.",
+    "signInPrompt": "Sign up or log in to view and participate in discussions about this project.",
+    "logIn": "Log in",
+    "signUp": "Sign up"
+  },
+  "modal": {
+    "title": "Start a discussion",
+    "submit": "Post",
+    "placeholder": "What's on your mind?",
+    "errors": {
+      "postFailed": "Failed to post discussion. Please try again."
+    }
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAutoResize } from "@/hooks/useAutoResize";
 
 interface ReplyFormProps {
@@ -9,6 +10,8 @@ interface ReplyFormProps {
 }
 
 export function ReplyForm({ onSubmit, onCancel }: ReplyFormProps) {
+  const t = useTranslations("discussions.replyForm");
+  const tc = useTranslations("common.actions");
   const [body, setBody] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const { ref: textareaRef, resize } = useAutoResize();
@@ -45,7 +48,7 @@ export function ReplyForm({ onSubmit, onCancel }: ReplyFormProps) {
             onCancel();
           }
         }}
-        placeholder="Write a reply..."
+        placeholder={t("placeholder")}
         rows={2}
         className="input flex-1 resize-none overflow-hidden text-sm"
         autoFocus
@@ -56,19 +59,21 @@ export function ReplyForm({ onSubmit, onCancel }: ReplyFormProps) {
           disabled={submitting || !body.trim()}
           className="btn-primary text-xs disabled:opacity-50"
         >
-          {submitting ? "..." : "Reply"}
+          {submitting ? "..." : t("submit")}
         </button>
         <button
           type="button"
           onClick={onCancel}
           className="text-xs text-muted-foreground hover:text-foreground transition-colors"
         >
-          Cancel
+          {tc("cancel")}
         </button>
       </div>
       </div>
       <p className={`text-[11px] text-muted-foreground ${body.trim() ? "" : "invisible"}`}>
-        <kbd className="font-medium">Enter</kbd> to send, <kbd className="font-medium">Shift + Enter</kbd> for new line
+        {t.rich("keyboardHint", {
+          kbd: (chunks) => <kbd className="font-medium">{chunks}</kbd>,
+        })}
       </p>
     </form>
   );

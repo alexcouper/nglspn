@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Dialog } from "@/components/Dialog";
 
 interface SubmitRankingDialogProps {
@@ -17,18 +18,18 @@ export function SubmitRankingDialog({
   onCancel,
   isSubmitting = false,
 }: SubmitRankingDialogProps) {
+  const t = useTranslations("competitions.submitRankingDialog");
+  const tc = useTranslations("common.actions");
   const isEmpty = rankedCount === 0;
 
   return (
     <Dialog isOpen={isOpen} onClose={onCancel}>
       <h2 className="text-base font-semibold text-foreground mb-3">
-        {isEmpty ? "Submit without ranking anything?" : "Submit your ranking?"}
+        {isEmpty ? t("titleEmpty") : t("title")}
       </h2>
 
       <p className="text-sm text-muted-foreground mb-5" data-testid="submit-dialog-body">
-        {isEmpty
-          ? "You have not ranked any projects, so none will be counted as your preference. You can reopen your review later if voting is still open."
-          : "Your ranking will be locked in. You can reopen it later if voting is still open."}
+        {isEmpty ? t("bodyEmpty") : t("body")}
       </p>
 
       <div className="flex gap-2 justify-end">
@@ -38,7 +39,7 @@ export function SubmitRankingDialog({
           disabled={isSubmitting}
           className="btn-secondary"
         >
-          Cancel
+          {tc("cancel")}
         </button>
         <button
           type="button"
@@ -48,10 +49,10 @@ export function SubmitRankingDialog({
           className="btn-primary"
         >
           {isSubmitting
-            ? "Submitting..."
+            ? t("submitting")
             : isEmpty
-              ? "Submit empty ballot"
-              : "Submit Ranking"}
+              ? t("submitEmpty")
+              : t("submit")}
         </button>
       </div>
     </Dialog>

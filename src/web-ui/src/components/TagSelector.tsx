@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { TagGrouped, TagWithCategory } from "@/lib/api";
 
@@ -17,6 +18,8 @@ interface TagSelectorProps {
 }
 
 export function TagSelector({ selectedTagIds, onChange }: TagSelectorProps) {
+  const t = useTranslations("my-projects.tagSelector");
+  const tc = useTranslations("common.actions");
   const [groupedTags, setGroupedTags] = useState<TagGrouped[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -29,11 +32,11 @@ export function TagSelector({ selectedTagIds, onChange }: TagSelectorProps) {
       const data = await api.tags.listGrouped();
       setGroupedTags(data);
     } catch {
-      setError("Failed to load tags");
+      setError(t("errors.loadFailed"));
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     loadTags();
@@ -97,7 +100,7 @@ export function TagSelector({ selectedTagIds, onChange }: TagSelectorProps) {
       setSuggestName("");
       setSuggestingFor(null);
     } catch {
-      setError("Failed to suggest tag");
+      setError(t("errors.suggestFailed"));
     } finally {
       setIsSuggesting(false);
     }
@@ -139,7 +142,7 @@ export function TagSelector({ selectedTagIds, onChange }: TagSelectorProps) {
                   type="text"
                   value={suggestName}
                   onChange={(e) => setSuggestName(e.target.value)}
-                  placeholder="Tag name"
+                  placeholder={t("namePlaceholder")}
                   className="px-2 py-1 text-sm border rounded focus:outline-none focus:ring-1 focus:ring-accent"
                   autoFocus
                   onKeyDown={(e) => {
@@ -156,7 +159,7 @@ export function TagSelector({ selectedTagIds, onChange }: TagSelectorProps) {
                   disabled={isSuggesting || !suggestName.trim()}
                   className="px-2 py-1 text-sm bg-accent text-white rounded hover:bg-accent/90 disabled:opacity-50"
                 >
-                  {isSuggesting ? "..." : "Add"}
+                  {isSuggesting ? "..." : t("add")}
                 </button>
                 <button
                   onClick={() => {
@@ -165,7 +168,7 @@ export function TagSelector({ selectedTagIds, onChange }: TagSelectorProps) {
                   }}
                   className="px-2 py-1 text-sm text-muted-foreground hover:text-foreground"
                 >
-                  Cancel
+                  {tc("cancel")}
                 </button>
               </div>
             ) : (
@@ -173,7 +176,7 @@ export function TagSelector({ selectedTagIds, onChange }: TagSelectorProps) {
                 onClick={() => setSuggestingFor(group.category.id)}
                 className="px-2 py-1 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border rounded-lg hover:border-foreground/30 transition-colors"
               >
-                + Suggest
+                {t("suggest")}
               </button>
             )}
           </div>
@@ -190,6 +193,7 @@ interface TagCheckboxProps {
 }
 
 function TagCheckbox({ tag, checked, onChange }: TagCheckboxProps) {
+  const t = useTranslations("my-projects.tagSelector");
   return (
     <label
       className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full cursor-pointer transition-all text-sm ${
@@ -208,7 +212,7 @@ function TagCheckbox({ tag, checked, onChange }: TagCheckboxProps) {
       {tag.status === "pending" && (
         <span
           className="text-xs opacity-75"
-          title="This tag is pending review"
+          title={t("pendingReview")}
         >
           *
         </span>

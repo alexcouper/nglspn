@@ -1,7 +1,9 @@
+import { getTranslations } from "next-intl/server";
 import { CompetitionsList } from "./CompetitionsList";
 import { fetchCompetitions } from "@/lib/api/server";
 
 export default async function CompetitionsPage() {
+  const t = await getTranslations("competitions.index");
   const data = await fetchCompetitions().catch(() => null);
 
   const sorted = data
@@ -16,10 +18,10 @@ export default async function CompetitionsPage() {
       <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
         <div className="max-w-6xl mx-auto">
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            Competitions
+            {t("title")}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Community competitions and their results
+            {t("subtitle")}
           </p>
         </div>
       </section>

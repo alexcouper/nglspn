@@ -2,21 +2,12 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 
-const DISCUSSION_OPTIONS = [
-  { value: "immediate", label: "Every time" },
-  { value: "hourly", label: "Hourly" },
-  { value: "daily", label: "Daily" },
-  { value: "never", label: "Never" },
-] as const;
+const DISCUSSION_FREQUENCIES = ["immediate", "hourly", "daily", "never"] as const;
 
-const ARTICLE_OPTIONS = [
-  { value: "hourly", label: "Hourly" },
-  { value: "daily", label: "Daily" },
-  { value: "weekly", label: "Weekly" },
-  { value: "never", label: "Never" },
-] as const;
+const ARTICLE_FREQUENCIES = ["hourly", "daily", "weekly", "never"] as const;
 
 interface SettingsProps {
   optInToExternalPromotions: boolean;
@@ -120,6 +111,7 @@ export function Settings({
   discussionEmailFrequency,
   articleEmailFrequency,
 }: SettingsProps) {
+  const t = useTranslations("profile.settings");
   const [externalPromotions, setExternalPromotions] = useState(optInToExternalPromotions);
   const [discussionFreq, setDiscussionFreq] = useState(discussionEmailFrequency);
   const [articleFreq, setArticleFreq] = useState(articleEmailFrequency);
@@ -159,21 +151,32 @@ export function Settings({
     }
   };
 
+  const discussionOptions = DISCUSSION_FREQUENCIES.map((value) => ({
+    value,
+    label: t(`frequency.${value}`),
+  }));
+  const articleOptions = ARTICLE_FREQUENCIES.map((value) => ({
+    value,
+    label: t(`frequency.${value}`),
+  }));
+
   return (
     <div className="bg-white rounded-xl border border-border p-5">
-      <h2 className="text-sm font-semibold text-foreground mb-1">Email preferences</h2>
+      <h2 className="text-sm font-semibold text-foreground mb-1">{t("emailPreferences.title")}</h2>
       <p className="text-xs text-muted-foreground mb-3">
-        Choose which project channels email you on the{" "}
-        <Link href="/profile/following" className="text-accent hover:underline">
-          Following
-        </Link>{" "}
-        page; control how often emails are sent below.
+        {t.rich("emailPreferences.hint", {
+          link: (chunks) => (
+            <Link href="/profile/following" className="text-accent hover:underline">
+              {chunks}
+            </Link>
+          ),
+        })}
       </p>
 
       <CadenceSelector
-        label="Discussion emails"
-        description="How often to email you when someone comments on a discussion you're in."
-        options={DISCUSSION_OPTIONS}
+        label={t("discussionEmails.label")}
+        description={t("discussionEmails.description")}
+        options={discussionOptions}
         value={discussionFreq}
         saving={saving === "discussion_email_frequency"}
         onChange={(next) =>
@@ -187,9 +190,9 @@ export function Settings({
       />
 
       <CadenceSelector
-        label="Article emails"
-        description="How often to summarise new articles from projects you follow."
-        options={ARTICLE_OPTIONS}
+        label={t("articleEmails.label")}
+        description={t("articleEmails.description")}
+        options={articleOptions}
         value={articleFreq}
         saving={saving === "article_email_frequency"}
         onChange={(next) =>
@@ -202,13 +205,13 @@ export function Settings({
         }
       />
 
-      <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">Privacy</h2>
-      <p className="text-xs text-muted-foreground mb-3">Manage your privacy preferences</p>
+      <h2 className="text-sm font-semibold text-foreground mb-1 mt-6">{t("privacy.title")}</h2>
+      <p className="text-xs text-muted-foreground mb-3">{t("privacy.hint")}</p>
 
       <div className="divide-y divide-border">
         <Toggle
-          label="External promotions"
-          description="Allow your participation to be featured on external platforms like LinkedIn"
+          label={t("externalPromotions.label")}
+          description={t("externalPromotions.description")}
           checked={externalPromotions}
           onChange={(v) =>
             handleToggle("opt_in_to_external_promotions", v, setExternalPromotions)

@@ -28,7 +28,7 @@ vi.mock("@/lib/api", () => ({
 }));
 
 const { api, ApiRequestError } = await import("@/lib/api");
-const { ProfileView, joinedLine } = await import("./page");
+const { ProfileView, joinedMonth } = await import("./page");
 
 // ------------------------------------------------------------------ mounting
 
@@ -141,7 +141,7 @@ describe("the public profile page", () => {
 
     expect(text(container, "h1")).toBe("Sigrún Helgadóttir");
     expect(text(container, '[data-testid="profile-meta"]')).toBe(
-      `${joinedLine("2025-03-12T10:00:00Z")} · 2 projects · 1 article`,
+      `Joined ${joinedMonth("2025-03-12T10:00:00Z")} · 2 projects · 1 article`,
     );
     expect(container.querySelector('[data-testid="profile-about"] strong')?.textContent).toBe(
       "Vesturbær",
@@ -175,7 +175,7 @@ describe("the public profile page", () => {
     expect(container.querySelector('[data-testid="profile-projects-error"]')).not.toBeNull();
     expect(container.textContent).not.toContain("No projects yet.");
     expect(text(container, '[data-testid="profile-meta"]')).toBe(
-      `${joinedLine("2025-03-12T10:00:00Z")} · 1 article`,
+      `Joined ${joinedMonth("2025-03-12T10:00:00Z")} · 1 article`,
     );
     cleanup();
   });

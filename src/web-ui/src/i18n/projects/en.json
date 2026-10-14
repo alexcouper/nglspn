@@ -1,0 +1,92 @@
+{
+  "listing": {
+    "metaTitle": "Naglasúpan | Software projects in Iceland",
+    "metaDescription": "Discover Icelandic apps, tools, and side projects on Naglasúpan. Meet the people building them, try their work, and share feedback with the community."
+  },
+  "listingError": {
+    "description": "We couldn't load projects. This may be a temporary issue."
+  },
+  "projectError": {
+    "description": "We couldn't load this project. This may be a temporary issue."
+  },
+  "projectsPage": {
+    "createProject": "Create a project"
+  },
+  "listingTabs": {
+    "label": "Section tabs",
+    "latest": "Latest",
+    "discover": "Discover",
+    "createProject": "Create a project"
+  },
+  "categoryView": {
+    "projectCount": "{count, plural, one {# project} other {# projects}}",
+    "sortNewest": "Newest",
+    "sortName": "Name A-Z",
+    "empty": "No projects in this category yet."
+  },
+  "categoryRows": {
+    "seeAll": "See all"
+  },
+  "newArrivals": {
+    "title": "New Arrivals"
+  },
+  "recentTipoffs": {
+    "title": "Recent Tipoffs",
+    "explainerLabel": "What is a community tip-off?"
+  },
+  "winners": {
+    "title": "Competition Winners",
+    "badge": "Winner"
+  },
+  "tipoffBadge": {
+    "short": "Tipoff",
+    "communityTipoff": "Community Tipoff"
+  },
+  "tipoffExplainer": {
+    "what": "Community tip-offs are projects spotted and added by someone other than their makers.",
+    "knowOne": "Know of one? <link>Add it as a tip-off</link>.",
+    "claim": "Made one of these projects? Email <link>{email}</link> to claim it."
+  },
+  "projectDetail": {
+    "metaTitle": "{title} — {tagline}",
+    "imageCount": "{count, plural, one {# image} other {# images}}",
+    "submitted": "Submitted {date}",
+    "winnerOf": "Winner of <competitions></competitions>",
+    "lightboxPosition": "{current} / {total}",
+    "tabs": {
+      "description": "Description",
+      "articles": "Articles",
+      "discussions": "Discussions"
+    }
+  },
+  "articlesList": {
+    "loadFailed": "Failed to load articles",
+    "empty": "No articles yet."
+  },
+  "titleBanner": {
+    "iconAlt": "{title} icon",
+    "untitled": "Untitled Project",
+    "by": "by"
+  },
+  "creatorCredit": {
+    "createdBy": "Created by <link>{name}</link>",
+    "tippedOffBy": "Tipped off by <link>{name}</link>"
+  },
+  "followButton": {
+    "follow": "Follow",
+    "following": "Following"
+  },
+  "followPopover": {
+    "channels": "Channels",
+    "loading": "Loading…",
+    "loadFailed": "Couldn't load preferences",
+    "unfollowFailed": "Couldn't unfollow",
+    "unfollow": "Unfollow"
+  },
+  "channelToggleList": {
+    "label": "Channels"
+  },
+  "channelToggle": {
+    "updateFailed": "Couldn't update channel"
+  }
+}

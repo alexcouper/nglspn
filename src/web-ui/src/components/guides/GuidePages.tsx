@@ -3,6 +3,7 @@ import ReactMarkdown from "react-markdown";
 import type { Guide } from "@/content/guides";
 import {
   guideCopy,
+  guideLanguageNames,
   guideStructuredData,
   guideUrl,
   localizedGuide,
@@ -34,7 +35,7 @@ function LanguageSwitch({ language, slug }: { language: GuideLanguage; slug?: st
           aria-current={language === locale ? "page" : undefined}
           className={language === locale ? "font-semibold text-foreground underline underline-offset-4" : "text-muted-foreground hover:text-foreground"}
         >
-          {locale === "en" ? "English" : "Íslenska"}
+          {guideLanguageNames[locale]}
         </a>
       ))}
     </nav>
@@ -66,7 +67,7 @@ export function GuideIndex({ language }: { language: GuideLanguage }) {
       </div>
       <header className="bg-nav-bg px-4 py-16 sm:px-6 sm:py-20">
         <div className="mx-auto max-w-6xl">
-          <p className="mb-5 text-sm font-medium tracking-wide text-indigo-300">Naglasúpan · {copy.label}</p>
+          <p className="mb-5 text-sm font-medium tracking-wide text-indigo-300">{copy.kicker}</p>
           <h1 className="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl">{copy.title}</h1>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-slate-300">{copy.intro}</p>
           <Link href="/projects" className="mt-8 inline-flex items-center gap-2 text-sm font-medium text-indigo-200 underline underline-offset-4 hover:text-white">

@@ -2,6 +2,7 @@
 
 import { useEffect, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { ONBOARDING_STEP_COMPONENTS } from "@/components/onboarding/steps";
@@ -14,6 +15,7 @@ export default function OnboardingPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
+  const t = useTranslations("common");
   const { user, isLoading, isAuthenticated, refreshUser } = useAuth();
 
   const pendingSteps = user?.pending_onboarding_steps ?? [];
@@ -31,7 +33,7 @@ export default function OnboardingPage() {
   if (isLoading || !isAuthenticated || !user) {
     return (
       <main className="min-h-screen bg-muted flex items-center justify-center">
-        <div className="text-muted-foreground text-sm">Loading...</div>
+        <div className="text-muted-foreground text-sm">{t("loading")}</div>
       </main>
     );
   }

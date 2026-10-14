@@ -1,32 +1,34 @@
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import Link from "next/link";
+import { getTranslations } from "next-intl/server";
 import { CompetitionHighlight } from "@/app/components/CompetitionHighlight";
 import { fetchCompetitionHighlights } from "@/lib/api/server";
 import { SITE_DISCORD_URL, SITE_EMAIL } from "@/lib/constants";
 
-const eligibility = `
-Projects must be built by Iceland-based developers. Projects can be at any stage of development, from idea to launched product.
-
-The aim is to encourage general software development too, so web apps, mobile apps, desktop apps, libraries, CLIs, etc are all fair game.
-
-Initially the focus is on side projects, but if you have a full time project that you're working on that you're willing to share and get feedback on, that's fine too.
-`;
-
-const selection = `
-Winners are selected by the community. During each competition's voting phase, registered members rank the entered projects, and the rankings are aggregated to decide the winner.
-
-Prize frequency will be variable dependent on uptake, but somewhere in the weekly-monthly range.
-
-Prize sizes and quantity will depend on sponsorships, but we're good for a few months at least.
-
-If you'd like to help shape how competitions are run, get in touch via [discord](${SITE_DISCORD_URL}) or [email](mailto:${SITE_EMAIL}).
-`;
+// The prose is markdown, one message per paragraph, joined back into a
+// document here so the paragraph breaks stay out of the translators' hands.
+const paragraphs = (...blocks: string[]) => blocks.join("\n\n");
 
 export default async function PrizesPage() {
+  const t = await getTranslations("about.prizes");
   const { competitions } = await fetchCompetitionHighlights().catch(
     () => ({ competitions: [] })
   );
+
+  const eligibility = paragraphs(
+    t("eligibility.whoAndStage"),
+    t("eligibility.anySoftware"),
+    t("eligibility.sideProjects"),
+  );
+
+  const selection = paragraphs(
+    t("selection.communityVote"),
+    t("selection.frequency"),
+    t("selection.sizes"),
+    t("selection.getInTouch", { discordUrl: SITE_DISCORD_URL, email: SITE_EMAIL }),
+  );
+
   return (
     <>
       <section className="py-12 px-4 sm:px-6 bg-white border-b border-border">
@@ -38,7 +40,7 @@ export default async function PrizesPage() {
       <section className="py-12 px-4 sm:px-6 bg-white">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
-            Eligibility
+            {t("eligibilityTitle")}
           </h2>
           <article className="article markdown">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -51,7 +53,7 @@ export default async function PrizesPage() {
       <section className="py-12 px-4 sm:px-6 bg-muted">
         <div className="max-w-3xl mx-auto">
           <h2 className="text-lg font-semibold text-foreground tracking-tight mb-4">
-            Prize giving and selection
+            {t("selectionTitle")}
           </h2>
           <article className="article markdown">
             <ReactMarkdown remarkPlugins={[remarkGfm]}>
@@ -64,10 +66,10 @@ export default async function PrizesPage() {
       <section className="py-12 px-4 sm:px-6 bg-white">
         <div className="max-w-2xl mx-auto text-center">
           <p className="text-foreground font-medium mb-5">
-            Ready to submit your project?
+            {t("readyPrompt")}
           </p>
           <Link href="/register" className="btn-primary">
-            Get started
+            {t("getStarted")}
           </Link>
         </div>
       </section>

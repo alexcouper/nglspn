@@ -3,14 +3,27 @@ import type { FeedEntry } from "@/lib/api";
 type ArticleRef = NonNullable<FeedEntry["article"]>;
 type ListingCrop = ArticleRef["listing_crop"];
 
-// The API sends kinds and refs, never display copy. The wording lives here,
-// with the rest of the UI's strings.
-const KIND_FLAGS: Record<string, string> = {
-  article_published: "Update",
-  project_published: "New project",
-  project_tipoff: "Tipoff",
-  discussion_promoted: "Discussion",
+// The API sends kinds and refs, never display copy. The wording lives in
+// src/i18n/feed/en.json under row.flags; this maps the backend's kind strings
+// onto those keys.
+export type FlagKey =
+  | "articlePublished"
+  | "projectPublished"
+  | "projectTipoff"
+  | "discussionPromoted";
+
+const KIND_FLAGS: Record<string, FlagKey> = {
+  article_published: "articlePublished",
+  project_published: "projectPublished",
+  project_tipoff: "projectTipoff",
+  discussion_promoted: "discussionPromoted",
 };
+
+/** Resolves a flag key to its copy; the component passes its translator. */
+export type FlagTranslator = (key: FlagKey) => string;
+
+export type WeekLabelKey = "thisWeek" | "lastWeek";
+export type WeekLabelTranslator = (key: WeekLabelKey) => string;
 
 export interface RenderedEntry {
   id: string;
@@ -39,7 +52,7 @@ export interface RenderedEntry {
  * article takes its headline from the article and its flag from the article's
  * project. Everything else is a bare event.
  */
-export function renderEntry(entry: FeedEntry): RenderedEntry {
+export function renderEntry(entry: FeedEntry, flagFor: FlagTranslator): RenderedEntry {
   const article = entry.article;
 
   if (article) {
@@ -65,7 +78,7 @@ export function renderEntry(entry: FeedEntry): RenderedEntry {
 
   return {
     id: entry.id,
-    flag: KIND_FLAGS[entry.kind] ?? "Update",
+    flag: flagFor(KIND_FLAGS[entry.kind] ?? "articlePublished"),
     headline: bareHeadline(entry),
     summary: "",
     href: bareHref(entry),
@@ -140,11 +153,15 @@ function startOfWeek(date: Date): Date {
   return result;
 }
 
-export function weekLabel(startsAt: Date, now: Date = new Date()): string {
+export function weekLabel(
+  startsAt: Date,
+  t: WeekLabelTranslator,
+  now: Date = new Date(),
+): string {
   const thisWeek = startOfWeek(now).getTime();
   const weeksAgo = Math.round((thisWeek - startsAt.getTime()) / 604800000);
-  if (weeksAgo <= 0) return "This week";
-  if (weeksAgo === 1) return "Last week";
+  if (weeksAgo <= 0) return t("thisWeek");
+  if (weeksAgo === 1) return t("lastWeek");
   return startsAt.toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",

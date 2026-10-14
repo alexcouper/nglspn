@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import { getPostAuthDestination } from "@/lib/auth-routing";
 
@@ -10,6 +11,7 @@ export default function RegisterPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
+  const t = useTranslations("auth.register");
   const { register } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -22,12 +24,12 @@ export default function RegisterPage() {
     setError("");
 
     if (password.length < 8) {
-      setError("Password must be at least 8 characters");
+      setError(t("errors.passwordTooShort"));
       return;
     }
 
     if (!/^\d{10}$/.test(kennitala)) {
-      setError("Kennitala must be exactly 10 digits");
+      setError(t("errors.kennitalaFormat"));
       return;
     }
 
@@ -37,7 +39,7 @@ export default function RegisterPage() {
       const userData = await register(email, password, kennitala);
       router.push(getPostAuthDestination(userData, next));
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed");
+      setError(err instanceof Error ? err.message : t("errors.failed"));
     } finally {
       setIsLoading(false);
     }
@@ -48,10 +50,10 @@ export default function RegisterPage() {
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-            Create an account
+            {t("title")}
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Start sharing your projects today
+            {t("subtitle")}
           </p>
         </div>
 
@@ -64,7 +66,7 @@ export default function RegisterPage() {
             )}
 
             <div>
-              <label htmlFor="email" className="label">Email</label>
+              <label htmlFor="email" className="label">{t("email")}</label>
               <input
                 id="email"
                 name="email"
@@ -74,12 +76,12 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="input"
-                placeholder="you@example.com"
+                placeholder={t("emailPlaceholder")}
               />
             </div>
 
             <div>
-              <label htmlFor="password" className="label">Password</label>
+              <label htmlFor="password" className="label">{t("password")}</label>
               <input
                 id="password"
                 name="password"
@@ -90,12 +92,12 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 className="input"
-                placeholder="At least 8 characters"
+                placeholder={t("passwordPlaceholder")}
               />
             </div>
 
             <div>
-              <label htmlFor="kennitala" className="label">Kennitala</label>
+              <label htmlFor="kennitala" className="label">{t("kennitala")}</label>
               <input
                 id="kennitala"
                 name="kennitala"
@@ -105,15 +107,18 @@ export default function RegisterPage() {
                 value={kennitala}
                 onChange={(e) => setKennitala(e.target.value.replace(/\D/g, ""))}
                 className="input"
-                placeholder="10 digits"
+                placeholder={t("kennitalaPlaceholder")}
               />
             </div>
 
             <p className="text-xs text-muted-foreground">
-              By creating an account, you agree to our{" "}
-              <Link href="/privacy" className="text-accent hover:text-accent-hover transition-colors">
-                Privacy Policy
-              </Link>.
+              {t.rich("privacyNotice", {
+                link: (chunks) => (
+                  <Link href="/privacy" className="text-accent hover:text-accent-hover transition-colors">
+                    {chunks}
+                  </Link>
+                ),
+              })}
             </p>
 
             <button
@@ -121,14 +126,14 @@ export default function RegisterPage() {
               disabled={isLoading}
               className="w-full btn-primary py-2.5"
             >
-              {isLoading ? "Creating account..." : "Create Account"}
+              {isLoading ? t("submitting") : t("submit")}
             </button>
           </form>
 
           <p className="mt-6 text-center text-sm text-muted-foreground">
-            Already have an account?{" "}
+            {t("haveAccount")}{" "}
             <Link href={next ? `/login?next=${encodeURIComponent(next)}` : "/login"} className="text-accent hover:text-accent-hover font-medium transition-colors">
-              Log in
+              {t("logIn")}
             </Link>
           </p>
         </div>

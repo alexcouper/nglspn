@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { ChevronLeftIcon } from "@heroicons/react/24/outline";
 import ReactMarkdown from "react-markdown";
 import rehypePrismPlus from "rehype-prism-plus";
@@ -25,6 +26,7 @@ interface Props {
 }
 
 export function ArticleRenderContent({ project, article }: Props) {
+  const t = useTranslations("articles.render");
   const { isAuthenticated } = useAuth();
   // Through the context, not api.notifications directly: it refreshes the
   // summary afterwards, so the bell drops its count now rather than at the
@@ -35,6 +37,9 @@ export function ArticleRenderContent({ project, article }: Props) {
     ? new Date(article.published_at)
     : null;
   const isDraft = article.state !== "published";
+  // A const binding, so the narrowing below survives into the byline's link
+  // callback.
+  const author = article.author;
 
   const projectSlug = project.slug ?? project.id;
 
@@ -72,7 +77,7 @@ export function ArticleRenderContent({ project, article }: Props) {
       <div className="max-w-3xl mx-auto bg-white sm:rounded-xl sm:border sm:border-border px-4 py-6 sm:px-10 sm:py-10">
         {isDraft && (
           <div className="mb-4 inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium">
-            Draft — visible only to the author and project editors
+            {t("draftBadge")}
           </div>
         )}
 
@@ -86,15 +91,19 @@ export function ArticleRenderContent({ project, article }: Props) {
               {formatDate(publishedAt)}
             </time>
           )}
-          {article.author && !article.author.is_system_user && (
+          {author && !author.is_system_user && (
             <span>
-              by{" "}
-              <Link
-                href={`/users/${article.author.id}`}
-                className="text-foreground hover:text-accent transition-colors"
-              >
-                {getAuthorName(article.author)}
-              </Link>
+              {t.rich("byline", {
+                name: getAuthorName(author),
+                link: (chunks) => (
+                  <Link
+                    href={`/users/${author.id}`}
+                    className="text-foreground hover:text-accent transition-colors"
+                  >
+                    {chunks}
+                  </Link>
+                ),
+              })}
             </span>
           )}
           <span className="font-semibold uppercase tracking-wide text-accent text-xs">

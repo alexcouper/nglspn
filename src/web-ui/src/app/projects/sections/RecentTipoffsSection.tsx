@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
@@ -18,18 +19,19 @@ interface RecentTipoffsSectionProps {
 }
 
 export function RecentTipoffsSection({ projects }: RecentTipoffsSectionProps) {
+  const t = useTranslations("projects.recentTipoffs");
   if (projects.length < MIN_TIPOFFS_TO_DISPLAY) return null;
 
   return (
     <section>
       <div className="flex items-center gap-2 mb-4">
         <h2 className="text-lg font-semibold text-foreground">
-          Recent Tipoffs
+          {t("title")}
         </h2>
         <Tooltip content={<TipoffExplainer />}>
           <button
             type="button"
-            aria-label="What is a community tip-off?"
+            aria-label={t("explainerLabel")}
             className="inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-semibold bg-amber-100 text-amber-900 border border-amber-200 hover:bg-amber-200 transition-colors"
           >
             ?

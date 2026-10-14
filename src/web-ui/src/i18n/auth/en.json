@@ -1,0 +1,77 @@
+{
+  "login": {
+    "title": "Welcome back",
+    "subtitle": "Log in to manage your projects",
+    "forgotTitle": "Forgotten password?",
+    "forgotSubtitle": "Enter your email to receive a reset code",
+    "codeTitle": "Enter your code",
+    "codeSubtitle": "We sent a 6-digit code to {email}",
+    "resetTitle": "Set new password",
+    "resetSubtitle": "Choose a new password for your account",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "newPassword": "New password",
+    "submit": "Log In",
+    "submitting": "Logging in...",
+    "forgotLink": "Forgotten password?",
+    "backToLogin": "Back to login",
+    "verifying": "Verifying...",
+    "attemptsRemaining": "{count, plural, one {# attempt} other {# attempts}} remaining",
+    "setPassword": "Set password",
+    "passwordUpdated": "Password updated. Please log in.",
+    "noAccount": "Don't have an account?",
+    "createOne": "Create one",
+    "errors": {
+      "invalidCredentials": "Email or password is incorrect.",
+      "loginFailed": "Couldn't log you in.",
+      "sendCodeFailed": "Couldn't send a reset code.",
+      "checkCodeFailed": "Couldn't check that code.",
+      "resetFailed": "Couldn't reset your password."
+    }
+  },
+  "register": {
+    "title": "Create an account",
+    "subtitle": "Start sharing your projects today",
+    "email": "Email",
+    "emailPlaceholder": "you@example.com",
+    "password": "Password",
+    "passwordPlaceholder": "At least 8 characters",
+    "kennitala": "Kennitala",
+    "kennitalaPlaceholder": "10 digits",
+    "privacyNotice": "By creating an account, you agree to our <link>Privacy Policy</link>.",
+    "submit": "Create Account",
+    "submitting": "Creating account...",
+    "haveAccount": "Already have an account?",
+    "logIn": "Log in",
+    "errors": {
+      "passwordTooShort": "Password must be at least 8 characters",
+      "kennitalaFormat": "Kennitala must be exactly 10 digits",
+      "failed": "Registration failed"
+    }
+  },
+  "verifyEmail": {
+    "title": "Verify your email",
+    "subtitle": "We sent a 6-digit code to {email}",
+    "codeSent": "Code sent!",
+    "verifying": "Verifying...",
+    "noCode": "Didn't receive the code?",
+    "resend": "Resend",
+    "resendIn": "Resend in {seconds}s",
+    "errors": {
+      "verifyFailed": "Verification failed. Please try again.",
+      "resendFailed": "Failed to resend code"
+    }
+  },
+  "completeProfile": {
+    "title": "Complete your profile",
+    "subtitle": "Add your name so others know who you are",
+    "firstName": "First Name",
+    "firstNamePlaceholder": "Your first name",
+    "lastName": "Last Name",
+    "lastNamePlaceholder": "Your last name",
+    "errors": {
+      "saveFailed": "Failed to save. Please try again."
+    }
+  }
+}

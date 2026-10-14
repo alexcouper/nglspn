@@ -149,8 +149,11 @@ You're a first-class contributor here. A few repo-specific expectations:
   verification line. Don't assert "tests pass" without having run them.
 - **Plan non-trivial work as an OpenSpec change** before implementing.
 - **Match the house patterns** — the `HANDLERS`/`REPO` services layer, generated
-  types over hand-rolled interfaces. Docs, code and the current web-ui copy are
-  all English.
+  types over hand-rolled interfaces. Docs and code are English.
+- **UI copy lives in `src/web-ui/src/i18n/<area>/en.json`, not in components.**
+  `make lint` fails on text written into JSX
+  (`nglspn/no-hardcoded-ui-strings`). The conventions are in `CLAUDE.md`
+  under "UI strings (i18n)".
 
 ## Questions
 

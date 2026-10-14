@@ -1,0 +1,62 @@
+{
+  "dropZone": {
+    "dropHere": "Drop images here",
+    "uploadPrompt": "<action>Click to upload</action> or drag and drop",
+    "formats": "PNG, JPG, WebP, GIF up to {maxSizeMb}MB",
+    "mainImageHint": "Main image is best at 16:9 ratio (e.g. 1920×1080 or 1280×720)",
+    "slotsRemaining": "{remaining} of {max} slots remaining",
+    "maximumReached": "Maximum images reached"
+  },
+  "gallery": {
+    "mainImageAlt": "Main project image",
+    "mainBadge": "Main",
+    "deleteImage": "Delete image",
+    "setAsMain": "Set as main image",
+    "close": "Close (Esc)",
+    "previous": "Previous (Left Arrow)",
+    "next": "Next (Right Arrow)",
+    "counter": "{current} / {total}"
+  },
+  "uploadProgress": {
+    "processing": "Processing...",
+    "complete": "Complete"
+  },
+  "upload": {
+    "errors": {
+      "failed": "Upload failed"
+    }
+  },
+  "cropper": {
+    "zoom": "Zoom",
+    "sourceWidth": "{width}px",
+    "reset": "Reset",
+    "preview": "Preview",
+    "tooSmall": "This selection is only {width}px wide in the original, so it will look soft at full width."
+  },
+  "roleDialog": {
+    "title": "Image Settings",
+    "displayRoles": "Display Roles",
+    "roles": {
+      "main": {
+        "label": "Main",
+        "description": "Shown at the top of your project page",
+        "dimensions": "Best at 16:9 (1920×1080 or 1280×720)"
+      },
+      "hero": {
+        "label": "Hero",
+        "description": "Shown when your project is featured on the homepage",
+        "dimensions": "Best at 16:9 (1920×1080 or 1280×720)"
+      },
+      "usage": {
+        "label": "Usage",
+        "description": "Shown on the New Arrivals section",
+        "dimensions": "Best at 4:3 (960×720)"
+      }
+    },
+    "untitledProject": "Untitled Project",
+    "mainPreviewAlt": "Main preview",
+    "mainPreviewCaption": "Top of project page",
+    "confirmDelete": "Click again to confirm",
+    "deleteImage": "Delete image"
+  }
+}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 // Aliased: this hook exports its own `uploadImage`, the wrapper that tracks
 // status around this call.
 import { uploadImage as sendUpload } from "@/lib/uploadImage";
@@ -10,9 +11,9 @@ export type ImageUploadStatus =
   | { kind: "uploading" }
   | { kind: "error"; message: string };
 
-function messageFor(error: unknown): string {
+function messageFor(error: unknown, fallback: string): string {
   if (error instanceof Error && error.message) return error.message;
-  return "Image upload failed";
+  return fallback;
 }
 
 // Inline images reach the editor by three routes — the toolbar button, dropping
@@ -20,6 +21,7 @@ function messageFor(error: unknown): string {
 // imageUploadHandler. MDXEditor rethrows a rejected upload into an unhandled
 // promise, so this is the only place an author can be told it went wrong.
 export function useImageUploadStatus(projectRef: string, articleId: string) {
+  const t = useTranslations("articles.imageUpload");
   const [status, setStatus] = useState<ImageUploadStatus>({ kind: "idle" });
 
   const uploadImage = useCallback(
@@ -33,11 +35,11 @@ export function useImageUploadStatus(projectRef: string, articleId: string) {
         setStatus({ kind: "idle" });
         return image.url;
       } catch (err) {
-        setStatus({ kind: "error", message: messageFor(err) });
+        setStatus({ kind: "error", message: messageFor(err, t("failedFallback")) });
         throw err;
       }
     },
-    [projectRef, articleId],
+    [projectRef, articleId, t],
   );
 
   const dismissError = useCallback(() => setStatus({ kind: "idle" }), []);

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import { useNotifications } from "@/contexts/notifications";
 import { useToasts } from "@/contexts/toasts";
@@ -54,6 +55,7 @@ function DiscussionsSkeleton() {
 }
 
 export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
+  const t = useTranslations("discussions.inline");
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const { markThreadRead, markThreadByComment } = useNotifications();
   const { showToast } = useToasts();
@@ -77,7 +79,7 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
     queueMicrotask(() => {
       refreshDiscussions()
         .catch(() => {
-          if (!cancelled) setError("Failed to load discussions");
+          if (!cancelled) setError(t("errors.loadFailed"));
         })
         .finally(() => {
           if (!cancelled) setFetched(true);
@@ -86,7 +88,7 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
     return () => {
       cancelled = true;
     };
-  }, [isAuthenticated, authLoading, refreshDiscussions]);
+  }, [isAuthenticated, authLoading, refreshDiscussions, t]);
 
   // Resolve the comment param to {rootId, isRoot} from currently-loaded data.
   const anchor = useMemo(() => {
@@ -114,7 +116,7 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
       void markThreadByComment(commentParam);
       showToast({
         kind: "warning",
-        title: "This discussion is no longer available.",
+        title: t("noLongerAvailable"),
         ttlMs: 5_000,
       });
     };
@@ -145,6 +147,7 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
     markThreadByComment,
     refreshDiscussions,
     showToast,
+    t,
   ]);
 
   const shouldShowSkeleton = authLoading || (isAuthenticated && !fetched);
@@ -208,15 +211,14 @@ export function InlineDiscussions({ projectId }: InlineDiscussionsProps) {
       <div>
         <div className="bg-white rounded-xl border border-border p-8 text-center">
           <p className="text-muted-foreground text-sm mb-4">
-            Sign up or log in to view and participate in discussions about this
-            project.
+            {t("signInPrompt")}
           </p>
           <div className="flex justify-center gap-3">
             <Link href={buildLoginPath(`${pathname}#discussions`)} className="btn-primary">
-              Log in
+              {t("logIn")}
             </Link>
             <Link href={`/register?next=${encodeURIComponent(`${pathname}#discussions`)}`} className="btn-secondary">
-              Sign up
+              {t("signUp")}
             </Link>
           </div>
         </div>

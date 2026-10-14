@@ -1,6 +1,7 @@
 "use client";
 
 import ReactMarkdown from "react-markdown";
+import { useTranslations } from "next-intl";
 
 interface Props {
   info: string;
@@ -12,9 +13,10 @@ interface Props {
 // the edit page's Preview so the two cannot drift. Images are dropped: a
 // public page under someone's name should not be a place to hot-link
 // third-party content. react-markdown already discards raw HTML.
-export function ProfileAbout({ info, emptyText = "Nothing written yet." }: Props) {
+export function ProfileAbout({ info, emptyText }: Props) {
+  const t = useTranslations("profile.about");
   if (!info.trim()) {
-    return <p className="text-sm italic text-muted-foreground">{emptyText}</p>;
+    return <p className="text-sm italic text-muted-foreground">{emptyText ?? t("nothingWritten")}</p>;
   }
   return (
     <div className="markdown text-[15px] leading-relaxed" data-testid="profile-about">

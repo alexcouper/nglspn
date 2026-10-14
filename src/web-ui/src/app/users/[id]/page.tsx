@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { PencilIcon } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import {
   api,
@@ -21,22 +22,12 @@ interface PageProps {
   params: Promise<{ id: string }>;
 }
 
-// What a project's contributor role reads as on the person's own page. Mirrors
-// CreatorCredit's "Created by" / "Tipped off by" from the project's side.
-export const ROLE_LABELS: Record<UserProject["role"], string> = {
-  owner: "Owner",
-  tipster: "Tipped off",
-};
-
-export function joinedLine(createdAt: string): string {
-  return `Joined ${new Date(createdAt).toLocaleDateString("en-GB", {
+// The month a person joined, as shown in the profile header's "Joined …" line.
+export function joinedMonth(createdAt: string): string {
+  return new Date(createdAt).toLocaleDateString("en-GB", {
     month: "long",
     year: "numeric",
-  })}`;
-}
-
-function plural(count: number, noun: string): string {
-  return `${count} ${noun}${count === 1 ? "" : "s"}`;
+  });
 }
 
 type ProfileState =
@@ -67,6 +58,7 @@ export default function PublicUserProfilePage({ params }: PageProps) {
 }
 
 export function ProfileView({ id }: { id: string }) {
+  const t = useTranslations("profile.public");
   const { user } = useAuth();
   const [state, setState] = useState<ProfileState>({ kind: "loading" });
   const [projects, setProjects] = useState<ListState<UserProject>>(LOADING);
@@ -98,7 +90,7 @@ export function ProfileView({ id }: { id: string }) {
         } else {
           setState({
             kind: "error",
-            message: err instanceof Error ? err.message : "Failed to fetch profile",
+            message: err instanceof Error ? err.message : t("errors.loadFailed"),
           });
         }
       });
@@ -106,7 +98,7 @@ export function ProfileView({ id }: { id: string }) {
     return () => {
       cancelled = true;
     };
-  }, [id]);
+  }, [id, t]);
 
   if (state.kind !== "loaded") {
     return (
@@ -123,7 +115,7 @@ export function ProfileView({ id }: { id: string }) {
               </div>
             ) : (
               <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-                {state.kind === "not-found" ? "User not found" : "Profile"}
+                {state.kind === "not-found" ? t("notFoundTitle") : t("errorTitle")}
               </h1>
             )}
           </div>
@@ -138,7 +130,7 @@ export function ProfileView({ id }: { id: string }) {
         {state.kind === "not-found" && (
           <section className="py-8 px-4 sm:px-6">
             <p className="max-w-6xl mx-auto text-sm text-muted-foreground">
-              There is no profile at this address.
+              {t("notFoundHint")}
             </p>
           </section>
         )}
@@ -149,9 +141,17 @@ export function ProfileView({ id }: { id: string }) {
   const { profile } = state;
   const name = getAuthorName(profile);
   const isOwn = user?.id === profile.id;
-  const meta = [joinedLine(profile.created_at)];
-  if (projects.kind === "loaded") meta.push(plural(projects.items.length, "project"));
-  if (articles.kind === "loaded") meta.push(plural(articles.items.length, "article"));
+  // Mirrors CreatorCredit's "Created by" / "Tipped off by" from the project's
+  // side. Spelled out rather than t(`roles.${role}`): the role comes from the
+  // backend's enum and a template-literal key is not checked against the
+  // messages, so a new role would render its own key path onto the tile.
+  const roleLabels: Record<UserProject["role"], string> = {
+    owner: t("roles.owner"),
+    tipster: t("roles.tipster"),
+  };
+  const meta = [t("joined", { month: joinedMonth(profile.created_at) })];
+  if (projects.kind === "loaded") meta.push(t("projectCount", { count: projects.items.length }));
+  if (articles.kind === "loaded") meta.push(t("articleCount", { count: articles.items.length }));
 
   return (
     <main className="min-h-screen bg-muted pt-14">
@@ -176,7 +176,7 @@ export function ProfileView({ id }: { id: string }) {
           {isOwn && (
             <Link href="/profile" className="btn-secondary w-full sm:w-auto">
               <PencilIcon className="w-4 h-4" />
-              Edit profile
+              {t("editProfile")}
             </Link>
           )}
         </div>
@@ -186,7 +186,7 @@ export function ProfileView({ id }: { id: string }) {
         <div className="max-w-6xl mx-auto grid gap-6 lg:gap-8 lg:grid-cols-[320px_minmax(0,1fr)] items-start">
           <aside className="bg-white rounded-xl border border-border p-5 sm:p-6">
             <h2 className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
-              About
+              {t("about")}
             </h2>
             <ProfileAbout info={profile.info} />
           </aside>
@@ -195,7 +195,7 @@ export function ProfileView({ id }: { id: string }) {
             <section aria-labelledby="profile-projects">
               <SectionHeading
                 id="profile-projects"
-                title="Projects"
+                title={t("projects")}
                 count={projects.kind === "loaded" ? projects.items.length : undefined}
               />
               {projects.kind === "loading" ? (
@@ -205,9 +205,9 @@ export function ProfileView({ id }: { id: string }) {
                   <div className="skeleton aspect-[4/3] rounded-xl hidden md:block" />
                 </div>
               ) : projects.kind === "failed" ? (
-                <ListError what="projects" />
+                <ListError what="projects" message={t("errors.projectsFailed")} />
               ) : projects.items.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No projects yet.</p>
+                <p className="text-sm text-muted-foreground">{t("noProjects")}</p>
               ) : (
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 items-start">
                   {projects.items.map((project) => (
@@ -219,7 +219,7 @@ export function ProfileView({ id }: { id: string }) {
                       title={project.title}
                       tagline={project.tagline}
                       categoryName={project.category_name}
-                      roleLabel={ROLE_LABELS[project.role]}
+                      roleLabel={roleLabels[project.role]}
                     />
                   ))}
                 </div>
@@ -229,7 +229,7 @@ export function ProfileView({ id }: { id: string }) {
             <section aria-labelledby="profile-articles">
               <SectionHeading
                 id="profile-articles"
-                title="Articles"
+                title={t("articles")}
                 count={articles.kind === "loaded" ? articles.items.length : undefined}
               />
               {articles.kind === "loading" ? (
@@ -238,9 +238,9 @@ export function ProfileView({ id }: { id: string }) {
                   <div className="skeleton h-[124px] rounded-lg" />
                 </div>
               ) : articles.kind === "failed" ? (
-                <ListError what="articles" />
+                <ListError what="articles" message={t("errors.articlesFailed")} />
               ) : articles.items.length === 0 ? (
-                <p className="text-sm text-muted-foreground">No articles yet.</p>
+                <p className="text-sm text-muted-foreground">{t("noArticles")}</p>
               ) : (
                 <div className="space-y-3">
                   {articles.items.map((article) => (
@@ -266,14 +266,15 @@ export function ProfileView({ id }: { id: string }) {
   );
 }
 
-function ListError({ what }: { what: string }) {
+// `what` names the list for the test id; `message` is the sentence shown.
+function ListError({ what, message }: { what: string; message: string }) {
   return (
     <p
       className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm"
       role="alert"
       data-testid={`profile-${what}-error`}
     >
-      Couldn&apos;t load {what}. Try again in a moment.
+      {message}
     </p>
   );
 }

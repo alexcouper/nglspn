@@ -1,0 +1,148 @@
+{
+  "page": {
+    "title": "My Projects",
+    "subtitle": "Manage your submissions"
+  },
+  "list": {
+    "status": {
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "projectImageAlt": "Project image",
+    "untitled": "Untitled Project",
+    "errors": {
+      "loadFailed": "Couldn't load your projects."
+    },
+    "backToHome": "Back to home",
+    "projectsHeading": "My Projects",
+    "empty": "You haven't submitted any projects yet.",
+    "tipOffsHeading": "Tip Offs",
+    "createFirst": "Create your first project",
+    "create": "Create a project"
+  },
+  "detail": {
+    "errors": {
+      "openFailed": "Couldn't open this project.",
+      "enterCompetitionFailed": "Couldn't enter this competition.",
+      "saveFailed": "Couldn't save this project.",
+      "publishFailed": "Couldn't publish this project.",
+      "deleteFailed": "Couldn't delete this project.",
+      "updateImageFailed": "Couldn't update this image.",
+      "deleteIconFailed": "Couldn't delete this icon.",
+      "deleteImageFailed": "Couldn't delete this image."
+    },
+    "saved": "Project saved successfully!",
+    "notFound": "Project not found",
+    "backToMyProjects": "Back to my projects",
+    "preview": "Preview",
+    "untitled": "Untitled Project"
+  },
+  "editContent": {
+    "status": {
+      "draft": "Draft",
+      "pending": "Pending Review",
+      "approved": "Approved",
+      "rejected": "Rejected"
+    },
+    "roleBadges": {
+      "main": "M",
+      "hero": "H",
+      "usage": "U"
+    },
+    "tabs": {
+      "description": "Description",
+      "articles": "Articles",
+      "settings": "Settings"
+    },
+    "markdown": "Markdown",
+    "descriptionPlaceholder": "Tell us about your project...",
+    "statusLabel": "Status:",
+    "submittedOn": "Submitted {date}"
+  },
+  "banner": {
+    "iconAlt": "Project icon",
+    "uploadIcon": "Upload project icon (256x256 recommended)",
+    "titlePlaceholder": "Project Title",
+    "taglinePlaceholder": "A short tagline for your project",
+    "communityTipoff": "Community tipoff",
+    "urlPlaceholder": "https://your-project.com"
+  },
+  "articles": {
+    "badge": {
+      "draft": "Draft",
+      "published": "Published",
+      "pendingReview": "Pending review",
+      "notShown": "Not shown"
+    },
+    "errors": {
+      "loadFailed": "Failed to load articles",
+      "createFailed": "Couldn't start a new article."
+    },
+    "ordering": "Drafts are listed first, then published articles, newest first.",
+    "noChannel": "This project has no channel to publish an article into.",
+    "newArticle": "New article",
+    "empty": "No articles yet. Click <strong>New article</strong> to start one.",
+    "untitledDraft": "Untitled draft",
+    "edit": "Edit →"
+  },
+  "publishDialog": {
+    "title": "Not quite ready to publish",
+    "intro": "Before publishing, please add:",
+    "missing": {
+      "title": "A title",
+      "description": "A description",
+      "mainImage": "A main image"
+    }
+  },
+  "deleteDialog": {
+    "title": "Delete Project",
+    "confirmWord": "delete",
+    "warning": "Are you sure you want to delete <strong>\"{title}\"</strong>? This action cannot be undone.",
+    "typeToConfirm": "Type <strong>{word}</strong> to confirm:",
+    "placeholder": "Type ''{word}'' to confirm",
+    "confirm": "Delete Project"
+  },
+  "create": {
+    "errors": {
+      "invalidUrl": "Please enter a valid URL",
+      "submitFailed": "Failed to submit project"
+    },
+    "title": "Create a project",
+    "subtitle": "Add it as a draft, then publish it when it's ready.",
+    "formTitle": "Start a new project",
+    "urlLabel": "Project URL",
+    "urlPlaceholder": "https://your-project.com",
+    "ownershipLegend": "Who made this project?",
+    "mine": "Mine",
+    "mineDescription": "I made this project.",
+    "tipoff": "Tipoff",
+    "tipoffDescription": "Someone else made this — I'm flagging it for the community.",
+    "submitting": "Creating...",
+    "submit": "Create Draft",
+    "backToHome": "Back to home"
+  },
+  "tagSelector": {
+    "errors": {
+      "loadFailed": "Failed to load tags",
+      "suggestFailed": "Failed to suggest tag"
+    },
+    "namePlaceholder": "Tag name",
+    "add": "Add",
+    "suggest": "+ Suggest",
+    "pendingReview": "This tag is pending review"
+  },
+  "tagSidebar": {
+    "errors": {
+      "loadFailed": "Failed to load tags",
+      "suggestFailed": "Failed to suggest tag"
+    },
+    "heading": "Tags",
+    "addTags": "+ Add",
+    "removeTag": "Remove {name}",
+    "pendingReview": "Pending review",
+    "namePlaceholder": "Tag name",
+    "add": "Add",
+    "suggestNew": "+ Suggest new"
+  }
+}

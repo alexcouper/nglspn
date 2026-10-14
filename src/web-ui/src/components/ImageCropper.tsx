@@ -9,6 +9,7 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { useTranslations } from "next-intl";
 import { CROP_BACKGROUND, CroppedImage, type CropRect } from "./CroppedImage";
 
 // Zoom is the image's displayed width as a multiple of the crop box's width, so
@@ -60,8 +61,9 @@ export function ImageCropper({
   onChange,
   lockRatio,
   minSourceWidth = 768,
-  previewLabel = "Preview",
+  previewLabel,
 }: ImageCropperProps) {
+  const t = useTranslations("images.cropper");
   const stageRef = useRef<HTMLDivElement>(null);
   const [stageWidth, setStageWidth] = useState(0);
 
@@ -168,7 +170,7 @@ export function ImageCropper({
 
       <div className="flex items-center gap-4">
         <label className="flex flex-1 items-center gap-2 text-sm text-muted-foreground">
-          Zoom
+          {t("zoom")}
           <input
             type="range"
             min={0}
@@ -179,14 +181,14 @@ export function ImageCropper({
               setZoom(sliderToZoom(Number(event.target.value), source))
             }
             className="flex-1 accent-accent"
-            aria-label="Zoom"
+            aria-label={t("zoom")}
           />
         </label>
         <span
           className="text-sm font-medium tabular-nums text-muted-foreground"
           data-testid="crop-source-width"
         >
-          {sourcePixelWidth}px
+          {t("sourceWidth", { width: sourcePixelWidth })}
         </span>
         {/* Disabled rather than hidden while there is nothing to undo: a
             control that comes and goes as you drag reads as a glitch. */}
@@ -197,13 +199,13 @@ export function ImageCropper({
           className="text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-40 disabled:hover:text-muted-foreground"
           data-testid="crop-reset"
         >
-          Reset
+          {t("reset")}
         </button>
       </div>
 
       <div className="flex items-start gap-3">
         <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground pt-1">
-          {previewLabel}
+          {previewLabel ?? t("preview")}
         </span>
         <div className="w-56 overflow-hidden rounded border border-border">
           <CroppedImage
@@ -218,8 +220,7 @@ export function ImageCropper({
 
       {sourcePixelWidth < minSourceWidth && (
         <p className="text-sm text-amber-700" role="status">
-          This selection is only {sourcePixelWidth}px wide in the original, so it
-          will look soft at full width.
+          {t("tooSmall", { width: sourcePixelWidth })}
         </p>
       )}
     </div>

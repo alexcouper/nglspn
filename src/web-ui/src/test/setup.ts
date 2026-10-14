@@ -1,5 +1,58 @@
 import { afterEach, vi } from "vitest";
 
+// Components read their copy through next-intl, whose hooks need a provider.
+// Tests mount components bare with createRoot, so instead of wrapping every
+// mount, the hooks are replaced with translators over the real English
+// messages. Tests keep asserting on the visible English text.
+vi.mock("next-intl", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next-intl")>();
+  const { messages } = await import("@/i18n/messages");
+  const locale = "en";
+  const onError = (error: Error) => {
+    throw error;
+  };
+  // One translator per namespace, like the real hook, so that `t` is a stable
+  // identity and can sit in effect dependency arrays without re-firing.
+  const translators = new Map<string | undefined, unknown>();
+  const translatorFor = (namespace?: string) => {
+    if (!translators.has(namespace)) {
+      translators.set(
+        namespace,
+        actual.createTranslator({ locale, messages, namespace, onError } as never),
+      );
+    }
+    return translators.get(namespace);
+  };
+  return {
+    ...actual,
+    useLocale: () => locale,
+    useFormatter: () => actual.createFormatter({ locale }),
+    useTranslations: translatorFor,
+  };
+});
+
+vi.mock("next-intl/server", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("next-intl/server")>();
+  const { createTranslator, createFormatter } = await import("next-intl");
+  const { messages } = await import("@/i18n/messages");
+  const locale = "en";
+  const onError = (error: Error) => {
+    throw error;
+  };
+  return {
+    ...actual,
+    getLocale: async () => locale,
+    getFormatter: async () => createFormatter({ locale }),
+    getTranslations: async (namespace?: string | { namespace?: string }) =>
+      createTranslator({
+        locale,
+        messages,
+        namespace: typeof namespace === "string" ? namespace : namespace?.namespace,
+        onError,
+      } as never),
+  };
+});
+
 // React requires this to be set so act() works without a warning.
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 

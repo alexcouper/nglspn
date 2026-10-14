@@ -1,0 +1,23 @@
+{
+  "page": {
+    "metaTitle": "Latest",
+    "metaDescription": "What's happened on Naglasúpan lately."
+  },
+  "list": {
+    "empty": "Nothing has happened here yet. <link>Browse the projects</link>.",
+    "loadFailed": "That didn't load. Try again.",
+    "loading": "Loading…",
+    "retry": "Retry",
+    "showMore": "Show more",
+    "thisWeek": "This week",
+    "lastWeek": "Last week"
+  },
+  "row": {
+    "flags": {
+      "articlePublished": "Update",
+      "projectPublished": "New project",
+      "projectTipoff": "Tipoff",
+      "discussionPromoted": "Discussion"
+    }
+  }
+}

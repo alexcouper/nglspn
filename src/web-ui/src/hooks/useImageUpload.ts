@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback } from "react";
+import { useTranslations } from "next-intl";
 import { type ProjectImage } from "@/lib/api";
 import {
   type UploadTarget,
@@ -30,6 +31,7 @@ export function useImageUpload({
   onUploadComplete,
   onError,
 }: UseImageUploadOptions) {
+  const t = useTranslations("images.upload");
   const [uploads, setUploads] = useState<UploadProgress[]>([]);
 
   const updateUpload = useCallback(
@@ -85,7 +87,7 @@ export function useImageUpload({
             ? error.message
             : error instanceof Error
               ? error.message
-              : "Upload failed";
+              : t("errors.failed");
         onError?.(new Error(errorMessage));
 
         setUploads((prev) =>
@@ -97,7 +99,7 @@ export function useImageUpload({
         );
       }
     },
-    [target, onUploadComplete, onError, updateUpload, removeUpload]
+    [target, onUploadComplete, onError, updateUpload, removeUpload, t]
   );
 
   const uploadFiles = useCallback(

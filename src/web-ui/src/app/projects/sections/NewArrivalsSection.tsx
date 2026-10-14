@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import type { DiscoverProject } from "@/lib/api";
 import { ProjectTile } from "@/components/ProjectTile";
 import { HorizontalScroll } from "../HorizontalScroll";
@@ -9,13 +10,14 @@ interface NewArrivalsSectionProps {
 }
 
 export function NewArrivalsSection({ projects }: NewArrivalsSectionProps) {
+  const t = useTranslations("projects.newArrivals");
   if (projects.length === 0) return null;
 
   return (
     <section>
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-foreground">
-          New Arrivals
+          {t("title")}
         </h2>
       </div>
       <HorizontalScroll>

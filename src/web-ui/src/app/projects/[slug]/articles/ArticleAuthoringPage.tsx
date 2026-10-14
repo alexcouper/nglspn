@@ -3,6 +3,7 @@
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { type CSSProperties, useMemo, useState } from "react";
+import { useTranslations } from "next-intl";
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/auth";
 import type { Project } from "@/lib/api";
@@ -26,10 +27,7 @@ const ArticleEditor = dynamic(
 
 type Tab = "content" | "listing";
 
-const TABS: { key: Tab; label: string }[] = [
-  { key: "content", label: "Content" },
-  { key: "listing", label: "Listing settings" },
-];
+const TABS: Tab[] = ["content", "listing"];
 
 interface Props {
   project: Project;
@@ -44,6 +42,15 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
   // though: `canEdit` below reads `user`, and a null user mid-load would render
   // "Not allowed" at someone who is allowed.
   const { user, isLoading: authLoading } = useAuth();
+  const t = useTranslations("articles.authoring");
+  const tc = useTranslations("common.actions");
+  // Spelled out rather than t(`tabs.${key}`): a template-literal key is not
+  // checked against the messages, so adding a tab would render its own key
+  // path. `tsc` now fails on a missing message and on a missing tab alike.
+  const tabLabels: Record<Tab, string> = {
+    content: t("tabs.content"),
+    listing: t("tabs.listing"),
+  };
 
   // One reference to the project for everything under the article editor.
   // Article images are addressed by the article that owns them, so the editor
@@ -73,16 +80,16 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
   if (!canEdit) {
     return (
       <div className="max-w-2xl mx-auto py-12 px-4 text-center">
-        <h1 className="text-lg font-semibold text-foreground">Not allowed</h1>
+        <h1 className="text-lg font-semibold text-foreground">{t("notAllowed.title")}</h1>
         <p className="text-sm text-muted-foreground mt-2">
-          You need full edit access on this project to author articles.
+          {t("notAllowed.body")}
         </p>
         <div className="mt-6">
           <Link
             href={`/projects/${project.slug ?? project.id}`}
             className="text-sm text-accent hover:text-accent-hover"
           >
-            Back to project
+            {t("backToProject")}
           </Link>
         </div>
       </div>
@@ -97,17 +104,17 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
     return (
       <div className="max-w-2xl mx-auto py-12 px-4 text-center">
         <h1 className="text-lg font-semibold text-foreground">
-          Couldn&apos;t open this article
+          {t("openFailed.title")}
         </h1>
         <p className="text-sm text-muted-foreground mt-2" role="alert">
-          {draft.error || "The article is no longer available."}
+          {draft.error || t("openFailed.fallback")}
         </p>
         <div className="mt-6">
           <Link
             href={`/projects/${projectRef}`}
             className="text-sm text-accent hover:text-accent-hover"
           >
-            Back to project
+            {t("backToProject")}
           </Link>
         </div>
       </div>
@@ -119,10 +126,10 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
   // The /new route is gone, so the old "New article" / "Edit article" split has
   // nothing left to say. What still distinguishes two of these pages is whether
   // readers can see the thing yet.
-  const mode = draft.isPublished ? "Edit article" : "Edit draft";
+  const mode = draft.isPublished ? t("modeEditArticle") : t("modeEditDraft");
 
   const handleDeleteClick = async () => {
-    if (!window.confirm("Delete this article? This cannot be undone.")) return;
+    if (!window.confirm(t("confirmDelete"))) return;
     await draft.remove();
   };
 
@@ -178,9 +185,9 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
               {draft.isSaving ? (
                 <ArrowPathIcon className="w-4 h-4 animate-spin" />
               ) : draft.isPublished ? (
-                "Save"
+                tc("save")
               ) : (
-                "Save draft"
+                t("saveDraft")
               )}
             </button>
             {!draft.isPublished && (
@@ -195,14 +202,14 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
                 {draft.isPublishing ? (
                   <ArrowPathIcon className="w-4 h-4 animate-spin" />
                 ) : (
-                  "Publish"
+                  tc("publish")
                 )}
               </button>
             )}
             <button
               onClick={handleDeleteClick}
               disabled={draft.isDeleting}
-              title="Delete article"
+              title={t("deleteArticle")}
               className="p-2 rounded-lg text-muted-foreground border border-border hover:bg-red-50 hover:text-red-600 hover:border-red-200 transition-colors"
             >
               <TrashIcon className="w-4 h-4" />
@@ -225,7 +232,7 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
             type="text"
             value={form.title}
             onChange={(e) => draft.updateForm({ title: e.target.value })}
-            placeholder="Article title"
+            placeholder={t("titlePlaceholder")}
             className="w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-lg font-semibold text-foreground placeholder:text-[#94a3b8] focus:outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/12 transition-[border-color,box-shadow]"
           />
           <ChannelDropdown
@@ -235,8 +242,8 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
           />
         </div>
 
-        <div role="tablist" aria-label="Article editor" className="flex gap-1">
-          {TABS.map(({ key, label }) => (
+        <div role="tablist" aria-label={t("tablistLabel")} className="flex gap-1">
+          {TABS.map((key) => (
             <button
               key={key}
               role="tab"
@@ -249,7 +256,7 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {label}
+              {tabLabels[key]}
               {key === "listing" && isSwitchingTab && (
                 <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
               )}

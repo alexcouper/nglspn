@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowPathIcon, PlusIcon } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 import { ArticleListingImage } from "@/components/ArticleListingImage";
 import type { ArticleListItem, Channel } from "@/lib/api";
 import { api } from "@/lib/api";
@@ -43,25 +44,27 @@ const BADGE_TONES = {
 // green one. This table is the only place its author can find that out, so
 // "Published" on its own would be a lie — the article exists, and nobody else
 // can see it.
+type BadgeKey = "draft" | "published" | "pendingReview" | "notShown";
+
 function articleBadge(article: ArticleListItem): {
-  label: string;
+  key: BadgeKey;
   tone: string;
 } {
   if (article.state !== "published") {
-    return { label: "Draft", tone: BADGE_TONES.draft };
+    return { key: "draft", tone: BADGE_TONES.draft };
   }
   if (article.is_globally_visible) {
-    return { label: "Published", tone: BADGE_TONES.live };
+    return { key: "published", tone: BADGE_TONES.live };
   }
   return {
-    label:
-      article.global_visibility === "pending" ? "Pending review" : "Not shown",
+    key: article.global_visibility === "pending" ? "pendingReview" : "notShown",
     tone: BADGE_TONES.held,
   };
 }
 
 export function MyProjectArticles({ projectSlugOrId }: Props) {
   const router = useRouter();
+  const t = useTranslations("my-projects.articles");
   const [articles, setArticles] = useState<ArticleListItem[] | null>(null);
   // Null until the lookup settles. Only the New article button reads it, so a
   // failure here disables that button rather than taking the list down with it.
@@ -79,7 +82,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Failed to load articles");
+        setError(err instanceof Error ? err.message : t("errors.loadFailed"));
       });
     // Fetched here, next to the list, because this is where a draft is created:
     // `ArticleCreate.channel_id` is required, so the button cannot act until a
@@ -98,7 +101,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [projectSlugOrId]);
+  }, [projectSlugOrId, t]);
 
   // The draft is created here rather than on a /new route: an article has to
   // exist before the editor opens (images are uploaded against it), and a route
@@ -118,10 +121,10 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
       });
       router.push(`/projects/${projectSlugOrId}/articles/edit/${created.id}`);
     } catch (err) {
-      setError(describeApiError(err, "Couldn't start a new article."));
+      setError(describeApiError(err, t("errors.createFailed")));
       setIsCreating(false);
     }
-  }, [channels, isCreating, projectSlugOrId, router]);
+  }, [channels, isCreating, projectSlugOrId, router, t]);
 
   const canCreate = !!channels?.length && !isCreating;
 
@@ -129,7 +132,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          Drafts are listed first, then published articles, newest first.
+          {t("ordering")}
         </p>
         <button
           type="button"
@@ -137,7 +140,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
           disabled={!canCreate}
           title={
             channels?.length === 0
-              ? "This project has no channel to publish an article into."
+              ? t("noChannel")
               : undefined
           }
           className="btn-primary text-sm py-2 px-3 inline-flex items-center gap-1.5 disabled:opacity-60"
@@ -147,7 +150,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
           ) : (
             <PlusIcon className="w-4 h-4" />
           )}
-          New article
+          {t("newArticle")}
         </button>
       </div>
 
@@ -164,7 +167,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
         </div>
       ) : articles.length === 0 ? (
         <div className="text-sm text-muted-foreground border border-dashed border-border rounded-lg p-6 text-center">
-          No articles yet. Click <strong>New article</strong> to start one.
+          {t.rich("empty", { strong: (chunks) => <strong>{chunks}</strong> })}
         </div>
       ) : (
         <ul className="space-y-2">
@@ -189,12 +192,12 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-base font-medium text-foreground truncate">
-                        {article.title || "Untitled draft"}
+                        {article.title || t("untitledDraft")}
                       </span>
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium ${badge.tone}`}
                       >
-                        {badge.label}
+                        {t(`badge.${badge.key}`)}
                       </span>
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
@@ -212,7 +215,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
                       )}
                     </div>
                   </div>
-                  <span className="text-sm text-accent">Edit →</span>
+                  <span className="text-sm text-accent">{t("edit")}</span>
                 </Link>
               </li>
             );

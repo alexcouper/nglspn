@@ -29,8 +29,9 @@ Read it when you need the complete table.
 - **Frontend** `src/web-ui/` — Next.js 16 App Router, React 19, TypeScript,
   generated API types.
 - **Infra** `infra/prod/app/` — Terraform.
-- The product is Icelandic (`naglasupan.is`); user-facing strings are Icelandic,
-  docs and code are English.
+- The product is Icelandic (`naglasupan.is`); docs and code are English. The
+  UI copy is English too for now, and lives in `src/web-ui/src/i18n/<area>/en.json`
+  rather than in components (#103); Icelandic is a pending translation (#2).
 
 ## Step 1 — pick the home before you write
 
@@ -95,4 +96,5 @@ A doc change rarely stands alone. Before you finish:
   `CONTRIBUTING.md`.
 - Don't fabricate dates, test counts, or "lint clean" claims — state only what
   you can stand behind.
-- Don't write English user-facing product strings, or Icelandic docs/code.
+- Don't write Icelandic docs/code, and don't put user-facing strings into
+  components — they go in `src/web-ui/src/i18n/<area>/en.json`.

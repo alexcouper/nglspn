@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { TrophyIcon, RocketLaunchIcon } from "@heroicons/react/24/solid";
 import { api, type Competition, type CompetitionProject } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
@@ -14,10 +15,10 @@ import { MyRanking } from "./MyRanking";
 import { EnterProjectDialog } from "./EnterProjectDialog";
 import type { ReviewState } from "./types";
 
-function formatPrize(amount: string): string {
+function formatPrizeAmount(amount: string): string {
   const num = parseInt(amount, 10);
   if (isNaN(num)) return amount;
-  return `${num.toLocaleString("de-DE")} kr.`;
+  return num.toLocaleString("de-DE");
 }
 
 interface CompetitionRevealProps {
@@ -30,6 +31,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
   // `router.refresh()` after an entry a no-op — the round's project count never
   // moved.
   const competition = initialCompetition;
+  const t = useTranslations("competitions.reveal");
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const router = useRouter();
   const [fetchedState, setFetchedState] = useState<ReviewState>({ kind: "loading" });
@@ -38,6 +40,9 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
   const isOpen = competition.status === "accepting_applications";
   const isVoting = competition.status === "voting";
   const returnPath = `/competitions/${competition.slug ?? competition.id}`;
+  // The string, not `t`: a translator from a provider is memoised, but a
+  // string is stable by value whatever produces it, so the fetch runs once.
+  const rankingLoadFailed = t("errors.rankingLoadFailed");
 
   useEffect(() => {
     if (!isVoting || authLoading || !isAuthenticated) return;
@@ -60,14 +65,14 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         }
         setFetchedState({
           kind: "error",
-          message: err instanceof Error ? err.message : "Failed to load ranking",
+          message: err instanceof Error ? err.message : rankingLoadFailed,
         });
       }
     })();
     return () => {
       cancelled = true;
     };
-  }, [competition.id, isVoting, authLoading, isAuthenticated]);
+  }, [competition.id, isVoting, authLoading, isAuthenticated, rankingLoadFailed]);
 
   const reviewState: ReviewState = !isVoting
     ? { kind: "not-assigned" }
@@ -120,10 +125,9 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
                 { year: "numeric", month: "long", day: "numeric" },
               )}
               {competition.prize_amount &&
-                ` · ${formatPrize(competition.prize_amount)} prize`}
+                ` · ${t("prize", { amount: formatPrizeAmount(competition.prize_amount) })}`}
               {" · "}
-              {competition.project_count} project
-              {competition.project_count !== 1 ? "s" : ""}
+              {t("projectCount", { count: competition.project_count })}
             </p>
           </div>
         </div>
@@ -134,12 +138,12 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         <div className="bg-white rounded-xl border border-border p-5 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
             <h2 className="text-foreground font-semibold text-lg">
-              Got a project you&apos;re working on?
+              {t("ctaTitle")}
             </h2>
             <p className="text-muted-foreground text-sm mt-1">
               {isAuthenticated
-                ? `Enter one you've already added and compete in ${competition.name}`
-                : `Share your project with the community and compete in ${competition.name}`}
+                ? t("ctaEnterExisting", { name: competition.name })
+                : t("ctaShareNew", { name: competition.name })}
             </p>
           </div>
           {isAuthenticated ? (
@@ -151,7 +155,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
               className="btn-primary flex-shrink-0 inline-flex items-center gap-2"
             >
               <RocketLaunchIcon className="w-4 h-4" />
-              Submit a Project
+              {t("submitProject")}
             </button>
           ) : (
             <Link
@@ -159,7 +163,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
               className="btn-primary flex-shrink-0 inline-flex items-center gap-2"
             >
               <RocketLaunchIcon className="w-4 h-4" />
-              Submit a Project
+              {t("submitProject")}
             </Link>
           )}
         </div>
@@ -185,8 +189,8 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
           <span className="w-2 h-2 bg-violet-500 rounded-full pulse-dot flex-shrink-0" />
           <p className="text-violet-800 font-medium text-sm">
             {isRankingSurfaceActive
-              ? "Voting is in progress. Rank the projects below to help pick the winner."
-              : "Voting is in progress. Selected members are ranking the projects."}
+              ? t("votingRankBelow")
+              : t("votingByMembers")}
           </p>
         </div>
       )}
@@ -215,7 +219,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         <div>
           <div className="flex items-center gap-2 mb-4">
             <TrophyIcon className="w-5 h-5 text-amber-500" />
-            <h2 className="text-lg font-semibold text-foreground">Winner</h2>
+            <h2 className="text-lg font-semibold text-foreground">{t("winner")}</h2>
           </div>
           <WinnerCard project={competition.winner} />
         </div>
@@ -226,7 +230,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
         <div>
           <div className="flex items-baseline gap-2 mb-4">
             <h2 className="text-lg font-semibold text-foreground">
-              All Projects
+              {t("allProjects")}
             </h2>
             <span className="text-sm text-muted-foreground">
               ({competition.projects.length})
@@ -244,7 +248,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
             </div>
           ) : (
             <p className="text-muted-foreground text-sm text-center py-8">
-              No projects yet — be the first to submit!
+              {t("noProjects")}
             </p>
           )}
         </div>
@@ -254,6 +258,7 @@ export function CompetitionReveal({ initialCompetition }: CompetitionRevealProps
 }
 
 function WinnerCard({ project }: { project: CompetitionProject }) {
+  const t = useTranslations("competitions.reveal");
   const imageUrl =
     pickVariant(project.main_image_variants, "medium") ??
     project.main_image_url;
@@ -283,12 +288,12 @@ function WinnerCard({ project }: { project: CompetitionProject }) {
               />
             )}
             <span className="absolute top-2 right-2 bg-amber-400 text-amber-900 text-[10px] font-bold uppercase px-2 py-0.5 rounded-full">
-              Winner
+              {t("winnerBadge")}
             </span>
           </div>
           <div className="p-4 sm:p-5 flex-1 flex flex-col justify-center">
             <h3 className="font-semibold text-lg text-foreground group-hover:text-accent transition-colors">
-              {project.title || "Untitled"}
+              {project.title || t("untitled")}
             </h3>
           </div>
         </div>
@@ -304,6 +309,7 @@ function ProjectCard({
   project: CompetitionProject;
   isWinner: boolean;
 }) {
+  const t = useTranslations("competitions.reveal");
   const imageUrl =
     pickVariant(project.main_image_variants, "thumb") ??
     project.main_image_url;
@@ -343,7 +349,7 @@ function ProjectCard({
         </div>
         <div className="p-3 sm:p-3.5">
           <h3 className="font-medium text-sm text-foreground truncate group-hover:text-accent transition-colors">
-            {project.title || "Untitled"}
+            {project.title || t("untitled")}
           </h3>
         </div>
       </div>

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Tooltip } from "@/components/Tooltip";
 import { TipoffExplainer } from "@/components/TipoffExplainer";
 
@@ -11,9 +12,11 @@ interface TipoffBadgeProps {
 
 export function TipoffBadge({
   size = "md",
-  label = "Community Tipoff",
+  label: labelProp,
   withTooltip = false,
 }: TipoffBadgeProps) {
+  const t = useTranslations("projects.tipoffBadge");
+  const label = labelProp ?? t("communityTipoff");
   const sizeClasses =
     size === "sm" ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-0.5 text-xs";
 

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import type { CompetitionSummary } from "@/lib/api";
 import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
 import { HorizontalScroll } from "@/components/HorizontalScroll";
@@ -9,10 +10,11 @@ import { getCompetitionDeadline } from "@/lib/competition-dates";
 function formatPrizeAmount(amount: string | null): string {
   if (!amount) return "";
   const num = parseFloat(amount);
-  return new Intl.NumberFormat("is-IS").format(num) + " ISK";
+  return new Intl.NumberFormat("is-IS").format(num);
 }
 
 function CompetitionCard({ competition, className = "" }: { competition: CompetitionSummary; className?: string }) {
+  const t = useTranslations("competitions.highlight");
   const isActive =
     competition.status === "accepting_applications" ||
     competition.status === "voting";
@@ -27,7 +29,7 @@ function CompetitionCard({ competition, className = "" }: { competition: Competi
   const diffTime = end.getTime() - now.getTime();
   const daysRemaining = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   const daysSinceClosed = Math.floor(-diffTime / (1000 * 60 * 60 * 24));
-  const prizeText = formatPrizeAmount(competition.prize_amount ?? null);
+  const prizeAmount = formatPrizeAmount(competition.prize_amount ?? null);
   const projectCount = competition.project_count;
 
   return (
@@ -65,13 +67,17 @@ function CompetitionCard({ competition, className = "" }: { competition: Competi
         <div className="mt-auto pt-3 flex items-center justify-between text-xs text-muted-foreground">
           {isActive ? (
             <>
-              <span>{daysRemaining} {daysRemaining === 1 ? "day" : "days"} remaining</span>
-              {prizeText && <span className="font-medium text-emerald-600">{prizeText}</span>}
+              <span>{t("daysRemaining", { count: daysRemaining })}</span>
+              {prizeAmount && (
+                <span className="font-medium text-emerald-600">
+                  {t("prize", { amount: prizeAmount })}
+                </span>
+              )}
             </>
           ) : (
             <>
-              <span>{daysSinceClosed}d ago</span>
-              <span>{projectCount} {projectCount === 1 ? "project" : "projects"}</span>
+              <span>{t("daysAgo", { count: daysSinceClosed })}</span>
+              <span>{t("projectCount", { count: projectCount })}</span>
             </>
           )}
         </div>
@@ -85,10 +91,11 @@ interface CompetitionHighlightProps {
 }
 
 export function CompetitionHighlight({ competitions }: CompetitionHighlightProps) {
+  const t = useTranslations("competitions.highlight");
   if (competitions.length === 0) {
     return (
       <div className="text-center py-8">
-        <p className="text-muted-foreground text-sm">More competitions coming soon</p>
+        <p className="text-muted-foreground text-sm">{t("comingSoon")}</p>
       </div>
     );
   }

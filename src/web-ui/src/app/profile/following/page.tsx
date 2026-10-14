@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useId, useState } from "react";
 import Link from "next/link";
 import { ChevronDownIcon } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useChannelToggle } from "@/hooks/useChannelToggle";
 import { api } from "@/lib/api";
@@ -14,6 +15,7 @@ import { ChannelToggleList } from "@/components/ChannelToggleList";
 import { useToasts } from "@/contexts/toasts";
 
 export default function FollowedProjectsPage() {
+  const t = useTranslations("profile.following");
   const { isLoading: authLoading } = useRequireAuth();
   const { showToast } = useToasts();
   const [follows, setFollows] = useState<FollowWithPreferences[] | null>(null);
@@ -30,12 +32,12 @@ export default function FollowedProjectsPage() {
       })
       .catch(() => {
         if (cancelled) return;
-        setError("Couldn't load followed projects");
+        setError(t("errors.loadFailed"));
       });
     return () => {
       cancelled = true;
     };
-  }, [authLoading]);
+  }, [authLoading, t]);
 
   const removeRow = useCallback((projectSlug: string) => {
     setFollows((prev) =>
@@ -54,7 +56,7 @@ export default function FollowedProjectsPage() {
       setFollows(previous);
       showToast({
         kind: "error",
-        title: "Couldn't unfollow",
+        title: t("errors.unfollowFailed"),
         ttlMs: 5_000,
       });
     }
@@ -65,12 +67,10 @@ export default function FollowedProjectsPage() {
       <section className="bg-white border-b border-border py-10 px-4 sm:px-6">
         <div className="max-w-2xl mx-auto">
           <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
-            Following
+            {t("title")}
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Projects you follow and their channels. Expand a project to change
-            which channels you&apos;re subscribed to; dropping the last one
-            unfollows the project.
+            {t("intro")}
           </p>
         </div>
       </section>
@@ -90,11 +90,13 @@ export default function FollowedProjectsPage() {
           )}
           {follows?.length === 0 && (
             <div className="bg-white rounded-xl border border-border p-6 text-sm text-muted-foreground">
-              You aren&apos;t following any projects yet.{" "}
-              <Link href="/projects" className="text-accent hover:underline">
-                Discover projects
-              </Link>
-              .
+              {t.rich("empty", {
+                link: (chunks) => (
+                  <Link href="/projects" className="text-accent hover:underline">
+                    {chunks}
+                  </Link>
+                ),
+              })}
             </div>
           )}
           {follows && follows.length > 0 && (
@@ -126,6 +128,7 @@ function FollowRow({
   onUnfollow,
   onProjectUnfollowed,
 }: FollowRowProps) {
+  const t = useTranslations("profile.following");
   const [isExpanded, setIsExpanded] = useState(false);
   // The list is fetched once, so channel state lives here and is mutated in
   // place rather than refetched.
@@ -164,8 +167,7 @@ function FollowRow({
             {follow.project_title}
           </Link>
           <div className="text-xs text-muted-foreground">
-            {followedCount} of {channels.length}{" "}
-            {channels.length === 1 ? "channel" : "channels"}
+            {t("channelCount", { followed: followedCount, total: channels.length })}
           </div>
         </div>
         <button
@@ -174,7 +176,7 @@ function FollowRow({
           className="p-1 text-muted-foreground hover:text-foreground transition-colors"
           aria-expanded={isExpanded}
           aria-controls={panelId}
-          aria-label={`Channels for ${follow.project_title}`}
+          aria-label={t("channelsFor", { title: follow.project_title })}
         >
           <ChevronDownIcon
             className={`w-4 h-4 transition-transform ${
@@ -187,7 +189,7 @@ function FollowRow({
           onClick={onUnfollow}
           className="ml-1 text-sm text-red-600 hover:text-red-700 transition-colors"
         >
-          Unfollow
+          {t("unfollow")}
         </button>
       </div>
       {isExpanded && (

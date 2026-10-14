@@ -3,6 +3,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import ReactMarkdown from "react-markdown";
 import {
   TrophyIcon,
@@ -29,6 +30,7 @@ interface Props {
 }
 
 export function ProjectDetailContent({ project, projectId, articles }: Props) {
+  const t = useTranslations("projects.projectDetail");
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
 
   const tagsByCategory = useMemo(
@@ -115,7 +117,7 @@ export function ProjectDetailContent({ project, projectId, articles }: Props) {
             </div>
             {imageCount > 1 && (
               <p className="text-xs text-muted-foreground text-center mt-2">
-                {imageCount} images
+                {t("imageCount", { count: imageCount })}
               </p>
             )}
           </div>
@@ -180,11 +182,12 @@ export function ProjectDetailContent({ project, projectId, articles }: Props) {
 
       {/* Submitted date — desktop only */}
       <p className="hidden lg:block text-xs text-muted-foreground">
-        Submitted{" "}
-        {new Date(project.created_at).toLocaleDateString("en-US", {
-          year: "numeric",
-          month: "long",
-          day: "numeric",
+        {t("submitted", {
+          date: new Date(project.created_at).toLocaleDateString("en-US", {
+            year: "numeric",
+            month: "long",
+            day: "numeric",
+          }),
         })}
       </p>
 
@@ -192,23 +195,26 @@ export function ProjectDetailContent({ project, projectId, articles }: Props) {
     </>
   );
 
+  const wonCompetitions = project.won_competitions ?? [];
   const winnerBanner =
-    project.won_competitions && project.won_competitions.length > 0 ? (
+    wonCompetitions.length > 0 ? (
       <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 mb-6 flex items-center gap-2">
         <TrophyIcon className="w-5 h-5 text-amber-500 flex-shrink-0" />
         <p className="text-amber-800 text-sm">
-          Winner of{" "}
-          {project.won_competitions.map((comp, i) => (
-            <span key={comp.slug}>
-              {i > 0 && ", "}
-              <Link
-                href={`/competitions/${comp.slug}`}
-                className="font-medium underline hover:text-amber-900 transition-colors"
-              >
-                {comp.name}
-              </Link>
-            </span>
-          ))}
+          {t.rich("winnerOf", {
+            competitions: () =>
+              wonCompetitions.map((comp, i) => (
+                <span key={comp.slug}>
+                  {i > 0 && ", "}
+                  <Link
+                    href={`/competitions/${comp.slug}`}
+                    className="font-medium underline hover:text-amber-900 transition-colors"
+                  >
+                    {comp.name}
+                  </Link>
+                </span>
+              )),
+          })}
         </p>
       </div>
     ) : undefined;
@@ -216,7 +222,7 @@ export function ProjectDetailContent({ project, projectId, articles }: Props) {
   const tabs = [
     {
       id: "description",
-      label: "Description",
+      label: t("tabs.description"),
       content: (
         <article className="markdown">
           <ReactMarkdown>{project.description}</ReactMarkdown>
@@ -225,7 +231,7 @@ export function ProjectDetailContent({ project, projectId, articles }: Props) {
     },
     {
       id: "articles",
-      label: "Articles",
+      label: t("tabs.articles"),
       content: (
         <ArticlesList
           projectSlug={project.slug ?? project.id}
@@ -235,7 +241,7 @@ export function ProjectDetailContent({ project, projectId, articles }: Props) {
     },
     {
       id: "discussions",
-      label: "Discussions",
+      label: t("tabs.discussions"),
       content: <InlineDiscussions projectId={projectId} />,
     },
   ];
@@ -318,7 +324,7 @@ export function ProjectDetailContent({ project, projectId, articles }: Props) {
           )}
           {images.length > 1 && (
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 text-white/70 text-sm">
-              {lightboxIndex + 1} / {images.length}
+              {t("lightboxPosition", { current: lightboxIndex + 1, total: images.length })}
             </div>
           )}
         </div>

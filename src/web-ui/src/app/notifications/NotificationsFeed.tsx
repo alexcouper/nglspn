@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useNotifications } from "@/contexts/notifications";
 import { buildDeepLink, groupKey } from "@/lib/notifications";
@@ -9,6 +10,7 @@ import { NotificationGroupItem } from "@/components/NotificationGroupItem";
 import type { NotificationGroup } from "@/lib/api";
 
 export function NotificationsFeed() {
+  const t = useTranslations("notifications.feed");
   const { isReady } = useRequireAuth();
   const {
     groups,
@@ -83,10 +85,10 @@ export function NotificationsFeed() {
     return (
       <div className="bg-white rounded-xl border border-border px-6 py-16 text-center">
         <h2 className="text-lg font-medium text-foreground">
-          You&apos;re all caught up
+          {t("caughtUp")}
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          No unread notifications.
+          {t("noUnread")}
         </p>
       </div>
     );
@@ -101,7 +103,7 @@ export function NotificationsFeed() {
           disabled={busy || selected.size === 0}
           className="px-3 py-1.5 text-xs font-medium border border-border rounded-md text-foreground hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Mark selected as read
+          {t("markSelectedRead")}
         </button>
         <button
           type="button"
@@ -109,7 +111,7 @@ export function NotificationsFeed() {
           disabled={busy || visibleGroups.length === 0}
           className="px-3 py-1.5 text-xs font-medium border border-border rounded-md text-foreground hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Mark all as read
+          {t("markAllRead")}
         </button>
       </div>
       <div className="bg-white rounded-xl border border-border divide-y divide-slate-100 overflow-hidden">
@@ -126,7 +128,7 @@ export function NotificationsFeed() {
                 checked={isSelected}
                 onChange={() => toggle(key)}
                 className="mt-1.5 h-4 w-4 rounded border-slate-300"
-                aria-label="Select notification"
+                aria-label={t("selectNotification")}
               />
               <Link
                 href={buildDeepLink(group)}

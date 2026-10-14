@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 
 import { Dialog } from "@/components/Dialog";
 import { ChoiceList, type Choice } from "@/components/ChoiceList";
@@ -18,11 +19,15 @@ interface EnterCompetitionDialogProps {
   error?: string;
 }
 
-function toChoice(opportunity: CompetitionOpportunity): Choice {
+type Translate = ReturnType<typeof useTranslations<"competitions.enterCompetitionDialog">>;
+
+function toChoice(opportunity: CompetitionOpportunity, t: Translate): Choice {
   return {
     id: opportunity.competition.id,
     title: opportunity.competition.name,
-    subtitle: `Deadline ${formatDate(opportunity.competition.submission_deadline)}`,
+    subtitle: t("deadline", {
+      date: formatDate(opportunity.competition.submission_deadline),
+    }),
     imageUrl: opportunity.competition.image_url,
   };
 }
@@ -42,6 +47,7 @@ export function EnterCompetitionDialog({
   onDismiss,
   error,
 }: EnterCompetitionDialogProps) {
+  const t = useTranslations("competitions.enterCompetitionDialog");
   const [selectedId, setSelectedId] = useState<string | null>(
     opportunities[0]?.competition.id ?? null,
   );
@@ -60,7 +66,7 @@ export function EnterCompetitionDialog({
     try {
       await onEnter(selectedId);
     } catch {
-      setUnreportedError("Couldn't enter this competition. Please try again.");
+      setUnreportedError(t("errors.enterFailed"));
     } finally {
       setIsEntering(false);
     }
@@ -83,12 +89,10 @@ export function EnterCompetitionDialog({
         id="enter-competition-title"
         className="text-base font-semibold text-foreground"
       >
-        That&apos;s it sent. Enter it in a competition?
+        {t("title")}
       </h2>
       <p className="text-sm text-muted-foreground mt-2 mb-4">
-        It goes live once we&apos;ve reviewed it. Entering now is fine — it
-        joins {opportunities.length === 1 ? "the round" : "a round"} on
-        approval.
+        {t("approvalNote", { count: opportunities.length })}
       </p>
 
       {shownError && (
@@ -99,14 +103,13 @@ export function EnterCompetitionDialog({
 
       <ChoiceList
         name="enter-competition"
-        choices={opportunities.map(toChoice)}
+        choices={opportunities.map((opportunity) => toChoice(opportunity, t))}
         selectedId={selectedId}
         onSelect={setSelectedId}
       />
 
       <p className="text-xs text-muted-foreground mt-4 mb-5">
-        You can enter from the project&apos;s page at any time while a round is
-        open.
+        {t("enterLater")}
       </p>
 
       <div className="flex gap-2 justify-end">
@@ -116,7 +119,7 @@ export function EnterCompetitionDialog({
           disabled={isEntering}
           className="btn-secondary"
         >
-          Not now
+          {t("notNow")}
         </button>
         <button
           type="button"
@@ -124,7 +127,7 @@ export function EnterCompetitionDialog({
           disabled={isEntering || selectedId === null}
           className="btn-primary"
         >
-          {isEntering ? "Entering..." : "Enter"}
+          {isEntering ? t("entering") : t("enter")}
         </button>
       </div>
     </Dialog>

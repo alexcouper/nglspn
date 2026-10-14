@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { CategoryItem, DiscoverProject, WinnerProject } from "@/lib/api";
 import { ListingTabs } from "@/components/ListingTabs";
 import { DiscoverView } from "./DiscoverView";
@@ -22,6 +23,7 @@ export function ProjectsPage({
   initialRecentTipoffs,
   initialWinners,
 }: ProjectsPageProps) {
+  const t = useTranslations("projects.projectsPage");
   const searchParams = useSearchParams();
   const activeCategory = searchParams.get("category");
 
@@ -64,7 +66,7 @@ export function ProjectsPage({
           href="/create"
           className="pointer-events-auto inline-flex items-center gap-2 text-sm font-medium bg-accent hover:bg-accent-hover text-white px-6 py-3 rounded-full shadow-[0_10px_30px_-5px_rgba(79,70,229,0.5)] ring-1 ring-black/5 transition-all duration-150 hover:-translate-y-0.5"
         >
-          Create a project
+          {t("createProject")}
         </Link>
       </div>
     </>

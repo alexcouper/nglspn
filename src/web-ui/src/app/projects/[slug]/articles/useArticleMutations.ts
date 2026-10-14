@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { Article } from "@/lib/api";
 import { describeApiError } from "@/lib/api/errors";
@@ -25,6 +26,7 @@ export function useArticleMutations({
   onPersisted,
   onError,
 }: Options) {
+  const t = useTranslations("articles.mutations");
   const [successMessage, setSuccessMessage] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isPublishing, setIsPublishing] = useState(false);
@@ -46,11 +48,11 @@ export function useArticleMutations({
         onPersisted(updated);
         return updated;
       } catch (err) {
-        onError(describeApiError(err, "Couldn't save this article."));
+        onError(describeApiError(err, t("errors.saveFailed")));
         return null;
       }
     },
-    [article, projectRef, onPersisted, onError],
+    [article, projectRef, onPersisted, onError, t],
   );
 
   const save = useCallback(
@@ -62,13 +64,13 @@ export function useArticleMutations({
       setIsSaving(false);
       if (saved) {
         setSuccessMessage(
-          saved.state === "published" ? "Saved" : "Draft saved",
+          saved.state === "published" ? t("saved") : t("draftSaved"),
         );
         setTimeout(() => setSuccessMessage(""), 2500);
       }
       return saved;
     },
-    [persistDraft, onError],
+    [persistDraft, onError, t],
   );
 
   // Resolves to the saved article once it is published, or null if either the
@@ -93,12 +95,12 @@ export function useArticleMutations({
         // The old 422-only branch was a special case of this: describeApiError
         // passes the backend's `detail` through for any 4xx, which is where the
         // "not ready to publish" reasons come from.
-        onError(describeApiError(err, "Article is not ready to publish."));
+        onError(describeApiError(err, t("errors.notReadyToPublish")));
         setIsPublishing(false);
         return null;
       }
     },
-    [persistDraft, projectRef, onError],
+    [persistDraft, projectRef, onError, t],
   );
 
   const remove = useCallback(async (): Promise<boolean> => {
@@ -108,11 +110,11 @@ export function useArticleMutations({
       await api.articles.delete(projectRef, article.id);
       return true;
     } catch (err) {
-      onError(describeApiError(err, "Couldn't delete this article."));
+      onError(describeApiError(err, t("errors.deleteFailed")));
       setIsDeleting(false);
       return false;
     }
-  }, [article, projectRef, onError]);
+  }, [article, projectRef, onError, t]);
 
   return {
     save,

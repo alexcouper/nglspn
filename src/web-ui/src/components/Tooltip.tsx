@@ -1,6 +1,7 @@
 "use client";
 
 import { XMarkIcon } from "@heroicons/react/24/outline";
+import { useTranslations } from "next-intl";
 import {
   ReactNode,
   useEffect,
@@ -20,6 +21,7 @@ interface TooltipProps {
 }
 
 export function Tooltip({ children, content, className }: TooltipProps) {
+  const tc = useTranslations("common.actions");
   const [open, setOpen] = useState(false);
   const [shiftX, setShiftX] = useState(0);
   const wrapperRef = useRef<HTMLSpanElement>(null);
@@ -139,7 +141,7 @@ export function Tooltip({ children, content, className }: TooltipProps) {
           {content}
           <button
             type="button"
-            aria-label="Close"
+            aria-label={tc("close")}
             className="absolute top-1.5 right-1.5 inline-flex items-center justify-center w-6 h-6 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             onClick={(event) => {
               event.preventDefault();

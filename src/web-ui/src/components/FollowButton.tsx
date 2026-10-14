@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
 import { useAuth } from "@/contexts/auth";
@@ -13,6 +14,7 @@ interface FollowButtonProps {
 type FollowState = "loading" | "not-following" | "following";
 
 export function FollowButton({ projectSlug }: FollowButtonProps) {
+  const t = useTranslations("projects.followButton");
   const { isLoading: isAuthLoading, isAuthenticated } = useAuth();
   const [state, setState] = useState<FollowState>("loading");
   const [isPending, setIsPending] = useState(false);
@@ -75,7 +77,7 @@ export function FollowButton({ projectSlug }: FollowButtonProps) {
     }
   };
 
-  const label = isFollowed ? "Following" : "Follow";
+  const label = isFollowed ? t("following") : t("follow");
   const className = isFollowed
     ? "text-sm font-medium bg-white hover:bg-accent/5 text-accent border border-accent px-3.5 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-60"
     : "text-sm font-medium bg-accent hover:bg-accent-hover text-white px-3.5 py-1.5 rounded-md transition-colors duration-150 disabled:opacity-60";

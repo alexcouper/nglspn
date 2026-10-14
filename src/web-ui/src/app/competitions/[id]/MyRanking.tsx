@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 import { buildLoginPath } from "@/lib/auth-routing";
 import {
   api,
@@ -56,10 +57,11 @@ export function MyRanking(props: MyRankingProps) {
 }
 
 function RankingShell({ children }: { children: React.ReactNode }) {
+  const t = useTranslations("competitions.myRanking");
   return (
     <section className="bg-white rounded-xl border border-border p-5 sm:p-6">
       <div className="flex items-center gap-3 mb-4">
-        <h2 className="text-lg font-semibold text-foreground">My Ranking</h2>
+        <h2 className="text-lg font-semibold text-foreground">{t("title")}</h2>
       </div>
       {children}
     </section>
@@ -87,19 +89,20 @@ function Skeleton() {
 }
 
 function CompactLoggedOutCta({ returnPath }: { returnPath: string }) {
+  const t = useTranslations("competitions.myRanking");
   const loginHref = buildLoginPath(returnPath);
   const registerHref = `/register?next=${encodeURIComponent(returnPath)}`;
   return (
     <section className="bg-white rounded-xl border border-border p-5 sm:p-6">
       <p className="text-sm text-muted-foreground mb-4">
-        Voting is open. Log in to rank these projects and help pick the winner.
+        {t("loggedOutPrompt")}
       </p>
       <div className="flex flex-col sm:flex-row gap-2">
         <Link href={loginHref} className="btn-primary">
-          Log in to vote
+          {t("logInToVote")}
         </Link>
         <Link href={registerHref} className="btn-secondary">
-          Create an account
+          {t("createAccount")}
         </Link>
       </div>
     </section>
@@ -148,6 +151,7 @@ function RankingActive({
   initialRanked: ReviewProject[];
   initialPool: ReviewProject[];
 }) {
+  const t = useTranslations("competitions.myRanking");
   const [reviewStatus, setReviewStatus] = useState(initialData.my_review_status);
   const [ranked, setRanked] = useState(initialRanked);
   const [pool, setPool] = useState(initialPool);
@@ -181,6 +185,7 @@ function RankingActive({
   const isEnded = reviewStatus === "ended";
   const isInProgress = reviewStatus === "in_progress";
   const readOnly = !isInProgress;
+  const saveFailedMessage = t("errors.saveFailed");
 
   /**
    * Returns whether the write landed, so submission can refuse to go ahead.
@@ -200,13 +205,13 @@ function RankingActive({
         if (pendingIdsRef.current === projectIds) pendingIdsRef.current = null;
         return true;
       } catch {
-        setSaveError("Failed to save rankings");
+        setSaveError(saveFailedMessage);
         return false;
       } finally {
         setIsSaving(false);
       }
     },
-    [competitionId]
+    [competitionId, saveFailedMessage]
   );
 
   const persistOrder = useCallback(
@@ -286,9 +291,7 @@ function RankingActive({
       // Submitting locks the ballot. Doing that while the last change is only
       // on screen would lock in an order the reviewer never chose.
       if (!(await flushPendingSave())) {
-        setStatusError(
-          "Your ranking could not be saved, so it was not submitted. Try again."
-        );
+        setStatusError(t("errors.notSubmittedUnsaved"));
         setShowSubmitDialog(false);
         return;
       }
@@ -296,7 +299,7 @@ function RankingActive({
       setReviewStatus("completed");
       setShowSubmitDialog(false);
     } catch {
-      setStatusError("Failed to submit ranking");
+      setStatusError(t("errors.submitFailed"));
     } finally {
       setIsSubmitting(false);
     }
@@ -308,7 +311,7 @@ function RankingActive({
       await api.myReview.updateStatus(competitionId, "in_progress");
       setReviewStatus("in_progress");
     } catch {
-      setStatusError("Failed to reopen ranking");
+      setStatusError(t("errors.reopenFailed"));
     }
   };
 
@@ -316,7 +319,7 @@ function RankingActive({
     <section className="bg-white rounded-xl border border-border p-5 sm:p-6">
       <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
         <div className="flex items-center gap-3">
-          <h2 className="text-lg font-semibold text-foreground">My Ranking</h2>
+          <h2 className="text-lg font-semibold text-foreground">{t("title")}</h2>
           <StatusPill
             isCompleted={isCompleted}
             isEnded={isEnded}
@@ -328,7 +331,7 @@ function RankingActive({
             className="text-xs text-muted-foreground ml-auto"
             aria-live="polite"
           >
-            {isSaving ? "Saving…" : saveError ? (
+            {isSaving ? t("saving") : saveError ? (
               <span className="text-red-500">{saveError}</span>
             ) : null}
           </span>
@@ -337,9 +340,7 @@ function RankingActive({
 
       {isInProgress && (
         <p className="text-xs text-muted-foreground mb-4">
-          Rank your favourite projects, best first. Add the
-          ones you want to back for the {competitionName} prize and leave the
-          rest unranked.
+          {t("instructions", { competitionName })}
         </p>
       )}
 
@@ -354,7 +355,7 @@ function RankingActive({
           isActive={activeTab === "ranked"}
           onClick={() => setActiveTab("ranked")}
         >
-          My ranking ({ranked.length})
+          {t("rankedTab", { count: ranked.length })}
         </TabButton>
         <TabButton
           id={TAB_IDS.pool}
@@ -362,7 +363,7 @@ function RankingActive({
           isActive={activeTab === "pool"}
           onClick={() => setActiveTab("pool")}
         >
-          Unranked ({pool.length})
+          {t("unrankedTab", { count: pool.length })}
         </TabButton>
       </div>
 
@@ -375,7 +376,7 @@ function RankingActive({
           className={`min-w-0 ${activeTab === "ranked" ? "" : "hidden lg:block"}`}
         >
           <h3 className="hidden lg:block text-sm font-medium text-foreground mb-3">
-            My ranking ({ranked.length})
+            {t("rankedTab", { count: ranked.length })}
           </h3>
           <RankingList
             projects={ranked}
@@ -402,7 +403,7 @@ function RankingActive({
           }`}
         >
           <h3 className="hidden lg:block text-sm font-medium text-foreground mb-3">
-            Unranked ({pool.length})
+            {t("unrankedTab", { count: pool.length })}
           </h3>
           <PoolList projects={pool} readOnly={readOnly} onAdd={handleAdd} />
         </div>
@@ -419,7 +420,7 @@ function RankingActive({
             onClick={() => setShowSubmitDialog(true)}
             className="w-full btn-primary py-3"
           >
-            Submit Ranking
+            {t("submit")}
           </button>
         </div>
       )}
@@ -427,14 +428,14 @@ function RankingActive({
       {isCompleted && (
         <div className="mt-6 pt-5 border-t border-border flex items-center justify-between gap-3">
           <p className="text-sm text-muted-foreground">
-            Your ranking is locked in.
+            {t("lockedIn")}
           </p>
           <button
             type="button"
             onClick={handleReopen}
             className="text-sm text-accent hover:underline"
           >
-            Reopen ranking
+            {t("reopen")}
           </button>
         </div>
       )}
@@ -510,24 +511,25 @@ function StatusPill({
   isEnded: boolean;
   isInProgress: boolean;
 }) {
+  const t = useTranslations("competitions.myRanking");
   if (isCompleted) {
     return (
       <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-        Submitted
+        {t("status.submitted")}
       </span>
     );
   }
   if (isEnded) {
     return (
       <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200">
-        Voting ended
+        {t("status.votingEnded")}
       </span>
     );
   }
   if (isInProgress) {
     return (
       <span className="inline-flex items-center text-xs font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200">
-        In progress
+        {t("status.inProgress")}
       </span>
     );
   }

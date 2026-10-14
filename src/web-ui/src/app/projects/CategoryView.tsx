@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import type { CategoryItem, DiscoverProject } from "@/lib/api";
 import { api } from "@/lib/api";
@@ -16,6 +17,7 @@ interface CategoryViewProps {
 }
 
 export function CategoryView({ categorySlug, categories }: CategoryViewProps) {
+  const t = useTranslations("projects.categoryView");
   const [projects, setProjects] = useState<DiscoverProject[]>([]);
   const [loading, setLoading] = useState(true);
   const [sort, setSort] = useState<SortOption>("newest");
@@ -48,7 +50,7 @@ export function CategoryView({ categorySlug, categories }: CategoryViewProps) {
           </h2>
           {!loading && (
             <p className="text-sm text-muted-foreground mt-0.5">
-              {projects.length} {projects.length === 1 ? "project" : "projects"}
+              {t("projectCount", { count: projects.length })}
             </p>
           )}
         </div>
@@ -57,8 +59,8 @@ export function CategoryView({ categorySlug, categories }: CategoryViewProps) {
           onChange={(e) => setSort(e.target.value as SortOption)}
           className="text-sm border border-border rounded-lg px-3 py-1.5 bg-white text-foreground appearance-none pr-8 bg-[url('data:image/svg+xml;charset=utf-8,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%2364748b%22%20stroke-width%3D%222%22%3E%3Cpath%20d%3D%22M6%209l6%206%206-6%22%2F%3E%3C%2Fsvg%3E')] bg-[length:16px] bg-[right_8px_center] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-accent/20 focus:border-accent"
         >
-          <option value="newest">Newest</option>
-          <option value="name">Name A-Z</option>
+          <option value="newest">{t("sortNewest")}</option>
+          <option value="name">{t("sortName")}</option>
         </select>
       </div>
 
@@ -70,7 +72,7 @@ export function CategoryView({ categorySlug, categories }: CategoryViewProps) {
         </div>
       ) : projects.length === 0 ? (
         <p className="text-muted-foreground text-sm">
-          No projects in this category yet.
+          {t("empty")}
         </p>
       ) : (
         <div className="grid grid-cols-[repeat(auto-fill,minmax(240px,1fr))] gap-4">
@@ -84,6 +86,7 @@ export function CategoryView({ categorySlug, categories }: CategoryViewProps) {
 }
 
 function CategoryCard({ project }: { project: DiscoverProject }) {
+  const tb = useTranslations("projects.tipoffBadge");
   const iconUrl = project.icon_url;
 
   return (
@@ -110,7 +113,7 @@ function CategoryCard({ project }: { project: DiscoverProject }) {
           </h3>
           {project.is_community_tipoff && (
             <div className="mt-0.5">
-              <TipoffBadge size="sm" label="Tipoff" />
+              <TipoffBadge size="sm" label={tb("short")} />
             </div>
           )}
           <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">

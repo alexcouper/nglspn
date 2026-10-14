@@ -1,7 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { LEAVE_PROMPT, useLeaveGuard } from "./useLeaveGuard";
+import { messages } from "@/i18n/messages";
+import { useLeaveGuard } from "./useLeaveGuard";
+
+// The sentence the guard shows, read from the messages rather than copied.
+const LEAVE_PROMPT = messages.articles.leaveGuard.prompt;
 
 // --------------------------------------------------------------- factories
 

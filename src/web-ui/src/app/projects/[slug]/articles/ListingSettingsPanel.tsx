@@ -33,6 +33,15 @@ export function ListingSettingsPanel({
 }: Props) {
   const t = useTranslations("articles.listingSettings");
   const tc = useTranslations("common.actions");
+  // Spelled out rather than t(`mode.${mode}`): ListingImageMode comes from the
+  // backend's enum, and a template-literal key is not checked against the
+  // messages, so a new mode would render its own key path to the author. This
+  // way `tsc` fails on both halves — a missing message and a missing mode.
+  const modeDescription: Record<ListingImageMode, string> = {
+    auto: t("mode.auto"),
+    chosen: t("mode.chosen"),
+    none: t("mode.none"),
+  };
   const imageUrl = listingImage
     ? (pickVariant(listingImage.variants, "medium") ?? listingImage.url)
     : null;
@@ -85,7 +94,7 @@ export function ListingSettingsPanel({
             {/* What the author actually chose, in words. `auto` is a default
                 they never made, so saying so is the difference between "we
                 picked this" and "you did". */}
-            <p className="text-muted-foreground">{t(`mode.${mode}`)}</p>
+            <p className="text-muted-foreground">{modeDescription[mode]}</p>
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={onChangeImage}

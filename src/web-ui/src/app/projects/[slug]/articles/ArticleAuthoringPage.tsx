@@ -44,6 +44,13 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
   const { user, isLoading: authLoading } = useAuth();
   const t = useTranslations("articles.authoring");
   const tc = useTranslations("common.actions");
+  // Spelled out rather than t(`tabs.${key}`): a template-literal key is not
+  // checked against the messages, so adding a tab would render its own key
+  // path. `tsc` now fails on a missing message and on a missing tab alike.
+  const tabLabels: Record<Tab, string> = {
+    content: t("tabs.content"),
+    listing: t("tabs.listing"),
+  };
 
   // One reference to the project for everything under the article editor.
   // Article images are addressed by the article that owns them, so the editor
@@ -249,7 +256,7 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
                   : "border-transparent text-muted-foreground hover:text-foreground"
               }`}
             >
-              {t(`tabs.${key}`)}
+              {tabLabels[key]}
               {key === "listing" && isSwitchingTab && (
                 <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
               )}

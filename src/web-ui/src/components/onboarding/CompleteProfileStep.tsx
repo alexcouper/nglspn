@@ -10,6 +10,7 @@ interface CompleteProfileStepProps {
 
 export function CompleteProfileStep({ onComplete }: CompleteProfileStepProps) {
   const t = useTranslations("auth.completeProfile");
+  const tc = useTranslations("common.actions");
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
@@ -93,7 +94,7 @@ export function CompleteProfileStep({ onComplete }: CompleteProfileStepProps) {
             disabled={!hasAtLeastOneName || isSaving}
             className="btn-primary w-full py-2.5"
           >
-            {isSaving ? t("submitting") : t("submit")}
+            {isSaving ? tc("saving") : tc("continue")}
           </button>
         </form>
       </div>

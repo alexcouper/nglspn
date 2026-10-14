@@ -7,7 +7,7 @@ import { ArticleListingImage } from "@/components/ArticleListingImage";
 import type { FeedEntry } from "@/lib/api";
 import { formatDate } from "@/lib/utils";
 
-import { renderEntry } from "./feedEntry";
+import { renderEntry, type FlagKey } from "./feedEntry";
 
 interface Props {
   entry: FeedEntry;
@@ -20,7 +20,16 @@ interface Props {
 // entries as stories rather than as articles-and-other-things.
 export function FeedRow({ entry, variant }: Props) {
   const t = useTranslations("feed.row");
-  const rendered = renderEntry(entry, (key) => t(`flags.${key}`));
+  // Spelled out rather than t(`flags.${key}`): a template-literal key is not
+  // checked against the messages, so a new kind would render its own key path
+  // as the flag above the headline.
+  const flagLabels: Record<FlagKey, string> = {
+    articlePublished: t("flags.articlePublished"),
+    projectPublished: t("flags.projectPublished"),
+    projectTipoff: t("flags.projectTipoff"),
+    discussionPromoted: t("flags.discussionPromoted"),
+  };
+  const rendered = renderEntry(entry, (key) => flagLabels[key]);
   const isLead = variant === "lead";
 
   const body = isLead ? (

@@ -183,7 +183,17 @@ namespace). Conventions: `docs/2026-10-14-i18n-groundwork.md`.
   word order differs between languages, and a split sentence cannot be
   translated. Inline links/emphasis via `t.rich` with a named tag. Generic
   words (`Cancel`, `Save`, `Loading...`) come from `common.actions` /
-  `common.states`; a second `Cancel` in an area file is drift.
+  `common.loading`; a second `Cancel` in an area file is drift, and so is a
+  `common` key nothing renders.
+- **Typed keys only hold for literal keys.** `t(\`mode.${value}\`)` is not
+  checked against the messages, so a union member with no message throws in
+  development and renders its own key path to the user in production. Flag it
+  where the union comes from the generated API types (a backend enum can grow
+  without this file being touched); the fix is a `Record<Union, string>` of
+  literal `t("…")` calls.
+- **Copy the code compares against.** A dialog that asks the user to type a
+  word (`confirmWord`) must fold both sides of the comparison, or the guard
+  breaks the first time the word is translated.
 - **Hooks discipline.** `t` is a stable function from a hook; when it is used
   inside `useCallback`/`useMemo`/`useEffect` it belongs in the dependency
   array, or the exhaustive-deps lint fires.

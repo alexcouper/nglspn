@@ -141,6 +141,14 @@ export function ProfileView({ id }: { id: string }) {
   const { profile } = state;
   const name = getAuthorName(profile);
   const isOwn = user?.id === profile.id;
+  // Mirrors CreatorCredit's "Created by" / "Tipped off by" from the project's
+  // side. Spelled out rather than t(`roles.${role}`): the role comes from the
+  // backend's enum and a template-literal key is not checked against the
+  // messages, so a new role would render its own key path onto the tile.
+  const roleLabels: Record<UserProject["role"], string> = {
+    owner: t("roles.owner"),
+    tipster: t("roles.tipster"),
+  };
   const meta = [t("joined", { month: joinedMonth(profile.created_at) })];
   if (projects.kind === "loaded") meta.push(t("projectCount", { count: projects.items.length }));
   if (articles.kind === "loaded") meta.push(t("articleCount", { count: articles.items.length }));
@@ -211,9 +219,7 @@ export function ProfileView({ id }: { id: string }) {
                       title={project.title}
                       tagline={project.tagline}
                       categoryName={project.category_name}
-                      // Mirrors CreatorCredit's "Created by" / "Tipped off by"
-                      // from the project's side.
-                      roleLabel={t(`roles.${project.role}`)}
+                      roleLabel={roleLabels[project.role]}
                     />
                   ))}
                 </div>

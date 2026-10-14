@@ -44,13 +44,7 @@
     "confirm": "Confirm",
     "retry": "Try again",
     "publish": "Publish",
-    "publishing": "Publishing...",
-    "unpublish": "Unpublish",
-    "loadMore": "Load more",
-    "viewAll": "View all",
     "dismiss": "Dismiss",
-    "copy": "Copy",
-    "copied": "Copied",
     "upload": "Upload",
     "uploading": "Uploading...",
     "sending": "Sending...",
@@ -59,13 +53,6 @@
   },
   "errors": {
     "somethingWentWrong": "Something went wrong",
-    "temporaryIssue": "This may be a temporary issue.",
-    "notFound": "Not found",
-    "tryAgainLater": "Try again in a moment."
-  },
-  "states": {
-    "loading": "Loading...",
-    "saving": "Saving...",
-    "empty": "Nothing here yet"
+    "notFound": "Not found"
   }
 }

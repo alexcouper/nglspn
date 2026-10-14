@@ -18,6 +18,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next");
   const t = useTranslations("auth.login");
+  const tc = useTranslations("common.actions");
   const { login, isAuthenticated, user, isLoading: authLoading } = useAuth();
   const [flowState, setFlowState] = useState<FlowState>("login");
   const [email, setEmail] = useState("");
@@ -233,7 +234,7 @@ export default function LoginPage() {
                 disabled={isLoading}
                 className="w-full btn-primary py-2.5"
               >
-                {isLoading ? t("sendingCode") : t("sendCode")}
+                {isLoading ? tc("sending") : tc("continue")}
               </button>
 
               <p className="text-center text-sm text-muted-foreground">
@@ -302,7 +303,7 @@ export default function LoginPage() {
                 disabled={isLoading}
                 className="w-full btn-primary py-2.5"
               >
-                {isLoading ? t("settingPassword") : t("setPassword")}
+                {isLoading ? tc("saving") : t("setPassword")}
               </button>
 
               <p className="text-center text-sm text-muted-foreground">

@@ -4,6 +4,13 @@ import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { Dialog } from "@/components/Dialog";
 
+// Exported for the test. Both sides are folded because the word being asked
+// for is copy: it arrives from the messages, and a language whose word for
+// "delete" is capitalised would otherwise never match what was typed.
+export function matchesConfirmWord(typed: string, word: string): boolean {
+  return typed.trim().toLowerCase() === word.toLowerCase();
+}
+
 interface DeleteConfirmationDialogProps {
   isOpen: boolean;
   projectTitle: string;
@@ -31,7 +38,7 @@ export function DeleteConfirmationDialog({
   // The word the owner has to type is part of the copy, so it comes from the
   // messages too — the check must match what the dialog asks for.
   const confirmWord = t("confirmWord");
-  const canDelete = confirmText.toLowerCase() === confirmWord;
+  const canDelete = matchesConfirmWord(confirmText, confirmWord);
 
   return (
     <Dialog isOpen={isOpen} onClose={handleCancel}>

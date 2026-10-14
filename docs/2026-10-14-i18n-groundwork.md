@@ -32,7 +32,7 @@ minimum.
 
 | Area | Covers |
 |------|--------|
-| `common` | Navigation, footer, user menu, `actions` (Save, Cancel, …), `errors`, `states`, site metadata |
+| `common` | Navigation, footer, user menu, `actions` (Save, Cancel, …), `errors`, `loading`, site metadata |
 | `auth` | Login, register, verify email, onboarding steps |
 | `projects` | Public listing, discover, project page, tiles, follow, tipoffs, tags |
 | `my-projects` | Owner-side project editing, create, publish/delete dialogs |
@@ -56,7 +56,9 @@ Pick the area by what the user is doing, not by directory. A dialog under
   Renaming the English must not rename the key.
 - **Generic words come from `common.actions`** (`cancel`, `save`, `saving`, …).
   Do not add a second `Cancel` to an area file. Anything with context ("Delete
-  project") belongs to the area.
+  project") belongs to the area. `common` carries only what something renders:
+  a key nobody reads is dead weight in every page's payload, so add to it when
+  a second caller appears, not in advance.
 - **Interpolation and plurals are ICU**, inside the message:
   `"codeSubtitle": "We sent a 6-digit code to {email}"`,
   `"attemptsRemaining": "{count, plural, one {# attempt} other {# attempts}} remaining"`.
@@ -70,6 +72,23 @@ Pick the area by what the user is doing, not by directory. A dialog under
   `generateMetadata` when its strings move.
 - **Strings decided outside JSX** (`setError(...)`, toast titles) still go
   through `t`; pass `t` into helpers rather than importing messages directly.
+- **One message per union member, written out.** `t(\`mode.${mode}\`)` compiles
+  whatever the key is, so typed keys stop protecting it: a value the messages
+  do not cover throws in development and renders its own key path
+  (`articles.listingSettings.mode.x`) to the user in production. Map the union
+  instead, and the compiler checks both halves:
+  ```tsx
+  const modeDescription: Record<ListingImageMode, string> = {
+    auto: t("mode.auto"), chosen: t("mode.chosen"), none: t("mode.none"),
+  };
+  ```
+  This matters most where the union is generated from the backend's enum —
+  `ListingImageMode`, `UserProject["role"]` — because then the API can add a
+  member without anything here being edited.
+- **Copy the code compares against is still copy.** If a dialog asks the owner
+  to type a word, read the word from the messages and fold both sides
+  (`confirmText.trim().toLowerCase() === confirmWord.toLowerCase()`), or the
+  check silently stops matching the first time the word is translated.
 - **Brand name** `naglasúpan` is allow-listed in the rule and may stay inline.
 
 ## Tests
@@ -130,9 +149,12 @@ It collapses into the normal path once an `is.json` and locale detection exist.
 - **Duplicates across areas**, left so the first pass rendered byte-identical
   English: `Untitled` / `Untitled Project`, `Deadline {date}`, `Back to home`,
   the `{count, plural, …projects}` message, and the split between `...` and
-  `…` (`common.actions.saving` uses three dots; several areas kept a local
-  `Saving…`). Worth one consolidation pass into `common` before translation
-  starts, so Icelandic is written once.
+  `…` (`common.actions.saving` uses three dots; `competitions.myRanking` and
+  two others kept a local `Saving…` / `Loading…`). Worth one consolidation
+  pass into `common` before translation starts, so Icelandic is written once.
+  The generic ones that had an exact twin in `common.actions` — `Continue`,
+  `Saving...`, `Sending...` under `auth` — were folded in already; what is
+  left needs someone to decide whether the English should converge first.
 - **Hardcoded formatting locales** (`toLocaleDateString("en-US", …)`,
   `Intl.NumberFormat("is-IS")`) stay as they were. They should follow the
   request locale through `useFormatter` once there is more than one.

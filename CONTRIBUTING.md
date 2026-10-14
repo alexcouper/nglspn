@@ -152,8 +152,8 @@ You're a first-class contributor here. A few repo-specific expectations:
   types over hand-rolled interfaces. Docs and code are English.
 - **UI copy lives in `src/web-ui/src/i18n/<area>/en.json`, not in components.**
   `make lint` fails on text written into JSX
-  (`nglspn/no-hardcoded-ui-strings`). Conventions and how to move a file over:
-  [docs/2026-10-14-i18n-groundwork.md](docs/2026-10-14-i18n-groundwork.md).
+  (`nglspn/no-hardcoded-ui-strings`). The conventions are in `CLAUDE.md`
+  under "UI strings (i18n)".
 
 ## Questions
 

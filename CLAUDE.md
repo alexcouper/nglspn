@@ -92,7 +92,7 @@ namespace (`useTranslations("auth.login")` reads `auth/en.json` → `login`).
 Client components use `useTranslations`, server components
 `await getTranslations(...)`. Keys are named for meaning, plurals and
 interpolation are ICU inside the message, generic words come from
-`common.actions`. Full conventions: `docs/2026-10-14-i18n-groundwork.md`.
+`common.actions`.
 
 `make lint` runs `nglspn/no-hardcoded-ui-strings`
 (`src/web-ui/eslint-rules/`), which fails on bare JSX text and readable
@@ -142,7 +142,7 @@ When testing authenticated features:
 |-----------|------|
 | Django backend | `src/django-backend/` |
 | Web UI | `src/web-ui/` |
-| UI strings | `src/web-ui/src/i18n/<area>/en.json` — see [i18n groundwork](docs/2026-10-14-i18n-groundwork.md) |
+| UI strings | `src/web-ui/src/i18n/<area>/en.json` — one file per area, the area is the namespace |
 | Community guide content | `src/web-ui/src/content/guides/` — one directory per guide: `en.md`, `is.md`, `structure.json` ([how to edit](docs/2026-09-29-community-content-strategy.md#editorial-maintenance-and-distribution)) |
 | CI pipeline | `.github/workflows/ci.yml` |
 | Shared make fragment | `scripts/app-common.mk` |

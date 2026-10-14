@@ -162,7 +162,7 @@ This is the single most-forgotten step here. The frontend's types are
 
 Issue #103 moved user-facing copy out of components into
 `src/web-ui/src/i18n/<area>/en.json` (one file per area, the area is the
-namespace). Conventions: `docs/2026-10-14-i18n-groundwork.md`.
+namespace).
 
 - **No new hardcoded user-facing text in `src/web-ui/src`.** JSX text,
   `placeholder`/`title`/`alt`/`aria-label`, strings put into state with

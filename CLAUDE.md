@@ -84,6 +84,26 @@ Check with:
 cd src/django-backend && uv run python manage.py makemigrations --check --dry-run
 ```
 
+## UI strings (i18n)
+
+User-facing text in `src/web-ui` goes through next-intl, never into a component.
+Messages live in `src/web-ui/src/i18n/<area>/en.json`; the area is the
+namespace (`useTranslations("auth.login")` reads `auth/en.json` → `login`).
+Client components use `useTranslations`, server components
+`await getTranslations(...)`. Keys are named for meaning, plurals and
+interpolation are ICU inside the message, generic words come from
+`common.actions`. Full conventions: `docs/2026-10-14-i18n-groundwork.md`.
+
+`make lint` runs `nglspn/no-hardcoded-ui-strings`
+(`src/web-ui/eslint-rules/`), which fails on bare JSX text and readable
+attributes. Files not yet migrated are listed in
+`eslint-rules/i18n-pending.mjs` with the rule off — delete a file's line when
+you migrate it, never add one. The rule cannot see sentences built outside JSX
+(toast titles, `setError`, `confirm`); those go through `t` as well.
+
+Tests mount components bare; `src/test/setup.ts` shims next-intl over the real
+English messages, so tests assert on English text without a provider.
+
 ## Browser Testing with Playwright
 
 The repo has its own Playwright suite in `src/web-ui/e2e/`, configured by
@@ -122,6 +142,7 @@ When testing authenticated features:
 |-----------|------|
 | Django backend | `src/django-backend/` |
 | Web UI | `src/web-ui/` |
+| UI strings | `src/web-ui/src/i18n/<area>/en.json` — see [i18n groundwork](docs/2026-10-14-i18n-groundwork.md) |
 | Community guide content | `src/web-ui/src/content/guides/` — one directory per guide: `en.md`, `is.md`, `structure.json` ([how to edit](docs/2026-09-29-community-content-strategy.md#editorial-maintenance-and-distribution)) |
 | CI pipeline | `.github/workflows/ci.yml` |
 | Shared make fragment | `scripts/app-common.mk` |

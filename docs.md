@@ -64,8 +64,9 @@ skim padded ones.
 - **Mark the sharp edges.** Use `BREAKING` markers in OpenSpec proposals, and
   call out the foot-guns (OpenAPI regen, migrations, IP trust, kennitala PII)
   explicitly — those are what bite.
-- **Icelandic product, English docs.** User-facing strings are Icelandic; the
-  docs and code are in English.
+- **Icelandic product, English docs.** Docs and code are English. The UI copy
+  is English for now and lives in `src/web-ui/src/i18n/<area>/en.json`
+  ([why](docs/2026-10-14-i18n-groundwork.md)); Icelandic is pending (#2).
 
 ## Keeping docs current
 

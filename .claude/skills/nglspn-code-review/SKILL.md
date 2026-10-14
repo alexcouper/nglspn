@@ -9,8 +9,9 @@ description: >-
   they've finished a change and want a second pair of eyes, or mention checking a
   diff/PR against main, use this skill. It knows the repo's house gotchas
   (OpenAPI type regeneration, migrations, the HANDLERS/REPO services layer,
-  X-Forwarded-For/IP trust, kennitala PII, auth transient-failure handling) that
-  a generic review misses.
+  X-Forwarded-For/IP trust, kennitala PII, auth transient-failure handling,
+  UI strings going through next-intl rather than being written into components)
+  that a generic review misses.
 ---
 
 # Naglasúpan Code Review
@@ -35,8 +36,9 @@ with maybes.
   (strict), Tailwind 4, vitest + Playwright. Talks to the backend through a typed
   `APIClient` and **generated** types.
 - **Infra** `infra/prod/app/` — Terraform.
-- The product is Icelandic; user-facing strings are in Icelandic, the domain is
-  `naglasupan.is`.
+- The product is Icelandic (`naglasupan.is`) but the UI copy is **English for
+  now**, and it lives in `src/web-ui/src/i18n/<area>/en.json`, not in components
+  (#103). Icelandic is a pending translation (#2), not something to add inline.
 
 ## Workflow
 
@@ -156,6 +158,40 @@ This is the single most-forgotten step here. The frontend's types are
   (don't assume width/height is present) and avoid relying on blob URLs for
   client-side dimensions.
 
+#### E2. Frontend: UI strings go through i18n (check on EVERY web-ui component change)
+
+Issue #103 moved user-facing copy out of components into
+`src/web-ui/src/i18n/<area>/en.json` (one file per area, the area is the
+namespace). Conventions: `docs/2026-10-14-i18n-groundwork.md`.
+
+- **No new hardcoded user-facing text in `src/web-ui/src`.** JSX text,
+  `placeholder`/`title`/`alt`/`aria-label`, strings put into state with
+  `setError(...)`, toast titles and descriptions, `confirm()` text, and
+  `metadata` titles all go through `t()` — `useTranslations("area.component")`
+  in client components, `await getTranslations(...)` in server components.
+  The ESLint rule `nglspn/no-hardcoded-ui-strings` catches the JSX and
+  attribute cases, so concentrate on what it cannot see: sentences built
+  outside JSX, in hooks, contexts and `lib/`.
+- **The pending list only shrinks.** `eslint-rules/i18n-pending.mjs` lists
+  files that have not been moved over yet, with the rule off. A diff that
+  *adds* a line to it is a blocker: a new component is not on the list and the
+  rule applies from its first line. A diff that migrates a file should delete
+  its line in the same change; if it doesn't, the file silently stays exempt.
+- **Message quality.** Keys named for meaning, not wording
+  (`errors.passwordTooShort`, not `passwordMustBe8`). Plurals and
+  interpolation as ICU inside the message, never fragments joined in JSX —
+  word order differs between languages, and a split sentence cannot be
+  translated. Inline links/emphasis via `t.rich` with a named tag. Generic
+  words (`Cancel`, `Save`, `Loading...`) come from `common.actions` /
+  `common.states`; a second `Cancel` in an area file is drift.
+- **Hooks discipline.** `t` is a stable function from a hook; when it is used
+  inside `useCallback`/`useMemo`/`useEffect` it belongs in the dependency
+  array, or the exhaustive-deps lint fires.
+- **Tests do not wrap.** `src/test/setup.ts` shims next-intl over the real
+  English messages, so component tests still assert on visible English text.
+  A test that adds its own `NextIntlClientProvider` or mocks `useTranslations`
+  to return keys is working against the setup — flag it.
+
 #### F. Tests
 
 New behavior should come with tests — pytest + factory-boy on the backend,
@@ -173,7 +209,10 @@ state/provider mistakes, but defer formatting to `fmt -check`.
 Drop anything in this list before writing it up — raising these erodes trust:
 
 - Issues a tool already catches: Ruff/ESLint/`tsc`/formatting/imports/type
-  errors, failing builds. CI runs these; assume it will.
+  errors, failing builds. CI runs these; assume it will. That includes bare JSX
+  text in a file that is *not* on the i18n pending list — the lint rule fails
+  the build. Hardcoded text in a hook, context or `lib/` module is yours to
+  catch.
 - Pre-existing issues on lines the change didn't touch.
 - Nitpicks a senior engineer would let slide (naming taste, micro-style).
 - Changes that are clearly intentional and central to the stated purpose.
@@ -214,9 +253,10 @@ Rules for the report:
   API/type sync, migrations, the services layer, auth/security, and tests." Don't
   invent filler.
 - **Severity** reflects impact on *this* codebase: a forgotten OpenAPI regen, a
-  missing migration, an auth/visibility hole, or an IP-trust/PII leak is a
-  **Blocker**. Convention drift and missing tests are usually **Important**.
-  Taste is **Minor**.
+  missing migration, an auth/visibility hole, an IP-trust/PII leak, or a file
+  added to the i18n pending list is a **Blocker**. New hardcoded UI text the
+  lint cannot see, convention drift and missing tests are usually
+  **Important**. Taste is **Minor**.
 - Lead with the consequence, not the abstraction. "Anyone can bypass the rate
   limit by setting X-Forwarded-For" beats "improper header handling."
 - No performative praise. State findings; the value is in being right, not nice.

@@ -243,7 +243,6 @@ class TestRenderedTemplates:
         html, text = render_email(digest.template_name, digest.context)
 
         assert_rendered_in_order(html, "Article 2", "Article 1", "Article 0")
-        assert "Also new from the projects you follow" in html
         assert "Article 0" in text
 
     def test_truncated_lead_offers_to_continue_reading(self):

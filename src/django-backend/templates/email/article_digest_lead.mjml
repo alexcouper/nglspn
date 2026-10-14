@@ -16,12 +16,7 @@
       {% if lead.truncated %}Continue reading{% else %}Read on Naglasúpan{% endif %}
     </mj-button>
     <mj-divider border-color="#f1f5f9" border-width="1px" padding="0 32px" />
-    <mj-text padding="24px 32px 16px">
-      <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #475569;">
-        Also new from the projects you follow:
-      </p>
-    </mj-text>
-    <mj-text padding="0 32px 28px">
+    <mj-text padding="24px 32px 28px">
       {% include "email/_article_digest_entries.mjml" %}
     </mj-text>
   </mj-column>

@@ -1,35 +1,18 @@
 import type { Project } from "@/lib/api";
 
-export interface Origin {
-  href: string;
-  label: string;
-}
+export type Origin =
+  | { kind: "latest"; href: string }
+  | { kind: "project"; href: string; title: string };
 
-/**
- * The places worth naming in the back control, keyed by the `from` parameter
- * the linking page adds.
- *
- * Deliberately short. Every other way into an article — a shared URL, a
- * notification, a search result, a profile — falls back to the project, which
- * is where the article lives and is therefore never a lie. Adding an origin is
- * one entry here plus the parameter on the link.
- */
 // A Map rather than an object literal: `from` is attacker-controlled, and a
 // plain object answers to `constructor` and `toString` with something truthy.
 const ORIGINS = new Map<string, Origin>([
-  ["latest", { href: "/latest", label: "Latest" }],
+  ["latest", { kind: "latest", href: "/latest" }],
 ]);
 
-/** The parameter name, so the linking side cannot drift from the reading side. */
 export const ORIGIN_PARAM = "from";
 
-/**
- * Where "back" goes and what it is called.
- *
- * Server-rendered from the query string rather than read from
- * `document.referrer`, which is not available while the page is being rendered
- * and is wrong after a reload.
- */
+/** Where the back control goes. Anything unrecognised falls back to the project. */
 export function resolveOrigin(
   from: string | string[] | undefined,
   project: Project,
@@ -39,12 +22,12 @@ export function resolveOrigin(
   if (named) return named;
 
   return {
+    kind: "project",
     href: `/projects/${project.slug ?? project.id}#articles`,
-    label: project.title,
+    title: project.title,
   };
 }
 
-/** Appends the origin to an article link. Used by the pages that list articles. */
 export function withOrigin(href: string, from: string): string {
   return `${href}?${ORIGIN_PARAM}=${encodeURIComponent(from)}`;
 }

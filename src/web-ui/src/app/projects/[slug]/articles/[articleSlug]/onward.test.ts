@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Article, ArticleListItem, FeedEntry, Project } from "@/lib/api";
 
-import { buildOnward } from "./onward";
+import { buildOnward, ONWARD_SLOTS, type Onward } from "./onward";
 
 const UPDATES = { id: "ch-updates", name: "Updates" };
 const PRODUCT = { id: "ch-product", name: "Product updates" };
@@ -73,6 +73,33 @@ function build(overrides: Parameters<typeof buildOnward>[0] | object = {}) {
   } as Parameters<typeof buildOnward>[0]);
 }
 
+function leadTitle(result: Onward | null): string | undefined {
+  return result?.primary.cards[0]?.title;
+}
+
+function restTitles(result: Onward | null): string[] {
+  return result?.primary.cards.slice(1).map((c) => c.title) ?? [];
+}
+
+function topUpTitles(result: Onward | null): string[] {
+  return result?.topUp?.cards.map((c) => c.title) ?? [];
+}
+
+function projectArticles(count: number): ArticleListItem[] {
+  return Array.from({ length: count }, (_, i) =>
+    sibling({ id: `a-${i}`, slug: `a-${i}`, title: `Article ${i}`, published_at: `2026-0${i + 1}-01T09:00:00Z` }),
+  );
+}
+
+function feedArticles(count: number): FeedEntry[] {
+  return Array.from({ length: count }, (_, i) =>
+    feedEntry({
+      id: `f-${i}`,
+      article: { ...feedEntry().article!, id: `a-feed-${i}`, slug: `feed-${i}`, title: `Feed ${i}` },
+    }),
+  );
+}
+
 describe("buildOnward", () => {
   it("leads with the nearest article in the same channel", () => {
     const result = build({
@@ -82,18 +109,17 @@ describe("buildOnward", () => {
       ],
     });
 
-    expect(result?.heading).toBe("More in Updates");
-    expect(result?.lead.title).toBe("Newer");
+    expect(result?.primary.heading).toEqual({ kind: "channel", channel: "Updates" });
+    expect(leadTitle(result)).toBe("Newer");
   });
 
-  it("falls back to the previous article when this is the newest in the channel", () => {
+  it("keeps the channel heading when this is the newest in the channel", () => {
     const result = build({
       siblings: [sibling({ id: "a-older", title: "Older", published_at: "2026-09-01T09:00:00Z" })],
     });
 
-    // Same heading as when a newer one exists: only the card changes.
-    expect(result?.heading).toBe("More in Updates");
-    expect(result?.lead.title).toBe("Older");
+    expect(result?.primary.heading).toEqual({ kind: "channel", channel: "Updates" });
+    expect(leadTitle(result)).toBe("Older");
   });
 
   it("names the project instead when the channel has nothing else", () => {
@@ -101,11 +127,11 @@ describe("buildOnward", () => {
       siblings: [sibling({ id: "a-other-channel", title: "Winter map", channel: PRODUCT })],
     });
 
-    expect(result?.heading).toBe("More from Hot Spring Finder");
-    expect(result?.lead.title).toBe("Winter map");
+    expect(result?.primary.heading).toEqual({ kind: "project", project: "Hot Spring Finder" });
+    expect(leadTitle(result)).toBe("Winter map");
   });
 
-  it("fills the remaining slots from other channels once the channel runs out", () => {
+  it("names the project once other channels fill in after the channel runs out", () => {
     const result = build({
       siblings: [
         sibling({ id: "a-same", title: "Same channel", published_at: "2026-10-14T09:00:00Z" }),
@@ -113,18 +139,28 @@ describe("buildOnward", () => {
       ],
     });
 
-    expect(result?.lead.title).toBe("Same channel");
-    expect(result?.rest.map((c) => c.title)).toEqual(["Other channel"]);
+    expect(result?.primary.heading).toEqual({ kind: "project", project: "Hot Spring Finder" });
+    expect(leadTitle(result)).toBe("Same channel");
+    expect(restTitles(result)).toEqual(["Other channel"]);
+  });
+
+  it("keeps the channel heading when other channels are pushed out by the slot limit", () => {
+    const result = build({
+      siblings: [
+        ...projectArticles(ONWARD_SLOTS),
+        sibling({ id: "a-other", title: "Other channel", channel: PRODUCT, published_at: "2025-01-01T09:00:00Z" }),
+      ],
+    });
+
+    expect(result?.primary.heading).toEqual({ kind: "channel", channel: "Updates" });
+    expect(restTitles(result)).not.toContain("Other channel");
   });
 
   it("shows at most three cards beside the lead", () => {
-    const result = build({
-      siblings: Array.from({ length: 9 }, (_, i) =>
-        sibling({ id: `a-${i}`, slug: `a-${i}`, published_at: `2026-0${i + 1}-01T09:00:00Z` }),
-      ),
-    });
+    const result = build({ siblings: projectArticles(9), feed: feedArticles(3) });
 
-    expect(result?.rest).toHaveLength(3);
+    expect(restTitles(result)).toHaveLength(3);
+    expect(result?.topUp).toBeNull();
   });
 
   it("never offers the article the reader is already on", () => {
@@ -135,8 +171,8 @@ describe("buildOnward", () => {
       ],
     });
 
-    expect(result?.lead.title).toBe("Another");
-    expect(result?.rest).toHaveLength(0);
+    expect(leadTitle(result)).toBe("Another");
+    expect(restTitles(result)).toEqual([]);
   });
 
   it("leaves out drafts and anything without a slug", () => {
@@ -148,23 +184,63 @@ describe("buildOnward", () => {
       ],
     });
 
-    expect(result?.lead.title).toBe("Live");
-    expect(result?.rest).toHaveLength(0);
+    expect(leadTitle(result)).toBe("Live");
+    expect(restTitles(result)).toEqual([]);
   });
 
   it("falls through to the site feed when the project has published nothing else", () => {
     const result = build({ siblings: [], feed: [feedEntry()] });
 
-    expect(result?.heading).toBe("Elsewhere on Naglasúpan");
-    expect(result?.lead.title).toBe("Counting cyclists with a doorbell camera");
-    expect(result?.lead.href).toBe("/projects/reykjavik-bikes/articles/counting-cyclists");
-    expect(result?.moreHref).toBe("/latest");
+    expect(result?.primary.heading).toEqual({ kind: "elsewhere" });
+    expect(leadTitle(result)).toBe("Counting cyclists with a doorbell camera");
+    expect(result?.primary.cards[0].href).toBe("/projects/reykjavik-bikes/articles/counting-cyclists");
+    expect(result?.topUp).toBeNull();
+    expect(result?.more).toEqual({ kind: "latest", href: "/latest" });
+  });
+
+  it("tops up a thin project from the feed under its own heading", () => {
+    const result = build({ siblings: projectArticles(1), feed: feedArticles(5) });
+
+    expect(result?.primary.heading).toEqual({ kind: "channel", channel: "Updates" });
+    expect(leadTitle(result)).toBe("Article 0");
+    expect(result?.topUp?.heading).toEqual({ kind: "elsewhere" });
+    expect(topUpTitles(result)).toEqual(["Feed 0", "Feed 1", "Feed 2"]);
+  });
+
+  it("only tops up the slots the project leaves empty", () => {
+    const result = build({ siblings: projectArticles(2), feed: feedArticles(5) });
+
+    expect(restTitles(result)).toEqual(["Article 0"]);
+    expect(topUpTitles(result)).toEqual(["Feed 0", "Feed 1"]);
+  });
+
+  it("keeps the project link when the feed tops it up", () => {
+    const result = build({ siblings: projectArticles(1), feed: feedArticles(3) });
+
+    expect(result?.more).toMatchObject({ kind: "project", count: 2 });
+  });
+
+  it("does not top up with this project's own articles from the feed", () => {
+    const ownArticle = feedEntry({
+      id: "f-own",
+      article: { ...feedEntry().article!, id: "a-own", project_slug: "hot-spring-finder", title: "Own" },
+    });
+    const result = build({ siblings: projectArticles(1), feed: [ownArticle, ...feedArticles(1)] });
+
+    expect(topUpTitles(result)).toEqual(["Feed 0"]);
+  });
+
+  it("does not repeat an article that appears twice in the feed", () => {
+    const [entry] = feedArticles(1);
+    const result = build({ siblings: projectArticles(1), feed: [entry, { ...entry, id: "f-again" }] });
+
+    expect(topUpTitles(result)).toEqual(["Feed 0"]);
   });
 
   it("labels a feed card with its project, not its channel", () => {
     const result = build({ siblings: [], feed: [feedEntry()] });
 
-    expect(result?.lead.flag).toBe("Reykjavik Bikes");
+    expect(result?.primary.cards[0].flag).toBe("Reykjavik Bikes");
   });
 
   it("ignores feed entries that carry no article", () => {
@@ -173,8 +249,8 @@ describe("buildOnward", () => {
       feed: [feedEntry({ article: null, kind: "project_published" }), feedEntry()],
     });
 
-    expect(result?.lead.title).toBe("Counting cyclists with a doorbell camera");
-    expect(result?.rest).toHaveLength(0);
+    expect(leadTitle(result)).toBe("Counting cyclists with a doorbell camera");
+    expect(restTitles(result)).toEqual([]);
   });
 
   it("renders nothing when there is nothing at all to go on to", () => {
@@ -186,8 +262,8 @@ describe("buildOnward", () => {
     const bySlug = build({ siblings: [sibling()] });
     const byId = build({ project: project({ slug: null }), siblings: [sibling()] });
 
-    expect(bySlug?.lead.href).toBe("/projects/hot-spring-finder/articles/offline-tiles");
-    expect(byId?.lead.href).toBe("/projects/p-1/articles/offline-tiles");
+    expect(bySlug?.primary.cards[0].href).toBe("/projects/hot-spring-finder/articles/offline-tiles");
+    expect(byId?.primary.cards[0].href).toBe("/projects/p-1/articles/offline-tiles");
   });
 
   it("counts the current article in the link to all of them", () => {
@@ -195,7 +271,11 @@ describe("buildOnward", () => {
       siblings: [sibling({ id: "a-1", slug: "a-1" }), sibling({ id: "a-2", slug: "a-2" })],
     });
 
-    expect(result?.moreLabel).toBe("All 3 articles from Hot Spring Finder");
-    expect(result?.moreHref).toBe("/projects/hot-spring-finder#articles");
+    expect(result?.more).toEqual({
+      kind: "project",
+      href: "/projects/hot-spring-finder#articles",
+      count: 3,
+      project: "Hot Spring Finder",
+    });
   });
 });

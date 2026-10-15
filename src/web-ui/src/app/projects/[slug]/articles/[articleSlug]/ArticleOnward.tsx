@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { useTranslations } from "next-intl";
 
 import { ArticleListingImage } from "@/components/ArticleListingImage";
 import { FollowButton } from "@/components/FollowButton";
 import type { Project } from "@/lib/api";
 
-import type { Onward, OnwardCard } from "./onward";
+import type { Onward, OnwardCard, OnwardHeading } from "./onward";
 
 interface Props {
   onward: Onward;
@@ -14,13 +15,6 @@ interface Props {
   channelCount: number;
 }
 
-// The hand-off at the end of an article. Dark and full-bleed: it is the one
-// loud thing on the page, and it is loud because it is where the reader
-// decides what to do next instead of reaching for the back button.
-//
-// One lead card with a row beside it, which is the same lead/row split the
-// feed draws on /latest. Three equal cards would leave the narrow two hanging:
-// a 16:9 image in a narrow column is shorter than the same ratio in a wide one.
 export function ArticleOnward({
   onward,
   project,
@@ -28,32 +22,60 @@ export function ArticleOnward({
   articleCount,
   channelCount,
 }: Props) {
+  const t = useTranslations("articles.onward");
   const projectSlug = project.slug ?? project.id;
+  const [lead, ...rest] = onward.primary.cards;
+
+  const heading = (h: OnwardHeading) => {
+    switch (h.kind) {
+      case "channel":
+        return t("heading.channel", { channel: h.channel });
+      case "project":
+        return t("heading.project", { project: h.project });
+      case "elsewhere":
+        return t("heading.elsewhere");
+    }
+  };
 
   return (
     <section className="bg-nav-bg text-nav-text px-4 sm:px-6 py-8 sm:py-12">
       <div className="max-w-6xl mx-auto">
         <div className="flex items-baseline justify-between gap-4 pb-5 border-b border-slate-700">
-          <h2 className="text-lg font-semibold">{onward.heading}</h2>
+          <h2 className="text-lg font-semibold">
+            {heading(onward.primary.heading)}
+          </h2>
           <Link
-            href={onward.moreHref}
+            href={onward.more.href}
             className="text-sm text-indigo-300 hover:text-indigo-100 transition-colors shrink-0"
           >
-            {onward.moreLabel}
+            {onward.more.kind === "project"
+              ? t("moreFromProject", {
+                  count: onward.more.count,
+                  project: onward.more.project,
+                })
+              : t("moreLatest")}
           </Link>
         </div>
 
         <div className="mt-6 grid gap-6 md:gap-10 md:grid-cols-[1.3fr_1fr] md:items-start">
-          <LeadCard card={onward.lead} />
+          <LeadCard card={lead} />
 
           <div className="grid gap-5 content-start">
-            {onward.rest.map((card) => (
+            {rest.map((card) => (
               <RowCard key={card.id} card={card} />
             ))}
 
-            {/* The project sits in this column rather than across the foot so
-                the column stands level with the lead instead of stopping a
-                third of the way down. */}
+            {onward.topUp && (
+              <>
+                <h2 className="text-sm font-semibold text-slate-300 pt-5 border-t border-slate-700 first:pt-0 first:border-t-0">
+                  {heading(onward.topUp.heading)}
+                </h2>
+                {onward.topUp.cards.map((card) => (
+                  <RowCard key={card.id} card={card} />
+                ))}
+              </>
+            )}
+
             <div className="pt-5 border-t border-slate-700">
               <div className="flex items-center gap-3">
                 {iconUrl && (
@@ -69,7 +91,12 @@ export function ArticleOnward({
                     {project.title}
                   </div>
                   <div className="text-sm text-slate-400">
-                    {countLine(articleCount, channelCount)}
+                    {channelCount > 1
+                      ? t("articleCountInChannels", {
+                          count: articleCount,
+                          channels: channelCount,
+                        })
+                      : t("articleCount", { count: articleCount })}
                   </div>
                 </div>
               </div>
@@ -78,10 +105,8 @@ export function ArticleOnward({
                   href={`/projects/${projectSlug}`}
                   className="text-sm font-medium px-3 py-1.5 rounded-md border border-slate-600 text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition-colors"
                 >
-                  Project page
+                  {t("projectPage")}
                 </Link>
-                {/* Renders nothing for a signed-out reader, which is most of
-                    them — the project link carries the block on its own. */}
                 {project.slug && <FollowButton projectSlug={project.slug} />}
               </div>
             </div>
@@ -140,12 +165,4 @@ function Flag({ children }: { children: string }) {
       {children}
     </div>
   );
-}
-
-// Reads as a fact about the project, not a stat block. Channels are only worth
-// mentioning once there is more than one.
-function countLine(articles: number, channels: number): string {
-  const plural = articles === 1 ? "article" : "articles";
-  if (channels > 1) return `${articles} ${plural} in ${channels} channels`;
-  return `${articles} ${plural}`;
 }

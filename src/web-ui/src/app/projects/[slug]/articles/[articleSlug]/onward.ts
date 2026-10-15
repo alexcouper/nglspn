@@ -2,8 +2,8 @@ import type { CropRect } from "@/components/CroppedImage";
 import type { Article, ArticleListItem, FeedEntry, Project } from "@/lib/api";
 import { publishedNewestFirst } from "@/lib/article-listing";
 
-/** How many cards sit beside the lead. */
-const REST_SLOTS = 3;
+/** The lead plus the cards beside it. */
+export const ONWARD_SLOTS = 4;
 
 export interface OnwardCard {
   id: string;
@@ -16,13 +16,26 @@ export interface OnwardCard {
   crop: CropRect | null;
 }
 
+export type OnwardHeading =
+  | { kind: "channel"; channel: string }
+  | { kind: "project"; project: string }
+  | { kind: "elsewhere" };
+
+export interface OnwardGroup {
+  heading: OnwardHeading;
+  cards: OnwardCard[];
+}
+
+export type OnwardMore =
+  | { kind: "project"; href: string; count: number; project: string }
+  | { kind: "latest"; href: string };
+
 export interface Onward {
-  /** Always a true statement about what is below it — see buildOnward. */
-  heading: string;
-  moreHref: string;
-  moreLabel: string;
-  lead: OnwardCard;
-  rest: OnwardCard[];
+  /** Never empty; its first card is the lead. */
+  primary: OnwardGroup;
+  /** Site-feed cards filling the slots a thin project leaves empty. */
+  topUp: OnwardGroup | null;
+  more: OnwardMore;
 }
 
 interface Input {
@@ -30,28 +43,9 @@ interface Input {
   article: Article;
   /** The project's articles as the API returns them, drafts and all. */
   siblings: ArticleListItem[] | null;
-  /** Only consulted when the project has published nothing else. */
   feed: FeedEntry[] | null;
 }
 
-/**
- * What the reader is handed when the article ends.
- *
- * Three cases, in order of how closely related the suggestions are. The
- * heading names whichever one applied, so it is never a promise the cards
- * below it do not keep:
- *
- *   1. the channel has other articles  → "More in <channel>"
- *   2. the project does, in other channels → "More from <project>"
- *   3. neither → "Elsewhere on Naglasúpan", from the site feed
- *
- * Deliberately not "Next in <channel>" when a newer article exists: the
- * reader cannot see which wording they would otherwise have got, so the
- * distinction buys nothing and costs a branch.
- *
- * Returns null when there is genuinely nothing to show, which is the one case
- * where the section should not render at all.
- */
 export function buildOnward({
   project,
   article,
@@ -65,40 +59,42 @@ export function buildOnward({
 
   const sameChannel = others.filter((a) => a.channel.id === article.channel.id);
   const elsewhere = others.filter((a) => a.channel.id !== article.channel.id);
+  const fromProject = [...sameChannel, ...elsewhere]
+    .slice(0, ONWARD_SLOTS)
+    .map((a) => projectCard(a, projectSlug, project));
 
-  // Newest-first and with the current article removed, so the first entry is
-  // the one after this in the channel — or, where this is the newest, the one
-  // before it. Either way it is the nearest neighbour.
-  const ordered = sameChannel.length ? [...sameChannel, ...elsewhere] : elsewhere;
+  const fromFeed = feedCards(feed ?? [], project, article).slice(
+    0,
+    ONWARD_SLOTS - fromProject.length,
+  );
+  const elsewhereGroup: OnwardGroup | null = fromFeed.length
+    ? { heading: { kind: "elsewhere" }, cards: fromFeed }
+    : null;
 
-  if (ordered.length) {
-    const cards = ordered.map((a) => projectCard(a, projectSlug, project));
+  if (!fromProject.length) {
+    if (!elsewhereGroup) return null;
     return {
-      heading: sameChannel.length
-        ? `More in ${article.channel.name}`
-        : `More from ${project.title}`,
-      // There is no per-channel listing page, so this goes to the project's
-      // articles tab — which is where all of them are, channel or not.
-      moreHref: `/projects/${projectSlug}#articles`,
-      moreLabel: `All ${others.length + 1} articles from ${project.title}`,
-      lead: cards[0],
-      rest: cards.slice(1, 1 + REST_SLOTS),
+      primary: elsewhereGroup,
+      topUp: null,
+      more: { kind: "latest", href: "/latest" },
     };
   }
 
-  const fromFeed = (feed ?? [])
-    .filter((entry) => entry.article && entry.article.id !== article.id)
-    .map(feedCard)
-    .filter((card): card is OnwardCard => card !== null);
-
-  if (!fromFeed.length) return null;
-
+  const allInChannel = fromProject.length <= sameChannel.length;
   return {
-    heading: "Elsewhere on Naglasúpan",
-    moreHref: "/latest",
-    moreLabel: "Everything that's happened lately",
-    lead: fromFeed[0],
-    rest: fromFeed.slice(1, 1 + REST_SLOTS),
+    primary: {
+      heading: allInChannel
+        ? { kind: "channel", channel: article.channel.name }
+        : { kind: "project", project: project.title },
+      cards: fromProject,
+    },
+    topUp: elsewhereGroup,
+    more: {
+      kind: "project",
+      href: `/projects/${projectSlug}#articles`,
+      count: others.length + 1,
+      project: project.title,
+    },
   };
 }
 
@@ -110,8 +106,6 @@ function projectCard(
   return {
     id: article.id,
     href: `/projects/${projectSlug}/articles/${article.slug}`,
-    // A channel named after its project reads as a stutter, the same way it
-    // does on a feed row.
     flag: article.channel.name === project.title ? project.title : article.channel.name,
     title: article.title,
     summary: article.summary ?? "",
@@ -120,18 +114,28 @@ function projectCard(
   };
 }
 
-function feedCard(entry: FeedEntry): OnwardCard | null {
-  const article = entry.article;
-  if (!article?.slug || !article.project_slug) return null;
-  return {
-    id: article.id,
-    href: `/projects/${article.project_slug}/articles/${article.slug}`,
-    // Off this project entirely, so the project is the useful label and the
-    // channel is house plumbing.
-    flag: article.project_title,
-    title: article.title,
-    summary: article.summary ?? "",
-    imageUrl: article.listing_image_url ?? null,
-    crop: article.listing_crop ?? null,
-  };
+function feedCards(
+  feed: FeedEntry[],
+  project: Project,
+  current: Article,
+): OnwardCard[] {
+  const seen = new Set<string>();
+  const cards: OnwardCard[] = [];
+  for (const entry of feed) {
+    const article = entry.article;
+    if (!article?.slug || !article.project_slug) continue;
+    if (article.id === current.id || article.project_slug === project.slug) continue;
+    if (seen.has(article.id)) continue;
+    seen.add(article.id);
+    cards.push({
+      id: article.id,
+      href: `/projects/${article.project_slug}/articles/${article.slug}`,
+      flag: article.project_title,
+      title: article.title,
+      summary: article.summary ?? "",
+      imageUrl: article.listing_image_url ?? null,
+      crop: article.listing_crop ?? null,
+    });
+  }
+  return cards;
 }

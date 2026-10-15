@@ -97,9 +97,6 @@ export function renderEntry(entry: FeedEntry, flagFor: FlagTranslator): Rendered
 function articleHref(entry: FeedEntry): string | null {
   const article = entry.article;
   if (!article?.slug || !article.project_slug) return null;
-  // Marked with where it was followed from, so the article's back control can
-  // return the reader here instead of sideways into a project they were not
-  // browsing. Without the parameter the article falls back to the project.
   return withOrigin(
     `/projects/${article.project_slug}/articles/${article.slug}`,
     "latest",

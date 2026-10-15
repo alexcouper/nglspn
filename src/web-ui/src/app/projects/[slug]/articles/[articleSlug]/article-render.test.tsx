@@ -5,19 +5,14 @@ import { createRoot, type Root } from "react-dom/client";
 import type { Article, Project } from "@/lib/api";
 
 import { ArticleRenderContent } from "./ArticleRenderContent";
-import type { Onward } from "./onward";
+import type { Onward, OnwardCard } from "./onward";
 
-// The component reads auth to decide whether to mark the article read, and
-// calls the notifications context when it does. Neither is what these tests
-// are about, so both are stubbed at the module boundary.
 vi.mock("@/contexts/auth", () => ({
   useAuth: () => ({ isAuthenticated: false, isLoading: false }),
 }));
 vi.mock("@/contexts/notifications", () => ({
   useNotifications: () => ({ markArticleRead: vi.fn().mockResolvedValue(undefined) }),
 }));
-
-// ------------------------------------------------------------------ fixtures
 
 function project(overrides: Partial<Project> = {}): Project {
   return {
@@ -52,21 +47,32 @@ function article(overrides: Partial<Article> = {}): Article {
   } as Article;
 }
 
+function card(overrides: Partial<OnwardCard> = {}): OnwardCard {
+  return {
+    id: "a-card",
+    href: "/projects/hot-spring-finder/articles/card",
+    flag: "Updates",
+    title: "A card",
+    summary: "",
+    imageUrl: null,
+    crop: null,
+    ...overrides,
+  };
+}
+
 function onward(overrides: Partial<Onward> = {}): Onward {
   return {
-    heading: "More in Updates",
-    moreHref: "/projects/hot-spring-finder#articles",
-    moreLabel: "All 4 articles from Hot Spring Finder",
-    lead: {
-      id: "a-2",
-      href: "/projects/hot-spring-finder/articles/offline-tiles",
-      flag: "Updates",
-      title: "Offline tiles",
-      summary: "A storage problem.",
-      imageUrl: null,
-      crop: null,
+    primary: {
+      heading: { kind: "channel", channel: "Updates" },
+      cards: [card({ id: "a-2", title: "Offline tiles", href: "/projects/hot-spring-finder/articles/offline-tiles" })],
     },
-    rest: [],
+    topUp: null,
+    more: {
+      kind: "project",
+      href: "/projects/hot-spring-finder#articles",
+      count: 4,
+      project: "Hot Spring Finder",
+    },
     ...overrides,
   };
 }
@@ -81,7 +87,7 @@ async function render(props: Partial<Parameters<typeof ArticleRenderContent>[0]>
       <ArticleRenderContent
         project={project()}
         article={article()}
-        origin={{ href: "/latest", label: "Latest" }}
+        origin={{ kind: "latest", href: "/latest" }}
         onward={null}
         articleCount={4}
         channelCount={2}
@@ -98,11 +104,13 @@ async function render(props: Partial<Parameters<typeof ArticleRenderContent>[0]>
   };
 }
 
+function headings(container: HTMLElement): string[] {
+  return Array.from(container.querySelectorAll("section h2")).map((h) => h.textContent ?? "");
+}
+
 function backLink(container: HTMLElement): HTMLAnchorElement | null {
   return container.querySelector('a[href="/latest"], a[href^="/projects/"][href$="#articles"]');
 }
-
-// --------------------------------------------------------------------- tests
 
 describe("ArticleRenderContent", () => {
   it("names the place the reader came from on the back control", async () => {
@@ -116,8 +124,9 @@ describe("ArticleRenderContent", () => {
   it("falls back to the project when the reader arrived directly", async () => {
     const { container, cleanup } = await render({
       origin: {
+        kind: "project",
         href: "/projects/hot-spring-finder#articles",
-        label: "Hot Spring Finder",
+        title: "Hot Spring Finder",
       },
     });
 
@@ -162,6 +171,30 @@ describe("ArticleRenderContent", () => {
     expect(
       container.querySelector('a[href="/projects/hot-spring-finder/articles/offline-tiles"]'),
     ).not.toBeNull();
+    cleanup();
+  });
+
+  it("labels feed cards that top up a thin project separately", async () => {
+    const { container, cleanup } = await render({
+      onward: onward({
+        topUp: {
+          heading: { kind: "elsewhere" },
+          cards: [card({ id: "a-feed", title: "Counting cyclists", flag: "Reykjavik Bikes" })],
+        },
+      }),
+    });
+
+    expect(headings(container)).toEqual(["More in Updates", "Elsewhere on Naglasúpan"]);
+    expect(container.textContent).toContain("Counting cyclists");
+    cleanup();
+  });
+
+  it("puts the article and the onward section in separate landmarks", async () => {
+    const { container, cleanup } = await render({ onward: onward() });
+
+    expect(container.querySelectorAll("main")).toHaveLength(0);
+    expect(container.querySelector("article h1")).not.toBeNull();
+    expect(container.querySelector("article section")).toBeNull();
     cleanup();
   });
 

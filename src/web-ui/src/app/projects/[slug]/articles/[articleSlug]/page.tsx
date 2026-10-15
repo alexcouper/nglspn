@@ -2,7 +2,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { ArticleRenderContent } from "./ArticleRenderContent";
-import { buildOnward } from "./onward";
+import { buildOnward, ONWARD_SLOTS } from "./onward";
 import { ORIGIN_PARAM, resolveOrigin } from "./origin";
 import { socialCard } from "@/lib/social-card";
 import {
@@ -19,9 +19,6 @@ interface PageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-// The metadata only ever addresses the article, so it takes the half of the
-// props it uses rather than making its callers supply a search query it would
-// ignore.
 type MetadataProps = Pick<PageProps, "params">;
 
 // What search results and social cards have room for.
@@ -85,10 +82,6 @@ export default async function ArticleRenderPage({
   // be addressed by anyway: `publish_article` assigns one, and there is no
   // unpublish path. Previewing a draft needs a client-side route; see
   // FOLLOW_UPS.md item 7.
-  //
-  // The project's other articles are fetched alongside rather than after: the
-  // onward section is content, so it belongs in the server HTML. A failure
-  // there costs the reader the hand-off, not the article.
   const [project, article, siblings, query] = await Promise.all([
     getProjectOr404(slug),
     fetchArticleBySlug(slug, articleSlug).catch((err) => {
@@ -100,15 +93,13 @@ export default async function ArticleRenderPage({
   ]);
 
   const published = publishedNewestFirst(siblings ?? []);
-  const hasOthers = published.some((a) => a.id !== article.id);
-
-  // Only when the project has nothing else to offer. Most articles never pay
-  // for this call.
-  const feed = hasOthers
-    ? null
-    : await fetchFeedPage()
-        .then((page) => page.entries)
-        .catch(() => null);
+  const others = published.filter((a) => a.id !== article.id).length;
+  const feed =
+    others >= ONWARD_SLOTS
+      ? null
+      : await fetchFeedPage()
+          .then((page) => page.entries)
+          .catch(() => null);
 
   return (
     <main className="min-h-screen bg-white pt-14">

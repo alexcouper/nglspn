@@ -16,15 +16,16 @@ function project(overrides: Partial<Project> = {}): Project {
 describe("resolveOrigin", () => {
   it("sends a reader who came from the feed back to the feed", () => {
     expect(resolveOrigin("latest", project())).toEqual({
+      kind: "latest",
       href: "/latest",
-      label: "Latest",
     });
   });
 
   it("falls back to the project when there is no parameter", () => {
     expect(resolveOrigin(undefined, project())).toEqual({
+      kind: "project",
       href: "/projects/hot-spring-finder#articles",
-      label: "Hot Spring Finder",
+      title: "Hot Spring Finder",
     });
   });
 
@@ -32,11 +33,11 @@ describe("resolveOrigin", () => {
     expect(resolveOrigin("https://evil.test", project()).href).toBe(
       "/projects/hot-spring-finder#articles",
     );
-    expect(resolveOrigin("constructor", project()).label).toBe("Hot Spring Finder");
+    expect(resolveOrigin("constructor", project()).kind).toBe("project");
   });
 
   it("takes the first value when the parameter is repeated", () => {
-    expect(resolveOrigin(["latest", "whatever"], project()).label).toBe("Latest");
+    expect(resolveOrigin(["latest", "whatever"], project()).kind).toBe("latest");
   });
 
   it("addresses a project by id when it has no slug yet", () => {

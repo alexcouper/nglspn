@@ -183,15 +183,18 @@ the side it touches; groups 1–3 are commits on their own.
 
 ## 6. Integration
 
-- [ ] 6.1 Backend `make lint && make extra-tests && make test`; web-ui
+- [x] 6.1 Backend `make lint && make extra-tests && make test`; web-ui
   `make lint && make test && make build-app && make extra-tests` (the moved
   editor must stay inside its route bundle budget).
-- [ ] 6.2 Playwright spec `e2e/author-article.spec.ts`: U writes and publishes
+- [x] 6.2 Playwright spec `e2e/author-article.spec.ts`: U writes and publishes
   an article from their profile; V follows U from the profile, sees the
-  article in Latest flagged with U's name, opens it at
-  `/users/{U.id}/articles/{slug}`, and finds it in the bell; run against a
-  seeded local stack per `CLAUDE.md` (mind the 5/min login limit).
-- [ ] 6.3 `docs/2026-08-19-article-launch-followups.md`: mark the "no signal
+  article in Latest flagged with U's name, finds it in the bell, and opens it
+  at `/users/{U.id}/articles/{slug}` (the bell before the article: reading
+  it marks the notification read); run against a seeded local stack per
+  `CLAUDE.md` (mind the 5/min login limit). `e2e/helpers.ts` follows the
+  id-addressed routes and learns the backend origin from the login request;
+  the four older editor specs pass against them.
+- [x] 6.3 `docs/2026-08-19-article-launch-followups.md`: mark the "no signal
   why an article never appeared" item as closed for author-owned articles by
   the profile badge; `CLAUDE.md` file-locations table gains
   `app/articles/` for the editor; verify both read correctly.

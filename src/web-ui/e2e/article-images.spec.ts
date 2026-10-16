@@ -32,10 +32,9 @@ function uploadAlert(page: Page) {
 // The images linked to an article — the listing-image wizard's selection list.
 async function articleImageIds(
   page: Page,
-  projectId: string,
   articleId: string,
 ): Promise<string[]> {
-  const article = await fetchArticle(page, projectId, articleId);
+  const article = await fetchArticle(page, articleId);
   const images = (article.images ?? []) as { id: string }[];
   return images.map((image) => image.id);
 }
@@ -74,32 +73,32 @@ test.describe("Article inline images", () => {
   });
 
   test("inserts an image straight from the file picker", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
 
     await imagePicker(page).setInputFiles(INLINE_IMAGE);
 
     await expect(insertedImage(page)).toBeVisible({ timeout: 30_000 });
     await expect(insertedImage(page)).toHaveAttribute("alt", "");
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 
   test("links the inserted image to the article it was uploaded for", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
 
     await imagePicker(page).setInputFiles(INLINE_IMAGE);
     await expect(insertedImage(page)).toBeVisible({ timeout: 30_000 });
 
     // The link is what makes the image offerable in the listing-image wizard,
     // and what keeps it out of the project gallery.
-    const linked = await articleImageIds(page, projectId, articleId);
+    const linked = await articleImageIds(page, articleId);
     expect(linked).toEqual([uploadedImageIds[0]]);
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 
   test("edits alt text without losing the image", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
     await imagePicker(page).setInputFiles(INLINE_IMAGE);
     await expect(insertedImage(page)).toBeVisible({ timeout: 30_000 });
     const srcBeforeEdit = await insertedImage(page).getAttribute("src");
@@ -119,7 +118,7 @@ test.describe("Article inline images", () => {
     // The save payload has to echo the original src back, or the plugin blanks it.
     await expect(insertedImage(page)).toHaveAttribute("src", srcBeforeEdit!);
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 
   test("keeps the inserted image out of the project's own gallery", async () => {
@@ -136,11 +135,11 @@ test.describe("Article inline images", () => {
     expect(galleryAfter).not.toContain(uploadedImageIds[0]);
     expect(galleryAfter).toEqual(galleryBefore);
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 
   test("shows a rejected upload instead of failing silently", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
 
     // Rejected client-side by uploadProjectImage, so nothing reaches storage.
     await imagePicker(page).setInputFiles(NOT_AN_IMAGE);
@@ -148,6 +147,6 @@ test.describe("Article inline images", () => {
     await expect(uploadAlert(page)).toBeVisible();
     await expect(uploadAlert(page)).toContainText("Invalid file type");
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 });

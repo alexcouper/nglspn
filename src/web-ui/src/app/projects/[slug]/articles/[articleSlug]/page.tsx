@@ -1,9 +1,9 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { ArticleRenderContent } from "./ArticleRenderContent";
-import { buildOnward, ONWARD_SLOTS } from "./onward";
-import { ORIGIN_PARAM, resolveOrigin } from "./origin";
+import { ArticleRenderContent } from "@/app/articles/ArticleRenderContent";
+import { buildOnward, ONWARD_SLOTS } from "@/app/articles/onward";
+import { ORIGIN_PARAM, resolveOrigin } from "@/app/articles/origin";
 import { socialCard } from "@/lib/social-card";
 import {
   fetchArticleBySlug,

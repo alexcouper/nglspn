@@ -1,5 +1,5 @@
 import type { FeedEntry } from "@/lib/api";
-import { withOrigin } from "@/app/projects/[slug]/articles/[articleSlug]/origin";
+import { withOrigin } from "@/app/articles/origin";
 
 type ArticleRef = NonNullable<FeedEntry["article"]>;
 type ListingCrop = ArticleRef["listing_crop"];

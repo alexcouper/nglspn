@@ -1,4 +1,4 @@
-import { ArticleAuthoringRoute } from "../../ArticleAuthoringRoute";
+import { ArticleAuthoringRoute } from "@/app/articles/ArticleAuthoringRoute";
 
 interface PageProps {
   params: Promise<{ slug: string; articleId: string }>;

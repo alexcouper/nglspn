@@ -6,7 +6,7 @@ the side it touches; groups 1–3 are commits on their own.
 
 ## 0. Prerequisite
 
-- [ ] 0.1 Archive `openspec/changes/user-profile-page` (`openspec archive
+- [x] 0.1 Archive `openspec/changes/user-profile-page` (`openspec archive
   user-profile-page`) so `openspec/specs/user-profile-page/spec.md` exists;
   verify `openspec validate author-owned-articles --strict` still passes.
 

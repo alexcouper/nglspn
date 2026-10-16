@@ -16,7 +16,7 @@ from apps.articles.models import (
 )
 from apps.articles.slugs import assign_unique_article_slug
 from apps.follows.models import Channel
-from apps.projects.models import ProjectImage
+from apps.projects.models import Image
 from services.articles import crop
 from services.articles.django_impl.query import article_detail_queryset
 from services.articles.exceptions import (
@@ -61,7 +61,7 @@ def _is_backdated(approved_at: datetime | None) -> bool:
 
 def _enqueue_fan_out(article: Article) -> None:
     # Local import: api.tasks reaches back into the service layer.
-    from api.tasks.notifications import (  # noqa: PLC0415
+    from api.tasks.notifications import (
         create_article_notifications,
     )
 
@@ -333,7 +333,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         )
 
         if mode == ListingImageMode.NONE:
-            image: ProjectImage | None = None
+            image: Image | None = None
             rect: dict[str, float] | None = None
         elif mode == ListingImageMode.AUTO:
             # Read off the prefetch: `.uploaded()` on the related manager would
@@ -341,7 +341,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             # the documented in-memory twin of `.uploaded()`, and this is the
             # same filter and sort `ArticleOut.resolve_images` applies, so the
             # wizard's list and `auto`'s pick stay in the same order.
-            # `ProjectImage.Meta.ordering` leads with display_order, which is
+            # `Image.Meta.ordering` leads with display_order, which is
             # identical across an article's uploads, so order explicitly.
             image = next(
                 iter(
@@ -396,7 +396,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         self,
         article: Article,
         listing_image_id: UUID | None | UnsetType,
-    ) -> ProjectImage | None:
+    ) -> Image | None:
         if listing_image_id is UNSET:
             return article.listing_image
         return self._resolve_listing_image(listing_image_id, article.project_id)
@@ -404,7 +404,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
     def _chosen_crop(
         self,
         article: Article,
-        image: ProjectImage | None,
+        image: Image | None,
         *,
         listing_crop: dict[str, float] | None | UnsetType,
         image_changed: bool,
@@ -420,7 +420,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
     def _validated_crop(
         self,
         value: dict[str, float] | None,
-        image: ProjectImage | None,
+        image: Image | None,
     ) -> dict[str, float] | None:
         """Normalise an incoming crop, or raise ``InvalidCropError``."""
         if value is None:
@@ -453,12 +453,12 @@ class DjangoArticleHandler(ArticleHandlerInterface):
 
     def _resolve_listing_image(
         self, listing_image_id: UUID | None, project_id: UUID
-    ) -> ProjectImage | None:
+    ) -> Image | None:
         if listing_image_id is None:
             return None
         try:
-            image = ProjectImage.objects.get(pk=listing_image_id)
-        except ProjectImage.DoesNotExist as exc:
+            image = Image.objects.get(pk=listing_image_id)
+        except Image.DoesNotExist as exc:
             raise ListingImageOnWrongProjectError from exc
         if image.project_id != project_id:
             raise ListingImageOnWrongProjectError

@@ -22,11 +22,11 @@ class ChannelOnWrongProjectError(ArticleError):
 
 
 class ListingImageOnWrongProjectError(ArticleError):
-    """The referenced ProjectImage does not belong to the Article's project."""
+    """The referenced Image does not belong to the Article's project."""
 
 
 class ListingImageNotUploadedError(ArticleError):
-    """The referenced ProjectImage exists but its upload never completed."""
+    """The referenced Image exists but its upload never completed."""
 
 
 class InvalidCropError(ArticleError):

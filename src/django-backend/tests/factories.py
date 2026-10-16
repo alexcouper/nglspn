@@ -23,10 +23,10 @@ from apps.projects.models import (
     CompetitionStatus,
     ContributorRole,
     EntrySource,
+    Image,
     Project,
     ProjectCategory,
     ProjectContributor,
-    ProjectImage,
     ProjectRanking,
     ProjectStatus,
     ReviewerGroup,
@@ -253,9 +253,9 @@ class NotificationFactory(factory.django.DjangoModelFactory):
     email_cadence = NotificationCadence.IMMEDIATE
 
 
-class ProjectImageFactory(factory.django.DjangoModelFactory):
+class ImageFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = ProjectImage
+        model = Image
 
     project = factory.SubFactory(ProjectFactory)
     storage_key = factory.Sequence(lambda n: f"projects/images/{n}.jpg")
@@ -309,9 +309,9 @@ class ArticleFactory(factory.django.DjangoModelFactory):
     state = ArticleState.DRAFT
 
 
-def article_image(article: Article, **kwargs: object) -> ProjectImage:
+def article_image(article: Article, **kwargs: object) -> Image:
     """An image uploaded for `article`, on that article's project."""
-    return ProjectImageFactory(project=article.project, article=article, **kwargs)
+    return ImageFactory(project=article.project, article=article, **kwargs)
 
 
 class PublishedArticleFactory(ArticleFactory):

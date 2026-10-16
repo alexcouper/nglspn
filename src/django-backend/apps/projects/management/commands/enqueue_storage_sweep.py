@@ -20,7 +20,7 @@ class Command(BaseCommand):
         )
 
     def handle(self, *args, **options) -> None:
-        from api.tasks.images import sweep_orphaned_storage_objects  # noqa: PLC0415
+        from api.tasks.images import sweep_orphaned_storage_objects
 
         batch_size = options["batch_size"]
         sweep_orphaned_storage_objects.enqueue(batch_size=batch_size)

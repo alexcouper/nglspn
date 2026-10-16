@@ -12,17 +12,17 @@ the side it touches; groups 1–3 are commits on their own.
 
 ## 1. Rename `ProjectImage` → `Image`
 
-- [ ] 1.1 Rename the model in `apps/projects/models.py`, set
+- [x] 1.1 Rename the model in `apps/projects/models.py`, set
   `db_table = "images"`, rename `ProjectImageQuerySet`, and generate a
   migration containing only `RenameModel` and `AlterModelTable`; verify
   `uv run python manage.py makemigrations --check --dry-run` is clean.
-- [ ] 1.2 Rename every other backend occurrence (services, routers, admin
+- [x] 1.2 Rename every other backend occurrence (services, routers, admin
   classes, signals, management commands, `scripts/seed_db.py`,
   `scripts/seed_prod_copy.py`, `tests/factories.py`) and
   `ProjectImageResponse` → `ImageResponse` in `api/schemas/project.py`; verify
   `make lint` and `make test` pass and `grep -rn ProjectImage --include=*.py`
   returns only migrations.
-- [ ] 1.3 `make extract-openapi`, commit `src/web-ui/backend-openapi.json`,
+- [x] 1.3 `make extract-openapi`, commit `src/web-ui/backend-openapi.json`,
   `npm run generate-types`, rename the `ProjectImage` alias in
   `lib/api/articles.ts` and `lib/api/my-projects.ts` to `Image` and update its
   importers; verify web-ui `make lint` and `make test` pass.

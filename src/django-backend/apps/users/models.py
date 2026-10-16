@@ -136,7 +136,7 @@ class User(AbstractBaseUser, PermissionsMixin):
 class UserAvatar(models.Model):
     """One uploaded avatar image.
 
-    Deliberately not a `ProjectImage`: that model's non-null project FK, gallery
+    Deliberately not a `Image`: that model's non-null project FK, gallery
     cap, cover promotion and variant pipeline all assume the image describes a
     project. An avatar shares only the lifecycle that keeps storage honest — a
     `PENDING` row reserved before the browser PUTs, marked `UPLOADED` once the

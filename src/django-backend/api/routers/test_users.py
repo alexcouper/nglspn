@@ -17,10 +17,10 @@ from apps.articles.models import ArticleGlobalVisibility
 from apps.projects.models import ContributorRole, ProjectContributor, ProjectStatus
 from tests.factories import (
     ArticleFactory,
+    ImageFactory,
     PendingArticleFactory,
     ProjectCategoryFactory,
     ProjectFactory,
-    ProjectImageFactory,
     PublishedArticleFactory,
     UserFactory,
     give_avatar,
@@ -214,7 +214,7 @@ class TestPublicProjects:
 
     def test_thumbnail_follows_the_main_image(self, client, user) -> None:
         project = approved_project(creator=user)
-        image = ProjectImageFactory(project=project, is_main=True)
+        image = ImageFactory(project=project, is_main=True)
 
         response = client.get(f"/api/users/{user.id}/projects")
 

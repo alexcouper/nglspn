@@ -2,7 +2,7 @@ import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { CropRect } from "@/components/CroppedImage";
-import type { ProjectImage } from "@/lib/api";
+import type { Image } from "@/lib/api";
 import { ListingImageDialog } from "./ListingImageDialog";
 
 vi.mock("@/lib/api", () => ({
@@ -10,12 +10,12 @@ vi.mock("@/lib/api", () => ({
 }));
 
 const uploadHandlers: {
-  onUploadComplete?: (image: ProjectImage) => void;
+  onUploadComplete?: (image: Image) => void;
 } = {};
 
 vi.mock("@/hooks/useImageUpload", () => ({
   useImageUpload: (options: {
-    onUploadComplete?: (image: ProjectImage) => void;
+    onUploadComplete?: (image: Image) => void;
   }) => {
     uploadHandlers.onUploadComplete = options.onUploadComplete;
     return { uploadFile: vi.fn(), isUploading: false };
@@ -75,7 +75,7 @@ function thumbnails(container: HTMLElement): HTMLElement[] {
 
 // --------------------------------------------------------------- factories
 
-function image(id: string, overrides: Partial<ProjectImage> = {}): ProjectImage {
+function image(id: string, overrides: Partial<Image> = {}): Image {
   return {
     id,
     url: `https://cdn.example/${id}.png`,
@@ -84,7 +84,7 @@ function image(id: string, overrides: Partial<ProjectImage> = {}): ProjectImage 
     height: 2000,
     variants: [],
     ...overrides,
-  } as unknown as ProjectImage;
+  } as unknown as Image;
 }
 
 const STORED_CROP: CropRect = {

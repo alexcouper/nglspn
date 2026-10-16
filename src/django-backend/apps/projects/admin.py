@@ -24,11 +24,11 @@ from .models import (
     CompetitionEntry,
     CompetitionReviewer,
     EntrySource,
+    Image,
     ImageVariant,
     Project,
     ProjectCategory,
     ProjectContributor,
-    ProjectImage,
     ProjectRanking,
     ProjectStatus,
     ProjectView,
@@ -67,8 +67,8 @@ class ProjectCategoryAdmin(admin.ModelAdmin):
         )
 
 
-class ProjectImageInline(admin.TabularInline):
-    model = ProjectImage
+class ImageInline(admin.TabularInline):
+    model = Image
     extra = 0
     readonly_fields = (
         "thumbnail",
@@ -96,14 +96,14 @@ class ProjectImageInline(admin.TabularInline):
     ordering = ("display_order",)
 
     @admin.display(description="Preview")
-    def thumbnail(self, obj: ProjectImage) -> SafeString:
+    def thumbnail(self, obj: Image) -> SafeString:
         return format_html(
             '<img src="{}" style="max-height: 50px; max-width: 100px;" />',
             obj.url,
         )
 
     @admin.display(description="Size")
-    def file_size_display(self, obj: ProjectImage) -> str:
+    def file_size_display(self, obj: Image) -> str:
         kb = 1024
         mb = kb * kb
         if obj.file_size < kb:
@@ -198,7 +198,7 @@ class ProjectAdmin(admin.ModelAdmin):
         "is_community_tipoff",
     )
     filter_horizontal = ("tags",)
-    inlines = [ProjectImageInline, ProjectCompetitionEntryInline, ProjectViewInline]
+    inlines = [ImageInline, ProjectCompetitionEntryInline, ProjectViewInline]
 
     fieldsets = (
         (
@@ -301,7 +301,7 @@ class ProjectAdmin(admin.ModelAdmin):
             )
             return
 
-        from apps.follows.services import anoint_house_project  # noqa: PLC0415
+        from apps.follows.services import anoint_house_project
 
         project = queryset.first()
         result = anoint_house_project(project)
@@ -533,20 +533,20 @@ class ImageVariantInline(admin.TabularInline):
     def has_add_permission(
         self,
         request: HttpRequest,
-        obj: ProjectImage | None = None,
+        obj: Image | None = None,
     ) -> bool:
         return False
 
     def has_delete_permission(
         self,
         request: HttpRequest,
-        obj: ProjectImage | None = None,
+        obj: Image | None = None,
     ) -> bool:
         return False
 
 
-@admin.register(ProjectImage)
-class ProjectImageAdmin(admin.ModelAdmin):
+@admin.register(Image)
+class ImageAdmin(admin.ModelAdmin):
     list_display = (
         "thumbnail",
         "original_filename",
@@ -607,21 +607,21 @@ class ProjectImageAdmin(admin.ModelAdmin):
     )
 
     @admin.display(description="Preview")
-    def thumbnail(self, obj: ProjectImage) -> SafeString:
+    def thumbnail(self, obj: Image) -> SafeString:
         return format_html(
             '<img src="{}" style="max-height: 50px; max-width: 80px;" />',
             obj.url,
         )
 
     @admin.display(description="Image Preview")
-    def thumbnail_large(self, obj: ProjectImage) -> SafeString:
+    def thumbnail_large(self, obj: Image) -> SafeString:
         return format_html(
             '<img src="{}" style="max-height: 300px; max-width: 500px;" />',
             obj.url,
         )
 
     @admin.display(description="Project", ordering="project__title")
-    def project_link(self, obj: ProjectImage) -> SafeString | str:
+    def project_link(self, obj: Image) -> SafeString | str:
         if obj.project:
             url = reverse("admin:projects_project_change", args=[obj.project.pk])
             title = obj.project.title or "Untitled"
@@ -629,7 +629,7 @@ class ProjectImageAdmin(admin.ModelAdmin):
         return "-"
 
     @admin.display(description="Size")
-    def file_size_display(self, obj: ProjectImage) -> str:
+    def file_size_display(self, obj: Image) -> str:
         kb = 1024
         mb = kb * kb
         if obj.file_size < kb:
@@ -639,16 +639,16 @@ class ProjectImageAdmin(admin.ModelAdmin):
         return f"{obj.file_size / mb:.1f} MB"
 
     @admin.display(description="Dimensions")
-    def dimensions(self, obj: ProjectImage) -> str:
+    def dimensions(self, obj: Image) -> str:
         if obj.width and obj.height:
             return f"{obj.width} x {obj.height}"
         return "-"
 
     @admin.display(description="Variants", ordering="variant_count")
-    def variant_count(self, obj: ProjectImage) -> int:
+    def variant_count(self, obj: Image) -> int:
         return obj.variant_count
 
-    def get_queryset(self, request: HttpRequest) -> QuerySet[ProjectImage]:
+    def get_queryset(self, request: HttpRequest) -> QuerySet[Image]:
         return (
             super()
             .get_queryset(request)

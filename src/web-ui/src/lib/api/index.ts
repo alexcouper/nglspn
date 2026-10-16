@@ -81,7 +81,7 @@ export type { Project, ProjectListItem, ProjectListResponse, ListProjectsParams 
 // Types - My Projects
 export type {
   ProjectCreate,
-  ProjectImage,
+  Image,
   PresignedUploadResponse,
 } from "./my-projects";
 

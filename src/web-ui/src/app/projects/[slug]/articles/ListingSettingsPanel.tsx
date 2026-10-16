@@ -3,7 +3,7 @@
 import { useTranslations } from "next-intl";
 import type { CropRect } from "@/components/CroppedImage";
 import { CroppedImage } from "@/components/CroppedImage";
-import type { Article, ProjectImage } from "@/lib/api";
+import type { Article, Image } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
 import { ArticleCardPreview } from "./ArticleCardPreview";
 import type { ListingImageMode } from "@/lib/api";
@@ -13,7 +13,7 @@ const SUMMARY_MAX = 300;
 interface Props {
   article: Article;
   summary: string;
-  listingImage: ProjectImage | null;
+  listingImage: Image | null;
   crop: CropRect | null;
   mode: ListingImageMode;
   onSummaryChange: (value: string) => void;

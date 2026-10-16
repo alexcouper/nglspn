@@ -19,12 +19,12 @@ from api.schemas.article import (
 )
 from api.schemas.errors import Error
 from api.schemas.project import (
+    ImageResponse,
     ImageUploadCompleteRequest,
     PresignedUploadResponse,
-    ProjectImageResponse,
 )
 from apps.articles.models import Article
-from apps.projects.models import Project, ProjectImage, UploadStatus
+from apps.projects.models import Image, Project, UploadStatus
 from apps.users.models import User
 from services import HANDLERS, REPO
 from services.articles.exceptions import (
@@ -277,7 +277,7 @@ def delete_article(
 # ----------------------------------------------------------------------
 # Article images
 #
-# The rows live on `ProjectImage` so they share the storage and variant
+# The rows live on `Image` so they share the storage and variant
 # pipeline, but they are addressed here because they belong to an article.
 # Ownership is the same `require_full_edit` + `_get_article_in_project` pair
 # the rest of this router uses.
@@ -295,7 +295,7 @@ def _get_editable_article(
 
 def _get_article_image_or_404(
     article: Article, image_id: UUID, *, status: UploadStatus | None = None
-) -> ProjectImage | tuple[int, dict[str, str]]:
+) -> Image | tuple[int, dict[str, str]]:
     image = REPO.images.get_article_image(article, image_id, status=status)
     if image is None:
         return 404, {"detail": "Image not found"}
@@ -348,7 +348,7 @@ def get_article_image_upload_url(
 @router.post(
     "/{slug}/articles/{article_id}/images/{image_id}/complete",
     response={
-        200: ProjectImageResponse,
+        200: ImageResponse,
         400: Error,
         401: Error,
         403: Error,
@@ -363,7 +363,7 @@ def complete_article_image_upload(
     article_id: UUID,
     image_id: UUID,
     payload: ImageUploadCompleteRequest,
-) -> ProjectImage | tuple[int, dict[str, str]]:
+) -> Image | tuple[int, dict[str, str]]:
     article = _get_editable_article(slug, article_id, request.auth.id)
     if isinstance(article, tuple):
         return article

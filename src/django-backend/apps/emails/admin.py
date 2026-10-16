@@ -186,7 +186,7 @@ class BroadcastEmailAdmin(admin.ModelAdmin):
         return HttpResponse(html)
 
     def send_view(self, request: HttpRequest, pk: str) -> HttpResponse:
-        from api.tasks.email import send_broadcast_email  # noqa: PLC0415
+        from api.tasks.email import send_broadcast_email
 
         broadcast = get_object_or_404(BroadcastEmail, pk=pk)
         change_url = reverse(

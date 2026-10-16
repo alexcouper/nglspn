@@ -15,7 +15,7 @@ import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
 import { ApiRequestError } from "@/lib/api/base";
 import { describeApiError } from "@/lib/api/errors";
-import type { Project, ProjectImage } from "@/lib/api";
+import type { Project, Image } from "@/lib/api";
 import { ProjectDetailContent } from "@/app/projects/[slug]/ProjectDetailContent";
 import { EditProjectContent } from "./EditProjectContent";
 import { DeleteConfirmationDialog } from "./DeleteConfirmationDialog";
@@ -59,7 +59,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const [publishedProject, setPublishedProject] = useState<Project | null>(null);
   const [competitionError, setCompetitionError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
-  const [images, setImages] = useState<ProjectImage[]>([]);
+  const [images, setImages] = useState<Image[]>([]);
   const [selectedTags, setSelectedTags] = useState<SelectedTag[]>([]);
 
   // Object literals here would change identity on every render, which is what

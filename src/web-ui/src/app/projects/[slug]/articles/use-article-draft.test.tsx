@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { StrictMode, act } from "react";
 import { createRoot } from "react-dom/client";
-import type { Article, Channel, Project, ProjectImage } from "@/lib/api";
+import type { Article, Channel, Project, Image } from "@/lib/api";
 import type { CropRect } from "@/components/CroppedImage";
 import { useArticleDraft } from "./useArticleDraft";
 
@@ -61,7 +61,7 @@ function project(overrides: Partial<Project> = {}): Project {
   } as unknown as Project;
 }
 
-function image(overrides: Partial<ProjectImage> = {}): ProjectImage {
+function image(overrides: Partial<Image> = {}): Image {
   return {
     id: "image-1",
     url: "https://cdn.example/one.png",
@@ -70,7 +70,7 @@ function image(overrides: Partial<ProjectImage> = {}): ProjectImage {
     height: 900,
     variants: [],
     ...overrides,
-  } as unknown as ProjectImage;
+  } as unknown as Image;
 }
 
 function article(overrides: Partial<Article> = {}): Article {

@@ -23,9 +23,9 @@ from apps.projects.models import (
 )
 from tests.factories import (
     CompetitionFactory,
+    ImageFactory,
     ProjectCategoryFactory,
     ProjectFactory,
-    ProjectImageFactory,
     ProjectRankingFactory,
     ReviewerGroupFactory,
     UserFactory,
@@ -377,7 +377,7 @@ class TestGetMyReviewCompetition:
         )
         # Image with a medium variant so we can assert the ballot picks the
         # sized URL rather than the original.
-        image = ProjectImageFactory(
+        image = ImageFactory(
             project=project,
             is_main=True,
             upload_status="uploaded",
@@ -444,10 +444,8 @@ class TestGetMyReviewCompetition:
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory()
-        ProjectImageFactory(project=project, is_main=True, storage_key="main.jpg")
-        in_use = ProjectImageFactory(
-            project=project, is_usage=True, storage_key="in-use.jpg"
-        )
+        ImageFactory(project=project, is_main=True, storage_key="main.jpg")
+        in_use = ImageFactory(project=project, is_usage=True, storage_key="in-use.jpg")
         competition = voting_competition(projects=[project])
         review_of(user, competition)
 
@@ -464,7 +462,7 @@ class TestGetMyReviewCompetition:
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory()
-        main = ProjectImageFactory(project=project, is_main=True)
+        main = ImageFactory(project=project, is_main=True)
         competition = voting_competition(projects=[project])
         review_of(user, competition)
 
@@ -481,7 +479,7 @@ class TestGetMyReviewCompetition:
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory()
-        ProjectImageFactory(project=project, is_main=True, upload_status="pending")
+        ImageFactory(project=project, is_main=True, upload_status="pending")
         competition = voting_competition(projects=[project])
         review_of(user, competition)
 
@@ -506,7 +504,7 @@ class TestGetMyReviewCompetition:
         for i in range(3):
             project = ProjectFactory(title=f"Project {i}")
             competition.projects.add(project)
-            image = ProjectImageFactory(
+            image = ImageFactory(
                 project=project,
                 is_main=True,
                 upload_status="uploaded",
@@ -934,7 +932,7 @@ class TestGetReviewProject:
 
     def test_returns_project_images(self, client, user, auth_headers) -> None:
         project = ProjectFactory(status=ProjectStatus.PENDING)
-        image = ProjectImageFactory(project=project, upload_status="uploaded")
+        image = ImageFactory(project=project, upload_status="uploaded")
         competition = voting_competition(projects=[project])
         review_of(user, competition)
 

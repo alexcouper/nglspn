@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { Article, ProjectImage } from "@/lib/api";
+import type { Article, Image } from "@/lib/api";
 import type { CropRect } from "@/components/CroppedImage";
 import { ArticleCardPreview, toListItem } from "./ArticleCardPreview";
 import { ListingSettingsPanel } from "./ListingSettingsPanel";
@@ -48,11 +48,11 @@ function buttonLabelled(container: HTMLElement, label: string): HTMLElement {
 
 // --------------------------------------------------------------- factories
 
-// Only the fields these components read; the rest of ProjectImage is
+// Only the fields these components read; the rest of Image is
 // irrelevant here.
 function listingImage(
-  overrides: Partial<ProjectImage> = {},
-): ProjectImage {
+  overrides: Partial<Image> = {},
+): Image {
   return {
     id: "img-1",
     url: "https://cdn.example/listing.png",
@@ -61,7 +61,7 @@ function listingImage(
     height: 2000,
     variants: [],
     ...overrides,
-  } as unknown as ProjectImage;
+  } as unknown as Image;
 }
 
 function article(overrides: Partial<Article> = {}): Article {

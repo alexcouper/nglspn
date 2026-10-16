@@ -7,7 +7,7 @@ from ninja import Schema
 from apps.articles.models import ListingImageMode
 from services.articles.summary import derive_summary
 
-from .project import ProjectImageResponse
+from .project import ImageResponse
 from .user import PublicUserProfile
 
 
@@ -101,11 +101,11 @@ class ArticleOut(Schema):
     # The full image, with variants. The editor needs this: article images are
     # excluded from `ProjectResponse.images`, so it cannot look the listing
     # image up there when loading an article for editing.
-    listing_image: ProjectImageResponse | None
+    listing_image: ImageResponse | None
     # Every image uploaded for this article. This is the listing-image wizard's
     # selection list — it comes off the image-article link, so no second
     # endpoint and no parsing of the body are needed for it.
-    images: list[ProjectImageResponse]
+    images: list[ImageResponse]
     slug: str | None
     source: str
     external_url: str | None

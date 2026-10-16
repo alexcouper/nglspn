@@ -2322,7 +2322,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectImageResponse"
+                  "$ref": "#/components/schemas/ImageResponse"
                 }
               }
             }
@@ -3607,7 +3607,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectImageResponse"
+                  "$ref": "#/components/schemas/ImageResponse"
                 }
               }
             }
@@ -3693,7 +3693,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectImageResponse"
+                  "$ref": "#/components/schemas/ImageResponse"
                 }
               }
             }
@@ -5925,58 +5925,7 @@
         "title": "ContributorSummary",
         "type": "object"
       },
-      "ImageVariantResponse": {
-        "properties": {
-          "size": {
-            "title": "Size",
-            "type": "string"
-          },
-          "url": {
-            "title": "Url",
-            "type": "string"
-          },
-          "width": {
-            "title": "Width",
-            "type": "integer"
-          },
-          "height": {
-            "title": "Height",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "size",
-          "url",
-          "width",
-          "height"
-        ],
-        "title": "ImageVariantResponse",
-        "type": "object"
-      },
-      "ProjectEntryResponse": {
-        "properties": {
-          "competition": {
-            "$ref": "#/components/schemas/CompetitionSummary"
-          },
-          "entered_at": {
-            "format": "date-time",
-            "title": "Entered At",
-            "type": "string"
-          },
-          "entered_via": {
-            "title": "Entered Via",
-            "type": "string"
-          }
-        },
-        "required": [
-          "competition",
-          "entered_at",
-          "entered_via"
-        ],
-        "title": "ProjectEntryResponse",
-        "type": "object"
-      },
-      "ProjectImageResponse": {
+      "ImageResponse": {
         "properties": {
           "id": {
             "format": "uuid",
@@ -6075,7 +6024,58 @@
           "upload_status",
           "created_at"
         ],
-        "title": "ProjectImageResponse",
+        "title": "ImageResponse",
+        "type": "object"
+      },
+      "ImageVariantResponse": {
+        "properties": {
+          "size": {
+            "title": "Size",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "size",
+          "url",
+          "width",
+          "height"
+        ],
+        "title": "ImageVariantResponse",
+        "type": "object"
+      },
+      "ProjectEntryResponse": {
+        "properties": {
+          "competition": {
+            "$ref": "#/components/schemas/CompetitionSummary"
+          },
+          "entered_at": {
+            "format": "date-time",
+            "title": "Entered At",
+            "type": "string"
+          },
+          "entered_via": {
+            "title": "Entered Via",
+            "type": "string"
+          }
+        },
+        "required": [
+          "competition",
+          "entered_at",
+          "entered_via"
+        ],
+        "title": "ProjectEntryResponse",
         "type": "object"
       },
       "ProjectResponse": {
@@ -6209,7 +6209,7 @@
           "images": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/ProjectImageResponse"
+              "$ref": "#/components/schemas/ImageResponse"
             },
             "title": "Images",
             "type": "array"
@@ -6633,7 +6633,7 @@
           "listing_image": {
             "anyOf": [
               {
-                "$ref": "#/components/schemas/ProjectImageResponse"
+                "$ref": "#/components/schemas/ImageResponse"
               },
               {
                 "type": "null"
@@ -6642,7 +6642,7 @@
           },
           "images": {
             "items": {
-              "$ref": "#/components/schemas/ProjectImageResponse"
+              "$ref": "#/components/schemas/ImageResponse"
             },
             "title": "Images",
             "type": "array"
@@ -8049,7 +8049,7 @@
           "images": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/ProjectImageResponse"
+              "$ref": "#/components/schemas/ImageResponse"
             },
             "title": "Images",
             "type": "array"

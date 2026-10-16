@@ -36,8 +36,8 @@ from apps.projects.models import (
     CompetitionReviewer,
     CompetitionStatus,
     EntrySource,
+    Image,
     Project,
-    ProjectImage,
     ProjectRanking,
     ProjectStatus,
     UploadStatus,
@@ -552,7 +552,7 @@ def create_project_images(projects: list[Project]) -> int:
             print(f"  Images already exist for: {project.title}")
             continue
         for i, img in enumerate(images):
-            ProjectImage.objects.create(
+            Image.objects.create(
                 project=project,
                 storage_key=img["storage_key"],
                 original_filename=img["filename"],

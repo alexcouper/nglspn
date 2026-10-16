@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api";
-import type { Article, Project, ProjectImage } from "@/lib/api";
+import type { Article, Project, Image } from "@/lib/api";
 import type { CropRect } from "@/components/CroppedImage";
 import {
   type ArticleFormFields,
@@ -132,7 +132,7 @@ export function useArticleDraft({ project, articleId }: Options) {
   // Any choice commits the mode, so the next save does not re-derive the image
   // out from under a rectangle they just drew.
   const chooseListingImage = useCallback(
-    (image: ProjectImage, crop: CropRect | null) => {
+    (image: Image, crop: CropRect | null) => {
       adoptImage(image);
       updateFields({
         listing_image_id: image.id,

@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 
 from django.db.models import Prefetch
 
-from apps.projects.models import ProjectImage
+from apps.projects.models import Image
 from services.images.query_interface import ImageQueryInterface
 
 if TYPE_CHECKING:
@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from apps.projects.models import Project, UploadStatus
 
 
-def gallery_images() -> QuerySet[ProjectImage]:
+def gallery_images() -> QuerySet[Image]:
     """Images that describe the project itself.
 
     Excludes article uploads, which live on the project but belong to an
@@ -25,7 +25,7 @@ def gallery_images() -> QuerySet[ProjectImage]:
     in this module.
     """
     return (
-        ProjectImage.objects.uploaded()
+        Image.objects.uploaded()
         .filter(article__isnull=True)
         .prefetch_related("variants")
     )
@@ -48,10 +48,8 @@ class DjangoImageQuery(ImageQueryInterface):
         image_id: UUID | str,
         *,
         status: UploadStatus | None = None,
-    ) -> ProjectImage | None:
-        qs = ProjectImage.objects.filter(
-            pk=image_id, project=project, article__isnull=True
-        )
+    ) -> Image | None:
+        qs = Image.objects.filter(pk=image_id, project=project, article__isnull=True)
         if status is not None:
             qs = qs.filter(upload_status=status)
         return qs.first()
@@ -62,8 +60,8 @@ class DjangoImageQuery(ImageQueryInterface):
         image_id: UUID | str,
         *,
         status: UploadStatus | None = None,
-    ) -> ProjectImage | None:
-        qs = ProjectImage.objects.filter(pk=image_id, article=article)
+    ) -> Image | None:
+        qs = Image.objects.filter(pk=image_id, article=article)
         if status is not None:
             qs = qs.filter(upload_status=status)
         return qs.first()

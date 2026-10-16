@@ -10,7 +10,7 @@ class Command(BaseCommand):
     help = "Enqueue the task that deletes old read notifications."
 
     def handle(self, *args, **options) -> None:
-        from api.tasks.notifications import (  # noqa: PLC0415
+        from api.tasks.notifications import (
             delete_old_read_notifications,
         )
 

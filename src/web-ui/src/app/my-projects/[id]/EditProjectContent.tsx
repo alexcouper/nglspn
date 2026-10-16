@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
-import type { Project, ProjectImage } from "@/lib/api";
+import type { Project, Image } from "@/lib/api";
 import { ImageDropZone, UploadProgress } from "@/components/ImageUpload";
 import { ImageRoleDialog } from "@/components/ImageRoleDialog";
 import { TagSidebarSelector } from "@/components/TagSidebarSelector";
@@ -28,7 +28,7 @@ interface EditProjectContentProps {
   formData: ProjectFormData;
   onChange: (data: ProjectFormData) => void;
   onTagsChange: (tags: SelectedTag[]) => void;
-  images: ProjectImage[];
+  images: Image[];
   uploads: UploadProgressItem[];
   isUploading: boolean;
   onFilesSelected: (files: FileList) => void;
@@ -37,7 +37,7 @@ interface EditProjectContentProps {
     roles: { is_main?: boolean; is_hero?: boolean; is_usage?: boolean }
   ) => void;
   onDeleteImage: (imageId: string) => void;
-  iconImage: ProjectImage | null;
+  iconImage: Image | null;
   onIconFilesSelected: (files: FileList) => void;
   onDeleteIcon: (imageId: string) => void;
   // Competitions live under Settings, so the standing has to come this far
@@ -74,7 +74,7 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function RoleBadges({ image }: { image: ProjectImage }) {
+function RoleBadges({ image }: { image: Image }) {
   const t = useTranslations("my-projects.editContent.roleBadges");
   const badges: { role: "main" | "hero" | "usage"; color: string }[] = [];
   if (image.is_main) badges.push({ role: "main", color: "bg-accent" });
@@ -116,7 +116,7 @@ export function EditProjectContent({
 }: EditProjectContentProps) {
   const t = useTranslations("my-projects.editContent");
   const authorName = getAuthorName(project.creator);
-  const [roleDialogImage, setRoleDialogImage] = useState<ProjectImage | null>(
+  const [roleDialogImage, setRoleDialogImage] = useState<Image | null>(
     null
   );
 
@@ -294,7 +294,7 @@ export function EditProjectContent({
             // Update the dialog's local view of the image
             const updated = images.find((img) => img.id === imageId);
             if (updated) {
-              setRoleDialogImage({ ...updated, ...roles } as ProjectImage);
+              setRoleDialogImage({ ...updated, ...roles } as Image);
             }
           }}
           onDelete={onDeleteImage}

@@ -11,9 +11,9 @@ from apps.projects.models import (
     CompetitionEntry,
     ContributorRole,
     EntrySource,
+    Image,
     Project,
     ProjectContributor,
-    ProjectImage,
     ProjectStatus,
 )
 from apps.projects.slugs import assign_unique_slug
@@ -55,7 +55,7 @@ def _validate_tags(tag_ids: list[UUID]) -> QuerySet[Tag]:
 
 
 def _enqueue_new_project_notification(project: Project) -> None:
-    from api.tasks import email as email_tasks  # noqa: PLC0415
+    from api.tasks import email as email_tasks
 
     try:
         email_tasks.send_new_project_notification.enqueue(str(project.id))
@@ -301,7 +301,7 @@ def _publish_preconditions_missing(project: Project) -> list[str]:
     if not (project.description and project.description.strip()):
         missing.append("description")
     has_main_image = (
-        ProjectImage.objects.uploaded().filter(project=project, is_main=True).exists()
+        Image.objects.uploaded().filter(project=project, is_main=True).exists()
     )
     if not has_main_image:
         missing.append("main_image")

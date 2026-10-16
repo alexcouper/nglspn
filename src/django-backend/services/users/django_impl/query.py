@@ -6,9 +6,9 @@ from django.contrib.auth import get_user_model
 
 from apps.articles.models import Article
 from apps.projects.models import (
+    Image,
     Project,
     ProjectContributor,
-    ProjectImage,
     ProjectStatus,
     UploadStatus,
 )
@@ -34,7 +34,7 @@ if TYPE_CHECKING:
     from apps.users.models import User
 
 
-def _main_image(project: Project) -> ProjectImage | None:
+def _main_image(project: Project) -> Image | None:
     """The cover, else the first gallery image — the listing card's rule.
 
     Reads the prefetched relation; `variant_url` then falls back to the

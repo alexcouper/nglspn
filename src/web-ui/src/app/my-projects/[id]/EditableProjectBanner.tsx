@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { CameraIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
-import type { ProjectImage } from "@/lib/api";
+import type { Image } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
 import { TipoffBadge } from "@/components/TipoffBadge";
 import type { ProjectFormData } from "./ProjectDetail";
@@ -13,7 +13,7 @@ interface EditableProjectBannerProps {
   authorName: string;
   isTipoff: boolean;
   onChange: (data: ProjectFormData) => void;
-  iconImage?: ProjectImage | null;
+  iconImage?: Image | null;
   onIconFilesSelected?: (files: FileList) => void;
   onDeleteIcon?: (imageId: string) => void;
 }

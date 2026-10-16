@@ -7,8 +7,8 @@ from apps.projects.models import Competition, CompetitionStatus, Project, Projec
 from tests.factories import (
     ArticleFactory,
     CompetitionFactory,
+    ImageFactory,
     ProjectFactory,
-    ProjectImageFactory,
     TagFactory,
     article_image,
 )
@@ -290,7 +290,7 @@ class TestCompetitionWinnerImage:
         self, client, read_winner
     ) -> None:
         competition, winner = _competition_with_winner()
-        main_image = ProjectImageFactory(project=winner, is_main=True)
+        main_image = ImageFactory(project=winner, is_main=True)
 
         assert_that(
             read_winner(client, competition)["main_image_url"],
@@ -309,7 +309,7 @@ class TestCompetitionWinnerImage:
     @both_winner_endpoints
     def test_ignores_an_upload_that_never_completed(self, client, read_winner) -> None:
         competition, winner = _competition_with_winner()
-        ProjectImageFactory(project=winner, is_main=True, upload_status="pending")
+        ImageFactory(project=winner, is_main=True, upload_status="pending")
 
         assert_that(read_winner(client, competition)["main_image_url"], equal_to(None))
 

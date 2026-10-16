@@ -18,9 +18,9 @@ from apps.projects.models import (
 from tests.factories import (
     ArticleFactory,
     ChannelFactory,
+    ImageFactory,
     PendingArticleFactory,
     ProjectFactory,
-    ProjectImageFactory,
     PublishedArticleFactory,
     article_image,
 )
@@ -125,7 +125,7 @@ class TestCreateArticle:
     ) -> None:
         project = ProjectFactory(owner=user)
         article = ArticleFactory(project=project)
-        foreign_image = ProjectImageFactory()  # belongs to a different project
+        foreign_image = ImageFactory()  # belongs to a different project
 
         response = _patch(
             client,
@@ -1085,7 +1085,7 @@ class TestRouterHasNoOrmAccess:
     directly. All DB access goes through HANDLERS / REPO.
 
     Two spellings, because banning `<Model>.objects` alone misses the one the
-    file actually used: `get_object_or_404(ProjectImage, ...)` takes the model
+    file actually used: `get_object_or_404(Image, ...)` takes the model
     class and reaches `_default_manager` itself, writing no `.objects` at all.
     Model names are not banned — they are legitimate return annotations.
 
@@ -1100,7 +1100,7 @@ class TestRouterHasNoOrmAccess:
             "Article.objects",
             "Channel.objects",
             "FollowedChannel.objects",
-            "ProjectImage.objects",
+            "Image.objects",
             "get_object_or_404",
         ):
             assert forbidden not in text, (
@@ -1189,7 +1189,7 @@ class TestArticleImageList:
         project = ProjectFactory(owner=user)
         article = ArticleFactory(project=project)
         mine = article_image(article)
-        ProjectImageFactory(project=project)
+        ImageFactory(project=project)
         article_image(ArticleFactory(project=project))
 
         response = client.get(

@@ -13,8 +13,8 @@ from hamcrest import (
 from moto import mock_aws
 
 from apps.projects.models import (
+    Image,
     ImageVariant,
-    ProjectImage,
     ProjectStatus,
     UploadStatus,
     VariantSize,
@@ -145,7 +145,7 @@ class TestGetUploadUrl:
         project = ProjectFactory(owner=user)
         # Create 10 uploaded images
         for i in range(10):
-            ProjectImage.objects.create(
+            Image.objects.create(
                 project=project,
                 storage_key=f"test/key{i}.png",
                 original_filename=f"image{i}.png",
@@ -196,7 +196,7 @@ class TestCompleteUpload:
         mock_storage_service,
     ) -> None:
         # Create pending image
-        image = ProjectImage.objects.create(
+        image = Image.objects.create(
             project=project,
             storage_key="test/key.png",
             original_filename="test.png",
@@ -232,7 +232,7 @@ class TestCompleteUpload:
         auth_headers,
         mock_storage_service,
     ) -> None:
-        image = ProjectImage.objects.create(
+        image = Image.objects.create(
             project=project,
             storage_key="test/key.png",
             original_filename="test.png",
@@ -265,7 +265,7 @@ class TestCompleteUpload:
         auth_headers,
         mock_storage_service,
     ) -> None:
-        image = ProjectImage.objects.create(
+        image = Image.objects.create(
             project=project,
             storage_key="test/first.png",
             original_filename="first.png",
@@ -298,7 +298,7 @@ class TestCompleteUpload:
         auth_headers,
         mock_storage_service,
     ) -> None:
-        image = ProjectImage.objects.create(
+        image = Image.objects.create(
             project=project,
             storage_key="test/missing.png",
             original_filename="missing.png",
@@ -326,7 +326,7 @@ class TestDeleteImage:
         auth_headers,
         mock_storage_service,
     ) -> None:
-        image = ProjectImage.objects.create(
+        image = Image.objects.create(
             project=project,
             storage_key="test/delete-me.png",
             original_filename="delete-me.png",
@@ -347,7 +347,7 @@ class TestDeleteImage:
         )
 
         assert_that(response.status_code, equal_to(204))
-        assert_that(ProjectImage.objects.filter(id=image.id).exists(), is_(False))
+        assert_that(Image.objects.filter(id=image.id).exists(), is_(False))
 
     def test_deletes_variant_files_and_db_rows(
         self,
@@ -356,7 +356,7 @@ class TestDeleteImage:
         auth_headers,
         mock_storage_service,
     ) -> None:
-        image = ProjectImage.objects.create(
+        image = Image.objects.create(
             project=project,
             storage_key="test/delete-me.jpg",
             original_filename="delete-me.jpg",
@@ -392,7 +392,7 @@ class TestDeleteImage:
         )
 
         assert_that(response.status_code, equal_to(204))
-        assert_that(ProjectImage.objects.filter(id=image.id).exists(), is_(False))
+        assert_that(Image.objects.filter(id=image.id).exists(), is_(False))
         assert_that(ImageVariant.objects.filter(image_id=image.id).count(), equal_to(0))
 
     def test_promotes_next_image_to_main_when_main_deleted(
@@ -402,7 +402,7 @@ class TestDeleteImage:
         auth_headers,
         mock_storage_service,
     ) -> None:
-        main_image = ProjectImage.objects.create(
+        main_image = Image.objects.create(
             project=project,
             storage_key="test/main.png",
             original_filename="main.png",
@@ -412,7 +412,7 @@ class TestDeleteImage:
             is_main=True,
             display_order=0,
         )
-        second_image = ProjectImage.objects.create(
+        second_image = Image.objects.create(
             project=project,
             storage_key="test/second.png",
             original_filename="second.png",
@@ -446,7 +446,7 @@ class TestUpdateImageRoles:
         project,
         auth_headers,
     ) -> None:
-        image1 = ProjectImage.objects.create(
+        image1 = Image.objects.create(
             project=project,
             storage_key="test/img1.png",
             original_filename="img1.png",
@@ -455,7 +455,7 @@ class TestUpdateImageRoles:
             upload_status=UploadStatus.UPLOADED,
             is_main=True,
         )
-        image2 = ProjectImage.objects.create(
+        image2 = Image.objects.create(
             project=project,
             storage_key="test/img2.png",
             original_filename="img2.png",
@@ -484,7 +484,7 @@ class TestUpdateImageRoles:
         project,
         auth_headers,
     ) -> None:
-        image = ProjectImage.objects.create(
+        image = Image.objects.create(
             project=project,
             storage_key="test/img1.png",
             original_filename="img1.png",
@@ -512,7 +512,7 @@ class TestUpdateImageRoles:
         project,
         auth_headers,
     ) -> None:
-        image1 = ProjectImage.objects.create(
+        image1 = Image.objects.create(
             project=project,
             storage_key="test/img1.png",
             original_filename="img1.png",
@@ -521,7 +521,7 @@ class TestUpdateImageRoles:
             upload_status=UploadStatus.UPLOADED,
             is_hero=True,
         )
-        image2 = ProjectImage.objects.create(
+        image2 = Image.objects.create(
             project=project,
             storage_key="test/img2.png",
             original_filename="img2.png",
@@ -549,7 +549,7 @@ class TestUpdateImageRoles:
         project,
         auth_headers,
     ) -> None:
-        image = ProjectImage.objects.create(
+        image = Image.objects.create(
             project=project,
             storage_key="test/img1.png",
             original_filename="img1.png",
@@ -602,7 +602,7 @@ class TestImageAuthorization:
         other_project,
         auth_headers,
     ) -> None:
-        image = ProjectImage.objects.create(
+        image = Image.objects.create(
             project=other_project,
             storage_key="test/other.png",
             original_filename="other.png",
@@ -617,7 +617,7 @@ class TestImageAuthorization:
         )
 
         assert_that(response.status_code, equal_to(404))
-        assert_that(ProjectImage.objects.filter(id=image.id).exists(), is_(True))
+        assert_that(Image.objects.filter(id=image.id).exists(), is_(True))
 
 
 def upload_url_payload(**overrides) -> dict:
@@ -648,8 +648,8 @@ def complete_upload(client, project, image, auth_headers, storage):
         )
 
 
-def make_uploaded_image(project, index: int = 0, **overrides) -> ProjectImage:
-    return ProjectImage.objects.create(
+def make_uploaded_image(project, index: int = 0, **overrides) -> Image:
+    return Image.objects.create(
         project=project,
         storage_key=f"test/key{index}.png",
         original_filename=f"image{index}.png",
@@ -661,8 +661,8 @@ def make_uploaded_image(project, index: int = 0, **overrides) -> ProjectImage:
     )
 
 
-def make_pending_image(project, **overrides) -> ProjectImage:
-    return ProjectImage.objects.create(
+def make_pending_image(project, **overrides) -> Image:
+    return Image.objects.create(
         project=project,
         storage_key="test/pending.png",
         original_filename="pending.png",
@@ -691,7 +691,7 @@ class TestArticleLinkedImages:
     ) -> None:
         response = request_upload_url(client, project, auth_headers)
 
-        image = ProjectImage.objects.get(id=response.json()["image_id"])
+        image = Image.objects.get(id=response.json()["image_id"])
         assert_that(image.article_id, equal_to(None))
 
     def test_article_images_do_not_count_toward_the_image_cap(
@@ -739,7 +739,7 @@ class TestArticleLinkedImages:
         )
 
         assert_that(response.status_code, equal_to(404))
-        assert_that(ProjectImage.objects.filter(id=image.id).exists(), is_(True))
+        assert_that(Image.objects.filter(id=image.id).exists(), is_(True))
 
     def test_deleting_the_main_image_does_not_promote_an_article_image(
         self,

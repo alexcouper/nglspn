@@ -6,11 +6,11 @@ from unittest.mock import patch
 import boto3
 import pytest
 from moto import mock_aws
-from PIL import Image
+from PIL import Image as PILImage
 
 from apps.projects.models import ImageVariant, UploadStatus, VariantSize
 from services.images.django_impl.handler import DjangoImageHandler
-from tests.factories import ProjectImageFactory
+from tests.factories import ImageFactory
 
 TEST_BUCKET = "test-bucket"
 TEST_REGION = "us-east-1"
@@ -18,7 +18,7 @@ TEST_REGION = "us-east-1"
 
 def _create_test_image(width: int, height: int, fmt: str = "JPEG") -> bytes:
     """Create a test image of the given dimensions and return as bytes."""
-    img = Image.new("RGB", (width, height), color="red")
+    img = PILImage.new("RGB", (width, height), color="red")
     buffer = io.BytesIO()
     img.save(buffer, format=fmt)
     return buffer.getvalue()
@@ -67,7 +67,7 @@ class TestGenerateVariants:
             Body=image_bytes,
         )
 
-        image = ProjectImageFactory(
+        image = ImageFactory(
             storage_key="projects/abc/def123/photo.jpg",
             width=4000,
             height=2250,
@@ -100,7 +100,7 @@ class TestGenerateVariants:
             Body=image_bytes,
         )
 
-        image = ProjectImageFactory(
+        image = ImageFactory(
             storage_key="projects/abc/def123/photo.jpg",
             width=500,
             height=300,
@@ -121,7 +121,7 @@ class TestGenerateVariants:
             Body=image_bytes,
         )
 
-        image = ProjectImageFactory(
+        image = ImageFactory(
             storage_key="projects/abc/def123/tiny.png",
             width=200,
             height=150,
@@ -140,7 +140,7 @@ class TestGenerateVariants:
             Body=image_bytes,
         )
 
-        image = ProjectImageFactory(
+        image = ImageFactory(
             storage_key="projects/abc/def123/photo.jpg",
             width=4000,
             height=2250,
@@ -185,7 +185,7 @@ class TestGenerateVariants:
         assert VariantSize.LARGE in sizes
 
     def test_skips_pending_image(self, handler):
-        image = ProjectImageFactory(
+        image = ImageFactory(
             width=4000,
             height=2250,
             upload_status=UploadStatus.PENDING,
@@ -203,7 +203,7 @@ class TestGenerateVariants:
             Body=image_bytes,
         )
 
-        image = ProjectImageFactory(
+        image = ImageFactory(
             storage_key="projects/abc/def123/photo.jpg",
             width=None,
             height=None,
@@ -227,7 +227,7 @@ class TestGenerateVariants:
             Body=image_bytes,
         )
 
-        image = ProjectImageFactory(
+        image = ImageFactory(
             storage_key="projects/abc/def123/photo.jpg",
             width=4000,
             height=2250,

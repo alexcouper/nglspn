@@ -8,7 +8,7 @@ import { ImageCropper, defaultCrop } from "@/components/ImageCropper";
 import type { CropRect } from "@/components/CroppedImage";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import { api } from "@/lib/api";
-import type { ProjectImage } from "@/lib/api";
+import type { Image } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
 
 // Listing cards are always 16:9 so a grid of them stays uniform. Mirrors
@@ -23,9 +23,9 @@ const TITLE_ID = "listing-image-dialog-title";
 // backend's variant job backfills them from the file itself. Narrowing here
 // rather than checking at each use keeps the cropper and defaultCrop from ever
 // seeing a null.
-type CroppableImage = ProjectImage & { width: number; height: number };
+type CroppableImage = Image & { width: number; height: number };
 
-function isCroppable(image: ProjectImage): image is CroppableImage {
+function isCroppable(image: Image): image is CroppableImage {
   return Boolean(image.width && image.height);
 }
 
@@ -38,10 +38,10 @@ interface Props {
   // Every image uploaded for this article, from the image-article link. Not
   // parsed out of the body, so an image the author uploaded here is offered on
   // the same footing as one they inserted into the article.
-  images: ProjectImage[];
+  images: Image[];
   currentImageId: string | null;
   currentCrop: CropRect | null;
-  onConfirm: (image: ProjectImage, crop: CropRect) => void;
+  onConfirm: (image: Image, crop: CropRect) => void;
   onRemove: () => void;
   onClose: () => void;
 }
@@ -69,7 +69,7 @@ export function ListingImageDialog({
   const [error, setError] = useState("");
   // An upload the article has not adopted yet. Cancelling deletes it, so a
   // change of mind does not leave a file behind.
-  const [pendingUpload, setPendingUpload] = useState<ProjectImage | null>(null);
+  const [pendingUpload, setPendingUpload] = useState<Image | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // A fresh object literal here would change identity on every render, which
@@ -94,7 +94,7 @@ export function ListingImageDialog({
   // it — not from the picker, not from a fresh upload. A rectangle drawn on one
   // image means nothing on another, so only the image that is already chosen
   // reopens on its stored crop.
-  function openFraming(image: ProjectImage) {
+  function openFraming(image: Image) {
     if (!isCroppable(image)) {
       setError(t("uncroppable"));
       return;
@@ -238,7 +238,7 @@ function PickStep({
   onSelect,
   onFile,
 }: {
-  images: ProjectImage[];
+  images: Image[];
   selectedId: string | null;
   isUploading: boolean;
   inputRef: React.RefObject<HTMLInputElement | null>;

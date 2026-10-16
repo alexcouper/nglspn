@@ -17,9 +17,9 @@ from services.review.eligibility import REVIEW_ENDED, effective_status
 from tests.factories import (
     CompetitionFactory,
     CompetitionReviewerFactory,
+    ImageFactory,
     ProjectCategoryFactory,
     ProjectFactory,
-    ProjectImageFactory,
     ProjectRankingFactory,
     ReviewerGroupFactory,
     UserFactory,
@@ -230,7 +230,7 @@ class TestGetReviewerProjects:
 
     def test_hides_images_that_are_still_uploading(self, query) -> None:
         competition, (project,) = competition_with_projects(1)
-        ProjectImageFactory(project=project, upload_status="pending", is_main=True)
+        ImageFactory(project=project, upload_status="pending", is_main=True)
         reviewer = UserFactory()
 
         result = query.get_reviewer_projects(reviewer.id, competition.id)
@@ -239,7 +239,7 @@ class TestGetReviewerProjects:
 
     def test_keeps_uploaded_images(self, query) -> None:
         competition, (project,) = competition_with_projects(1)
-        uploaded = ProjectImageFactory(project=project, is_main=True)
+        uploaded = ImageFactory(project=project, is_main=True)
         reviewer = UserFactory()
 
         result = query.get_reviewer_projects(reviewer.id, competition.id)
@@ -252,8 +252,8 @@ class TestGetReviewerProjects:
         competition, (project,) = competition_with_projects(
             1, category=ProjectCategoryFactory(name="Conservation")
         )
-        in_use = ProjectImageFactory(project=project, is_usage=True)
-        hero = ProjectImageFactory(project=project, is_hero=True)
+        in_use = ImageFactory(project=project, is_usage=True)
+        hero = ImageFactory(project=project, is_hero=True)
         reviewer = UserFactory()
 
         entry = query.get_reviewer_projects(reviewer.id, competition.id).pool[0]
@@ -266,7 +266,7 @@ class TestGetReviewerProjects:
         self, query
     ) -> None:
         competition, (project,) = competition_with_projects(1)
-        ProjectImageFactory(project=project, is_main=True, upload_status="pending")
+        ImageFactory(project=project, is_main=True, upload_status="pending")
         reviewer = UserFactory()
 
         entry = query.get_reviewer_projects(reviewer.id, competition.id).pool[0]
@@ -279,7 +279,7 @@ class TestGetReviewerProjects:
     ) -> None:
         competition, projects = competition_with_projects(4)
         for project in projects:
-            ProjectImageFactory(project=project, is_usage=True)
+            ImageFactory(project=project, is_usage=True)
         reviewer = UserFactory()
 
         result = query.get_reviewer_projects(reviewer.id, competition.id)

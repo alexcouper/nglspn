@@ -231,7 +231,7 @@ def _lead_article_context(article: Article) -> dict:
 
 
 def _digest_article_image_url(article: Article) -> str | None:
-    from services import REPO  # noqa: PLC0415
+    from services import REPO
 
     hero = article.listing_image
     if hero is not None:

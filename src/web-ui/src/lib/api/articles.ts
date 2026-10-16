@@ -9,7 +9,7 @@ export type ArticlePublish = components["schemas"]["ArticlePublish"];
 // How the article's listing image was decided. Generated from
 // ListingImageMode in apps/articles/models.py.
 export type ListingImageMode = components["schemas"]["ListingImageMode"];
-export type ProjectImage = components["schemas"]["ProjectImageResponse"];
+export type Image = components["schemas"]["ImageResponse"];
 export type PresignedUploadResponse =
   components["schemas"]["PresignedUploadResponse"];
 
@@ -74,7 +74,7 @@ export class ArticlesClient {
   }
 
   // Images are addressed under the article that owns them. The rows are the
-  // same `ProjectImage` the project gallery uses — same storage, same variants
+  // same `Image` the project gallery uses — same storage, same variants
   // — but an article upload never enters that gallery, so it is never reached
   // through the my-projects image endpoints.
   async getImageUploadUrl(
@@ -105,8 +105,8 @@ export class ArticlesClient {
     // to crop straight away, rather than waiting for the variant job to
     // backfill it.
     dimensions: { width: number; height: number } | null = null
-  ): Promise<ProjectImage> {
-    return this.client.request<ProjectImage>(
+  ): Promise<Image> {
+    return this.client.request<Image>(
       `/api/projects/${projectSlug}/articles/${articleId}/images/${imageId}/complete`,
       {
         method: "POST",

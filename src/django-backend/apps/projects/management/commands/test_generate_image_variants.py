@@ -6,16 +6,16 @@ import pytest
 from django.core.management import call_command
 
 from apps.projects.models import ImageVariant, UploadStatus, VariantSize
-from tests.factories import ProjectImageFactory
+from tests.factories import ImageFactory
 
 
 @pytest.mark.django_db
 class TestGenerateImageVariantsCommand:
     def test_processes_uploaded_images_missing_variants(self):
-        img1 = ProjectImageFactory(
+        img1 = ImageFactory(
             width=4000, height=2250, upload_status=UploadStatus.UPLOADED
         )
-        img2 = ProjectImageFactory(
+        img2 = ImageFactory(
             width=2000, height=1500, upload_status=UploadStatus.UPLOADED
         )
 
@@ -27,8 +27,8 @@ class TestGenerateImageVariantsCommand:
         assert called_ids == {str(img1.id), str(img2.id)}
 
     def test_skips_non_uploaded_images(self):
-        ProjectImageFactory(width=4000, height=2250, upload_status=UploadStatus.PENDING)
-        ProjectImageFactory(width=4000, height=2250, upload_status=UploadStatus.FAILED)
+        ImageFactory(width=4000, height=2250, upload_status=UploadStatus.PENDING)
+        ImageFactory(width=4000, height=2250, upload_status=UploadStatus.FAILED)
 
         with patch("services.HANDLERS.images.generate_variants") as mock_gen:
             call_command("generate_image_variants")
@@ -36,7 +36,7 @@ class TestGenerateImageVariantsCommand:
         mock_gen.assert_not_called()
 
     def test_idempotent_skips_images_with_all_variants(self):
-        image = ProjectImageFactory(
+        image = ImageFactory(
             width=4000, height=2250, upload_status=UploadStatus.UPLOADED
         )
         # Pre-create all 3 variants
@@ -56,7 +56,7 @@ class TestGenerateImageVariantsCommand:
         mock_gen.assert_not_called()
 
     def test_processes_images_with_partial_variants(self):
-        image = ProjectImageFactory(
+        image = ImageFactory(
             width=4000, height=2250, upload_status=UploadStatus.UPLOADED
         )
         # Only thumb exists — still missing medium and large
@@ -75,12 +75,10 @@ class TestGenerateImageVariantsCommand:
         mock_gen.assert_called_once_with(str(image.id))
 
     def test_continues_on_individual_image_failure(self):
-        img1 = ProjectImageFactory(
+        img1 = ImageFactory(
             width=4000, height=2250, upload_status=UploadStatus.UPLOADED
         )
-        ProjectImageFactory(
-            width=4000, height=2250, upload_status=UploadStatus.UPLOADED
-        )
+        ImageFactory(width=4000, height=2250, upload_status=UploadStatus.UPLOADED)
 
         msg = "boom"
 

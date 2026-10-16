@@ -21,7 +21,7 @@ from apps.articles.models import (
 )
 from apps.follows.models import Follow, FollowedChannel
 from apps.notifications.models import Notification
-from apps.projects.models import ProjectImage, UploadStatus
+from apps.projects.models import Image, UploadStatus
 from apps.users.models import ArticleEmailFrequency
 from services.articles.crop import CARD_RATIO
 from services.articles.django_impl.handler import DjangoArticleHandler
@@ -36,8 +36,8 @@ from services.articles.exceptions import (
 from tests.factories import (
     ArticleFactory,
     ChannelFactory,
+    ImageFactory,
     ProjectFactory,
-    ProjectImageFactory,
     PublishedArticleFactory,
     UserFactory,
     article_image,
@@ -757,7 +757,7 @@ class TestListingImageAutoMode:
 
     def test_stays_null_with_no_linked_images(self):
         article = ArticleFactory()
-        ProjectImageFactory(project=article.project)
+        ImageFactory(project=article.project)
 
         updated = self.handler.update_article(article.id, title="New title")
 
@@ -846,7 +846,7 @@ class TestListingImageChoice:
 
     def test_rejects_an_image_on_another_project(self):
         article = ArticleFactory()
-        foreign = ProjectImageFactory(project=ProjectFactory())
+        foreign = ImageFactory(project=ProjectFactory())
 
         with pytest.raises(ListingImageOnWrongProjectError):
             self.handler.update_article(article.id, listing_image_id=foreign.id)
@@ -923,12 +923,12 @@ class TestImageArticleLink:
     def test_deleting_an_article_deletes_its_images(self):
         article = ArticleFactory()
         image = article_image(article)
-        project_image = ProjectImageFactory(project=article.project)
+        project_image = ImageFactory(project=article.project)
 
         self.handler.delete_article(article.id)
 
-        assert not ProjectImage.objects.filter(pk=image.id).exists()
-        assert ProjectImage.objects.filter(pk=project_image.id).exists()
+        assert not Image.objects.filter(pk=image.id).exists()
+        assert Image.objects.filter(pk=project_image.id).exists()
 
     def test_deleting_the_listing_image_blanks_it_rather_than_raising(self):
         article = ArticleFactory()

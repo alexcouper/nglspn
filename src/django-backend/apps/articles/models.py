@@ -96,12 +96,12 @@ class Article(models.Model):
     # Optional authored standfirst for listing cards. When blank, listings fall
     # back to services.articles.summary.derive_summary(body).
     summary = models.CharField(max_length=300, default="", blank=True)
-    # SET_NULL, not PROTECT: ProjectImage.article cascades from this article, so
+    # SET_NULL, not PROTECT: Image.article cascades from this article, so
     # deleting an article collects rows that this column points at. Rather than
     # rely on how the collector orders that cycle, a deleted image simply blanks
     # the card.
     listing_image = models.ForeignKey(
-        "projects.ProjectImage",
+        "projects.Image",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,

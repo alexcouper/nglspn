@@ -19,12 +19,12 @@ def auto_follow_house_project(
         return
     # Local import: apps.follows depends on apps.users via AUTH_USER_MODEL FKs,
     # so deferring the import avoids any import-order pitfalls.
-    from apps.follows.services import create_house_project_follow  # noqa: PLC0415
+    from apps.follows.services import create_house_project_follow
 
     create_house_project_follow(instance)
 
 
-# Same contract as the `ProjectImage` receiver in `apps/projects/signals.py`:
+# Same contract as the `Image` receiver in `apps/projects/signals.py`:
 # every way an avatar row can go — replace, remove, the sweep reaping a stale
 # reservation, an account being deleted — records its key here, and the
 # images sweep deletes the object out of the request path. `pre_delete` so the

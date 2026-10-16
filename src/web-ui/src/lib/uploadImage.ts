@@ -1,4 +1,4 @@
-import { api, type ProjectImage } from "@/lib/api";
+import { api, type Image as ApiImage } from "@/lib/api";
 import type { PresignedUploadResponse } from "@/lib/api/articles";
 
 export const ALLOWED_IMAGE_TYPES = [
@@ -40,7 +40,7 @@ export async function uploadImage(
   target: UploadTarget,
   file: File,
   options: UploadOptions = {},
-): Promise<ProjectImage> {
+): Promise<ApiImage> {
   if (!ALLOWED_IMAGE_TYPES.includes(file.type as (typeof ALLOWED_IMAGE_TYPES)[number])) {
     throw new ImageValidationError(`Invalid file type: ${file.type}`);
   }

@@ -33,8 +33,8 @@ from services.project.query_interface import (
 from tests.factories import (
     CompetitionEntryFactory,
     CompetitionFactory,
+    ImageFactory,
     ProjectFactory,
-    ProjectImageFactory,
 )
 
 
@@ -48,7 +48,7 @@ def _ready_draft(**kwargs):
         published_at=None,
         **kwargs,
     )
-    ProjectImageFactory(project=project, is_main=True, upload_status="uploaded")
+    ImageFactory(project=project, is_main=True, upload_status="uploaded")
     return project
 
 

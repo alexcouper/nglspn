@@ -8,18 +8,18 @@ from api.auth.security import auth
 from api.schemas.errors import Error
 from api.schemas.project import (
     CompetitionEntryRequest,
+    ImageResponse,
     ImageUploadCompleteRequest,
     PresignedUploadRequest,
     PresignedUploadResponse,
     ProjectCreate,
-    ProjectImageResponse,
     ProjectResponse,
     PublishMissingFieldsResponse,
     UpdateImageRolesRequest,
 )
 from apps.projects.models import (
+    Image,
     Project,
-    ProjectImage,
     UploadStatus,
 )
 from apps.users.models import User
@@ -271,7 +271,7 @@ def get_upload_url(
 
 @router.post(
     "/{project_id}/images/{image_id}/complete",
-    response={200: ProjectImageResponse, 400: Error, 401: Error, 404: Error},
+    response={200: ImageResponse, 400: Error, 401: Error, 404: Error},
     auth=auth,
     tags=["Project Images"],
 )
@@ -280,7 +280,7 @@ def complete_upload(
     project_id: str,
     image_id: str,
     payload: ImageUploadCompleteRequest,
-) -> ProjectImage | tuple[int, dict[str, str]]:
+) -> Image | tuple[int, dict[str, str]]:
     project = _get_editable_project_or_404(project_id, request.auth)
     # `get_gallery_image` keeps this endpoint off article uploads: those are
     # addressed under the articles router and completed there.
@@ -300,7 +300,7 @@ def complete_upload(
 
 @router.post(
     "/{project_id}/images/{image_id}/roles",
-    response={200: ProjectImageResponse, 400: Error, 401: Error, 404: Error},
+    response={200: ImageResponse, 400: Error, 401: Error, 404: Error},
     auth=auth,
     tags=["Project Images"],
 )
@@ -309,7 +309,7 @@ def update_image_roles(
     project_id: str,
     image_id: str,
     payload: UpdateImageRolesRequest,
-) -> ProjectImage | tuple[int, dict[str, str]]:
+) -> Image | tuple[int, dict[str, str]]:
     project = _get_editable_project_or_404(project_id, request.auth)
     image = REPO.images.get_gallery_image(
         project, image_id, status=UploadStatus.UPLOADED

@@ -17,8 +17,8 @@ from services.notifications.django_impl.handler import DjangoNotificationHandler
 from tests.factories import (
     ArticleFactory,
     ChannelFactory,
+    ImageFactory,
     ProjectFactory,
-    ProjectImageFactory,
     PublishedArticleFactory,
     UserFactory,
     article_image,
@@ -320,7 +320,7 @@ class TestArticleDigestProjectIcon:
 
     def test_uses_the_projects_own_image(self):
         project = ProjectFactory()
-        icon = ProjectImageFactory(project=project, is_icon=True)
+        icon = ImageFactory(project=project, is_icon=True)
 
         assert self._digest_image_url(project) == icon.url
 
@@ -332,7 +332,7 @@ class TestArticleDigestProjectIcon:
 
     def test_ignores_an_upload_that_never_completed(self):
         project = ProjectFactory()
-        ProjectImageFactory(project=project, upload_status="pending")
+        ImageFactory(project=project, upload_status="pending")
 
         assert self._digest_image_url(project) is None
 
@@ -343,7 +343,7 @@ class TestHouseChannelLogging:
         self.handler = DjangoNotificationHandler()
 
     def test_logs_for_house_channel_article(self, caplog):
-        from tests.factories import ensure_house_project  # noqa: PLC0415
+        from tests.factories import ensure_house_project
 
         house = ensure_house_project()
         channel = ChannelFactory(project=house, name="Competition Winners")
@@ -363,7 +363,7 @@ class TestHouseChannelLogging:
         assert str(follower.id) in relevant[0].getMessage()
 
     def test_logs_for_never_cadence_too(self, caplog):
-        from tests.factories import ensure_house_project  # noqa: PLC0415
+        from tests.factories import ensure_house_project
 
         house = ensure_house_project()
         channel = ChannelFactory(project=house, name="Updates")

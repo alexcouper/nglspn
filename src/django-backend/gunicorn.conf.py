@@ -55,6 +55,6 @@ forwarded_allow_ips = "*"
 def post_fork(server, worker) -> None:  # noqa: ANN001
     """Initialize OpenTelemetry in each worker process after fork."""
     del server, worker  # unused but required by gunicorn
-    from project_showcase.otel import init_otel  # noqa: PLC0415
+    from project_showcase.otel import init_otel
 
     init_otel()

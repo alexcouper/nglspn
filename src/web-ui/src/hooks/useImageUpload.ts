@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import { useTranslations } from "next-intl";
-import { type ProjectImage } from "@/lib/api";
+import { type Image } from "@/lib/api";
 import {
   type UploadTarget,
   ImageValidationError,
@@ -22,7 +22,7 @@ interface UseImageUploadOptions {
   // pair of source fields, so a caller cannot name one owner and upload to
   // another.
   target: UploadTarget;
-  onUploadComplete?: (image: ProjectImage) => void;
+  onUploadComplete?: (image: Image) => void;
   onError?: (error: Error) => void;
 }
 

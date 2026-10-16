@@ -1,7 +1,7 @@
 "use client";
 
 import { type Dispatch, type SetStateAction, useCallback } from "react";
-import type { Article, ProjectImage } from "@/lib/api";
+import type { Article, Image } from "@/lib/api";
 
 // The article's own images: the selection list the listing wizard offers, and
 // the image the form currently points at.
@@ -19,7 +19,7 @@ export function useArticleImages(
   // "No image" next to "Your choice." until the next save wrote the server's
   // copy back.
   const adoptImage = useCallback(
-    (image: ProjectImage) => {
+    (image: Image) => {
       setArticle((prev) =>
         prev && !prev.images.some((existing) => existing.id === image.id)
           ? { ...prev, images: [...prev.images, image] }

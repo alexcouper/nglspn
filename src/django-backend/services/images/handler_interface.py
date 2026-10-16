@@ -99,9 +99,10 @@ class ImageHandlerInterface(ABC):
     def create_article_upload(self, article: Article, meta: FileMeta) -> PreparedUpload:
         """Reserve an image that belongs to `article`.
 
-        The row still hangs off the article's project so it shares the storage
-        and variant pipeline, but it never counts against the project's gallery
-        cap and can never be promoted to the cover image.
+        On a project article the row also hangs off the project so it shares
+        the project's storage prefix, but it never counts against the gallery
+        cap and can never be promoted to the cover image. An author-owned
+        article's image has no project and is stored under `articles/{id}/`.
         """
 
     @abstractmethod

@@ -24,6 +24,14 @@ class ArticleQueryInterface(ABC):
     ) -> Article | None: ...
 
     @abstractmethod
+    def get_by_author_and_slug(
+        self,
+        author_id: UUID,
+        article_slug: str,
+    ) -> Article | None:
+        """An author-owned article by its public URL parts. Never a project one."""
+
+    @abstractmethod
     def for_project(
         self,
         project_id: UUID,

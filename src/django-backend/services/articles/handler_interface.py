@@ -39,12 +39,15 @@ class ArticleHandlerInterface(ABC):
     def create_draft(
         self,
         *,
-        project_id: UUID,
-        channel_id: UUID,
         author_id: UUID,
+        project_id: UUID | None = None,
+        channel_id: UUID | None = None,
         title: str = "",
         body: str = "",
-    ) -> Article: ...
+    ) -> Article:
+        """A new draft: on `project_id` in `channel_id`, or with neither an
+        author-owned one. A project without a channel, or a channel without a
+        project, is a caller error."""
 
     @abstractmethod
     def update_article(
@@ -69,7 +72,13 @@ class ArticleHandlerInterface(ABC):
         article_id: UUID,
         *,
         published_at: datetime | None = None,
-    ) -> Article: ...
+    ) -> Article:
+        """Draft → published: assign the slug, settle visibility, fan out.
+
+        An author-owned article is attached to its author's personal channel
+        here, creating the channel on the author's first publish, so that the
+        fan-out reads `article.channel` the same way for both kinds.
+        """
 
     @abstractmethod
     def delete_article(self, article_id: UUID) -> None: ...

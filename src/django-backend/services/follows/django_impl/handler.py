@@ -1,4 +1,6 @@
-from uuid import UUID
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
 
 from django.db import transaction
 
@@ -7,10 +9,16 @@ from apps.projects.models import Project
 from services.follows.exceptions import (
     ChannelNotOnProjectError,
     NotFollowingError,
+    SelfFollowError,
 )
 from services.follows.handler_interface import FollowHandlerInterface
 from services.follows.query_interface import ChannelFollowState, FollowState
 from services.project.exceptions import ProjectNotFoundError
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from apps.users.models import User
 
 
 class DjangoFollowHandler(FollowHandlerInterface):
@@ -35,6 +43,26 @@ class DjangoFollowHandler(FollowHandlerInterface):
 
     def unfollow(self, user_id: UUID, project: Project) -> None:
         Follow.objects.filter(user_id=user_id, project=project).delete()
+
+    def follow_user(self, user_id: UUID, followed_user: User) -> FollowState:
+        if followed_user.id == user_id:
+            raise SelfFollowError
+        # Same shape as `follow`: the channels that exist now are enrolled
+        # here, the one that may appear on the person's first publish by the
+        # channel `post_save` receiver.
+        with transaction.atomic():
+            follow, created = Follow.objects.get_or_create(
+                user_id=user_id, followed_user=followed_user
+            )
+            if created:
+                for channel in Channel.objects.filter(owner=followed_user):
+                    FollowedChannel.objects.get_or_create(
+                        follow=follow, channel=channel
+                    )
+        return FollowState(is_followed=True, created_at=follow.created_at)
+
+    def unfollow_user(self, user_id: UUID, followed_user: User) -> None:
+        Follow.objects.filter(user_id=user_id, followed_user=followed_user).delete()
 
     def _resolve(
         self, user_id: UUID, project_slug: str, channel_id: UUID

@@ -2,9 +2,15 @@ from uuid import uuid4
 
 import pytest
 
+from apps.articles.models import ArticleGlobalVisibility
+from apps.projects.models import ProjectStatus
 from services.users.django_impl import DjangoUserQuery
 from services.users.exceptions import UserNotFoundError
 from tests.factories import (
+    AuthorArticleFactory,
+    ProjectFactory,
+    PublishedArticleFactory,
+    PublishedAuthorArticleFactory,
     UserFactory,
     make_broadcast_follower,
     make_house_channel_follower,
@@ -130,3 +136,53 @@ class TestListOptedInForBroadcastType:
         result = query.list_opted_in_for_broadcast_type("competition_results")
 
         assert result.count() == 0
+
+
+@pytest.mark.django_db
+class TestListPublicArticlesFor:
+    def test_mixes_author_owned_and_approved_project_articles(self):
+        author = UserFactory()
+        on_project = PublishedArticleFactory(
+            project=ProjectFactory(owner=author, status=ProjectStatus.APPROVED),
+            author=author,
+        )
+        owned = PublishedAuthorArticleFactory(author=author)
+
+        assert set(query.list_public_articles_for(author.id)) == {on_project, owned}
+
+    def test_hides_an_author_owned_article_that_is_not_visible(self):
+        author = UserFactory()
+        PublishedAuthorArticleFactory(
+            author=author, global_visibility=ArticleGlobalVisibility.PENDING
+        )
+        AuthorArticleFactory(author=author)
+
+        assert list(query.list_public_articles_for(author.id)) == []
+
+    def test_still_hides_articles_on_unapproved_projects(self):
+        author = UserFactory()
+        PublishedArticleFactory(project=ProjectFactory(owner=author), author=author)
+
+        assert list(query.list_public_articles_for(author.id)) == []
+
+
+@pytest.mark.django_db
+class TestListOwnArticlesFor:
+    def test_returns_every_state_of_both_kinds_drafts_first(self):
+        author = UserFactory()
+        pending = PublishedAuthorArticleFactory(
+            author=author, global_visibility=ArticleGlobalVisibility.PENDING
+        )
+        on_project = PublishedArticleFactory(author=author)
+        draft = AuthorArticleFactory(author=author)
+
+        listed = list(query.list_own_articles_for(author.id))
+
+        assert listed[0] == draft
+        assert set(listed) == {draft, pending, on_project}
+
+    def test_excludes_other_peoples_articles(self):
+        author = UserFactory()
+        AuthorArticleFactory()
+
+        assert list(query.list_own_articles_for(author.id)) == []

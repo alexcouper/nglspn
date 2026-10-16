@@ -15,7 +15,7 @@ from apps.articles.models import (
     ListingImageMode,
 )
 from apps.articles.slugs import assign_unique_article_slug
-from apps.follows.models import Channel
+from apps.follows.models import PERSONAL_CHANNEL_NAME, Channel
 from apps.projects.models import Image
 from services.articles import crop
 from services.articles.django_impl.query import article_detail_queryset
@@ -30,6 +30,7 @@ from services.articles.exceptions import (
     LastChannelError,
     ListingImageNotUploadedError,
     ListingImageOnWrongProjectError,
+    NoChannelForAuthorArticleError,
 )
 from services.articles.handler_interface import (
     UNSET,
@@ -89,13 +90,20 @@ class DjangoArticleHandler(ArticleHandlerInterface):
     def create_draft(
         self,
         *,
-        project_id: UUID,
-        channel_id: UUID,
         author_id: UUID,
+        project_id: UUID | None = None,
+        channel_id: UUID | None = None,
         title: str = "",
         body: str = "",
     ) -> Article:
-        channel = self._resolve_channel_on_project(channel_id, project_id)
+        if (project_id is None) != (channel_id is None):
+            msg = "a project draft needs a channel; an author-owned draft has none"
+            raise ValueError(msg)
+        channel = (
+            self._resolve_channel_on_project(channel_id, project_id)
+            if project_id is not None
+            else None
+        )
         # No listing image on create: an image cannot be uploaded against an
         # article that does not exist yet, so `auto` has nothing to resolve to.
         article = Article(
@@ -143,6 +151,8 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             listing_image_mode=listing_image_mode,
         )
         if channel_id is not None and channel_id != article.channel_id:
+            if article.is_author_owned:
+                raise NoChannelForAuthorArticleError
             channel = self._resolve_channel_on_project(channel_id, article.project_id)
             article.channel = channel
             update_fields.append("channel")
@@ -170,6 +180,18 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         effective_published_at = published_at or timezone.now()
 
         with transaction.atomic():
+            update_fields = [
+                "state",
+                "published_at",
+                "global_visibility",
+                "approved_at",
+            ]
+            if article.is_author_owned and article.channel_id is None:
+                # The person's one channel, made on their first publish. Its
+                # `post_save` enrols everyone already following the person, so
+                # by the time the fan-out task runs the rows it selects exist.
+                article.channel = self._personal_channel(article.author_id)
+                update_fields.append("channel")
             article.state = ArticleState.PUBLISHED
             article.published_at = effective_published_at
             article.global_visibility = _resolve_visibility_on_publish(article)
@@ -179,14 +201,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             # review is not approved yet and keeps a null until an admin says so.
             if article.is_globally_visible:
                 article.approved_at = effective_published_at
-            article.save(
-                update_fields=[
-                    "state",
-                    "published_at",
-                    "global_visibility",
-                    "approved_at",
-                ]
-            )
+            article.save(update_fields=update_fields)
             if article.slug is None:
                 assign_unique_article_slug(article)
             if article.is_globally_visible and not _is_backdated(article.approved_at):
@@ -287,7 +302,12 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         if article_count:
             raise ChannelHasArticlesError(article_count)
 
-        sibling_count = Channel.objects.filter(project=channel.project).count()
+        # A person's channel is not managed: it is their only one, and the
+        # project endpoints that reach here never resolve it. The guard holds
+        # for it as well — the count is one.
+        sibling_count = Channel.objects.filter(
+            project=channel.project, owner=channel.owner
+        ).count()
         if sibling_count <= 1:
             raise LastChannelError
 
@@ -399,7 +419,7 @@ class DjangoArticleHandler(ArticleHandlerInterface):
     ) -> Image | None:
         if listing_image_id is UNSET:
             return article.listing_image
-        return self._resolve_listing_image(listing_image_id, article.project_id)
+        return self._resolve_listing_image(listing_image_id, article)
 
     def _chosen_crop(
         self,
@@ -451,16 +471,31 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             raise ChannelOnWrongProjectError
         return channel
 
+    @staticmethod
+    def _personal_channel(author_id: UUID) -> Channel:
+        channel, _ = Channel.objects.get_or_create(
+            owner_id=author_id, name=PERSONAL_CHANNEL_NAME
+        )
+        return channel
+
     def _resolve_listing_image(
-        self, listing_image_id: UUID | None, project_id: UUID
+        self, listing_image_id: UUID | None, article: Article
     ) -> Image | None:
+        """The image `listing_image_id` names, if the article may use it.
+
+        A project article may use any of its project's images — the gallery
+        as well as its own uploads. An author-owned article has only its own.
+        """
         if listing_image_id is None:
             return None
         try:
             image = Image.objects.get(pk=listing_image_id)
         except Image.DoesNotExist as exc:
             raise ListingImageOnWrongProjectError from exc
-        if image.project_id != project_id:
+        if article.is_author_owned:
+            if image.article_id != article.id:
+                raise ListingImageOnWrongProjectError
+        elif image.project_id != article.project_id:
             raise ListingImageOnWrongProjectError
         if not image.is_uploaded:
             # Distinct from the wrong-project case: the id is one the client

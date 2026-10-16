@@ -13,20 +13,44 @@ BEFORE_BACKFILL = ("projects", "0048_competitionentry")
 AFTER_BACKFILL = ("projects", "0049_backfill_competition_entries")
 
 
-def _migrate(target):
-    """Move the `projects` app to `target` and return the historical models.
+def _targets_compatible_with(graph, target):
+    """Every other app at the latest migration that does not need a `projects`
+    migration beyond `target`.
 
-    Every other app stays at its leaf: targeting `projects` alone would rewind
-    `users` to whatever `projects` depends on, and the historical `User` model
-    would no longer match the table.
+    Rewinding `projects` alone would rewind `users` to whatever `projects`
+    depends on, and the historical `User` model would no longer match the
+    table — so other apps are held as far forward as they can be. Since the
+    `Image` rename, the `articles` and `follows` leaves depend on later
+    `projects` migrations and have to step back with it; asking for them at
+    their leaf would be a plan that goes both ways at once.
     """
     app_label, _ = target
+    reachable = set(graph.forwards_plan(target))
+
+    def fits(node):
+        return all(
+            dep[0] != app_label or dep in reachable for dep in graph.forwards_plan(node)
+        )
+
+    targets = []
+    for leaf in graph.leaf_nodes():
+        if leaf[0] == app_label:
+            continue
+        node = leaf
+        while node is not None and not fits(node):
+            own_parents = [p for p in graph.node_map[node].parents if p[0] == node[0]]
+            node = own_parents[0] if own_parents else None
+        if node is not None:
+            targets.append(node)
+    targets.append(target)
+    return targets
+
+
+def _migrate(target):
+    """Move the `projects` app to `target` and return the historical models."""
     executor = MigrationExecutor(connection)
     executor.loader.build_graph()
-    targets = [
-        leaf for leaf in executor.loader.graph.leaf_nodes() if leaf[0] != app_label
-    ]
-    targets.append(target)
+    targets = _targets_compatible_with(executor.loader.graph, target)
 
     executor.migrate(targets)
     executor.loader.build_graph()

@@ -23,9 +23,17 @@ class NotificationProject:
 
 
 @dataclass(frozen=True)
+class NotificationAuthor:
+    id: UUID
+    name: str
+    avatar_url: str | None
+
+
+@dataclass(frozen=True)
 class NotificationGroup:
     kind: NotificationGroupKind
-    project: NotificationProject
+    # None for an author-owned article's group; the author heads it instead.
+    project: NotificationProject | None
     latest_event_at: datetime
     unread_count: int
     latest_body_excerpt: str
@@ -35,6 +43,7 @@ class NotificationGroup:
     actor_names: list[str] = field(default_factory=list)
     latest_comment_id: UUID | None = None
     # Article-specific fields (None for discussion groups)
+    author: NotificationAuthor | None = None
     article_id: UUID | None = None
     article_slug: str | None = None
     article_title: str | None = None
@@ -49,6 +58,7 @@ class NotificationSummary:
 
 
 __all__ = [
+    "NotificationAuthor",
     "NotificationGroup",
     "NotificationGroupKind",
     "NotificationHeadlineKind",

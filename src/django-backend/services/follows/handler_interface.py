@@ -1,8 +1,14 @@
-from abc import ABC, abstractmethod
-from uuid import UUID
+from __future__ import annotations
 
-from apps.projects.models import Project
-from services.follows.query_interface import ChannelFollowState, FollowState
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from apps.projects.models import Project
+    from apps.users.models import User
+    from services.follows.query_interface import ChannelFollowState, FollowState
 
 
 class FollowHandlerInterface(ABC):
@@ -25,6 +31,19 @@ class FollowHandlerInterface(ABC):
     @abstractmethod
     def unfollow(self, user_id: UUID, project: Project) -> None:
         """Hard-delete the Follow (idempotent — no-op when absent)."""
+
+    @abstractmethod
+    def follow_user(self, user_id: UUID, followed_user: User) -> FollowState:
+        """Follow a person (idempotent). Returns the current state.
+
+        Enrols the person's channel if they have one; a person who has not
+        published yet has none, and `apps/follows/signals.py` enrols the
+        follower when it appears. Raises ``SelfFollowError`` for oneself.
+        """
+
+    @abstractmethod
+    def unfollow_user(self, user_id: UUID, followed_user: User) -> None:
+        """Hard-delete the Follow of a person (idempotent — no-op when absent)."""
 
     @abstractmethod
     def follow_channel(

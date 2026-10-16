@@ -34,7 +34,9 @@ def _article_container_title(article: Any) -> str:
     """The project's title, or the author's name for an author-owned article."""
     if article.project_id:
         return article.project.title
-    return str(article.author)
+    if article.author is None:
+        return "(no author)"
+    return article.author.full_name or article.author.email
 
 
 @admin.register(Notification)

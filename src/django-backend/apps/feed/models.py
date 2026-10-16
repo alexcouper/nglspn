@@ -45,10 +45,15 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
         and for `with_sources()`, so this costs no round trip.
         """
         approved = ProjectStatus.APPROVED
+        # An author-owned article has no project to be withdrawn; its entry
+        # stands or falls on the article's own visibility.
+        article_container_shown = Q(article__project__isnull=True) | Q(
+            article__project__status=approved
+        )
         return self.filter(
             Q(project__isnull=True) | Q(project__status=approved),
             Q(article__isnull=True)
-            | (Q(article__project__status=approved) & globally_visible_q("article__")),
+            | (article_container_shown & globally_visible_q("article__")),
             Q(discussion__isnull=True) | Q(discussion__project__status=approved),
         )
 
@@ -68,6 +73,8 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
             "article",
             "article__channel",
             "article__project",
+            "article__author",
+            "article__author__avatar",
             "article__listing_image",
             "discussion",
             "discussion__project",

@@ -15,6 +15,7 @@ from services.articles.summary import derive_summary
 from services.email.django_impl.article_digest import with_article_digest_relations
 from services.images.django_impl.query import gallery_prefetch
 from services.notifications import (
+    NotificationAuthor,
     NotificationGroup,
     NotificationGroupKind,
     NotificationHeadlineKind,
@@ -121,6 +122,7 @@ def _build_article_group(rows: list[Notification]) -> NotificationGroup:
     latest = rows[0]
     article = latest.article
     project = article.project
+    author = article.author
     return NotificationGroup(
         kind=NotificationGroupKind.ARTICLE,
         project=NotificationProject(
@@ -128,7 +130,14 @@ def _build_article_group(rows: list[Notification]) -> NotificationGroup:
             slug=project.slug,
             title=project.title,
             image_url=REPO.project.get_project_icon_url(project),
-        ),
+        )
+        if project is not None
+        else None,
+        author=NotificationAuthor(
+            id=author.id, name=_actor_name(author), avatar_url=author.avatar_url
+        )
+        if author is not None
+        else None,
         latest_event_at=article.published_at or latest.created_at,
         unread_count=len(rows),
         # Same rule as every other article surface (`ArticleOut.summary_display`,
@@ -205,26 +214,31 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
         """
         try:
             article = Article.objects.select_related(
-                "project", "channel", "author"
+                "project", "channel", "channel__project", "author"
             ).get(pk=article_id)
         except Article.DoesNotExist:
             logger.warning("Article %s not found for notification", article_id)
             return
 
-        if article.state != ArticleState.PUBLISHED:
+        if article.state != ArticleState.PUBLISHED or article.channel_id is None:
             return
 
+        # By channel alone. A `FollowedChannel` only ever points at a channel
+        # of its follow's target — the handlers are the only writers — so a
+        # filter on the follow's project was redundant for a project article
+        # and would exclude every person-follow for an author-owned one.
         followed = (
             FollowedChannel.objects.select_related("follow", "follow__user")
-            .filter(
-                follow__project_id=article.project_id,
-                channel_id=article.channel_id,
-            )
+            .filter(channel_id=article.channel_id)
             .filter(follow__user__is_active=True)
         )
 
         author_id = article.author_id
-        is_house_channel = article.channel.project.is_house_project
+        channel_project = article.channel.project
+        # A person's channel has no project and is never the house channel.
+        is_house_channel = (
+            channel_project is not None and channel_project.is_house_project
+        )
         article_published_at_iso = (
             article.published_at.isoformat() if article.published_at else None
         )

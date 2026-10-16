@@ -99,7 +99,11 @@ class DjangoImageHandler(ImageHandlerInterface):
 
         # The first gallery image becomes the cover. Icons and article uploads
         # are never eligible — the project's cover must describe the project.
-        if self._is_gallery_image(image) and not self._has_cover(image.project):
+        if (
+            image.project_id is not None
+            and self._is_gallery_image(image)
+            and not self._has_cover(image.project)
+        ):
             image.is_main = True
 
         image.save()
@@ -125,7 +129,7 @@ class DjangoImageHandler(ImageHandlerInterface):
         project = image.project
         image.delete()
 
-        if was_cover:
+        if was_cover and project is not None:
             replacement = self._gallery_queryset(project).first()
             if replacement:
                 replacement.is_main = True
@@ -243,17 +247,24 @@ class DjangoImageHandler(ImageHandlerInterface):
 
     @staticmethod
     def _reserve(
-        project: Project,
+        project: Project | None,
         meta: FileMeta,
         *,
         article: Article | None,
         is_icon: bool,
         display_order: int,
     ) -> PreparedUpload:
-        storage_key = storage_service.generate_upload_key(
-            str(project.id),
-            meta.filename,
-        )
+        # The key prefix follows the owner: a project's images, including
+        # those of its articles, live under the project; an author-owned
+        # article's live under the article, which is the only thing they have.
+        if project is not None:
+            storage_key = storage_service.generate_upload_key(
+                str(project.id), meta.filename
+            )
+        else:
+            storage_key = storage_service.generate_article_upload_key(
+                str(article.id), meta.filename
+            )
         image = Image.objects.create(
             project=project,
             article=article,

@@ -1,5 +1,5 @@
 {{ article.article_title }}
-{{ article.channel_name }} on {{ article.project_title }}{% if article.published_at %} - {{ article.published_at|date:"j F Y" }}{% endif %}{% if article.author_name %} - by {{ article.author_name }}{% endif %}
+{% if article.project_title %}{{ article.channel_name }} on {{ article.project_title }}{% else %}by {{ article.author_name }}{% endif %}{% if article.published_at %} - {{ article.published_at|date:"j F Y" }}{% endif %}{% if article.project_title and article.author_name %} - by {{ article.author_name }}{% endif %}
 
 {{ article.body_markdown }}
 

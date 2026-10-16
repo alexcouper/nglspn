@@ -49,6 +49,8 @@ class DjangoNotificationQuery(NotificationQueryInterface):
                 "article",
                 "article__project",
                 "article__channel",
+                "article__author",
+                "article__author__avatar",
             )
             .order_by("-article__published_at", "-created_at")
         )

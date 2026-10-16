@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslations } from "next-intl";
+import { articleHrefOf } from "./container";
 import { ArticleCard } from "@/components/ArticleCard";
 import type { CropRect } from "@/components/CroppedImage";
 import type { Article, ArticleListItem } from "@/lib/api";
@@ -53,12 +54,9 @@ export function ArticleCardPreview({ article, summary, imageUrl, crop }: Props) 
   const t = useTranslations("articles.cardPreview");
   const [variant, setVariant] = useState<Variant>("lead");
   const item = toListItem(article, summary, imageUrl, crop);
-  const projectRef = article.project.slug ?? article.project.id;
   // A draft has no slug yet, and this tab is used mostly on drafts. Linking
   // anyway would send the author to /articles/, so the preview goes inert.
-  const href = article.slug
-    ? `/projects/${projectRef}/articles/${article.slug}`
-    : undefined;
+  const href = articleHrefOf(article) ?? undefined;
 
   return (
     <div>

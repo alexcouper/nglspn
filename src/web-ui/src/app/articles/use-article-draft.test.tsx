@@ -177,7 +177,7 @@ describe("opening an article", () => {
     const harness = await mountDraft({ articleId: "article-1" });
 
     expect(articles.create).not.toHaveBeenCalled();
-    expect(articles.get).toHaveBeenCalledWith("a-project", "article-1");
+    expect(articles.get).toHaveBeenCalledWith("article-1");
 
     await harness.unmount();
   });
@@ -313,7 +313,7 @@ describe("the untouched-draft sweep", () => {
 
     await harness.unmount();
 
-    expect(articles.delete).toHaveBeenCalledWith("a-project", "article-1");
+    expect(articles.delete).toHaveBeenCalledWith("article-1");
   });
 
   it("keeps a draft whose headline was typed but not saved", async () => {
@@ -358,7 +358,6 @@ describe("saving", () => {
     });
 
     expect(articles.update).toHaveBeenCalledWith(
-      "a-project",
       "article-1",
       expect.objectContaining({ body: "Typed after load." }),
     );

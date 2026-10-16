@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { useTranslations } from "next-intl";
 import { api } from "@/lib/api";
 import type { ChannelFollowState } from "@/lib/api/follows";
+import type { FollowTarget } from "@/components/FollowButton";
 import { useToasts } from "@/contexts/toasts";
 
 type ChannelsUpdater = (
@@ -11,11 +12,12 @@ type ChannelsUpdater = (
 ) => void;
 
 interface UseChannelToggleOptions {
-  projectSlug: string;
+  /** Whose channel list this is: a followed project, or a followed person. */
+  target: FollowTarget;
   /** Applies a functional update to whichever state holds the channel list. */
   setChannels: ChannelsUpdater;
-  /** Called when unfollowing the last channel removed the project follow. */
-  onProjectUnfollowed: () => void;
+  /** Called when unfollowing the last channel removed the follow itself. */
+  onUnfollowed: () => void;
 }
 
 /**
@@ -25,12 +27,13 @@ interface UseChannelToggleOptions {
  * clobber each other and a failure rolls back only its own channel.
  */
 export function useChannelToggle({
-  projectSlug,
+  target,
   setChannels,
-  onProjectUnfollowed,
+  onUnfollowed,
 }: UseChannelToggleOptions) {
   const t = useTranslations("projects.channelToggle");
   const { showToast } = useToasts();
+  const targetKey = target.kind === "project" ? target.slug : target.id;
 
   return useCallback(
     async (channel: ChannelFollowState) => {
@@ -45,14 +48,18 @@ export function useChannelToggle({
       write(followed);
       try {
         if (followed) {
-          await api.follows.followChannel(projectSlug, channel.channel_id);
+          if (target.kind === "project") {
+            await api.follows.followChannel(target.slug, channel.channel_id);
+          } else {
+            await api.follows.followUserChannel(target.id, channel.channel_id);
+          }
           return;
         }
-        const state = await api.follows.unfollowChannel(
-          projectSlug,
-          channel.channel_id
-        );
-        if (!state.is_followed) onProjectUnfollowed();
+        const state =
+          target.kind === "project"
+            ? await api.follows.unfollowChannel(target.slug, channel.channel_id)
+            : await api.follows.unfollowUserChannel(target.id, channel.channel_id);
+        if (!state.is_followed) onUnfollowed();
       } catch {
         write(channel.followed);
         showToast({
@@ -62,6 +69,9 @@ export function useChannelToggle({
         });
       }
     },
-    [projectSlug, setChannels, onProjectUnfollowed, showToast, t]
+    // `targetKey` stands in for the target object, which callers rebuild per
+    // render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [targetKey, target.kind, setChannels, onUnfollowed, showToast, t]
   );
 }

@@ -8,7 +8,6 @@ import { describeApiError } from "@/lib/api/errors";
 import type { ArticleSavePayload } from "./articleDraftState";
 
 interface Options {
-  projectRef: string;
   article: Article | null;
   // The server's copy after a successful write, for whoever holds the article
   // and the form.
@@ -21,7 +20,6 @@ interface Options {
 // Save, publish and delete. Reports outcomes; it does not navigate — what a
 // successful publish or delete means for the URL is the page's decision.
 export function useArticleMutations({
-  projectRef,
   article,
   onPersisted,
   onError,
@@ -36,10 +34,12 @@ export function useArticleMutations({
     async (payload: ArticleSavePayload): Promise<Article | null> => {
       if (!article) return null;
       try {
-        const updated = await api.articles.update(projectRef, article.id, {
+        const updated = await api.articles.update(article.id, {
           title: payload.title,
           body: payload.body,
-          channel_id: payload.channel_id,
+          // "" is an author-owned article's "no channel"; the backend rejects a
+          // channel on one, and null means "leave it".
+          channel_id: payload.channel_id || null,
           summary: payload.summary,
           listing_image_id: payload.listing_image_id,
           listing_crop: payload.listing_crop,
@@ -52,7 +52,7 @@ export function useArticleMutations({
         return null;
       }
     },
-    [article, projectRef, onPersisted, onError, t],
+    [article, onPersisted, onError, t],
   );
 
   const save = useCallback(
@@ -87,9 +87,7 @@ export function useArticleMutations({
         return null;
       }
       try {
-        await api.articles.publish(projectRef, saved.id, {
-          published_at: null,
-        });
+        await api.articles.publish(saved.id, { published_at: null });
         return saved;
       } catch (err) {
         // The old 422-only branch was a special case of this: describeApiError
@@ -100,21 +98,21 @@ export function useArticleMutations({
         return null;
       }
     },
-    [persistDraft, projectRef, onError, t],
+    [persistDraft, onError, t],
   );
 
   const remove = useCallback(async (): Promise<boolean> => {
     if (!article) return false;
     setIsDeleting(true);
     try {
-      await api.articles.delete(projectRef, article.id);
+      await api.articles.delete(article.id);
       return true;
     } catch (err) {
       onError(describeApiError(err, t("errors.deleteFailed")));
       setIsDeleting(false);
       return false;
     }
-  }, [article, projectRef, onError, t]);
+  }, [article, onError, t]);
 
   return {
     save,

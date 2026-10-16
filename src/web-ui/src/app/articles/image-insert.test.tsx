@@ -90,11 +90,11 @@ async function click(element: Element) {
 
 // --------------------------------------------------------- hook test harness
 
-function renderUploadStatus(projectRef: string, articleId = "article-1") {
+function renderUploadStatus(articleId = "article-1") {
   const captured = {} as ReturnType<typeof useImageUploadStatus>;
 
   function Harness() {
-    Object.assign(captured, useImageUploadStatus(projectRef, articleId));
+    Object.assign(captured, useImageUploadStatus(articleId));
     return null;
   }
 
@@ -277,7 +277,7 @@ describe("useImageUploadStatus", () => {
 describe("article image target", () => {
   it("uploads inline body images against the article, not the project gallery", async () => {
     uploadMock.mockResolvedValue(projectImage("https://cdn/uploaded.png"));
-    const { captured, mounted } = renderUploadStatus("a-project");
+    const { captured, mounted } = renderUploadStatus();
     const { unmount } = await mounted;
 
     await act(async () => {
@@ -285,7 +285,7 @@ describe("article image target", () => {
     });
 
     expect(uploadMock).toHaveBeenCalledWith(
-      { kind: "article", projectRef: "a-project", articleId: "article-1" },
+      { kind: "article", articleId: "article-1" },
       expect.any(File),
     );
 

@@ -7,8 +7,13 @@ import type { Article, Channel } from "@/lib/api";
 import { describeApiError } from "@/lib/api/errors";
 
 interface Options {
-  projectRef: string;
+  // The project's slug or id, or null for an author-owned article, which has
+  // no channels to list.
+  projectRef: string | null;
   articleId: string;
+  // The article, when the route has already fetched it to find its project.
+  // Without it the hook fetches by id.
+  initialArticle?: Article | null;
   // The loaded article, for whoever owns the form state.
   onLoaded: (article: Article) => void;
   // Already author-facing: this unit knows what it was doing when it failed, so
@@ -16,16 +21,17 @@ interface Options {
   onError: (message: string) => void;
 }
 
-// The initial load: the article being edited plus the project's channels.
+// The initial load: the article being edited plus, on a project, its channels.
 // Every callback it takes must be stable — they all land in the load effect's
 // deps.
 //
-// The article always exists by the time this runs: it is created by the New
+// The article always exists by the time this runs: it is created by the Write
 // article button, because an image cannot be uploaded against an article that
 // has no id yet. Nothing here creates one.
 export function useArticleLoad({
   projectRef,
   articleId,
+  initialArticle = null,
   onLoaded,
   onError,
 }: Options) {
@@ -46,8 +52,8 @@ export function useArticleLoad({
         // blocks on, and making it queue behind the channel list only delayed
         // the editor by a round trip.
         const [channelList, loaded] = await Promise.all([
-          api.channels.list(projectRef),
-          api.articles.get(projectRef, articleId),
+          projectRef ? api.channels.list(projectRef) : Promise.resolve([]),
+          initialArticle ?? api.articles.get(articleId),
         ]);
         if (cancelled) return;
 
@@ -66,7 +72,7 @@ export function useArticleLoad({
     return () => {
       cancelled = true;
     };
-  }, [articleId, projectRef, onLoaded, onError, openFailed]);
+  }, [articleId, projectRef, initialArticle, onLoaded, onError, openFailed]);
 
   return { channels, article, setArticle, isLoading };
 }

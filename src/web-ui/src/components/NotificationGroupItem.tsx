@@ -32,11 +32,21 @@ const BODY_TEXT: Record<Variant, string> = {
   toaster: "text-xs text-slate-500 truncate mt-0.5",
 };
 
+// Who the group is about: the project, or for an author-owned article the
+// author. A discussion group always has a project.
+function headOf(group: NotificationGroup): { name: string; imageUrl: string | null } {
+  if (group.project) {
+    return { name: group.project.title, imageUrl: group.project.image_url ?? null };
+  }
+  return { name: group.author?.name ?? "", imageUrl: group.author?.avatar_url ?? null };
+}
+
 function headline(group: NotificationGroup, t: GroupItemTranslator): string {
-  const project = group.project.title;
+  const project = headOf(group).name;
   if (group.kind === "article") {
     const title = group.article_title ?? t("headline.untitledArticle");
-    const channel = group.channel_name;
+    // A person's channel is a placeholder, so only a project's is named.
+    const channel = group.project ? group.channel_name : null;
     return channel
       ? t("headline.articlePublishedInChannel", { project, title, channel })
       : t("headline.articlePublished", { project, title });
@@ -79,8 +89,8 @@ export function NotificationGroupItem({ group, variant, showUnreadSuffix }: Prop
   return (
     <>
       <EntityIcon
-        imageUrl={group.article_image_url ?? group.project.image_url}
-        title={group.article_title ?? group.project.title}
+        imageUrl={group.article_image_url ?? headOf(group).imageUrl}
+        title={group.article_title ?? headOf(group).name}
         size={ICON_SIZE[variant]}
       />
       <div className="flex-1 min-w-0">

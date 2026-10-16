@@ -15,7 +15,9 @@ export const MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
 // project's cap and can become its cover; an article image does neither.
 export type UploadTarget =
   | { kind: "project"; projectId: string; isIcon?: boolean }
-  | { kind: "article"; projectRef: string; articleId: string };
+  // Addressed by the article alone: the backend knows whether that article
+  // has a project and stores the object accordingly.
+  | { kind: "article"; articleId: string };
 
 export class ImageValidationError extends Error {}
 
@@ -62,7 +64,6 @@ export async function uploadImage(
           target.isIcon ?? false,
         )
       : await api.articles.getImageUploadUrl(
-          target.projectRef,
           target.articleId,
           file.name,
           file.type,
@@ -82,7 +83,6 @@ export async function uploadImage(
         dimensions,
       )
     : api.articles.completeImageUpload(
-        target.projectRef,
         target.articleId,
         presigned.image_id,
         dimensions,

@@ -24,7 +24,7 @@ export { TagsClient } from "./tags";
 export type { FeedEntry, FeedPage, FeedEventKind } from "./feed";
 
 // Types - Users
-export type { PublicUserProfile, UserProject, UserArticle } from "./users";
+export type { PublicUserProfile, UserProfile, UserProject, UserArticle } from "./users";
 
 // Types - Auth
 export type { User, TokenResponse, VerifyEmailResponse, ResendVerificationResponse } from "./auth";
@@ -50,6 +50,8 @@ export type {
   ArticleUpdate,
   ArticlePublish,
   ListingImageMode,
+  OwnArticle,
+  OwnArticleCreate,
 } from "./articles";
 
 // Types - Channels

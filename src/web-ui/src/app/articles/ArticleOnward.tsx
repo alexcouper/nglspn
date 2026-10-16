@@ -2,14 +2,15 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 
 import { ArticleListingImage } from "@/components/ArticleListingImage";
+import { Avatar } from "@/components/Avatar";
 import { FollowButton } from "@/components/FollowButton";
-import type { Project } from "@/lib/api";
 
+import { type Container, containerHref, containerTitle } from "./container";
 import type { Onward, OnwardCard, OnwardHeading } from "./onward";
 
 interface Props {
   onward: Onward;
-  project: Project;
+  container: Container;
   iconUrl: string | null;
   articleCount: number;
   channelCount: number;
@@ -17,14 +18,15 @@ interface Props {
 
 export function ArticleOnward({
   onward,
-  project,
+  container,
   iconUrl,
   articleCount,
   channelCount,
 }: Props) {
   const t = useTranslations("articles.onward");
-  const projectSlug = project.slug ?? project.id;
   const [lead, ...rest] = onward.primary.cards;
+  const project = container.kind === "project" ? container.project : null;
+  const author = container.kind === "author" ? container.author : null;
 
   const heading = (h: OnwardHeading) => {
     switch (h.kind) {
@@ -32,8 +34,21 @@ export function ArticleOnward({
         return t("heading.channel", { channel: h.channel });
       case "project":
         return t("heading.project", { project: h.project });
+      case "author":
+        return t("heading.author", { name: h.author });
       case "elsewhere":
         return t("heading.elsewhere");
+    }
+  };
+
+  const more = (m: Onward["more"]) => {
+    switch (m.kind) {
+      case "project":
+        return t("moreFromProject", { count: m.count, project: m.project });
+      case "author":
+        return t("moreFromAuthor", { count: m.count, name: m.author });
+      case "latest":
+        return t("moreLatest");
     }
   };
 
@@ -48,12 +63,7 @@ export function ArticleOnward({
             href={onward.more.href}
             className="text-sm text-indigo-300 hover:text-indigo-100 transition-colors shrink-0"
           >
-            {onward.more.kind === "project"
-              ? t("moreFromProject", {
-                  count: onward.more.count,
-                  project: onward.more.project,
-                })
-              : t("moreLatest")}
+            {more(onward.more)}
           </Link>
         </div>
 
@@ -78,20 +88,29 @@ export function ArticleOnward({
 
             <div className="pt-5 border-t border-slate-700">
               <div className="flex items-center gap-3">
-                {iconUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={iconUrl}
-                    alt=""
-                    className="w-12 h-12 rounded-lg object-cover shrink-0"
+                {author ? (
+                  <Avatar
+                    src={author.avatar_url}
+                    firstName={author.first_name}
+                    lastName={author.last_name}
+                    size={48}
                   />
+                ) : (
+                  iconUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={iconUrl}
+                      alt=""
+                      className="w-12 h-12 rounded-lg object-cover shrink-0"
+                    />
+                  )
                 )}
                 <div className="min-w-0">
                   <div className="font-semibold text-white truncate">
-                    {project.title}
+                    {containerTitle(container)}
                   </div>
                   <div className="text-sm text-slate-400">
-                    {channelCount > 1
+                    {project && channelCount > 1
                       ? t("articleCountInChannels", {
                           count: articleCount,
                           channels: channelCount,
@@ -102,12 +121,15 @@ export function ArticleOnward({
               </div>
               <div className="flex gap-2 mt-3.5">
                 <Link
-                  href={`/projects/${projectSlug}`}
+                  href={containerHref(container)}
                   className="text-sm font-medium px-3 py-1.5 rounded-md border border-slate-600 text-slate-200 hover:bg-slate-800 hover:border-slate-500 transition-colors"
                 >
-                  {t("projectPage")}
+                  {project ? t("projectPage") : t("profilePage")}
                 </Link>
-                {project.slug && <FollowButton projectSlug={project.slug} />}
+                {project?.slug && (
+                  <FollowButton target={{ kind: "project", slug: project.slug }} />
+                )}
+                {author && <FollowButton target={{ kind: "user", id: author.id }} />}
               </div>
             </div>
           </div>

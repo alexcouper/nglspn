@@ -43,7 +43,6 @@ import { InsertImageButton } from "./InsertImageButton";
 import { useImageUploadStatus } from "./useImageUploadStatus";
 
 interface Props {
-  projectRef: string;
   // Inline images are uploaded against the article, so the page creates the
   // draft before mounting the editor.
   articleId: string;
@@ -52,17 +51,13 @@ interface Props {
 }
 
 export function ArticleEditor({
-  projectRef,
   articleId,
   initialMarkdown,
   onChange,
 }: Props) {
   const editorRef = useRef<MDXEditorMethods>(null);
   const t = useTranslations("articles.editor");
-  const { status, uploadImage, dismissError } = useImageUploadStatus(
-    projectRef,
-    articleId,
-  );
+  const { status, uploadImage, dismissError } = useImageUploadStatus(articleId);
 
   return (
     <div className="article-editor rounded-lg border border-border bg-white">

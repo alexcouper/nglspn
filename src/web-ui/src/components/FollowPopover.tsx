@@ -70,9 +70,9 @@ export function FollowPopover({
   }, [onUnfollow, onClose]);
 
   const toggleChannel = useChannelToggle({
-    projectSlug,
+    target: { kind: "project", slug: projectSlug },
     setChannels,
-    onProjectUnfollowed: handleProjectUnfollowed,
+    onUnfollowed: handleProjectUnfollowed,
   });
 
   const handleUnfollow = async () => {

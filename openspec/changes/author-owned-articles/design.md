@@ -134,10 +134,12 @@ never use.
 
 `Follow` gets `followed_user` (FK User, CASCADE), `unique (user, followed_user)`
 alongside the existing `(user, project)`, and a check that the two are not the
-same user. `FollowHandlerInterface` gains `follow_user` / `unfollow_user`;
-`follow_channel` / `unfollow_channel` are untouched because the Following page
-toggles a channel by id under an existing follow and the new target reaches
-them through `GET /api/follows`. The query layer's `FollowWithPreferences`
+same user. `FollowHandlerInterface` gains `follow_user` / `unfollow_user`, and
+`follow_user_channel` / `unfollow_user_channel` behind
+`POST` / `DELETE /api/users/{id}/follow/channels/{channel_id}`: the project
+pair resolves its follow by project slug, which a person follow has none of,
+and the Following page's channel toggle has to reach the person's one channel
+somehow. Dropping it is a full unfollow, as with a project's last channel. The query layer's `FollowWithPreferences`
 grows `target`, `user_id`, `user_name`, `user_avatar_url`, with the project
 fields optional.
 

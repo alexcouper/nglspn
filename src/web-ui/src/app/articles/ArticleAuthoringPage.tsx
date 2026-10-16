@@ -6,7 +6,7 @@ import { type CSSProperties, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
 import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/auth";
-import type { Project } from "@/lib/api";
+import type { Article, Project } from "@/lib/api";
 import { ArticleAuthoringSkeleton } from "./ArticleAuthoringSkeleton";
 import { PublishDialog } from "./PublishDialog";
 import { ChannelDropdown } from "./ChannelDropdown";
@@ -30,18 +30,22 @@ type Tab = "content" | "listing";
 const TABS: Tab[] = ["content", "listing"];
 
 interface Props {
-  project: Project;
-  // Always an existing article: the New article button creates the draft and
-  // routes here, so there is no "unsaved article" state to represent.
-  articleId: string;
+  // Null for an author-owned article: no channel dropdown, and the breadcrumb
+  // leads to the author's profile rather than to my-projects.
+  project: Project | null;
+  // Always an existing article: the Write article button creates the draft
+  // and routes here, so there is no "unsaved article" state to represent. The
+  // route loaded it to find the project, so it arrives whole.
+  initialArticle: Article;
 }
 
-export function ArticleAuthoringPage({ project, articleId }: Props) {
+export function ArticleAuthoringPage({ project, initialArticle }: Props) {
   // `useRequireAuth` lives in ArticleAuthoringRoute, which will not render this
-  // until a signed-in caller has a project. `authLoading` still matters here
+  // until a signed-in caller has an article. `authLoading` still matters here
   // though: `canEdit` below reads `user`, and a null user mid-load would render
   // "Not allowed" at someone who is allowed.
   const { user, isLoading: authLoading } = useAuth();
+  const articleId = initialArticle.id;
   const t = useTranslations("articles.authoring");
   const tc = useTranslations("common.actions");
   // Spelled out rather than t(`tabs.${key}`): a template-literal key is not
@@ -52,12 +56,14 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
     listing: t("tabs.listing"),
   };
 
-  // One reference to the project for everything under the article editor.
-  // Article images are addressed by the article that owns them, so the editor
-  // no longer needs the project's UUID alongside this.
-  const projectRef = project.slug ?? project.id;
+  // Where the author came from and goes back to: the project page, or their
+  // own profile for an author-owned article.
+  const containerHref = project
+    ? `/projects/${project.slug ?? project.id}`
+    : `/users/${initialArticle.author?.id ?? ""}`;
+  const backToContainer = project ? t("backToProject") : t("backToProfile");
 
-  const draft = useArticleDraft({ project, articleId });
+  const draft = useArticleDraft({ project, articleId, initialArticle });
   // The editor's own toolbar is sticky as well, and has to come to rest below
   // the action bar rather than behind it. See article-markdown.css.
   const { ref: actionBarRef, offset: chromeOffset } = useStickyChromeOffset();
@@ -66,12 +72,15 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
   const [tab, setTab] = useState<Tab>("content");
   const [isSwitchingTab, setIsSwitchingTab] = useState(false);
 
+  // Same rule the backend applies: a `full_edit` contributor on the project,
+  // or the author of an author-owned article.
   const canEdit = useMemo(() => {
     if (!user) return false;
+    if (!project) return initialArticle.author?.id === user.id;
     return project.contributors.some(
       (c) => c.user.id === user.id && c.full_edit,
     );
-  }, [project.contributors, user]);
+  }, [project, initialArticle.author, user]);
 
   if (authLoading || draft.isLoading) {
     return <ArticleAuthoringSkeleton />;
@@ -82,14 +91,14 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
       <div className="max-w-2xl mx-auto py-12 px-4 text-center">
         <h1 className="text-lg font-semibold text-foreground">{t("notAllowed.title")}</h1>
         <p className="text-sm text-muted-foreground mt-2">
-          {t("notAllowed.body")}
+          {project ? t("notAllowed.body") : t("notAllowed.bodyOwn")}
         </p>
         <div className="mt-6">
           <Link
-            href={`/projects/${project.slug ?? project.id}`}
+            href={containerHref}
             className="text-sm text-accent hover:text-accent-hover"
           >
-            {t("backToProject")}
+            {backToContainer}
           </Link>
         </div>
       </div>
@@ -111,10 +120,10 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
         </p>
         <div className="mt-6">
           <Link
-            href={`/projects/${projectRef}`}
+            href={containerHref}
             className="text-sm text-accent hover:text-accent-hover"
           >
-            {t("backToProject")}
+            {backToContainer}
           </Link>
         </div>
       </div>
@@ -157,12 +166,18 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
       >
         <div className="max-w-4xl mx-auto px-4 sm:px-6 flex items-center justify-between py-2">
           <div className="text-sm text-muted-foreground">
-            <Link
-              href={`/my-projects/${project.id}#articles`}
-              className="hover:text-foreground"
-            >
-              {project.title}
-            </Link>
+            {project ? (
+              <Link
+                href={`/my-projects/${project.id}#articles`}
+                className="hover:text-foreground"
+              >
+                {project.title}
+              </Link>
+            ) : (
+              <Link href={containerHref} className="hover:text-foreground">
+                {t("yourProfile")}
+              </Link>
+            )}
             <span className="mx-2">/</span>
             <span className="text-foreground font-medium">{mode}</span>
           </div>
@@ -235,11 +250,13 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
             placeholder={t("titlePlaceholder")}
             className="w-full rounded-lg border border-border bg-white px-3.5 py-2.5 text-lg font-semibold text-foreground placeholder:text-[#94a3b8] focus:outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/12 transition-[border-color,box-shadow]"
           />
-          <ChannelDropdown
-            channels={draft.channels}
-            value={form.channel_id}
-            onChange={(value) => draft.updateForm({ channel_id: value })}
-          />
+          {project && (
+            <ChannelDropdown
+              channels={draft.channels}
+              value={form.channel_id}
+              onChange={(value) => draft.updateForm({ channel_id: value })}
+            />
+          )}
         </div>
 
         <div role="tablist" aria-label={t("tablistLabel")} className="flex gap-1">
@@ -269,7 +286,6 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
             cursor and re-run its plugin setup. */}
         <div className={tab === "content" ? undefined : "hidden"}>
           <ArticleEditor
-            projectRef={projectRef}
             articleId={article.id}
             initialMarkdown={article.body}
             onChange={draft.handleBodyChange}
@@ -292,6 +308,7 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
 
       {showPublishDialog && (
         <PublishDialog
+          destination={project ? "project" : "profile"}
           onClose={() => setShowPublishDialog(false)}
           onConfirm={() => {
             setShowPublishDialog(false);
@@ -303,7 +320,6 @@ export function ArticleAuthoringPage({ project, articleId }: Props) {
 
       {showImageWizard && (
         <ListingImageDialog
-          projectRef={projectRef}
           articleId={article.id}
           images={draft.images}
           currentImageId={form.listing_image_id}

@@ -1,20 +1,26 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useCallback, useEffect, useState, use } from "react";
 import Link from "next/link";
-import { PencilIcon } from "@heroicons/react/24/outline";
+import { useRouter } from "next/navigation";
+import { ArrowPathIcon, PencilIcon, PlusIcon } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 import { useAuth } from "@/contexts/auth";
 import {
   api,
   ApiRequestError,
-  type PublicUserProfile,
+  type OwnArticle,
   type UserArticle,
+  type UserProfile,
   type UserProject,
 } from "@/lib/api";
-import { getAuthorName } from "@/lib/utils";
+import { describeApiError } from "@/lib/api/errors";
+import { articleBadge, sortDraftsFirst } from "@/lib/article-listing";
+import { formatDate, getAuthorName } from "@/lib/utils";
 import { Avatar } from "@/components/Avatar";
 import { ArticleCard } from "@/components/ArticleCard";
+import { ArticleListingImage } from "@/components/ArticleListingImage";
+import { FollowButton } from "@/components/FollowButton";
 import { ProfileAbout } from "@/components/ProfileAbout";
 import { ProjectTile } from "@/components/ProjectTile";
 
@@ -34,7 +40,7 @@ type ProfileState =
   | { kind: "loading" }
   | { kind: "not-found" }
   | { kind: "error"; message: string }
-  | { kind: "loaded"; profile: PublicUserProfile };
+  | { kind: "loaded"; profile: UserProfile };
 
 // A list that failed is shown as failed, never as empty: "No projects yet."
 // on a 5xx would be a claim about the person that nobody made.
@@ -59,10 +65,18 @@ export default function PublicUserProfilePage({ params }: PageProps) {
 
 export function ProfileView({ id }: { id: string }) {
   const t = useTranslations("profile.public");
+  const router = useRouter();
   const { user } = useAuth();
   const [state, setState] = useState<ProfileState>({ kind: "loading" });
   const [projects, setProjects] = useState<ListState<UserProject>>(LOADING);
   const [articles, setArticles] = useState<ListState<UserArticle>>(LOADING);
+  // The owner's own list, with drafts and what is held for review. Fetched in
+  // place of the public one on the viewer's own page.
+  const [ownArticles, setOwnArticles] = useState<ListState<OwnArticle>>(LOADING);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createError, setCreateError] = useState("");
+
+  const isOwn = user?.id === id;
 
   // The profile first, the lists once it exists: a 404 here is the whole
   // answer, and the two list requests would only 404 again.
@@ -78,10 +92,17 @@ export function ProfileView({ id }: { id: string }) {
           .listProjects(id)
           .then((data) => !cancelled && setProjects(loaded(data)))
           .catch(() => !cancelled && setProjects(FAILED));
-        api.users
-          .listArticles(id)
-          .then((data) => !cancelled && setArticles(loaded(data)))
-          .catch(() => !cancelled && setArticles(FAILED));
+        if (isOwn) {
+          api.articles
+            .listOwn()
+            .then((data) => !cancelled && setOwnArticles(loaded(sortDraftsFirst(data))))
+            .catch(() => !cancelled && setOwnArticles(FAILED));
+        } else {
+          api.users
+            .listArticles(id)
+            .then((data) => !cancelled && setArticles(loaded(data)))
+            .catch(() => !cancelled && setArticles(FAILED));
+        }
       })
       .catch((err) => {
         if (cancelled) return;
@@ -98,7 +119,23 @@ export function ProfileView({ id }: { id: string }) {
     return () => {
       cancelled = true;
     };
-  }, [id, t]);
+  }, [id, isOwn, t]);
+
+  // The draft is created here rather than on a /new route, for the same reason
+  // as on my-projects: images upload against an article id, so the article has
+  // to exist before the editor opens.
+  const handleWriteArticle = useCallback(async () => {
+    if (isCreating) return;
+    setIsCreating(true);
+    setCreateError("");
+    try {
+      const created = await api.articles.createOwn();
+      router.push(`/articles/edit/${created.id}`);
+    } catch (err) {
+      setCreateError(describeApiError(err, t("errors.createFailed")));
+      setIsCreating(false);
+    }
+  }, [isCreating, router, t]);
 
   if (state.kind !== "loaded") {
     return (
@@ -140,7 +177,7 @@ export function ProfileView({ id }: { id: string }) {
 
   const { profile } = state;
   const name = getAuthorName(profile);
-  const isOwn = user?.id === profile.id;
+  const listedArticles: ListState<UserArticle | OwnArticle> = isOwn ? ownArticles : articles;
   // Mirrors CreatorCredit's "Created by" / "Tipped off by" from the project's
   // side. Spelled out rather than t(`roles.${role}`): the role comes from the
   // backend's enum and a template-literal key is not checked against the
@@ -151,7 +188,9 @@ export function ProfileView({ id }: { id: string }) {
   };
   const meta = [t("joined", { month: joinedMonth(profile.created_at) })];
   if (projects.kind === "loaded") meta.push(t("projectCount", { count: projects.items.length }));
-  if (articles.kind === "loaded") meta.push(t("articleCount", { count: articles.items.length }));
+  if (listedArticles.kind === "loaded") {
+    meta.push(t("articleCount", { count: listedArticles.items.length }));
+  }
 
   return (
     <main className="min-h-screen bg-muted pt-14">
@@ -173,11 +212,32 @@ export function ProfileView({ id }: { id: string }) {
               </p>
             </div>
           </div>
-          {isOwn && (
-            <Link href="/profile" className="btn-secondary w-full sm:w-auto">
-              <PencilIcon className="w-4 h-4" />
-              {t("editProfile")}
-            </Link>
+          {isOwn ? (
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={handleWriteArticle}
+                disabled={isCreating}
+                className="btn-primary w-full sm:w-auto inline-flex items-center justify-center gap-1.5 disabled:opacity-60"
+              >
+                {isCreating ? (
+                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                ) : (
+                  <PlusIcon className="w-4 h-4" />
+                )}
+                {t("writeArticle")}
+              </button>
+              <Link href="/profile" className="btn-secondary w-full sm:w-auto">
+                <PencilIcon className="w-4 h-4" />
+                {t("editProfile")}
+              </Link>
+            </div>
+          ) : (
+            <FollowButton
+              target={{ kind: "user", id: profile.id }}
+              initialFollowed={profile.is_followed}
+              whenAnonymous="login"
+            />
           )}
         </div>
       </section>
@@ -226,33 +286,39 @@ export function ProfileView({ id }: { id: string }) {
               )}
             </section>
 
-            <section aria-labelledby="profile-articles">
+            <section aria-labelledby="profile-articles" id="profile-articles-section">
               <SectionHeading
                 id="profile-articles"
                 title={t("articles")}
-                count={articles.kind === "loaded" ? articles.items.length : undefined}
+                count={listedArticles.kind === "loaded" ? listedArticles.items.length : undefined}
               />
-              {articles.kind === "loading" ? (
+              {createError && (
+                <p className="text-sm text-red-600 mb-3" role="alert">
+                  {createError}
+                </p>
+              )}
+              {listedArticles.kind === "loading" ? (
                 <div className="space-y-3">
                   <div className="skeleton h-[124px] rounded-lg" />
                   <div className="skeleton h-[124px] rounded-lg" />
                 </div>
-              ) : articles.kind === "failed" ? (
+              ) : listedArticles.kind === "failed" ? (
                 <ListError what="articles" message={t("errors.articlesFailed")} />
-              ) : articles.items.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t("noArticles")}</p>
+              ) : listedArticles.items.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  {isOwn ? t("noArticlesOwn") : t("noArticles")}
+                </p>
+              ) : isOwn ? (
+                <OwnArticleList articles={(listedArticles as ListState<OwnArticle> & { kind: "loaded" }).items} />
               ) : (
                 <div className="space-y-3">
-                  {articles.items.map((article) => (
+                  {listedArticles.items.map((article) => (
                     <ArticleCard
                       key={article.id}
                       article={article}
-                      projectTitle={article.project.title}
-                      href={
-                        article.project.slug && article.slug
-                          ? `/projects/${article.project.slug}/articles/${article.slug}`
-                          : undefined
-                      }
+                      flag={article.project ? article.project.title : name}
+                      showChannel={!!article.project}
+                      href={publicArticleHref(article, profile.id)}
                       variant="row"
                     />
                   ))}
@@ -287,5 +353,86 @@ function SectionHeading({ id, title, count }: { id: string; title: string; count
       </h2>
       {count !== undefined && <span className="text-sm text-muted-foreground">{count}</span>}
     </div>
+  );
+}
+
+
+// A visible article's public address: under its project, or under the author
+// for one published under their own name.
+function publicArticleHref(article: UserArticle, authorId: string): string | undefined {
+  if (!article.slug) return undefined;
+  if (article.project) {
+    return article.project.slug
+      ? `/projects/${article.project.slug}/articles/${article.slug}`
+      : undefined;
+  }
+  return `/users/${authorId}/articles/${article.slug}`;
+}
+
+// The owner's list: every article they wrote, in every state, with the same
+// badges the my-projects article tab shows, each row opening the editor.
+function OwnArticleList({ articles }: { articles: OwnArticle[] }) {
+  const t = useTranslations("profile.public");
+  // Spelled out rather than t(`badge.${key}`): a template-literal key is not
+  // checked against the messages.
+  const badgeLabels = {
+    draft: t("badge.draft"),
+    published: t("badge.published"),
+    pendingReview: t("badge.pendingReview"),
+    notShown: t("badge.notShown"),
+  } as const;
+
+  return (
+    <ul className="space-y-2" data-testid="own-articles">
+      {articles.map((article) => {
+        const badge = articleBadge(article);
+        return (
+          <li
+            key={article.id}
+            className="rounded-lg border border-border bg-white hover:border-accent/50 transition-colors"
+          >
+            <Link
+              href={`/articles/edit/${article.id}`}
+              className="flex items-center gap-3 px-4 py-3"
+            >
+              <ArticleListingImage
+                src={article.listing_image_url}
+                alt=""
+                crop={article.listing_crop}
+                className="w-20 flex-shrink-0 rounded"
+              />
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-base font-medium text-foreground truncate">
+                    {article.title || t("untitledDraft")}
+                  </span>
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full border text-xs font-medium ${badge.tone}`}
+                    data-testid="article-badge"
+                  >
+                    {badgeLabels[badge.key]}
+                  </span>
+                </div>
+                <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
+                  <span className="font-semibold uppercase tracking-wide text-accent">
+                    {article.project ? article.project.title : t("ownName")}
+                  </span>
+                  {article.published_at && (
+                    <time dateTime={article.published_at}>
+                      {formatDate(article.published_at, {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      })}
+                    </time>
+                  )}
+                </div>
+              </div>
+              <span className="text-sm text-accent">{t("edit")}</span>
+            </Link>
+          </li>
+        );
+      })}
+    </ul>
   );
 }

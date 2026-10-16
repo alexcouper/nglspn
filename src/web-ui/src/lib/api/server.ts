@@ -6,6 +6,8 @@ import type {
   Article,
   ArticleListItem,
   CategoryItem,
+  PublicUserProfile,
+  UserArticle,
   Competition,
   CompetitionHighlightsResponse,
   CompetitionOverviewListResponse,
@@ -60,6 +62,38 @@ export async function fetchArticleBySlug(
   return serverFetch<Article>(
     `/api/projects/${projectSlug}/articles/by-slug/${articleSlug}`,
   );
+}
+
+// The author-owned article's address, and what its render page needs beside
+// it. Anonymous like everything here: a draft 404s, as on the project form.
+export async function fetchAuthorArticleBySlug(
+  userId: string,
+  articleSlug: string,
+): Promise<Article> {
+  return serverFetch<Article>(
+    `/api/users/${userId}/articles/by-slug/${articleSlug}`,
+  );
+}
+
+export async function fetchPublicProfile(
+  userId: string,
+): Promise<PublicUserProfile> {
+  return serverFetch<PublicUserProfile>(`/api/users/${userId}`);
+}
+
+export async function getPublicProfileOr404(
+  userId: string,
+): Promise<PublicUserProfile> {
+  try {
+    return await fetchPublicProfile(userId);
+  } catch (err) {
+    if (err instanceof ApiNotFoundError) notFound();
+    throw err;
+  }
+}
+
+export async function fetchUserArticles(userId: string): Promise<UserArticle[]> {
+  return serverFetch<UserArticle[]>(`/api/users/${userId}/articles`);
 }
 
 export async function fetchProjectArticles(

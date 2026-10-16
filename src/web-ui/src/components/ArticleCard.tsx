@@ -15,9 +15,14 @@ export type ArticleCardItem = Pick<
 
 interface Props {
   article: ArticleCardItem;
-  // Named where the card sits outside its project — on a profile, a feed. The
-  // project page leaves it out; every card there is the same project.
-  projectTitle?: string;
+  // The small label above the headline where the card sits outside its
+  // project — on a profile, a feed: the project's title, or the author's name
+  // for an article published under their own name. The project page leaves
+  // it out; every card there is the same project.
+  flag?: string;
+  // A person's channel is a placeholder nobody chose, so a card for an
+  // author-owned article leaves it out.
+  showChannel?: boolean;
   // Supplied rather than derived from a project slug: a cross-project feed
   // builds its links differently. Omitted where there is nothing to link to —
   // an unpublished draft has no slug, so the authoring preview renders the
@@ -45,7 +50,13 @@ const SUMMARY = {
   row: { imaged: "line-clamp-2", bare: "line-clamp-2" },
 } as const;
 
-export function ArticleCard({ article, projectTitle, href, variant }: Props) {
+export function ArticleCard({
+  article,
+  flag,
+  showChannel = true,
+  href,
+  variant,
+}: Props) {
   const isLead = variant === "lead";
   const isRow = variant === "row";
   const hasImage = !!article.listing_image_url;
@@ -70,15 +81,21 @@ export function ArticleCard({ article, projectTitle, href, variant }: Props) {
           <div className="mb-3 h-1 w-12 rounded-full bg-accent" />
         )}
         <div className="text-xs font-semibold uppercase tracking-wide text-accent">
-          {projectTitle && (
-            <>
-              {projectTitle}
-              <span className="text-muted-foreground font-normal normal-case tracking-normal">
-                {" · "}
+          {[
+            flag,
+            showChannel ? article.channel?.name : undefined,
+          ]
+            .filter((part): part is string => !!part)
+            .map((part, index) => (
+              <span key={part}>
+                {index > 0 && (
+                  <span className="text-muted-foreground font-normal normal-case tracking-normal">
+                    {" · "}
+                  </span>
+                )}
+                {part}
               </span>
-            </>
-          )}
-          {article.channel.name}
+            ))}
           {article.published_at && (
             <span className="text-muted-foreground font-normal normal-case tracking-normal">
               {" · "}

@@ -7,7 +7,8 @@
     "tablistLabel": "Article editor",
     "notAllowed": {
       "title": "Not allowed",
-      "body": "You need full edit access on this project to author articles."
+      "body": "You need full edit access on this project to author articles.",
+      "bodyOwn": "Only the author can edit an article published under their own name."
     },
     "openFailed": {
       "title": "Couldn't open this article",
@@ -19,14 +20,20 @@
     "confirmDelete": "Delete this article? This cannot be undone.",
     "saveDraft": "Save draft",
     "deleteArticle": "Delete article",
-    "titlePlaceholder": "Article title"
+    "titlePlaceholder": "Article title",
+    "backToProfile": "Back to your profile",
+    "yourProfile": "Your profile"
   },
   "route": {
     "openProjectFailed": {
       "title": "Couldn't open this project",
       "fallback": "Couldn't open this project."
     },
-    "backToMyProjects": "Back to my projects"
+    "backToMyProjects": "Back to my projects",
+    "openArticleFailed": {
+      "title": "Couldn't open this article",
+      "fallback": "Couldn't open this article."
+    }
   },
   "load": {
     "openFailed": "Couldn't open this article."
@@ -113,7 +120,8 @@
   },
   "publishDialog": {
     "title": "Publish article",
-    "description": "Publishing makes the article visible to everyone on the project page."
+    "description": "Publishing makes the article visible to everyone on the project page.",
+    "descriptionOwn": "Publishing makes the article visible to everyone on your profile and in Latest."
   },
   "render": {
     "draftBadge": "Draft — visible only to the author and project editors",
@@ -124,15 +132,19 @@
     "heading": {
       "channel": "More in {channel}",
       "project": "More from {project}",
-      "elsewhere": "Elsewhere on Naglasúpan"
+      "elsewhere": "Elsewhere on Naglasúpan",
+      "author": "More from {name}"
     },
     "moreFromProject": "All {count, plural, one {# article} other {# articles}} from {project}",
     "moreLatest": "Everything that's happened lately",
     "projectPage": "Project page",
     "articleCount": "{count, plural, one {# article} other {# articles}}",
-    "articleCountInChannels": "{count, plural, one {# article} other {# articles}} in {channels} channels"
+    "articleCountInChannels": "{count, plural, one {# article} other {# articles}} in {channels} channels",
+    "moreFromAuthor": "All {count, plural, one {# article} other {# articles}} by {name}",
+    "profilePage": "Profile"
   },
   "page": {
-    "metaTitle": "{articleTitle} — {projectTitle}"
+    "metaTitle": "{articleTitle} — {projectTitle}",
+    "metaTitleAuthor": "{articleTitle} — {authorName}"
   }
 }

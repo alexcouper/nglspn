@@ -74,10 +74,26 @@ function articleRef(overrides = {}) {
     channel_name: "Competition Winners",
     project_slug: "naglasupan",
     project_title: "Naglasúpan",
+    author_id: null,
+    author_name: null,
+    author_avatar_url: null,
     listing_image_url: "https://example.test/lead.jpg",
     listing_crop: null,
     ...overrides,
   };
+}
+
+function authorOwnedRef(overrides = {}) {
+  return articleRef({
+    slug: "lab-notebook",
+    title: "Why I keep a lab notebook",
+    channel_name: "Articles",
+    project_slug: null,
+    project_title: null,
+    author_id: "00000000-0000-0000-0000-0000000000c1",
+    author_name: "Anna Sigurdsson",
+    ...overrides,
+  });
 }
 
 describe("renderEntry", () => {
@@ -120,6 +136,19 @@ describe("renderEntry", () => {
     expect(rendered.href).toBe(
       "/projects/naglasupan/articles/how-broadside-won?from=latest",
     );
+  });
+
+  it("flags an author-owned article with the author and links it under their profile", () => {
+    const rendered = renderEntry(
+      entry({ kind: "article_published", article: authorOwnedRef() }),
+    );
+
+    expect(rendered.flag).toBe("Anna Sigurdsson");
+    expect(rendered.href).toBe(
+      "/users/00000000-0000-0000-0000-0000000000c1/articles/lab-notebook?from=latest",
+    );
+    // The personal channel's name is a placeholder nobody chose.
+    expect(rendered.meta).toBe("");
   });
 
   it("does not repeat the project in the meta line below it", () => {

@@ -2,13 +2,19 @@ import { describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
-import type { Article, Project } from "@/lib/api";
+import type { Article, Project, PublicUserProfile } from "@/lib/api";
 
 import { ArticleRenderContent } from "./ArticleRenderContent";
+import { authorContainer, projectContainer } from "./container";
 import type { Onward, OnwardCard } from "./onward";
 
 vi.mock("@/contexts/auth", () => ({
   useAuth: () => ({ isAuthenticated: false, isLoading: false }),
+}));
+// The onward footer's Follow button reads the router for its login redirect.
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn() }),
+  usePathname: () => "/",
 }));
 vi.mock("@/contexts/notifications", () => ({
   useNotifications: () => ({ markArticleRead: vi.fn().mockResolvedValue(undefined) }),
@@ -85,7 +91,7 @@ async function render(props: Partial<Parameters<typeof ArticleRenderContent>[0]>
     root = createRoot(container);
     root.render(
       <ArticleRenderContent
-        project={project()}
+        container={projectContainer(project())}
         article={article()}
         origin={{ kind: "latest", href: "/latest" }}
         onward={null}
@@ -124,7 +130,7 @@ describe("ArticleRenderContent", () => {
   it("falls back to the project when the reader arrived directly", async () => {
     const { container, cleanup } = await render({
       origin: {
-        kind: "project",
+        kind: "container",
         href: "/projects/hot-spring-finder#articles",
         title: "Hot Spring Finder",
       },
@@ -241,6 +247,43 @@ describe("ArticleRenderContent", () => {
     expect(heading?.textContent).toBe("We mapped 94 unmarked hot springs");
     expect(container.textContent).toContain("Hot Spring Finder");
     expect(container.textContent).toContain("Updates");
+    cleanup();
+  });
+});
+
+
+describe("ArticleRenderContent for an author-owned article", () => {
+  const author = {
+    id: "u-1",
+    first_name: "Sigrún",
+    last_name: "Haraldsdóttir",
+    is_system_user: false,
+    avatar_url: null,
+  } as PublicUserProfile;
+
+  it("shows the author where the project would be, and no channel", async () => {
+    const { container, cleanup } = await render({
+      container: authorContainer(author),
+      article: article({ project: null, channel: { id: "ch-personal", name: "Articles" } }),
+    });
+
+    const head = container.querySelector('[data-testid="article-container"]');
+    expect(head?.getAttribute("href")).toBe("/users/u-1");
+    expect(head?.textContent).toContain("Sigrún Haraldsdóttir");
+    expect(head?.textContent).not.toContain("Articles");
+    cleanup();
+  });
+
+  it("sends the reader back to the author's profile by default", async () => {
+    const { container, cleanup } = await render({
+      container: authorContainer(author),
+      article: article({ project: null }),
+      origin: { kind: "container", href: "/users/u-1#profile-articles", title: "Sigrún Haraldsdóttir" },
+    });
+
+    expect(container.querySelector('a[href="/users/u-1#profile-articles"]')?.textContent).toContain(
+      "Sigrún Haraldsdóttir",
+    );
     cleanup();
   });
 });

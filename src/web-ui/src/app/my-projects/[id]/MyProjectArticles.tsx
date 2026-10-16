@@ -9,57 +9,11 @@ import { ArticleListingImage } from "@/components/ArticleListingImage";
 import type { ArticleListItem, Channel } from "@/lib/api";
 import { api } from "@/lib/api";
 import { describeApiError } from "@/lib/api/errors";
+import { articleBadge, sortDraftsFirst } from "@/lib/article-listing";
 import { formatDate } from "@/lib/utils";
 
 interface Props {
   projectSlugOrId: string;
-}
-
-function publishedAtMs(article: ArticleListItem): number {
-  return article.published_at ? new Date(article.published_at).getTime() : 0;
-}
-
-// Drafts first (`updated_at` would be more accurate than `created_at`-style
-// fields the list endpoint exposes today, but we don't get an `updated_at` on
-// the list item shape — drafts are typically few enough that ordering between
-// them isn't critical). Then published articles by `published_at` desc.
-function sortDraftsFirst(
-  articles: ArticleListItem[],
-): ArticleListItem[] {
-  return [...articles].sort((a, b) => {
-    const aDraft = a.state !== "published";
-    const bDraft = b.state !== "published";
-    if (aDraft !== bDraft) return aDraft ? -1 : 1;
-    return publishedAtMs(b) - publishedAtMs(a);
-  });
-}
-
-const BADGE_TONES = {
-  draft: "bg-amber-50 border-amber-200 text-amber-800",
-  live: "bg-emerald-50 border-emerald-200 text-emerald-800",
-  held: "bg-slate-100 border-slate-300 text-slate-700",
-} as const;
-
-// A published article the site isn't showing gets its own badge rather than the
-// green one. This table is the only place its author can find that out, so
-// "Published" on its own would be a lie — the article exists, and nobody else
-// can see it.
-type BadgeKey = "draft" | "published" | "pendingReview" | "notShown";
-
-function articleBadge(article: ArticleListItem): {
-  key: BadgeKey;
-  tone: string;
-} {
-  if (article.state !== "published") {
-    return { key: "draft", tone: BADGE_TONES.draft };
-  }
-  if (article.is_globally_visible) {
-    return { key: "published", tone: BADGE_TONES.live };
-  }
-  return {
-    key: article.global_visibility === "pending" ? "pendingReview" : "notShown",
-    tone: BADGE_TONES.held,
-  };
 }
 
 export function MyProjectArticles({ projectSlugOrId }: Props) {
@@ -119,7 +73,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
         title: "",
         body: "",
       });
-      router.push(`/projects/${projectSlugOrId}/articles/edit/${created.id}`);
+      router.push(`/articles/edit/${created.id}`);
     } catch (err) {
       setError(describeApiError(err, t("errors.createFailed")));
       setIsCreating(false);
@@ -179,7 +133,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
                 className="rounded-lg border border-border bg-white hover:border-accent/50 transition-colors"
               >
                 <Link
-                  href={`/projects/${projectSlugOrId}/articles/edit/${article.id}`}
+                  href={`/articles/edit/${article.id}`}
                   className="flex items-center gap-3 px-4 py-3"
                 >
                   <ArticleListingImage
@@ -202,7 +156,7 @@ export function MyProjectArticles({ projectSlugOrId }: Props) {
                     </div>
                     <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
                       <span className="font-semibold uppercase tracking-wide text-accent">
-                        {article.channel.name}
+                        {article.channel?.name}
                       </span>
                       {article.published_at && (
                         <time dateTime={article.published_at}>

@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { Project } from "@/lib/api";
+import type { Article, Project } from "@/lib/api";
 import { ArticleAuthoringRoute } from "./ArticleAuthoringRoute";
 
 // Whether the caller is signed in. `useRequireAuth` also owns the redirect to
@@ -13,7 +13,7 @@ vi.mock("@/hooks/useRequireAuth", () => ({
 }));
 
 vi.mock("@/lib/api", () => ({
-  api: { projects: { get: vi.fn() } },
+  api: { projects: { get: vi.fn() }, articles: { get: vi.fn() } },
 }));
 
 // The page under test is the wrapper. Stubbing the authoring page keeps the
@@ -21,13 +21,13 @@ vi.mock("@/lib/api", () => ({
 vi.mock("./ArticleAuthoringPage", () => ({
   ArticleAuthoringPage: ({
     project,
-    articleId,
+    initialArticle,
   }: {
-    project: Project;
-    articleId: string;
+    project: Project | null;
+    initialArticle: Article;
   }) => (
     <div data-testid="authoring-page">
-      {project.title} / {articleId}
+      {project ? project.title : "(own)"} / {initialArticle.id}
     </div>
   ),
 }));
@@ -37,6 +37,7 @@ const { api } = await import("@/lib/api");
 const { ApiRequestError } = await import("@/lib/api/base");
 
 const getProject = api.projects.get as ReturnType<typeof vi.fn>;
+const getArticle = api.articles.get as ReturnType<typeof vi.fn>;
 
 // ------------------------------------------------------------------ factories
 
@@ -51,28 +52,45 @@ function project(overrides: Partial<Project> = {}): Project {
   } as unknown as Project;
 }
 
+function projectArticle(overrides: Partial<Article> = {}): Article {
+  return {
+    id: "article-1",
+    project: { id: "project-1", slug: "a-project", title: "A project" },
+    channel: { id: "channel-1", name: "Updates" },
+    author: null,
+    ...overrides,
+  } as unknown as Article;
+}
+
+function ownArticle(overrides: Partial<Article> = {}): Article {
+  return {
+    id: "article-2",
+    project: null,
+    channel: null,
+    author: { id: "user-1", first_name: "Ada", last_name: "Lovelace" },
+    ...overrides,
+  } as unknown as Article;
+}
+
 function notFound() {
   return new ApiRequestError(
     "Request failed",
-    { detail: "Project not found" },
+    { detail: "Article not found" },
     404,
   );
 }
 
 // ------------------------------------------------------------------- mounting
 
-async function mountRoute({
-  projectRef = "a-project",
-  articleId = "article-1",
-} = {}) {
+async function mountRoute({ articleId = "article-1" } = {}) {
   const container = document.createElement("div");
   document.body.appendChild(container);
   const root = createRoot(container);
   await act(async () => {
-    root.render(
-      <ArticleAuthoringRoute projectRef={projectRef} articleId={articleId} />,
-    );
+    root.render(<ArticleAuthoringRoute articleId={articleId} />);
   });
+  // The project request follows the article's; let it land.
+  await act(async () => {});
   return { container, unmount: () => unmount(root, container) };
 }
 
@@ -101,20 +119,32 @@ function expectSkeleton(container: HTMLElement) {
 beforeEach(() => {
   vi.clearAllMocks();
   authState.isReady = true;
+  getArticle.mockResolvedValue(projectArticle());
   getProject.mockResolvedValue(project());
 });
 
 describe("ArticleAuthoringRoute", () => {
-  it("renders the authoring page for an unapproved project", async () => {
+  it("loads the article first, then its project, for a project article", async () => {
     const { container, unmount } = await mountRoute();
 
+    expect(getArticle).toHaveBeenCalledWith("article-1");
     expect(getProject).toHaveBeenCalledWith("a-project");
     expectAuthoringPage(container, "A project / article-1");
     unmount();
   });
 
-  it("shows the skeleton while the project is in flight", async () => {
-    getProject.mockReturnValue(new Promise(() => {}));
+  it("opens an author-owned article without asking for any project", async () => {
+    getArticle.mockResolvedValue(ownArticle());
+
+    const { container, unmount } = await mountRoute({ articleId: "article-2" });
+
+    expect(getProject).not.toHaveBeenCalled();
+    expectAuthoringPage(container, "(own) / article-2");
+    unmount();
+  });
+
+  it("shows the skeleton while the article is in flight", async () => {
+    getArticle.mockReturnValue(new Promise(() => {}));
 
     const { container, unmount } = await mountRoute();
 
@@ -123,14 +153,14 @@ describe("ArticleAuthoringRoute", () => {
     unmount();
   });
 
-  it("shows an in-page error with a way back when the project 404s", async () => {
-    getProject.mockRejectedValue(notFound());
+  it("shows an in-page error with a way back when the article 404s", async () => {
+    getArticle.mockRejectedValue(notFound());
 
     const { container, unmount } = await mountRoute();
 
-    expect(container.textContent).toContain("Couldn't open this project");
+    expect(container.textContent).toContain("Couldn't open this article");
     expect(container.querySelector("[role='alert']")?.textContent).toBe(
-      "Project not found",
+      "Article not found",
     );
     expect(container.querySelector("a")?.getAttribute("href")).toBe(
       "/my-projects",
@@ -139,12 +169,12 @@ describe("ArticleAuthoringRoute", () => {
     unmount();
   });
 
-  it("does not request the project before auth is ready", async () => {
+  it("does not request the article before auth is ready", async () => {
     authState.isReady = false;
 
     const { container, unmount } = await mountRoute();
 
-    expect(getProject).not.toHaveBeenCalled();
+    expect(getArticle).not.toHaveBeenCalled();
     expectSkeleton(container);
     unmount();
   });

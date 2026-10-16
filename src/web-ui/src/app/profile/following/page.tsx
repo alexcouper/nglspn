@@ -11,8 +11,28 @@ import type {
   ChannelFollowState,
   FollowWithPreferences,
 } from "@/lib/api/follows";
+import { Avatar } from "@/components/Avatar";
 import { ChannelToggleList } from "@/components/ChannelToggleList";
+import type { FollowTarget } from "@/components/FollowButton";
 import { useToasts } from "@/contexts/toasts";
+
+// One key per row, whichever kind it is.
+export function followKey(follow: FollowWithPreferences): string {
+  return follow.target === "user"
+    ? `user:${follow.user_id ?? ""}`
+    : `project:${follow.project_slug ?? ""}`;
+}
+
+function targetOf(follow: FollowWithPreferences): FollowTarget {
+  return follow.target === "user"
+    ? { kind: "user", id: follow.user_id ?? "" }
+    : { kind: "project", slug: follow.project_slug ?? "" };
+}
+
+async function unfollowTarget(target: FollowTarget): Promise<void> {
+  if (target.kind === "project") await api.follows.unfollow(target.slug);
+  else await api.follows.unfollowUser(target.id);
+}
 
 export default function FollowedProjectsPage() {
   const t = useTranslations("profile.following");
@@ -39,19 +59,19 @@ export default function FollowedProjectsPage() {
     };
   }, [authLoading, t]);
 
-  const removeRow = useCallback((projectSlug: string) => {
+  const removeRow = useCallback((key: string) => {
     setFollows((prev) =>
-      prev === null ? prev : prev.filter((f) => f.project_slug !== projectSlug)
+      prev === null ? prev : prev.filter((f) => followKey(f) !== key)
     );
   }, []);
 
-  const handleUnfollow = async (projectSlug: string) => {
+  const handleUnfollow = async (follow: FollowWithPreferences) => {
     if (!follows) return;
     const previous = follows;
     // Optimistic remove.
-    removeRow(projectSlug);
+    removeRow(followKey(follow));
     try {
-      await api.follows.unfollow(projectSlug);
+      await unfollowTarget(targetOf(follow));
     } catch {
       setFollows(previous);
       showToast({
@@ -103,10 +123,10 @@ export default function FollowedProjectsPage() {
             <ul className="space-y-3">
               {follows.map((follow) => (
                 <FollowRow
-                  key={follow.project_slug}
+                  key={followKey(follow)}
                   follow={follow}
-                  onUnfollow={() => handleUnfollow(follow.project_slug)}
-                  onProjectUnfollowed={removeRow}
+                  onUnfollow={() => handleUnfollow(follow)}
+                  onUnfollowed={removeRow}
                 />
               ))}
             </ul>
@@ -120,14 +140,10 @@ export default function FollowedProjectsPage() {
 interface FollowRowProps {
   follow: FollowWithPreferences;
   onUnfollow: () => void;
-  onProjectUnfollowed: (projectSlug: string) => void;
+  onUnfollowed: (key: string) => void;
 }
 
-function FollowRow({
-  follow,
-  onUnfollow,
-  onProjectUnfollowed,
-}: FollowRowProps) {
+function FollowRow({ follow, onUnfollow, onUnfollowed }: FollowRowProps) {
   const t = useTranslations("profile.following");
   const [isExpanded, setIsExpanded] = useState(false);
   // The list is fetched once, so channel state lives here and is mutated in
@@ -137,53 +153,75 @@ function FollowRow({
   );
   const panelId = useId();
   const followedCount = channels.filter((c) => c.followed).length;
+  const key = followKey(follow);
+  const isPerson = follow.target === "user";
+  const title = isPerson ? (follow.user_name ?? "") : (follow.project_title ?? "");
+  const href = isPerson
+    ? `/users/${follow.user_id}`
+    : `/projects/${follow.project_slug}`;
 
-  const handleProjectUnfollowed = useCallback(() => {
-    onProjectUnfollowed(follow.project_slug);
-  }, [onProjectUnfollowed, follow.project_slug]);
+  const handleUnfollowed = useCallback(() => {
+    onUnfollowed(key);
+  }, [onUnfollowed, key]);
 
   const toggleChannel = useChannelToggle({
-    projectSlug: follow.project_slug,
+    target: targetOf(follow),
     setChannels,
-    onProjectUnfollowed: handleProjectUnfollowed,
+    onUnfollowed: handleUnfollowed,
   });
 
   return (
-    <li className="bg-white rounded-xl border border-border overflow-hidden">
+    <li
+      className="bg-white rounded-xl border border-border overflow-hidden"
+      data-testid={`follow-row-${follow.target}`}
+    >
       <div className="flex items-center gap-3 px-5 py-4">
-        {follow.project_hero_image_url && (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={follow.project_hero_image_url}
-            alt=""
-            className="w-10 h-10 rounded-lg object-cover border border-border shrink-0"
+        {isPerson ? (
+          <Avatar
+            src={follow.user_avatar_url}
+            firstName={title}
+            lastName=""
+            size={40}
           />
+        ) : (
+          follow.project_hero_image_url && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={follow.project_hero_image_url}
+              alt=""
+              className="w-10 h-10 rounded-lg object-cover border border-border shrink-0"
+            />
+          )
         )}
         <div className="min-w-0 flex-1">
           <Link
-            href={`/projects/${follow.project_slug}`}
+            href={href}
             className="text-sm font-medium text-foreground hover:text-accent transition-colors block truncate"
           >
-            {follow.project_title}
+            {title}
           </Link>
           <div className="text-xs text-muted-foreground">
-            {t("channelCount", { followed: followedCount, total: channels.length })}
+            {isPerson && channels.length === 0
+              ? t("noArticlesYet")
+              : t("channelCount", { followed: followedCount, total: channels.length })}
           </div>
         </div>
-        <button
-          type="button"
-          onClick={() => setIsExpanded((open) => !open)}
-          className="p-1 text-muted-foreground hover:text-foreground transition-colors"
-          aria-expanded={isExpanded}
-          aria-controls={panelId}
-          aria-label={t("channelsFor", { title: follow.project_title })}
-        >
-          <ChevronDownIcon
-            className={`w-4 h-4 transition-transform ${
-              isExpanded ? "rotate-180" : ""
-            }`}
-          />
-        </button>
+        {channels.length > 0 && (
+          <button
+            type="button"
+            onClick={() => setIsExpanded((open) => !open)}
+            className="p-1 text-muted-foreground hover:text-foreground transition-colors"
+            aria-expanded={isExpanded}
+            aria-controls={panelId}
+            aria-label={t("channelsFor", { title })}
+          >
+            <ChevronDownIcon
+              className={`w-4 h-4 transition-transform ${
+                isExpanded ? "rotate-180" : ""
+              }`}
+            />
+          </button>
+        )}
         <button
           type="button"
           onClick={onUnfollow}

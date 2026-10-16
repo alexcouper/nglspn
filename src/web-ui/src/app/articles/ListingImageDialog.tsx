@@ -30,10 +30,8 @@ function isCroppable(image: Image): image is CroppableImage {
 }
 
 interface Props {
-  // Slug or id — whatever the article editor addresses the project by. Article
-  // images hang off the article's own endpoints, so this is the same reference
-  // the rest of the editor uses.
-  projectRef: string;
+  // Article images hang off the article's own endpoints, whether or not it
+  // has a project.
   articleId: string;
   // Every image uploaded for this article, from the image-article link. Not
   // parsed out of the body, so an image the author uploaded here is offered on
@@ -49,7 +47,6 @@ interface Props {
 // Two steps: pick an image, then frame it at 16:9. Step two hosts ImageCropper
 // directly rather than nesting an ImageCropDialog inside this one.
 export function ListingImageDialog({
-  projectRef,
   articleId,
   images,
   currentImageId,
@@ -75,8 +72,8 @@ export function ListingImageDialog({
   // A fresh object literal here would change identity on every render, which
   // is what useImageUpload's uploadFile memoises on.
   const uploadTarget = useMemo(
-    () => ({ kind: "article" as const, projectRef, articleId }),
-    [projectRef, articleId],
+    () => ({ kind: "article" as const, articleId }),
+    [articleId],
   );
 
   const { uploadFile, isUploading } = useImageUpload({
@@ -109,7 +106,7 @@ export function ListingImageDialog({
     if (!pendingUpload) return;
     // Best-effort: article images are excluded from the project gallery, so a
     // failure leaves an invisible orphan rather than a visible one.
-    api.articles.deleteImage(projectRef, articleId, pendingUpload.id).catch(() => {});
+    api.articles.deleteImage(articleId, pendingUpload.id).catch(() => {});
     setPendingUpload(null);
   }
 

@@ -20,7 +20,7 @@ function messageFor(error: unknown, fallback: string): string {
 // a file on the body, and pasting one — and all three funnel through the
 // imageUploadHandler. MDXEditor rethrows a rejected upload into an unhandled
 // promise, so this is the only place an author can be told it went wrong.
-export function useImageUploadStatus(projectRef: string, articleId: string) {
+export function useImageUploadStatus(articleId: string) {
   const t = useTranslations("articles.imageUpload");
   const [status, setStatus] = useState<ImageUploadStatus>({ kind: "idle" });
 
@@ -28,10 +28,7 @@ export function useImageUploadStatus(projectRef: string, articleId: string) {
     async (file: File) => {
       setStatus({ kind: "uploading" });
       try {
-        const image = await sendUpload(
-          { kind: "article", projectRef, articleId },
-          file,
-        );
+        const image = await sendUpload({ kind: "article", articleId }, file);
         setStatus({ kind: "idle" });
         return image.url;
       } catch (err) {
@@ -39,7 +36,7 @@ export function useImageUploadStatus(projectRef: string, articleId: string) {
         throw err;
       }
     },
-    [projectRef, articleId, t],
+    [articleId, t],
   );
 
   const dismissError = useCallback(() => setStatus({ kind: "idle" }), []);

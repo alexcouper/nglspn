@@ -100,7 +100,6 @@ function dialog(
 ) {
   return (
     <ListingImageDialog
-      projectRef="p1"
       articleId="a1"
       images={[image("one"), image("two")]}
       currentImageId={null}
@@ -283,7 +282,6 @@ describe("ListingImageDialog", () => {
     await click(buttonLabelled(container, "Cancel"));
 
     expect(api.articles.deleteImage).toHaveBeenCalledWith(
-      "p1",
       "a1",
       "fresh",
     );

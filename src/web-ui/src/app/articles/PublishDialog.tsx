@@ -6,6 +6,8 @@ import { useTranslations } from "next-intl";
 import { Dialog } from "@/components/Dialog";
 
 interface Props {
+  // Where readers will find it: the project page, or the author's profile.
+  destination?: "project" | "profile";
   isPublishing: boolean;
   onClose: () => void;
   onConfirm: () => void;
@@ -13,7 +15,12 @@ interface Props {
 
 const TITLE_ID = "publish-article-title";
 
-export function PublishDialog({ isPublishing, onClose, onConfirm }: Props) {
+export function PublishDialog({
+  destination = "project",
+  isPublishing,
+  onClose,
+  onConfirm,
+}: Props) {
   const t = useTranslations("articles.publishDialog");
   const tc = useTranslations("common.actions");
   return (
@@ -22,7 +29,7 @@ export function PublishDialog({ isPublishing, onClose, onConfirm }: Props) {
         {t("title")}
       </h2>
       <p className="text-sm text-muted-foreground mt-2">
-        {t("description")}
+        {destination === "project" ? t("description") : t("descriptionOwn")}
       </p>
 
       <div className="mt-6 flex justify-end gap-2">

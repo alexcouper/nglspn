@@ -16,10 +16,15 @@ import { useArticleMutations } from "./useArticleMutations";
 import { useLeaveGuard } from "./useLeaveGuard";
 
 interface Options {
-  project: Project;
-  // Always an existing article: the draft is created by the New article button
-  // before this page is routed to, because images upload against an article id.
+  // Null for an author-owned article: no channels, and the page the author
+  // returns to afterwards is their profile.
+  project: Project | null;
+  // Always an existing article: the draft is created by the Write article
+  // button before this page is routed to, because images upload against an
+  // article id.
   articleId: string;
+  // The article as the route already loaded it; spares a second GET.
+  initialArticle?: Article | null;
 }
 
 // Everything the article authoring page needs, assembled from one unit per
@@ -30,9 +35,13 @@ interface Options {
 // What is left here is what genuinely spans them: the shared error message, the
 // article's routing decisions, and the sweep that reads the last committed
 // state at unmount.
-export function useArticleDraft({ project, articleId }: Options) {
+export function useArticleDraft({
+  project,
+  articleId,
+  initialArticle = null,
+}: Options) {
   const router = useRouter();
-  const projectRef = project.slug ?? project.id;
+  const projectRef = project ? (project.slug ?? project.id) : null;
 
   // One message, whatever produced it: the page has a single place to show it.
   const [error, setError] = useState("");
@@ -62,6 +71,7 @@ export function useArticleDraft({ project, articleId }: Options) {
   const { channels, article, setArticle, isLoading } = useArticleLoad({
     projectRef,
     articleId,
+    initialArticle,
     onLoaded: reset,
     onError: setError,
   });
@@ -89,7 +99,6 @@ export function useArticleDraft({ project, articleId }: Options) {
     isDeleting,
     successMessage,
   } = useArticleMutations({
-    projectRef,
     article,
     onPersisted: handlePersisted,
     onError: setError,
@@ -118,9 +127,9 @@ export function useArticleDraft({ project, articleId }: Options) {
         })
       )
         return;
-      api.articles.delete(projectRef, current.id).catch(() => {});
+      api.articles.delete(current.id).catch(() => {});
     };
-  }, [projectRef, getBody]);
+  }, [getBody]);
 
   const isDirty = useCallback(
     () => fieldsAreDirty(article),
@@ -157,6 +166,12 @@ export function useArticleDraft({ project, articleId }: Options) {
     return persist(payload);
   }, [snapshot, persist]);
 
+  // Where the author lands after the session ends: the project the article
+  // was on, or their own profile for an author-owned one.
+  const containerHref = projectRef
+    ? `/projects/${projectRef}`
+    : `/users/${article?.author?.id ?? initialArticle?.author?.id ?? ""}`;
+
   // The two mutations that end the session: the page they were performed on is
   // gone, so the hook takes itself off the screen. `leaving` suppresses the
   // sweep for the unmount that follows.
@@ -166,15 +181,15 @@ export function useArticleDraft({ project, articleId }: Options) {
     const published = await persistAndPublish(payload);
     if (!published) return;
     latestRef.current.leaving = true;
-    router.push(`/projects/${projectRef}`);
-  }, [snapshot, persistAndPublish, projectRef, router]);
+    router.push(containerHref);
+  }, [snapshot, persistAndPublish, containerHref, router]);
 
   const remove = useCallback(async () => {
     const deleted = await deleteArticle();
     if (!deleted) return;
     latestRef.current.leaving = true;
-    router.push(`/projects/${projectRef}`);
-  }, [deleteArticle, projectRef, router]);
+    router.push(containerHref);
+  }, [deleteArticle, containerHref, router]);
 
   return {
     channels,

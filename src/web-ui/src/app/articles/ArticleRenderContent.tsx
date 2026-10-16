@@ -19,14 +19,16 @@ import "./article-markdown.css";
 import { ArticleOnward } from "./ArticleOnward";
 import type { Onward } from "./onward";
 import type { Origin } from "./origin";
+import { Avatar } from "@/components/Avatar";
 import { CroppedImage } from "@/components/CroppedImage";
 import { useAuth } from "@/contexts/auth";
 import { useNotifications } from "@/contexts/notifications";
-import type { Article, Project } from "@/lib/api";
+import type { Article } from "@/lib/api";
 import { formatDate, getAuthorName, pickVariant } from "@/lib/utils";
+import { type Container, containerHref, containerTitle } from "./container";
 
 interface Props {
-  project: Project;
+  container: Container;
   article: Article;
   origin: Origin;
   onward: Onward | null;
@@ -38,7 +40,7 @@ interface Props {
 const LONG_TITLE = 70;
 
 export function ArticleRenderContent({
-  project,
+  container,
   article,
   origin,
   onward,
@@ -57,8 +59,8 @@ export function ArticleRenderContent({
     : null;
   const isDraft = article.state !== "published";
 
-  const projectSlug = project.slug ?? project.id;
-  const iconImage = project.images?.find((img) => img.is_icon);
+  const project = container.kind === "project" ? container.project : null;
+  const iconImage = project?.images?.find((img) => img.is_icon);
   const iconUrl = iconImage
     ? pickVariant(iconImage.variants, "thumb") ?? iconImage.url
     : null;
@@ -84,7 +86,7 @@ export function ArticleRenderContent({
                 className="inline-flex items-center gap-1.5 pl-2 pr-3 py-1.5 text-sm font-medium rounded-full border border-border bg-white hover:border-accent hover:text-accent transition-colors"
               >
                 <ChevronLeftIcon className="w-4 h-4" />
-                {origin.kind === "project" ? origin.title : t("backToLatest")}
+                {origin.kind === "container" ? origin.title : t("backToLatest")}
               </Link>
             </div>
 
@@ -95,22 +97,37 @@ export function ArticleRenderContent({
                 </div>
               )}
 
+              {/* Where the article lives: the project's icon and title, or
+                  the author's avatar and name. A person's channel is a
+                  placeholder, so only a project's is shown. */}
               <Link
-                href={`/projects/${projectSlug}`}
+                href={containerHref(container)}
                 className="inline-flex items-center gap-2 text-sm font-medium hover:text-accent transition-colors"
+                data-testid="article-container"
               >
-                {iconUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={iconUrl}
-                    alt=""
-                    className="w-6 h-6 rounded object-cover border border-border"
+                {project ? (
+                  iconUrl && (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={iconUrl}
+                      alt=""
+                      className="w-6 h-6 rounded object-cover border border-border"
+                    />
+                  )
+                ) : (
+                  <Avatar
+                    src={container.kind === "author" ? container.author.avatar_url : null}
+                    firstName={container.kind === "author" ? container.author.first_name : ""}
+                    lastName={container.kind === "author" ? container.author.last_name : ""}
+                    size={24}
                   />
                 )}
-                {project.title}
-                <span className="text-muted-foreground font-normal">
-                  · {article.channel.name}
-                </span>
+                {containerTitle(container)}
+                {project && article.channel && (
+                  <span className="text-muted-foreground font-normal">
+                    · {article.channel.name}
+                  </span>
+                )}
               </Link>
 
               <h1
@@ -242,7 +259,7 @@ export function ArticleRenderContent({
       {onward && (
         <ArticleOnward
           onward={onward}
-          project={project}
+          container={container}
           iconUrl={iconUrl}
           articleCount={articleCount}
           channelCount={channelCount}

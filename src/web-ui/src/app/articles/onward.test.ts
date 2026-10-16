@@ -1,7 +1,15 @@
 import { describe, expect, it } from "vitest";
 
-import type { Article, ArticleListItem, FeedEntry, Project } from "@/lib/api";
+import type {
+  Article,
+  ArticleListItem,
+  FeedEntry,
+  Project,
+  PublicUserProfile,
+  UserArticle,
+} from "@/lib/api";
 
+import { authorContainer, projectContainer } from "./container";
 import { buildOnward, ONWARD_SLOTS, type Onward } from "./onward";
 
 const UPDATES = { id: "ch-updates", name: "Updates" };
@@ -56,6 +64,9 @@ function feedEntry(overrides: Record<string, unknown> = {}): FeedEntry {
       channel_name: "Updates",
       project_slug: "reykjavik-bikes",
       project_title: "Reykjavik Bikes",
+      author_id: null,
+      author_name: null,
+      author_avatar_url: null,
       listing_image_url: null,
       listing_crop: null,
     },
@@ -65,12 +76,41 @@ function feedEntry(overrides: Record<string, unknown> = {}): FeedEntry {
 
 function build(overrides: Parameters<typeof buildOnward>[0] | object = {}) {
   return buildOnward({
-    project: project(),
+    container: projectContainer(project()),
     article: article(),
     siblings: [],
     feed: null,
     ...overrides,
   } as Parameters<typeof buildOnward>[0]);
+}
+
+const AUTHOR = {
+  id: "u-1",
+  first_name: "Sigrún",
+  last_name: "Haraldsdóttir",
+} as PublicUserProfile;
+
+function ownArticle(overrides: Partial<UserArticle> = {}): UserArticle {
+  return {
+    id: "a-own-other",
+    title: "On keeping a notebook",
+    summary: "",
+    slug: "notebook",
+    published_at: "2026-10-14T09:00:00Z",
+    channel: { id: "ch-personal", name: "Articles" },
+    project: null,
+    listing_image_url: null,
+    listing_crop: null,
+    ...overrides,
+  } as UserArticle;
+}
+
+function buildForAuthor(overrides: object = {}) {
+  return build({
+    container: authorContainer(AUTHOR),
+    article: article({ id: "a-current", project: null, channel: { id: "ch-personal", name: "Articles" } }),
+    ...overrides,
+  });
 }
 
 function leadTitle(result: Onward | null): string | undefined {
@@ -260,7 +300,10 @@ describe("buildOnward", () => {
 
   it("links through the project slug, falling back to its id", () => {
     const bySlug = build({ siblings: [sibling()] });
-    const byId = build({ project: project({ slug: null }), siblings: [sibling()] });
+    const byId = build({
+      container: projectContainer(project({ slug: null })),
+      siblings: [sibling()],
+    });
 
     expect(bySlug?.primary.cards[0].href).toBe("/projects/hot-spring-finder/articles/offline-tiles");
     expect(byId?.primary.cards[0].href).toBe("/projects/p-1/articles/offline-tiles");
@@ -277,5 +320,62 @@ describe("buildOnward", () => {
       count: 3,
       project: "Hot Spring Finder",
     });
+  });
+});
+
+
+describe("buildOnward for an author-owned article", () => {
+  it("heads the author's other articles with their name and links under their profile", () => {
+    const result = buildForAuthor({ siblings: [ownArticle()] });
+
+    expect(result?.primary.heading).toEqual({ kind: "author", author: "Sigrún Haraldsdóttir" });
+    expect(result?.primary.cards[0].href).toBe("/users/u-1/articles/notebook");
+    expect(result?.primary.cards[0].flag).toBe("Sigrún Haraldsdóttir");
+    expect(result?.more).toEqual({
+      kind: "author",
+      href: "/users/u-1#profile-articles",
+      count: 2,
+      author: "Sigrún Haraldsdóttir",
+    });
+  });
+
+  it("leaves the author's project articles to their projects", () => {
+    const result = buildForAuthor({
+      siblings: [
+        ownArticle({ id: "a-on-project", title: "On a project", project: { id: "p", slug: "p", title: "P" } }),
+      ],
+      feed: null,
+    });
+
+    expect(result).toBeNull();
+  });
+
+  it("does not top up with the author's own feed entries", () => {
+    const own = feedEntry({
+      id: "f-own",
+      article: { ...feedEntry().article!, id: "a-own-feed", project_slug: null, project_title: null, author_id: "u-1", title: "Own in feed" },
+    });
+    const result = buildForAuthor({ siblings: [], feed: [own, ...feedArticles(1)] });
+
+    expect(leadTitle(result)).toBe("Feed 0");
+  });
+
+  it("links a feed card for someone else's author-owned article under their profile", () => {
+    const theirs = feedEntry({
+      article: {
+        ...feedEntry().article!,
+        id: "a-theirs",
+        slug: "theirs",
+        title: "Theirs",
+        project_slug: null,
+        project_title: null,
+        author_id: "u-2",
+        author_name: "Bjarki",
+      },
+    });
+    const result = build({ siblings: [], feed: [theirs] });
+
+    expect(result?.primary.cards[0].href).toBe("/users/u-2/articles/theirs");
+    expect(result?.primary.cards[0].flag).toBe("Bjarki");
   });
 });

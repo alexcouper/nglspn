@@ -134,44 +134,48 @@ the side it touches; groups 1–3 are commits on their own.
 
 ## 5. Web UI: editor and routes
 
-- [ ] 5.1 `git mv` the non-route files from `app/projects/[slug]/articles/`
+- [x] 5.1 `git mv` the non-route files from `app/projects/[slug]/articles/`
   (components, hooks, tests) to `app/articles/`, and the shared render pieces
   (`ArticleRenderContent`, `ArticleOnward`, `onward.ts`, `origin.ts` and
   tests) with them; fix imports; verify `make lint` and `make test` pass with
   no behaviour change.
-- [ ] 5.2 `lib/api/articles.ts`, `lib/uploadImage.ts`, `lib/api/users.ts`,
+- [x] 5.2 `lib/api/articles.ts`, `lib/uploadImage.ts`, `lib/api/users.ts`,
   `lib/api/auth.ts`: id-addressed calls drop the project ref; add
   `createOwn`, `listOwn`, `getBySlugForUser`; `npm run generate-types` picks
   up the new schemas; unit tests for the URL builders.
-- [ ] 5.3 `app/articles/edit/[articleId]/page.tsx` + `ArticleAuthoringRoute`
+- [x] 5.3 `app/articles/edit/[articleId]/page.tsx` + `ArticleAuthoringRoute`
   loading the article first, then the project if any; `ArticleAuthoringPage`
   hides `ChannelDropdown` and points the breadcrumb at the profile for an
   author-owned article; `useArticleDraft` navigates back to the container
   after publish/delete; `app/projects/[slug]/articles/edit/[articleId]/page.tsx`
   becomes a `redirect()`; `article-authoring-route.test.tsx` covers both
   containers and the redirect.
-- [ ] 5.4 `Container` union in `app/articles/container.ts`; thread it through
+- [x] 5.4 `Container` union in `app/articles/container.ts`; thread it through
   `ArticleRenderContent`, `ArticleOnward`, `onward.ts`, `origin.ts`; new
   `app/users/[id]/articles/[articleSlug]/page.tsx` building the author
   container with metadata naming the author; tests for the author header,
   "More from {name}", Follow button target and the 404 shapes.
-- [ ] 5.5 `app/users/[id]/page.tsx`: Follow button (not on own profile,
+- [x] 5.5 `app/users/[id]/page.tsx`: Follow button (not on own profile,
   login redirect when anonymous), "Write article" on own profile calling
   `createOwn` and routing to the editor, owner's list from `listOwn` with
   `articleBadge` / `sortDraftsFirst` moved into `lib/article-listing.ts`,
   public list rows for author-owned articles showing the author and linking
   to the user URL; `ArticleCard` accepts an author flag in place of
   `projectTitle`; tests for own vs visitor views and the badges.
-- [ ] 5.6 `components/FollowButton.tsx`, `FollowPopover.tsx`,
+- [x] 5.6 `components/FollowButton.tsx`, `FollowPopover.tsx`,
   `hooks/useChannelToggle.ts`, `lib/api/follows.ts`,
   `app/profile/following/page.tsx`: a `target` prop (`project` slug or `user`
   id); the Following page renders user entries with avatar, name, profile link
-  and the channel toggle; tests for both targets.
-- [ ] 5.7 `app/latest/feedEntry.ts` + `FeedRow.tsx`: flag and href from the
+  and the channel toggle; tests for both targets. The channel toggle for a
+  person needed endpoints the plan did not list — the project ones take a slug
+  — so `POST` / `DELETE /api/users/{id}/follow/channels/{channel_id}` were
+  added (`api/routers/users.py`, `follow_user_channel` /
+  `unfollow_user_channel` on the follows handler).
+- [x] 5.7 `app/latest/feedEntry.ts` + `FeedRow.tsx`: flag and href from the
   author when `project_title` is null; `lib/notifications.ts` +
   `components/NotificationGroupItem.tsx`: head and deep-link by author when
   `project` is null; tests for the author-owned row and group.
-- [ ] 5.8 UI strings: new keys in `i18n/articles/en.json`,
+- [x] 5.8 UI strings: new keys in `i18n/articles/en.json`,
   `i18n/profile/en.json`, `i18n/notifications/en.json` for the author-flavoured
   copy (follow/unfollow a person, "More from {name}", "Write article" on the
   profile, badges if they move); no new entry in `eslint-rules/i18n-pending.mjs`;

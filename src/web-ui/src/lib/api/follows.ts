@@ -23,6 +23,18 @@ export class FollowsClient {
     );
   }
 
+  async followUser(userId: string): Promise<FollowState> {
+    return this.client.request<FollowState>(`/api/users/${userId}/follow`, {
+      method: "POST",
+    });
+  }
+
+  async unfollowUser(userId: string): Promise<void> {
+    await this.client.request<void>(`/api/users/${userId}/follow`, {
+      method: "DELETE",
+    });
+  }
+
   async listFollows(): Promise<FollowWithPreferences[]> {
     return this.client.request<FollowWithPreferences[]>("/api/follows");
   }
@@ -53,6 +65,28 @@ export class FollowsClient {
   ): Promise<FollowState> {
     return this.client.request<FollowState>(
       `/api/projects/${slug}/follow/channels/${channelId}`,
+      { method: "DELETE" }
+    );
+  }
+
+  // The same pair for a followed person's channel. A person has one, so
+  // unfollowing it is unfollowing them, and the returned state says so.
+  async followUserChannel(
+    userId: string,
+    channelId: string
+  ): Promise<ChannelFollowState> {
+    return this.client.request<ChannelFollowState>(
+      `/api/users/${userId}/follow/channels/${channelId}`,
+      { method: "POST" }
+    );
+  }
+
+  async unfollowUserChannel(
+    userId: string,
+    channelId: string
+  ): Promise<FollowState> {
+    return this.client.request<FollowState>(
+      `/api/users/${userId}/follow/channels/${channelId}`,
       { method: "DELETE" }
     );
   }

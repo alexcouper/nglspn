@@ -6,6 +6,7 @@ import type { CropRect } from "@/components/CroppedImage";
 
 export interface ArticleFormFields {
   title: string;
+  // "" for an author-owned article, which has no channel to choose.
   channel_id: string;
   // The authored standfirst. "" is meaningful: it clears the override and
   // returns the card to the summary derived server-side from the body.
@@ -27,7 +28,7 @@ export type ArticleSavePayload = ArticleFormFields & { body: string };
 export function fieldsFromArticle(article: Article): ArticleFormFields {
   return {
     title: article.title,
-    channel_id: article.channel.id,
+    channel_id: article.channel?.id ?? "",
     summary: article.summary,
     listing_image_id: article.listing_image_id,
     listing_crop: article.listing_crop,
@@ -48,7 +49,7 @@ export function hasUnsavedChanges(
     body !== article.body ||
     fields.title !== article.title ||
     fields.summary !== article.summary ||
-    fields.channel_id !== article.channel.id ||
+    fields.channel_id !== (article.channel?.id ?? "") ||
     fields.listing_image_id !== article.listing_image_id ||
     fields.listing_image_mode !== article.listing_image_mode ||
     JSON.stringify(fields.listing_crop) !== JSON.stringify(article.listing_crop)

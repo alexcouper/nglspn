@@ -9,7 +9,7 @@
 
 services:
   minio:
-    image: minio/minio:latest
+    image: pgsty/minio:latest
     container_name: nglspn-dev-minio
     command: server /data --console-address ":9001"
     ports:
@@ -29,7 +29,7 @@ services:
   # Creates the dev bucket and makes it anonymously readable so uploaded
   # images can be fetched directly by the browser via S3_PUBLIC_URL_BASE.
   minio-init:
-    image: minio/mc:latest
+    image: pgsty/mc:latest
     depends_on:
       minio:
         condition: service_healthy

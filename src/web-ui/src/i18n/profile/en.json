@@ -69,15 +69,16 @@
   },
   "following": {
     "title": "Following",
-    "intro": "Projects you follow and their channels. Expand a project to change which channels you're subscribed to; dropping the last one unfollows the project.",
-    "empty": "You aren't following any projects yet. <link>Discover projects</link>.",
+    "intro": "Projects and people you follow. Expand an entry to change which channels you're subscribed to; dropping the last one unfollows it.",
+    "empty": "You aren't following anyone yet. <link>Discover projects</link>.",
     "channelCount": "{followed} of {total, plural, one {# channel} other {# channels}}",
     "channelsFor": "Channels for {title}",
     "unfollow": "Unfollow",
     "errors": {
-      "loadFailed": "Couldn't load followed projects",
+      "loadFailed": "Couldn't load who you follow",
       "unfollowFailed": "Couldn't unfollow"
-    }
+    },
+    "noArticlesYet": "Hasn't published under their own name yet"
   },
   "public": {
     "notFoundTitle": "User not found",
@@ -99,7 +100,18 @@
     "errors": {
       "loadFailed": "Failed to fetch profile",
       "projectsFailed": "Couldn't load projects. Try again in a moment.",
-      "articlesFailed": "Couldn't load articles. Try again in a moment."
+      "articlesFailed": "Couldn't load articles. Try again in a moment.",
+      "createFailed": "Couldn't start a new article."
+    },
+    "writeArticle": "Write article",
+    "noArticlesOwn": "You haven't written anything yet.",
+    "untitledDraft": "Untitled draft",
+    "edit": "Edit",
+    "badge": {
+      "draft": "Draft",
+      "published": "Published",
+      "pendingReview": "Pending review",
+      "notShown": "Not shown"
     }
   }
 }

@@ -166,7 +166,7 @@ STATICFILES_DIRS = [BASE_DIR / "static_src"]
 S3_BUCKET_NAME = os.getenv("S3_BUCKET_NAME")
 S3_ENDPOINT_URL = os.getenv("S3_ENDPOINT_URL", "https://s3.fr-par.scw.cloud")
 S3_REGION = os.getenv("S3_REGION", "fr-par")
-# Full URL with protocol - used for manually constructed URLs (e.g. ProjectImage.url)
+# Full URL with protocol - used for manually constructed URLs (e.g. Image.url)
 S3_PUBLIC_URL_BASE = os.getenv("S3_PUBLIC_URL_BASE", "https://cdn.naglasupan.is")
 # Domain only (no protocol) - used by django-storages which adds https:// automatically
 S3_CDN_DOMAIN = os.getenv("S3_CDN_DOMAIN", "cdn.naglasupan.is")

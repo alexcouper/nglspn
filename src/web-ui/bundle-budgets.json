@@ -2,6 +2,7 @@
   "*": 200000,
   "/projects/[slug]": 100000,
   "/projects/[slug]/articles/[articleSlug]": 380000,
-  "/projects/[slug]/articles/edit/[articleId]": 55000,
-  "/projects/[slug]/articles/edit/[articleId] (lazy)": 400000
+  "/users/[id]/articles/[articleSlug]": 380000,
+  "/articles/edit/[articleId]": 55000,
+  "/articles/edit/[articleId] (lazy)": 400000
 }

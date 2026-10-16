@@ -70,6 +70,15 @@ class PublicUserProfile(Schema):
     created_at: datetime
 
 
+class UserProfileResponse(PublicUserProfile):
+    """The profile page's own response: the public profile plus what the viewer
+    has to do with it. Resolved in the router, never embedded anywhere — a
+    per-requester field on `PublicUserProfile` would cost a query per byline.
+    """
+
+    is_followed: bool = False
+
+
 class AvatarUploadRequest(Schema):
     filename: str
     content_type: str

@@ -78,7 +78,12 @@ Three things the article work chose not to build. They live in
   CRUD backend ships and is tested; only the UI is held back.
 - **No signal for `article_trust = False` authors** (that change's
   `design.md:237`). Their article silently never reaches the feed and nothing
-  tells them why.
+  tells them why. Closed for author-owned articles by
+  [`author-owned-articles`](../openspec/changes/author-owned-articles/proposal.md):
+  the owner's profile lists every article they wrote with the same
+  draft / published / pending review / not shown badge the my-projects
+  article tab shows. Still open for project articles anywhere other than
+  that tab.
 
 ## Content backfill was never started
 

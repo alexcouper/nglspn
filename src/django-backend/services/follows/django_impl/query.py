@@ -29,7 +29,7 @@ def _follow_queryset(user_id: UUID) -> QuerySet[Follow]:
     """
     return (
         Follow.objects.filter(user_id=user_id)
-        .select_related("project")
+        .select_related("project", "followed_user", "followed_user__avatar")
         .prefetch_related(
             "followed_channels",
             Prefetch(
@@ -37,6 +37,7 @@ def _follow_queryset(user_id: UUID) -> QuerySet[Follow]:
                 queryset=Channel.objects.order_by("created_at"),
             ),
             gallery_prefetch("project__images"),
+            "followed_user__personal_channels",
         )
     )
 
@@ -46,22 +47,38 @@ def _hero_image_url(project: Project) -> str | None:
     return variant_url(hero, "large")
 
 
-def _to_follow_with_preferences(follow: Follow) -> FollowWithPreferences:
+def _channel_states(
+    follow: Follow, channels: list[Channel]
+) -> list[ChannelFollowState]:
     followed_ids = {fc.channel_id for fc in follow.followed_channels.all()}
-    channels = [
+    return [
         ChannelFollowState(
             channel_id=channel.id,
             channel_name=channel.name,
             followed=channel.id in followed_ids,
         )
-        for channel in follow.project.channels.all()
+        for channel in channels
     ]
+
+
+def _to_follow_with_preferences(follow: Follow) -> FollowWithPreferences:
+    if follow.followed_user_id is not None:
+        person = follow.followed_user
+        return FollowWithPreferences(
+            target="user",
+            created_at=follow.created_at,
+            user_id=person.id,
+            user_name=person.full_name,
+            user_avatar_url=person.avatar_url,
+            channels=_channel_states(follow, list(person.personal_channels.all())),
+        )
     return FollowWithPreferences(
+        target="project",
+        created_at=follow.created_at,
         project_slug=follow.project.slug or "",
         project_title=follow.project.title,
         project_hero_image_url=_hero_image_url(follow.project),
-        created_at=follow.created_at,
-        channels=channels,
+        channels=_channel_states(follow, list(follow.project.channels.all())),
     )
 
 
@@ -80,6 +97,13 @@ class DjangoFollowQuery(FollowQueryInterface):
         if user_id is None:
             return False
         return Follow.objects.filter(user_id=user_id, project=project).exists()
+
+    def is_following_user(self, user_id: UUID | None, followed_user_id: UUID) -> bool:
+        if user_id is None:
+            return False
+        return Follow.objects.filter(
+            user_id=user_id, followed_user_id=followed_user_id
+        ).exists()
 
     def get_state(self, user_id: UUID | None, project: Project) -> FollowState:
         if user_id is None:

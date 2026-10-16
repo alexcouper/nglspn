@@ -21,12 +21,18 @@ class ChannelOnWrongProjectError(ArticleError):
     """The referenced Channel does not belong to the targeted Project."""
 
 
+class NoChannelForAuthorArticleError(ArticleError):
+    """An author-owned article has no channel to choose: its only channel is
+    the author's own, attached on publish."""
+
+
 class ListingImageOnWrongProjectError(ArticleError):
-    """The referenced ProjectImage does not belong to the Article's project."""
+    """The referenced Image does not belong to the Article's project, or to
+    the author-owned Article itself."""
 
 
 class ListingImageNotUploadedError(ArticleError):
-    """The referenced ProjectImage exists but its upload never completed."""
+    """The referenced Image exists but its upload never completed."""
 
 
 class InvalidCropError(ArticleError):

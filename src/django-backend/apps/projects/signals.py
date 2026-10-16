@@ -4,11 +4,11 @@ from django.db.models.signals import post_delete, post_save, pre_delete
 from django.dispatch import receiver
 
 from apps.projects.models import (
+    Image,
     ImageVariant,
     OrphanedStorageObject,
     Project,
     ProjectContributor,
-    ProjectImage,
 )
 
 DEFAULT_CHANNEL_NAME = "Updates"
@@ -61,7 +61,7 @@ def recompute_on_contributor_delete(
 # Django's deletion collector fast-deletes cascaded rows with a single
 # `DELETE ... WHERE` and no signals, but it only takes that path when the model
 # has no `pre_delete`/`post_delete` receiver. Registering these disables
-# fast-delete for `ProjectImage` and `ImageVariant`, which is the only reason
+# fast-delete for `Image` and `ImageVariant`, which is the only reason
 # cascades from `Article` and from `Project` record their keys at all — and
 # those cascades, not `delete_image`, are how most objects are orphaned.
 #
@@ -75,10 +75,8 @@ def recompute_on_contributor_delete(
 # and it buys a retry for the variant deletes that method swallows.
 
 
-@receiver(pre_delete, sender=ProjectImage)
-def record_orphaned_image_object(
-    sender: Any, instance: ProjectImage, **kwargs: Any
-) -> None:
+@receiver(pre_delete, sender=Image)
+def record_orphaned_image_object(sender: Any, instance: Image, **kwargs: Any) -> None:
     OrphanedStorageObject.objects.get_or_create(storage_key=instance.storage_key)
 
 

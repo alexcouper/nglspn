@@ -152,7 +152,7 @@ export function Navigation() {
               <>
                 {hasCompletedOnboarding && (
                   <>
-                    <Link href="/profile" className={mobileLinkClass("/profile")} onClick={closeMenu}>{t("profile")}</Link>
+                    <Link href={`/users/${user?.id}`} className={mobileLinkClass(`/users/${user?.id}`)} onClick={closeMenu}>{t("profile")}</Link>
                     <Link href="/profile/settings" className={mobileLinkClass("/profile/settings")} onClick={closeMenu}>{t("settings")}</Link>
                   </>
                 )}

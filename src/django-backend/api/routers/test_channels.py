@@ -345,7 +345,7 @@ class TestRouterHasNoOrmAccess:
             "Article.objects",
             "Channel.objects",
             "FollowedChannel.objects",
-            "ProjectImage.objects",
+            "Image.objects",
             "get_object_or_404",
         ):
             assert forbidden not in text, (

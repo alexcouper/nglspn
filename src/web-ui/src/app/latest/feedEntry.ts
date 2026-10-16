@@ -1,5 +1,6 @@
 import type { FeedEntry } from "@/lib/api";
-import { withOrigin } from "@/app/projects/[slug]/articles/[articleSlug]/origin";
+import { feedArticleHref } from "@/app/articles/onward";
+import { withOrigin } from "@/app/articles/origin";
 
 type ArticleRef = NonNullable<FeedEntry["article"]>;
 type ListingCrop = ArticleRef["listing_crop"];
@@ -58,8 +59,11 @@ export function renderEntry(entry: FeedEntry, flagFor: FlagTranslator): Rendered
 
   if (article) {
     // The project leads: which project an update is from is what makes it
-    // worth reading, and the channel it went out on is house plumbing.
-    const flag = article.project_title;
+    // worth reading, and the channel it went out on is house plumbing. An
+    // article published under someone's own name has no project; the author
+    // is its flag, and their one channel is a placeholder not worth printing.
+    const isAuthorOwned = article.project_title === null;
+    const flag = article.project_title ?? article.author_name ?? "";
     return {
       id: entry.id,
       flag,
@@ -68,7 +72,7 @@ export function renderEntry(entry: FeedEntry, flagFor: FlagTranslator): Rendered
       href: articleHref(entry),
       // A channel named after its project would repeat the flag, which reads
       // as a stutter.
-      meta: article.channel_name === flag ? "" : article.channel_name,
+      meta: isAuthorOwned || article.channel_name === flag ? "" : article.channel_name,
       imageUrl: article.listing_image_url ?? null,
       crop: article.listing_crop ?? null,
       imageShape: "listing",
@@ -95,12 +99,9 @@ export function renderEntry(entry: FeedEntry, flagFor: FlagTranslator): Rendered
 }
 
 function articleHref(entry: FeedEntry): string | null {
-  const article = entry.article;
-  if (!article?.slug || !article.project_slug) return null;
-  return withOrigin(
-    `/projects/${article.project_slug}/articles/${article.slug}`,
-    "latest",
-  );
+  if (!entry.article) return null;
+  const href = feedArticleHref(entry.article);
+  return href ? withOrigin(href, "latest") : null;
 }
 
 function bareHeadline(entry: FeedEntry): string {

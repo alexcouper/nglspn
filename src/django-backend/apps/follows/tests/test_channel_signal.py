@@ -4,7 +4,13 @@ from django.test import Client
 
 from apps.follows.models import Channel, Follow, FollowedChannel
 from services import HANDLERS
-from tests.factories import ChannelFactory, ProjectFactory, UserFactory
+from tests.factories import (
+    ChannelFactory,
+    ProjectFactory,
+    UserFactory,
+    follow_user,
+    personal_channel,
+)
 
 
 def follow_project(user, project) -> Follow:
@@ -121,3 +127,31 @@ class TestChannelCreatedThroughTheDjangoAdmin:
         assert response.status_code == 302, response.status_code
         channel = Channel.objects.get(project=project, name="Releases")
         assert followed_by(channel) == {follow}
+
+
+@pytest.mark.django_db
+class TestNewPersonalChannelEnrolsThePersonsFollowers:
+    def test_follower_of_the_person_gains_the_channel(self):
+        author = UserFactory()
+        follow = follow_user(UserFactory(), author)
+
+        channel = personal_channel(author)
+
+        assert followed_by(channel) == {follow}
+
+    def test_follower_of_the_persons_project_is_not_enrolled(self):
+        author = UserFactory()
+        project = ProjectFactory(owner=author)
+        follow_project(UserFactory(), project)
+
+        channel = personal_channel(author)
+
+        assert followed_by(channel) == set()
+
+    def test_follower_of_another_person_is_not_enrolled(self):
+        author, other = UserFactory(), UserFactory()
+        follow_user(UserFactory(), other)
+
+        channel = personal_channel(author)
+
+        assert followed_by(channel) == set()

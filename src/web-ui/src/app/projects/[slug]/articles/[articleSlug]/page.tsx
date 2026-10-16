@@ -1,9 +1,10 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { ArticleRenderContent } from "./ArticleRenderContent";
-import { buildOnward, ONWARD_SLOTS } from "./onward";
-import { ORIGIN_PARAM, resolveOrigin } from "./origin";
+import { ArticleRenderContent } from "@/app/articles/ArticleRenderContent";
+import { projectContainer } from "@/app/articles/container";
+import { buildOnward, ONWARD_SLOTS } from "@/app/articles/onward";
+import { ORIGIN_PARAM, resolveOrigin } from "@/app/articles/origin";
 import { socialCard } from "@/lib/social-card";
 import {
   fetchArticleBySlug,
@@ -48,7 +49,7 @@ export async function generateMetadata({
     return {
       title: t("metaTitle", {
         articleTitle: article.title,
-        projectTitle: article.project.title,
+        projectTitle: article.project?.title ?? "",
       }),
       description,
       // The uncropped original. The author's 16:9 framing is applied in CSS at
@@ -101,15 +102,16 @@ export default async function ArticleRenderPage({
           .then((page) => page.entries)
           .catch(() => null);
 
+  const container = projectContainer(project);
   return (
     <main className="min-h-screen bg-white pt-14">
       <ArticleRenderContent
-        project={project}
+        container={container}
         article={article}
-        origin={resolveOrigin(query[ORIGIN_PARAM], project)}
-        onward={buildOnward({ project, article, siblings, feed })}
+        origin={resolveOrigin(query[ORIGIN_PARAM], container)}
+        onward={buildOnward({ container, article, siblings, feed })}
         articleCount={published.length}
-        channelCount={new Set(published.map((a) => a.channel.id)).size}
+        channelCount={new Set(published.map((a) => a.channel?.id)).size}
       />
     </main>
   );

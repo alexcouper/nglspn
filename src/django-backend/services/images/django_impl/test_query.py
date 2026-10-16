@@ -6,9 +6,9 @@ from apps.projects.models import UploadStatus
 from services.images.django_impl.query import DjangoImageQuery, gallery_prefetch
 from tests.factories import (
     ArticleFactory,
+    ImageFactory,
     NotificationFactory,
     ProjectFactory,
-    ProjectImageFactory,
     UserFactory,
     article_image,
 )
@@ -28,7 +28,7 @@ def assert_is_image(actual, expected) -> None:
 class TestGetGalleryImage:
     def test_returns_the_projects_own_image(self, query) -> None:
         project = ProjectFactory()
-        image = ProjectImageFactory(project=project)
+        image = ImageFactory(project=project)
 
         assert_is_image(query.get_gallery_image(project, image.id), image)
 
@@ -39,15 +39,13 @@ class TestGetGalleryImage:
         assert_that(query.get_gallery_image(project, figure.id), is_(None))
 
     def test_gallery_image_excludes_an_image_on_another_project(self, query) -> None:
-        elsewhere = ProjectImageFactory(project=ProjectFactory())
+        elsewhere = ImageFactory(project=ProjectFactory())
 
         assert_that(query.get_gallery_image(ProjectFactory(), elsewhere.id), is_(None))
 
     def test_gallery_image_honours_the_status_filter(self, query) -> None:
         project = ProjectFactory()
-        pending = ProjectImageFactory(
-            project=project, upload_status=UploadStatus.PENDING
-        )
+        pending = ImageFactory(project=project, upload_status=UploadStatus.PENDING)
 
         assert_that(
             query.get_gallery_image(project, pending.id, status=UploadStatus.UPLOADED),
@@ -77,7 +75,7 @@ class TestGetArticleImage:
 
     def test_article_image_excludes_a_project_gallery_image(self, query) -> None:
         project = ProjectFactory()
-        gallery = ProjectImageFactory(project=project)
+        gallery = ImageFactory(project=project)
 
         assert_that(
             query.get_article_image(ArticleFactory(project=project), gallery.id),
@@ -99,9 +97,9 @@ class TestGetArticleImage:
 class TestGalleryPrefetch:
     def test_gallery_prefetch_narrows_a_nested_relation(self) -> None:
         project = ProjectFactory()
-        gallery = ProjectImageFactory(project=project)
+        gallery = ImageFactory(project=project)
         article_image(ArticleFactory(project=project))
-        ProjectImageFactory(project=project, upload_status=UploadStatus.PENDING)
+        ImageFactory(project=project, upload_status=UploadStatus.PENDING)
         NotificationFactory(
             recipient=UserFactory(),
             discussion=None,

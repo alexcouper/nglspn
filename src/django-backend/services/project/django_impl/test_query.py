@@ -11,7 +11,7 @@ from apps.projects.models import (
 )
 from services.project.django_impl import DjangoProjectQuery, get_title_from_url
 from services.project.exceptions import ProjectNotFoundError
-from tests.factories import ProjectFactory, ProjectImageFactory, UserFactory
+from tests.factories import ImageFactory, ProjectFactory, UserFactory
 
 query = DjangoProjectQuery()
 
@@ -225,7 +225,7 @@ class TestGetTitleFromUrl:
 class TestGetProjectIconUrl:
     def test_returns_thumb_variant_url_when_icon_has_thumb(self):
         project = ProjectFactory()
-        icon = ProjectImageFactory(project=project, is_icon=True)
+        icon = ImageFactory(project=project, is_icon=True)
         ImageVariant.objects.create(
             image=icon,
             size=VariantSize.THUMB,
@@ -242,7 +242,7 @@ class TestGetProjectIconUrl:
 
     def test_falls_back_to_image_url_when_no_thumb_variant(self):
         project = ProjectFactory()
-        icon = ProjectImageFactory(
+        icon = ImageFactory(
             project=project,
             is_icon=True,
             storage_key="projects/images/icon-original.jpg",
@@ -259,7 +259,7 @@ class TestGetProjectIconUrl:
 
     def test_accepts_uuid_argument(self):
         project = ProjectFactory()
-        icon = ProjectImageFactory(project=project, is_icon=True)
+        icon = ImageFactory(project=project, is_icon=True)
 
         assert query.get_project_icon_url(project.id) == icon.url
 

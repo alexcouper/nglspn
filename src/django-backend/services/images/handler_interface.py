@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from apps.articles.models import Article
-    from apps.projects.models import Project, ProjectImage
+    from apps.projects.models import Image, Project
     from apps.users.models import UserAvatar
 
 # Upload limits. Article uploads get their own ceiling rather than sharing the
@@ -63,11 +63,11 @@ class StorageSweepResult:
 class PreparedUpload:
     """A reserved image row plus the presigned PUT that fills it.
 
-    `image` is a `ProjectImage` for gallery and article uploads and a
+    `image` is a `Image` for gallery and article uploads and a
     `UserAvatar` for avatars; the router only reads its `id`.
     """
 
-    image: ProjectImage | UserAvatar
+    image: Image | UserAvatar
     upload_url: str
     method: str
     headers: dict[str, str]
@@ -75,7 +75,7 @@ class PreparedUpload:
 
 
 class ImageHandlerInterface(ABC):
-    """Owns the `ProjectImage` row lifecycle on top of `StorageService`.
+    """Owns the `Image` row lifecycle on top of `StorageService`.
 
     The two `create_*` methods differ in the policy an upload is subject to —
     which cap it counts against, and whether it may become the project's cover.
@@ -99,15 +99,16 @@ class ImageHandlerInterface(ABC):
     def create_article_upload(self, article: Article, meta: FileMeta) -> PreparedUpload:
         """Reserve an image that belongs to `article`.
 
-        The row still hangs off the article's project so it shares the storage
-        and variant pipeline, but it never counts against the project's gallery
-        cap and can never be promoted to the cover image.
+        On a project article the row also hangs off the project so it shares
+        the project's storage prefix, but it never counts against the gallery
+        cap and can never be promoted to the cover image. An author-owned
+        article's image has no project and is stored under `articles/{id}/`.
         """
 
     @abstractmethod
     def complete_upload(
-        self, image: ProjectImage, *, width: int | None, height: int | None
-    ) -> ProjectImage:
+        self, image: Image, *, width: int | None, height: int | None
+    ) -> Image:
         """Mark a reserved row uploaded once its object is in storage.
 
         Raises `UploadNotCompletedError` if the object is missing, which is how
@@ -115,7 +116,7 @@ class ImageHandlerInterface(ABC):
         """
 
     @abstractmethod
-    def delete_image(self, image: ProjectImage) -> None:
+    def delete_image(self, image: Image) -> None:
         """Remove the row, its variants, and every object they hold in storage."""
 
     @abstractmethod
@@ -128,7 +129,7 @@ class ImageHandlerInterface(ABC):
 
         Two sources, drained in this order because the first feeds the second:
 
-        1. `PENDING` `ProjectImage` rows older than
+        1. `PENDING` `Image` rows older than
            `PENDING_UPLOAD_MAX_AGE_HOURS` — uploads whose presigned PUT expired
            without a completion call. Deleting the row routes its key through
            the tombstone table by construction.

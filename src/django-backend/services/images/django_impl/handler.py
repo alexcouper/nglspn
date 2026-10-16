@@ -8,13 +8,13 @@ from typing import TYPE_CHECKING
 
 from django.db.models import QuerySet
 from django.utils import timezone
-from PIL import Image
+from PIL import Image as PILImage
 
 from apps.projects.models import (
     VARIANT_SIZE_WIDTHS,
+    Image,
     ImageVariant,
     OrphanedStorageObject,
-    ProjectImage,
     UploadStatus,
     VariantSize,
 )
@@ -87,8 +87,8 @@ class DjangoImageHandler(ImageHandlerInterface):
         )
 
     def complete_upload(
-        self, image: ProjectImage, *, width: int | None, height: int | None
-    ) -> ProjectImage:
+        self, image: Image, *, width: int | None, height: int | None
+    ) -> Image:
         if not storage_service.object_exists(image.storage_key):
             raise UploadNotCompletedError
 
@@ -99,7 +99,11 @@ class DjangoImageHandler(ImageHandlerInterface):
 
         # The first gallery image becomes the cover. Icons and article uploads
         # are never eligible — the project's cover must describe the project.
-        if self._is_gallery_image(image) and not self._has_cover(image.project):
+        if (
+            image.project_id is not None
+            and self._is_gallery_image(image)
+            and not self._has_cover(image.project)
+        ):
             image.is_main = True
 
         image.save()
@@ -109,7 +113,7 @@ class DjangoImageHandler(ImageHandlerInterface):
         generate_image_variants.enqueue(str(image.id))
         return image
 
-    def delete_image(self, image: ProjectImage) -> None:
+    def delete_image(self, image: Image) -> None:
         # Variant rows cascade with the image; their objects do not.
         for variant in image.variants.all():
             try:
@@ -125,7 +129,7 @@ class DjangoImageHandler(ImageHandlerInterface):
         project = image.project
         image.delete()
 
-        if was_cover:
+        if was_cover and project is not None:
             replacement = self._gallery_queryset(project).first()
             if replacement:
                 replacement.is_main = True
@@ -171,7 +175,7 @@ class DjangoImageHandler(ImageHandlerInterface):
         # Avatars reserve rows the same way and are tombstoned by their own
         # `pre_delete` receiver (`apps/users/signals.py`), so the one sweep
         # covers both.
-        for model in (ProjectImage, UserAvatar):
+        for model in (Image, UserAvatar):
             stale_ids = list(
                 model.objects.filter(
                     upload_status=UploadStatus.PENDING, created_at__lt=cutoff
@@ -243,18 +247,25 @@ class DjangoImageHandler(ImageHandlerInterface):
 
     @staticmethod
     def _reserve(
-        project: Project,
+        project: Project | None,
         meta: FileMeta,
         *,
         article: Article | None,
         is_icon: bool,
         display_order: int,
     ) -> PreparedUpload:
-        storage_key = storage_service.generate_upload_key(
-            str(project.id),
-            meta.filename,
-        )
-        image = ProjectImage.objects.create(
+        # The key prefix follows the owner: a project's images, including
+        # those of its articles, live under the project; an author-owned
+        # article's live under the article, which is the only thing they have.
+        if project is not None:
+            storage_key = storage_service.generate_upload_key(
+                str(project.id), meta.filename
+            )
+        else:
+            storage_key = storage_service.generate_article_upload_key(
+                str(article.id), meta.filename
+            )
+        image = Image.objects.create(
             project=project,
             article=article,
             storage_key=storage_key,
@@ -278,7 +289,7 @@ class DjangoImageHandler(ImageHandlerInterface):
         )
 
     @staticmethod
-    def _is_gallery_image(image: ProjectImage) -> bool:
+    def _is_gallery_image(image: Image) -> bool:
         """The single definition of "counts as one of the project's own images".
 
         Read off the row rather than passed in, so completion and deletion
@@ -287,7 +298,7 @@ class DjangoImageHandler(ImageHandlerInterface):
         return not image.is_icon and image.article_id is None
 
     @staticmethod
-    def _gallery_queryset(project: Project) -> QuerySet[ProjectImage]:
+    def _gallery_queryset(project: Project) -> QuerySet[Image]:
         # Deliberately not `query.gallery_images()`, despite the resemblance.
         # This one answers "what counts against the cap / may become the
         # cover", so it excludes icons. `gallery_images()` answers "what
@@ -310,8 +321,8 @@ class DjangoImageHandler(ImageHandlerInterface):
 
     def generate_variants(self, image_id: str) -> None:
         try:
-            image = ProjectImage.objects.uploaded().get(id=image_id)
-        except ProjectImage.DoesNotExist:
+            image = Image.objects.uploaded().get(id=image_id)
+        except Image.DoesNotExist:
             logger.warning(
                 "Image %s not found or not uploaded, skipping",
                 image_id,
@@ -325,7 +336,7 @@ class DjangoImageHandler(ImageHandlerInterface):
             return
 
         try:
-            img = Image.open(io.BytesIO(original_bytes))
+            img = PILImage.open(io.BytesIO(original_bytes))
             img.load()
         except Exception:
             logger.exception("Failed to decode image %s", image_id)
@@ -368,8 +379,8 @@ class DjangoImageHandler(ImageHandlerInterface):
 
     def _generate_single_variant(
         self,
-        img: Image.Image,
-        image: ProjectImage,
+        img: PILImage.Image,
+        image: Image,
         base_key: str,
         size: str,
         target_width: int,
@@ -380,7 +391,7 @@ class DjangoImageHandler(ImageHandlerInterface):
 
         # Resize with high-quality resampling
         resized = img.copy()
-        resized.thumbnail((target_width, target_height), Image.LANCZOS)
+        resized.thumbnail((target_width, target_height), PILImage.LANCZOS)
 
         # Encode to WebP
         buffer = io.BytesIO()

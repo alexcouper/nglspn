@@ -7,7 +7,7 @@ from ninja import Schema
 
 from api.schemas.project import (
     ContributorSummary,
-    ProjectImageResponse,
+    ImageResponse,
     WonCompetitionInfo,
 )
 from api.schemas.tag import TagWithCategoryResponse
@@ -112,7 +112,7 @@ class ReviewProjectDetailResponse(Schema):
     creator: UserResponse
     contributors: list[ContributorSummary] = []
     tags: list[TagWithCategoryResponse]
-    images: list[ProjectImageResponse] = []
+    images: list[ImageResponse] = []
     won_competitions: list[WonCompetitionInfo] = []
     is_community_tipoff: bool = False
     is_followed: bool = False

@@ -142,6 +142,7 @@ When testing authenticated features:
 |-----------|------|
 | Django backend | `src/django-backend/` |
 | Web UI | `src/web-ui/` |
+| Article editor and render pieces | `src/web-ui/src/app/articles/` — the editor route is `/articles/edit/[articleId]`; the render routes under `app/projects/[slug]/articles/` and `app/users/[id]/articles/` import from here |
 | UI strings | `src/web-ui/src/i18n/<area>/en.json` — one file per area, the area is the namespace |
 | Community guide content | `src/web-ui/src/content/guides/` — one directory per guide: `en.md`, `is.md`, `structure.json` ([how to edit](docs/2026-09-29-community-content-strategy.md#editorial-maintenance-and-distribution)) |
 | CI pipeline | `.github/workflows/ci.yml` |

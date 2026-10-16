@@ -132,9 +132,7 @@ describe("starting a new article", () => {
       title: "",
       body: "",
     });
-    expect(push).toHaveBeenCalledWith(
-      "/projects/a-project/articles/edit/new-article-1",
-    );
+    expect(push).toHaveBeenCalledWith("/articles/edit/new-article-1");
 
     await harness.unmount();
   });

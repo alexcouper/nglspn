@@ -9,11 +9,11 @@ if TYPE_CHECKING:
     from django.db.models import Prefetch
 
     from apps.articles.models import Article
-    from apps.projects.models import Project, ProjectImage, UploadStatus
+    from apps.projects.models import Image, Project, UploadStatus
 
 
 class ImageQueryInterface(ABC):
-    """Reads over `ProjectImage`.
+    """Reads over `Image`.
 
     Two rules live here and nowhere else. A project's own images are the rows
     with no `article` — a project endpoint that forgets that is an
@@ -39,7 +39,7 @@ class ImageQueryInterface(ABC):
         image_id: UUID | str,
         *,
         status: UploadStatus | None = None,
-    ) -> ProjectImage | None:
+    ) -> Image | None:
         """One of `project`'s own images. `None` if absent, or an article's."""
 
     @abstractmethod
@@ -49,5 +49,5 @@ class ImageQueryInterface(ABC):
         image_id: UUID | str,
         *,
         status: UploadStatus | None = None,
-    ) -> ProjectImage | None:
+    ) -> Image | None:
         """One of `article`'s images. `None` if absent, or another article's."""

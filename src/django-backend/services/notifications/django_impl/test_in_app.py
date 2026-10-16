@@ -11,9 +11,9 @@ from services.notifications.django_impl.handler import DjangoNotificationHandler
 from tests.factories import (
     ArticleFactory,
     DiscussionFactory,
+    ImageFactory,
     NotificationFactory,
     ProjectFactory,
-    ProjectImageFactory,
     PublishedArticleFactory,
     UserFactory,
     article_image,
@@ -121,7 +121,7 @@ class TestGroupProjectIcon:
     def test_discussion_group_uses_the_projects_own_image(self, handler) -> None:
         user = UserFactory()
         project = ProjectFactory()
-        icon = ProjectImageFactory(project=project, is_icon=True)
+        icon = ImageFactory(project=project, is_icon=True)
         NotificationFactory(
             recipient=user, discussion=DiscussionFactory(project=project)
         )
@@ -143,7 +143,7 @@ class TestGroupProjectIcon:
     ) -> None:
         user = UserFactory()
         project = ProjectFactory()
-        ProjectImageFactory(project=project, upload_status="pending")
+        ImageFactory(project=project, upload_status="pending")
         NotificationFactory(
             recipient=user, discussion=DiscussionFactory(project=project)
         )
@@ -153,7 +153,7 @@ class TestGroupProjectIcon:
     def test_article_group_uses_the_projects_own_image(self, handler) -> None:
         user = UserFactory()
         project = ProjectFactory()
-        icon = ProjectImageFactory(project=project, is_icon=True)
+        icon = ImageFactory(project=project, is_icon=True)
         NotificationFactory(
             recipient=user,
             discussion=None,
@@ -179,7 +179,7 @@ class TestGroupProjectIcon:
     ) -> None:
         user = UserFactory()
         project = ProjectFactory()
-        ProjectImageFactory(project=project, upload_status="pending")
+        ImageFactory(project=project, upload_status="pending")
         NotificationFactory(
             recipient=user,
             discussion=None,

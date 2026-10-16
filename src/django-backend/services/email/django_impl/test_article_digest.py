@@ -21,6 +21,7 @@ from tests.factories import (
     ArticleFactory,
     NotificationFactory,
     ProjectFactory,
+    PublishedAuthorArticleFactory,
     UserFactory,
     article_image,
 )
@@ -320,3 +321,81 @@ class TestArticleDigestExcerpt:
         assert_no_greeting(html)
         assert_no_greeting(text)
         assert text.startswith(f"Article {LIST_LAYOUT_MIN_ARTICLES - 1}")
+
+
+def _author_owned_notification(recipient=None, **article_kwargs):
+    return NotificationFactory(
+        recipient=recipient or UserFactory(),
+        discussion=None,
+        article=PublishedAuthorArticleFactory(**article_kwargs),
+    )
+
+
+@pytest.mark.django_db
+class TestAuthorOwnedArticleInTheDigest:
+    def test_byline_is_the_author_and_the_url_is_under_the_profile(self):
+        author = UserFactory(first_name="Anna", last_name="Jóns")
+        notification = _author_owned_notification(author=author, slug="results")
+
+        article = build_article_digest([notification]).context["article"]
+
+        assert article["project_title"] is None
+        assert article["author_name"] == "Anna Jóns"
+        assert article["author_url"].endswith(f"/users/{author.id}")
+        assert article["article_url"].endswith(f"/users/{author.id}/articles/results")
+        assert article["channel_name"] == ""
+
+    def test_subject_names_the_author_where_a_project_would_be(self):
+        author = UserFactory(first_name="Anna", last_name="Jóns")
+        notification = _author_owned_notification(author=author, title="Results")
+
+        assert build_article_digest([notification]).subject == "Anna Jóns: Results"
+
+    def test_entry_has_no_icon_without_a_listing_image(self):
+        notification = _author_owned_notification()
+
+        [entry] = build_article_digest_entries([notification])
+
+        assert entry["article_image_url"] is None
+        assert entry["project_title"] is None
+
+    def test_single_html_links_the_author_and_says_by_once(self):
+        author = UserFactory(first_name="Anna", last_name="Jóns")
+        notification = _author_owned_notification(author=author, title="The Title")
+
+        digest = build_article_digest([notification])
+        html, text = render_email(digest.template_name, digest.context)
+
+        assert f"/users/{author.id}" in html
+        assert html.count("Anna Jóns") == 1
+        assert "by Anna Jóns" in text
+        assert "Articles" not in text
+
+    def test_lead_and_list_html_render_the_author_entry(self):
+        recipient = UserFactory()
+        author = UserFactory(first_name="Anna", last_name="Jóns")
+        batch = [
+            _author_owned_notification(
+                recipient=recipient, author=author, title="Mine"
+            ),
+            *_batch_for(recipient, 2),
+        ]
+
+        for layout in (LAYOUT_LEAD, LAYOUT_LIST):
+            digest = build_article_digest(batch, layout=layout)
+            html, text = render_email(digest.template_name, digest.context)
+            assert "Mine" in html
+            assert f"/users/{author.id}" in html
+            assert "by Anna Jóns" in text
+
+
+def _batch_for(recipient, count):
+    base = timezone.now() - timedelta(days=count + 1)
+    return [
+        _notification(
+            recipient=recipient,
+            title=f"Article {i}",
+            published_at=base + timedelta(days=i),
+        )
+        for i in range(count)
+    ]

@@ -3,6 +3,7 @@ import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import type { ChannelFollowState, FollowState } from "@/lib/api/follows";
 import { ChannelToggleList } from "@/components/ChannelToggleList";
+import type { FollowTarget } from "@/components/FollowButton";
 import { ToastsProvider } from "@/contexts/toasts";
 import { useChannelToggle } from "./useChannelToggle";
 
@@ -11,6 +12,8 @@ vi.mock("@/lib/api", () => ({
     follows: {
       followChannel: vi.fn(),
       unfollowChannel: vi.fn(),
+      followUserChannel: vi.fn(),
+      unfollowUserChannel: vi.fn(),
     },
   },
 }));
@@ -19,6 +22,8 @@ vi.mock("@/lib/api", () => ({
 const { api } = await import("@/lib/api");
 const followChannel = vi.mocked(api.follows.followChannel);
 const unfollowChannel = vi.mocked(api.follows.unfollowChannel);
+const followUserChannel = vi.mocked(api.follows.followUserChannel);
+const unfollowUserChannel = vi.mocked(api.follows.unfollowUserChannel);
 
 // ------------------------------------------------------------------ mounting
 
@@ -70,15 +75,17 @@ function deferred<T>() {
 function Harness({
   channels: initial,
   onProjectUnfollowed = () => {},
+  target = { kind: "project", slug: "alpha" },
 }: {
   channels: ChannelFollowState[];
   onProjectUnfollowed?: () => void;
+  target?: FollowTarget;
 }) {
   const [channels, setChannels] = useState(initial);
   const toggle = useChannelToggle({
-    projectSlug: "alpha",
+    target,
     setChannels,
-    onProjectUnfollowed,
+    onUnfollowed: onProjectUnfollowed,
   });
   return <ChannelToggleList channels={channels} onToggle={toggle} />;
 }
@@ -203,6 +210,44 @@ describe("useChannelToggle", () => {
     });
 
     expect(checkedStates(container)).toEqual([true, false]);
+    cleanup();
+  });
+});
+
+
+describe("useChannelToggle for a followed person", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("toggles the person's channel through the user endpoints", async () => {
+    followUserChannel.mockResolvedValue(channel({ followed: true }));
+    const { container, unmount: cleanup } = await mount(
+      <Harness channels={[channel({ followed: false })]} target={{ kind: "user", id: "u-1" }} />,
+    );
+
+    await click(checkboxes(container)[0]);
+
+    expect(followUserChannel).toHaveBeenCalledWith("u-1", "channel-1");
+    expect(followChannel).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it("reports the unfollow when the person's one channel goes", async () => {
+    unfollowUserChannel.mockResolvedValue(noLongerFollowing());
+    const onUnfollowed = vi.fn();
+    const { container, unmount: cleanup } = await mount(
+      <Harness
+        channels={[channel()]}
+        target={{ kind: "user", id: "u-1" }}
+        onProjectUnfollowed={onUnfollowed}
+      />,
+    );
+
+    await click(checkboxes(container)[0]);
+
+    expect(unfollowUserChannel).toHaveBeenCalledWith("u-1", "channel-1");
+    expect(onUnfollowed).toHaveBeenCalledTimes(1);
     cleanup();
   });
 });

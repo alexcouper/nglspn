@@ -5,11 +5,11 @@ import Image from "next/image";
 import { StarIcon, TrashIcon, XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 import { StarIcon as StarIconSolid } from "@heroicons/react/24/solid";
 import { useTranslations } from "next-intl";
-import type { ProjectImage } from "@/lib/api";
+import type { Image as ApiImage } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
 
 interface ImageGalleryProps {
-  images: ProjectImage[];
+  images: ApiImage[];
   editable?: boolean;
   onSetMain?: (imageId: string) => void;
   onDelete?: (imageId: string) => void;

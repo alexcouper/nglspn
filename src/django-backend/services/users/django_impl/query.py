@@ -3,12 +3,13 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from django.contrib.auth import get_user_model
+from django.db.models import F, Q
 
 from apps.articles.models import Article
 from apps.projects.models import (
+    Image,
     Project,
     ProjectContributor,
-    ProjectImage,
     ProjectStatus,
     UploadStatus,
 )
@@ -34,7 +35,7 @@ if TYPE_CHECKING:
     from apps.users.models import User
 
 
-def _main_image(project: Project) -> ProjectImage | None:
+def _main_image(project: Project) -> Image | None:
     """The cover, else the first gallery image — the listing card's rule.
 
     Reads the prefetched relation; `variant_url` then falls back to the
@@ -130,10 +131,16 @@ class DjangoUserQuery(UserQueryInterface):
 
     def list_public_articles_for(self, user_id: UUID) -> QuerySet[Article]:
         return (
-            Article.objects.filter(
-                author_id=user_id, project__status=ProjectStatus.APPROVED
-            )
+            Article.objects.filter(author_id=user_id)
+            .filter(Q(project__isnull=True) | Q(project__status=ProjectStatus.APPROVED))
             .globally_visible()
             .select_related("channel", "project", "listing_image")
             .order_by("-published_at", "-created_at")
+        )
+
+    def list_own_articles_for(self, user_id: UUID) -> QuerySet[Article]:
+        return (
+            Article.objects.filter(author_id=user_id)
+            .select_related("channel", "project", "listing_image")
+            .order_by(F("published_at").desc(nulls_first=True), "-created_at")
         )

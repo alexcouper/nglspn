@@ -11,7 +11,7 @@ export type CompetitionOpportunity =
 export type ProjectCompetitionEntry =
   components["schemas"]["ProjectEntryResponse"];
 export type CompetitionSummary = components["schemas"]["CompetitionSummary"];
-export type ProjectImage = components["schemas"]["ProjectImageResponse"];
+export type Image = components["schemas"]["ImageResponse"];
 export type PresignedUploadResponse =
   components["schemas"]["PresignedUploadResponse"];
 
@@ -106,8 +106,8 @@ export class MyProjectsClient {
     // image's shape straight away — the hero crop dialog — has nothing to work
     // with.
     dimensions: { width: number; height: number } | null = null
-  ): Promise<ProjectImage> {
-    return this.client.request<ProjectImage>(
+  ): Promise<Image> {
+    return this.client.request<Image>(
       `/api/my/projects/${projectId}/images/${imageId}/complete`,
       {
         method: "POST",
@@ -127,8 +127,8 @@ export class MyProjectsClient {
     projectId: string,
     imageId: string,
     roles: { is_main?: boolean; is_hero?: boolean; is_usage?: boolean }
-  ): Promise<ProjectImage> {
-    return this.client.request<ProjectImage>(
+  ): Promise<Image> {
+    return this.client.request<Image>(
       `/api/my/projects/${projectId}/images/${imageId}/roles`,
       {
         method: "POST",

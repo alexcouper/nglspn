@@ -39,7 +39,7 @@ export function ProjectTitleBanner({ project, iconUrl }: ProjectTitleBannerProps
             <h1 className="text-2xl sm:text-3xl font-semibold text-foreground tracking-tight">
               {project.title || t("untitled")}
             </h1>
-            {project.slug && <FollowButton projectSlug={project.slug} />}
+            {project.slug && <FollowButton target={{ kind: "project", slug: project.slug }} />}
           </div>
           {project.is_community_tipoff && (
             <div className="mt-2">

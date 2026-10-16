@@ -1,11 +1,18 @@
+from __future__ import annotations
+
 import re
-from uuid import UUID
+from typing import TYPE_CHECKING
 
 from django.db import IntegrityError, transaction
 from django.utils.text import slugify
 
 from apps.articles.models import Article
 from apps.projects.models import transliterate_icelandic
+
+if TYPE_CHECKING:
+    from uuid import UUID
+
+    from django.db.models import QuerySet
 
 MAX_COLLISION_ATTEMPTS = 1000
 
@@ -33,15 +40,28 @@ def _slugify_article_title(text: str) -> str:
     return slugify(text)
 
 
+def _slug_siblings(article: Article) -> QuerySet[Article]:
+    """The articles a slug must be unique among: the same project's, or for an
+    author-owned article the same author's other author-owned ones.
+
+    Mirrors the two partial unique constraints on `Article`, so the pre-check
+    and the constraint the retry loop falls back on agree.
+    """
+    if article.project_id is not None:
+        return Article.objects.filter(project_id=article.project_id)
+    return Article.objects.filter(author_id=article.author_id, project__isnull=True)
+
+
 def assign_unique_article_slug(article: Article) -> None:
     """Generate and persist a unique slug for an article being published.
 
-    Uniqueness is scoped to the article's project (not global) — two
-    projects can independently publish articles with the same slug.
-    Race-safe: retries on DB-level unique-constraint violations.
+    Uniqueness is scoped to the article's container (see `_slug_siblings`),
+    not global — two projects, or two authors, can independently publish
+    articles with the same slug. Race-safe: retries on DB-level
+    unique-constraint violations.
     """
     base = _truncate_base(_slugify_article_title(article.title) or "article")
-    existing = Article.objects.filter(project_id=article.project_id)
+    existing = _slug_siblings(article)
     if article.pk is not None:
         existing = existing.exclude(pk=article.pk)
     n = 1
@@ -64,3 +84,9 @@ def assign_unique_article_slug(article: Article) -> None:
 
 def project_has_article_with_slug(project_id: UUID, slug: str) -> bool:
     return Article.objects.filter(project_id=project_id, slug=slug).exists()
+
+
+def author_has_article_with_slug(author_id: UUID, slug: str) -> bool:
+    return Article.objects.filter(
+        author_id=author_id, project__isnull=True, slug=slug
+    ).exists()

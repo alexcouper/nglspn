@@ -1,6 +1,6 @@
 """The tombstone-and-sweep path that keeps deleted rows from orphaning S3 objects.
 
-`ProjectImage` rows disappear by cascade from `Article` and from `Project`, not
+`Image` rows disappear by cascade from `Article` and from `Project`, not
 only by an explicit `delete_image`, and a queryset `.delete()` bypasses any model
 `delete()` override. So the keys are recorded by `pre_delete` receivers and drained
 out of band. These tests pin both halves, plus the cascade cases that Django's
@@ -16,9 +16,9 @@ import pytest
 from django.utils import timezone
 
 from apps.projects.models import (
+    Image,
     ImageVariant,
     OrphanedStorageObject,
-    ProjectImage,
     UploadStatus,
     VariantSize,
 )
@@ -31,8 +31,8 @@ from services.images.handler_interface import (
 )
 from tests.factories import (
     ArticleFactory,
+    ImageFactory,
     ProjectFactory,
-    ProjectImageFactory,
     UserAvatarFactory,
     UserFactory,
     article_image,
@@ -52,7 +52,7 @@ def handler():
     return DjangoImageHandler()
 
 
-def make_variant(image: ProjectImage, size: str = VariantSize.THUMB) -> ImageVariant:
+def make_variant(image: Image, size: str = VariantSize.THUMB) -> ImageVariant:
     return ImageVariant.objects.create(
         image=image,
         size=size,
@@ -67,17 +67,17 @@ def make_tombstone(storage_key: str, **kwargs: object) -> OrphanedStorageObject:
     return OrphanedStorageObject.objects.create(storage_key=storage_key, **kwargs)
 
 
-def abandoned_upload(**kwargs: object) -> ProjectImage:
+def abandoned_upload(**kwargs: object) -> Image:
     """A `PENDING` row old enough that its presigned PUT has long expired."""
-    image = ProjectImageFactory(upload_status=UploadStatus.PENDING, **kwargs)
+    image = ImageFactory(upload_status=UploadStatus.PENDING, **kwargs)
     age_out(image)
     return image
 
 
-def age_out(image: ProjectImage) -> None:
+def age_out(image: Image) -> None:
     """`created_at` is `auto_now_add`, so backdating needs a direct update."""
     stale = timezone.now() - timedelta(hours=PENDING_UPLOAD_MAX_AGE_HOURS + 1)
-    ProjectImage.objects.filter(pk=image.pk).update(created_at=stale)
+    Image.objects.filter(pk=image.pk).update(created_at=stale)
 
 
 def recorded_keys() -> set[str]:
@@ -121,16 +121,16 @@ class TestRecording:
         # No article here: `Article.channel` is PROTECT and `Channel` cascades
         # from `Project`, so a project with articles cannot be deleted at all.
         project = ProjectFactory()
-        image = ProjectImageFactory(project=project)
+        image = ImageFactory(project=project)
         variant_key = make_variant(image).storage_key
-        icon_key = ProjectImageFactory(project=project, is_icon=True).storage_key
+        icon_key = ImageFactory(project=project, is_icon=True).storage_key
 
         HANDLERS.project.delete(project.id, project.creator_id)
 
         assert recorded_keys() == {image.storage_key, variant_key, icon_key}
 
     def test_deleting_an_image_directly_records_its_key(self):
-        image = ProjectImageFactory()
+        image = ImageFactory()
 
         with patch(DELETE_OBJECT):
             HANDLERS.images.delete_image(image)
@@ -138,7 +138,7 @@ class TestRecording:
         assert recorded_keys() == {image.storage_key}
 
     def test_recording_the_same_key_twice_does_not_raise(self):
-        image = ProjectImageFactory()
+        image = ImageFactory()
         make_tombstone(image.storage_key)
 
         with patch(DELETE_OBJECT):
@@ -260,37 +260,37 @@ class TestAbandonedUploads:
 
         delete_object.assert_called_once_with(image.storage_key)
         assert result.pending_uploads_reaped == 1
-        assert not ProjectImage.objects.filter(pk=image.pk).exists()
+        assert not Image.objects.filter(pk=image.pk).exists()
         assert_no_tombstones_left()
 
     def test_sweep_leaves_a_pending_upload_still_within_its_window(self, handler):
-        image = ProjectImageFactory(upload_status=UploadStatus.PENDING)
+        image = ImageFactory(upload_status=UploadStatus.PENDING)
 
         with patch(DELETE_OBJECT) as delete_object:
             result = handler.sweep_orphaned_objects()
 
         delete_object.assert_not_called()
         assert result.pending_uploads_reaped == 0
-        assert ProjectImage.objects.filter(pk=image.pk).exists()
+        assert Image.objects.filter(pk=image.pk).exists()
 
     def test_sweep_leaves_an_uploaded_image_alone_however_old(self, handler):
-        image = ProjectImageFactory(upload_status=UploadStatus.UPLOADED)
+        image = ImageFactory(upload_status=UploadStatus.UPLOADED)
         age_out(image)
 
         with patch(DELETE_OBJECT) as delete_object:
             handler.sweep_orphaned_objects()
 
         delete_object.assert_not_called()
-        assert ProjectImage.objects.filter(pk=image.pk).exists()
+        assert Image.objects.filter(pk=image.pk).exists()
 
     def test_sweep_leaves_a_failed_upload_for_its_own_decision(self, handler):
-        image = ProjectImageFactory(upload_status=UploadStatus.FAILED)
+        image = ImageFactory(upload_status=UploadStatus.FAILED)
         age_out(image)
 
         with patch(DELETE_OBJECT):
             handler.sweep_orphaned_objects()
 
-        assert ProjectImage.objects.filter(pk=image.pk).exists()
+        assert Image.objects.filter(pk=image.pk).exists()
 
 
 # ----------------------------------------------------------------------

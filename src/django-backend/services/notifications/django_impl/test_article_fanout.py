@@ -17,8 +17,8 @@ from services.notifications.django_impl.handler import DjangoNotificationHandler
 from tests.factories import (
     ArticleFactory,
     ChannelFactory,
+    ImageFactory,
     ProjectFactory,
-    ProjectImageFactory,
     PublishedArticleFactory,
     UserFactory,
     article_image,
@@ -320,7 +320,7 @@ class TestArticleDigestProjectIcon:
 
     def test_uses_the_projects_own_image(self):
         project = ProjectFactory()
-        icon = ProjectImageFactory(project=project, is_icon=True)
+        icon = ImageFactory(project=project, is_icon=True)
 
         assert self._digest_image_url(project) == icon.url
 
@@ -332,7 +332,7 @@ class TestArticleDigestProjectIcon:
 
     def test_ignores_an_upload_that_never_completed(self):
         project = ProjectFactory()
-        ProjectImageFactory(project=project, upload_status="pending")
+        ImageFactory(project=project, upload_status="pending")
 
         assert self._digest_image_url(project) is None
 

@@ -65,7 +65,7 @@ test.describe("Article link dialog", () => {
   });
 
   test("link button stays clickable after scrolling into a long article", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
 
     try {
       // Long enough that the toolbar has scrolled up into the sticky chrome.
@@ -84,12 +84,12 @@ test.describe("Article link dialog", () => {
       await expect(page.locator(LINK_DIALOG)).toBeVisible();
       expect(await isWithinViewport(page, LINK_DIALOG)).toBe(true);
     } finally {
-      await cleanUp(page, projectId, articleId);
+      await cleanUp(page, articleId);
     }
   });
 
   test("link button opens the dialog in a short article", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
 
     try {
       await editorBody(page).click();
@@ -102,7 +102,7 @@ test.describe("Article link dialog", () => {
       await expect(page.locator(LINK_DIALOG)).toBeVisible();
       expect(await isWithinViewport(page, LINK_DIALOG)).toBe(true);
     } finally {
-      await cleanUp(page, projectId, articleId);
+      await cleanUp(page, articleId);
     }
   });
 });

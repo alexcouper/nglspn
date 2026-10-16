@@ -11,9 +11,9 @@ from apps.projects.models import (
     CompetitionEntry,
     ContributorRole,
     EntrySource,
+    Image,
     Project,
     ProjectContributor,
-    ProjectImage,
     ProjectStatus,
 )
 from apps.projects.slugs import assign_unique_slug
@@ -301,7 +301,7 @@ def _publish_preconditions_missing(project: Project) -> list[str]:
     if not (project.description and project.description.strip()):
         missing.append("description")
     has_main_image = (
-        ProjectImage.objects.uploaded().filter(project=project, is_main=True).exists()
+        Image.objects.uploaded().filter(project=project, is_main=True).exists()
     )
     if not has_main_image:
         missing.append("main_image")

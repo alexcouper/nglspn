@@ -36,14 +36,15 @@ from apps.projects.models import (
     CompetitionReviewer,
     CompetitionStatus,
     EntrySource,
+    Image,
     Project,
-    ProjectImage,
     ProjectRanking,
     ProjectStatus,
     UploadStatus,
 )
 from apps.tags.models import Tag
 from apps.users.models import User
+from services import HANDLERS
 
 SEED_MARKER_EMAIL = "seed-marker@naglasupan.is"
 
@@ -552,7 +553,7 @@ def create_project_images(projects: list[Project]) -> int:
             print(f"  Images already exist for: {project.title}")
             continue
         for i, img in enumerate(images):
-            ProjectImage.objects.create(
+            Image.objects.create(
                 project=project,
                 storage_key=img["storage_key"],
                 original_filename=img["filename"],
@@ -566,6 +567,44 @@ def create_project_images(projects: list[Project]) -> int:
             count += 1
         print(f"  Added {len(images)} images to: {project.title}")
     return count
+
+
+AUTHOR_ARTICLE = {
+    "title": "Why I keep a lab notebook",
+    "body": (
+        "A few notes on keeping a written record of experiments, failures and "
+        "the odd success.\n\n"
+        "## The habit\n\n"
+        "Write the date, write what you tried, write what happened. "
+        "Nothing else is required.\n\n"
+        "## Why bother\n\n"
+        "Six months on, the notebook remembers what you do not."
+    ),
+}
+
+
+def create_author_article(users: list[User]) -> None:
+    """One article published under a person's own name, and one follower.
+
+    Goes through the handler so the publish creates the author's personal
+    channel and the slug the way the app does, which is what the admin's
+    article, channel and follow lists need to show one of each.
+    """
+    print("\nCreating an author-owned article...")
+    author, follower = users[0], users[1]
+    if author.authored_articles.filter(project__isnull=True).exists():
+        print("  Author-owned article already exists")
+        return
+    draft = HANDLERS.articles.create_draft(
+        author_id=author.id,
+        title=AUTHOR_ARTICLE["title"],
+        body=AUTHOR_ARTICLE["body"],
+    )
+    HANDLERS.follows.follow_user(follower.id, author)
+    article = HANDLERS.articles.publish(draft.id)
+    print(
+        f"  Published '{article.title}' by {author.email}, followed by {follower.email}"
+    )
 
 
 def create_competitions(projects: list[Project], users: list[User]) -> None:
@@ -646,6 +685,7 @@ def main() -> None:
     users = create_users()
     projects = create_projects(users, admin)
     image_count = create_project_images(projects)
+    create_author_article(users)
     create_competitions(projects, users)
 
     # Create marker so we know seed data exists

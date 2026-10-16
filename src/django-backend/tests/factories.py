@@ -14,7 +14,7 @@ from apps.articles.models import (
 )
 from apps.discussions.models import Discussion
 from apps.emails.models import BroadcastEmail, BroadcastEmailImage
-from apps.follows.models import Channel, Follow, FollowedChannel
+from apps.follows.models import PERSONAL_CHANNEL_NAME, Channel, Follow, FollowedChannel
 from apps.notifications.models import Notification, NotificationCadence
 from apps.projects.models import (
     Competition,
@@ -23,10 +23,10 @@ from apps.projects.models import (
     CompetitionStatus,
     ContributorRole,
     EntrySource,
+    Image,
     Project,
     ProjectCategory,
     ProjectContributor,
-    ProjectImage,
     ProjectRanking,
     ProjectStatus,
     ReviewerGroup,
@@ -208,6 +208,22 @@ def make_followed_channel(user, project, channel) -> FollowedChannel:
     return fc
 
 
+def personal_channel(user) -> Channel:
+    """The one channel `user` owns, as `HANDLERS.articles.publish` creates it."""
+    channel, _ = Channel.objects.get_or_create(owner=user, name=PERSONAL_CHANNEL_NAME)
+    return channel
+
+
+def follow_user(follower, followed) -> Follow:
+    """Idempotent: `follower` follows the person `followed`.
+
+    Writes the Follow row only; the channel row, if the person has a channel,
+    is the handler's job (`HANDLERS.follows.follow_user`) or the signal's.
+    """
+    follow, _ = Follow.objects.get_or_create(user=follower, followed_user=followed)
+    return follow
+
+
 def make_house_channel_follower(channel_name: str, **user_kwargs):
     """Create a user following `channel_name` on the house project.
 
@@ -253,9 +269,9 @@ class NotificationFactory(factory.django.DjangoModelFactory):
     email_cadence = NotificationCadence.IMMEDIATE
 
 
-class ProjectImageFactory(factory.django.DjangoModelFactory):
+class ImageFactory(factory.django.DjangoModelFactory):
     class Meta:
-        model = ProjectImage
+        model = Image
 
     project = factory.SubFactory(ProjectFactory)
     storage_key = factory.Sequence(lambda n: f"projects/images/{n}.jpg")
@@ -309,9 +325,29 @@ class ArticleFactory(factory.django.DjangoModelFactory):
     state = ArticleState.DRAFT
 
 
-def article_image(article: Article, **kwargs: object) -> ProjectImage:
-    """An image uploaded for `article`, on that article's project."""
-    return ProjectImageFactory(project=article.project, article=article, **kwargs)
+def article_image(article: Article, **kwargs: object) -> Image:
+    """An image uploaded for `article`: on its project, or on the article alone
+    for an author-owned one."""
+    return ImageFactory(project=article.project, article=article, **kwargs)
+
+
+class AuthorArticleFactory(ArticleFactory):
+    """A draft article owned by its author: no project, no channel.
+
+    Publishing through `HANDLERS.articles.publish` attaches the author's
+    personal channel; `PublishedAuthorArticleFactory` fakes that for tests that
+    only need the row.
+    """
+
+    project = None
+    channel = None
+    author = factory.SubFactory(UserFactory)
+
+
+class PublishedAuthorArticleFactory(AuthorArticleFactory):
+    state = ArticleState.PUBLISHED
+    published_at = factory.LazyFunction(timezone.now)
+    channel = factory.LazyAttribute(lambda a: personal_channel(a.author))
 
 
 class PublishedArticleFactory(ArticleFactory):

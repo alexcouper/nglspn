@@ -11,9 +11,9 @@ from services.project.django_impl.query import resolve_image_by_purpose
 from tests.factories import (
     CompetitionFactory,
     DiscussionFactory,
+    ImageFactory,
     ProjectCategoryFactory,
     ProjectFactory,
-    ProjectImageFactory,
     UserFactory,
 )
 
@@ -37,20 +37,20 @@ def _make_tipoff_project(**kwargs) -> Project:
 class TestImagePurposeFallback:
     def test_returns_icon_image_by_boolean(self):
         project = ProjectFactory(status=ProjectStatus.APPROVED)
-        ProjectImageFactory(project=project)
-        icon = ProjectImageFactory(project=project, is_icon=True)
+        ImageFactory(project=project)
+        icon = ImageFactory(project=project, is_icon=True)
         result = resolve_image_by_purpose(project, "icon")
         assert result.id == icon.id
 
     def test_falls_back_to_main_image(self):
         project = ProjectFactory(status=ProjectStatus.APPROVED)
-        main = ProjectImageFactory(project=project, is_main=True)
+        main = ImageFactory(project=project, is_main=True)
         result = resolve_image_by_purpose(project, "icon")
         assert result.id == main.id
 
     def test_falls_back_to_first_image(self):
         project = ProjectFactory(status=ProjectStatus.APPROVED)
-        first = ProjectImageFactory(project=project)
+        first = ImageFactory(project=project)
         result = resolve_image_by_purpose(project, "icon")
         assert result.id == first.id
 
@@ -61,21 +61,21 @@ class TestImagePurposeFallback:
 
     def test_returns_hero_image_by_boolean(self):
         project = ProjectFactory(status=ProjectStatus.APPROVED)
-        ProjectImageFactory(project=project)
-        hero = ProjectImageFactory(project=project, is_hero=True)
+        ImageFactory(project=project)
+        hero = ImageFactory(project=project, is_hero=True)
         result = resolve_image_by_purpose(project, "hero_banner")
         assert result.id == hero.id
 
     def test_returns_usage_image_by_boolean(self):
         project = ProjectFactory(status=ProjectStatus.APPROVED)
-        ProjectImageFactory(project=project)
-        usage = ProjectImageFactory(project=project, is_usage=True)
+        ImageFactory(project=project)
+        usage = ImageFactory(project=project, is_usage=True)
         result = resolve_image_by_purpose(project, "in_use")
         assert result.id == usage.id
 
     def test_hero_falls_back_to_main(self):
         project = ProjectFactory(status=ProjectStatus.APPROVED)
-        main = ProjectImageFactory(project=project, is_main=True)
+        main = ImageFactory(project=project, is_main=True)
         result = resolve_image_by_purpose(project, "hero_banner")
         assert result.id == main.id
 

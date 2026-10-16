@@ -45,10 +45,10 @@ from apps.projects.models import (
     CompetitionEntry,
     CompetitionStatus,
     EntrySource,
+    Image,
     ImageVariant,
     Project,
     ProjectCategory,
-    ProjectImage,
     ProjectStatus,
     UploadStatus,
     VariantSize,
@@ -331,7 +331,7 @@ def create_project_images(
             continue
 
         filename = parent_key.rsplit("/", 1)[-1]
-        image, image_created = ProjectImage.objects.get_or_create(
+        image, image_created = Image.objects.get_or_create(
             project=project,
             storage_key=parent_key,
             defaults={

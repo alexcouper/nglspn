@@ -1,5 +1,5 @@
 {% for entry in entries %}{{ entry.article_title }}
-on {{ entry.project_title }} - {{ entry.channel_name }}
+{% if entry.project_title %}on {{ entry.project_title }} - {{ entry.channel_name }}{% else %}by {{ entry.author_name }}{% endif %}
 
 {{ entry.body_excerpt }}
 

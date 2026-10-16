@@ -1,19 +1,38 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import type { PublicUserProfile, UserArticle, UserProject } from "@/lib/api";
+import type { OwnArticle, UserArticle, UserProfile, UserProject } from "@/lib/api";
 
-const { authState } = vi.hoisted(() => ({
-  authState: { value: { user: null as { id: string } | null } },
+const { authState, router } = vi.hoisted(() => ({
+  authState: {
+    value: {
+      user: null as { id: string } | null,
+      isAuthenticated: false,
+      isLoading: false,
+    },
+  },
+  router: { push: vi.fn() },
 }));
 
 vi.mock("@/contexts/auth", () => ({ useAuth: () => authState.value }));
+vi.mock("next/navigation", () => ({
+  useRouter: () => router,
+  usePathname: () => "/users/user-1",
+}));
 vi.mock("@/lib/api", () => ({
   api: {
     users: {
       getPublicProfile: vi.fn(),
       listProjects: vi.fn(),
       listArticles: vi.fn(),
+    },
+    articles: {
+      listOwn: vi.fn(),
+      createOwn: vi.fn(),
+    },
+    follows: {
+      followUser: vi.fn(),
+      unfollowUser: vi.fn(),
     },
   },
   ApiRequestError: class ApiRequestError extends Error {
@@ -53,7 +72,7 @@ function unmount(root: Root, container: HTMLElement) {
 
 const USER_ID = "user-1";
 
-function profile(overrides: Partial<PublicUserProfile> = {}): PublicUserProfile {
+function profile(overrides: Partial<UserProfile> = {}): UserProfile {
   return {
     id: USER_ID,
     first_name: "Sigrún",
@@ -62,8 +81,29 @@ function profile(overrides: Partial<PublicUserProfile> = {}): PublicUserProfile 
     is_system_user: false,
     avatar_url: null,
     created_at: "2025-03-12T10:00:00Z",
+    is_followed: false,
     ...overrides,
   };
+}
+
+function ownArticle(overrides: Partial<OwnArticle> = {}): OwnArticle {
+  return {
+    ...article(),
+    id: "own-1",
+    title: "Why I keep a notebook",
+    slug: null,
+    published_at: null,
+    channel: null,
+    project: null,
+    state: "draft",
+    global_visibility: "auto",
+    is_globally_visible: false,
+    ...overrides,
+  } as OwnArticle;
+}
+
+function signedInAs(id: string) {
+  authState.value = { user: { id }, isAuthenticated: true, isLoading: false };
 }
 
 function project(overrides: Partial<UserProject> = {}): UserProject {
@@ -95,13 +135,25 @@ function article(overrides: Partial<UserArticle> = {}): UserArticle {
 }
 
 function givenProfile(
-  p: PublicUserProfile,
+  p: UserProfile,
   projects: UserProject[] = [],
   articles: UserArticle[] = [],
+  own: OwnArticle[] = [],
 ) {
   vi.mocked(api.users.getPublicProfile).mockResolvedValue(p);
   vi.mocked(api.users.listProjects).mockResolvedValue(projects);
   vi.mocked(api.users.listArticles).mockResolvedValue(articles);
+  vi.mocked(api.articles.listOwn).mockResolvedValue(own);
+}
+
+function buttonLabelled(container: HTMLElement, label: string) {
+  return [...container.querySelectorAll("button")].find((b) => b.textContent?.trim() === label);
+}
+
+function badges(container: HTMLElement): string[] {
+  return [...container.querySelectorAll('[data-testid="article-badge"]')].map(
+    (el) => el.textContent ?? "",
+  );
 }
 
 // ---------------------------------------------------------------- helpers
@@ -127,7 +179,7 @@ function roleChips(container: HTMLElement): string[] {
 describe("the public profile page", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    authState.value = { user: null };
+    authState.value = { user: null, isAuthenticated: false, isLoading: false };
   });
 
   it("shows who the person is and what they have done", async () => {
@@ -196,17 +248,17 @@ describe("the public profile page", () => {
   it("offers Edit profile only on the viewer's own page", async () => {
     givenProfile(profile());
 
-    authState.value = { user: { id: USER_ID } };
+    signedInAs(USER_ID);
     const own = await mount(<ProfileView id={USER_ID} />);
     expect(editProfileLink(own.container)?.getAttribute("href")).toBe("/profile");
     own.unmount();
 
-    authState.value = { user: { id: "someone-else" } };
+    signedInAs("someone-else");
     const other = await mount(<ProfileView id={USER_ID} />);
     expect(editProfileLink(other.container)).toBeUndefined();
     other.unmount();
 
-    authState.value = { user: null };
+    authState.value = { user: null, isAuthenticated: false, isLoading: false };
     const anonymous = await mount(<ProfileView id={USER_ID} />);
     expect(editProfileLink(anonymous.container)).toBeUndefined();
     anonymous.unmount();
@@ -224,6 +276,106 @@ describe("the public profile page", () => {
     const about = container.querySelector('[data-testid="profile-about"]')!;
     expect(about.querySelector("img")).toBeNull();
     expect(about.querySelector('a[href="https://example.is"]')).not.toBeNull();
+    cleanup();
+  });
+});
+
+
+describe("following and writing from the profile", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    authState.value = { user: null, isAuthenticated: false, isLoading: false };
+  });
+
+  it("offers Follow to a signed-in visitor and reports the server's answer", async () => {
+    givenProfile(profile({ is_followed: true }));
+    signedInAs("someone-else");
+
+    const { container, unmount: cleanup } = await mount(<ProfileView id={USER_ID} />);
+
+    expect(buttonLabelled(container, "Following")).toBeDefined();
+    expect(buttonLabelled(container, "Write article")).toBeUndefined();
+    cleanup();
+  });
+
+  it("sends an anonymous visitor who presses Follow to log in", async () => {
+    givenProfile(profile());
+
+    const { container, unmount: cleanup } = await mount(<ProfileView id={USER_ID} />);
+
+    const follow = buttonLabelled(container, "Follow");
+    expect(follow).toBeDefined();
+    await act(async () => {
+      follow!.click();
+    });
+    expect(router.push).toHaveBeenCalledWith("/login?next=%2Fusers%2Fuser-1");
+    cleanup();
+  });
+
+  it("shows no Follow button on the viewer's own page", async () => {
+    givenProfile(profile());
+    signedInAs(USER_ID);
+
+    const { container, unmount: cleanup } = await mount(<ProfileView id={USER_ID} />);
+
+    expect(buttonLabelled(container, "Follow")).toBeUndefined();
+    cleanup();
+  });
+
+  it("lists the owner's own articles with their badges and opens the editor", async () => {
+    givenProfile(profile(), [], [], [
+      ownArticle(),
+      ownArticle({
+        id: "own-2",
+        title: "Held back",
+        state: "published",
+        slug: "held-back",
+        published_at: "2026-06-01T10:00:00Z",
+        global_visibility: "pending",
+      }),
+      ownArticle({
+        id: "own-3",
+        title: "Out there",
+        state: "published",
+        slug: "out-there",
+        published_at: "2026-05-01T10:00:00Z",
+        is_globally_visible: true,
+      }),
+    ]);
+    signedInAs(USER_ID);
+
+    const { container, unmount: cleanup } = await mount(<ProfileView id={USER_ID} />);
+
+    expect(badges(container)).toEqual(["Draft", "Pending review", "Published"]);
+    expect(container.querySelector('a[href="/articles/edit/own-1"]')).not.toBeNull();
+    expect(api.users.listArticles).not.toHaveBeenCalled();
+    cleanup();
+  });
+
+  it("creates a draft and opens the editor on Write article", async () => {
+    givenProfile(profile());
+    signedInAs(USER_ID);
+    vi.mocked(api.articles.createOwn).mockResolvedValue({ id: "new-1" } as never);
+
+    const { container, unmount: cleanup } = await mount(<ProfileView id={USER_ID} />);
+
+    await act(async () => {
+      buttonLabelled(container, "Write article")!.click();
+    });
+    expect(router.push).toHaveBeenCalledWith("/articles/edit/new-1");
+    cleanup();
+  });
+
+  it("shows a visitor an author-owned article under the author's name and address", async () => {
+    givenProfile(profile(), [], [
+      article({ id: "a-own", slug: "notebook", project: null, channel: { id: "c", name: "Articles" } }),
+    ]);
+
+    const { container, unmount: cleanup } = await mount(<ProfileView id={USER_ID} />);
+
+    expect(container.querySelector('a[href="/users/user-1/articles/notebook"]')).not.toBeNull();
+    expect(container.textContent).toContain("Sigrún Helgadóttir");
+    expect(container.textContent).not.toContain("Articles ·");
     cleanup();
   });
 });

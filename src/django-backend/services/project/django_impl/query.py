@@ -13,10 +13,10 @@ from apps.projects.models import (
     CompetitionEntry,
     CompetitionStatus,
     ContributorRole,
+    Image,
     Project,
     ProjectCategory,
     ProjectContributor,
-    ProjectImage,
     ProjectStatus,
 )
 from services.images.django_impl.query import gallery_prefetch
@@ -82,7 +82,7 @@ def get_title_from_url(url: str) -> str:
     return domain or "Untitled Project"
 
 
-def resolve_image_by_purpose(project: Project, purpose: str) -> "ProjectImage | None":
+def resolve_image_by_purpose(project: Project, purpose: str) -> "Image | None":
     """Fallback chain: role-specific image -> main image -> first image -> None."""
     images = list(project.images.all())
 
@@ -106,7 +106,7 @@ def resolve_image_by_purpose(project: Project, purpose: str) -> "ProjectImage | 
     return images[0] if images else None
 
 
-def variant_url(image: "ProjectImage | None", size: str) -> str | None:
+def variant_url(image: "Image | None", size: str) -> str | None:
     if image is None:
         return None
     variants = list(image.variants.all())

@@ -30,7 +30,7 @@ async function insertImage(page: Page, index: number) {
 async function saveDraft(page: Page) {
   const saved = page.waitForResponse(
     (r) =>
-      /\/api\/projects\/.*\/articles/.test(r.url()) &&
+      /\/api\/articles\//.test(r.url()) &&
       r.request().method() === "PATCH",
   );
   await page.getByRole("button", { name: "Save draft" }).click();
@@ -84,7 +84,7 @@ test.describe("Article image galleries", () => {
   });
 
   test("dropping an image onto an image turns the pair into a gallery", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
     await insertImage(page, 0);
 
     await dropImageFileOn(page, ".markdown-article img");
@@ -95,11 +95,11 @@ test.describe("Article image galleries", () => {
     // on the page.
     await expect(bodyImages(page)).toHaveCount(1);
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 
   test("dropping onto the gallery adds another image to it", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
     await insertImage(page, 0);
     await dropImageFileOn(page, ".markdown-article img");
     await expect(gallerySlides(page)).toHaveCount(2, { timeout: 30_000 });
@@ -108,11 +108,11 @@ test.describe("Article image galleries", () => {
 
     await expect(gallerySlides(page)).toHaveCount(3, { timeout: 30_000 });
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 
   test("saves the gallery as a :::gallery block", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
     await insertImage(page, 0);
     await dropImageFileOn(page, ".markdown-article img");
     await expect(gallerySlides(page)).toHaveCount(2, { timeout: 30_000 });
@@ -121,16 +121,16 @@ test.describe("Article image galleries", () => {
 
     // The exact shape `article-gallery.test.tsx` renders through the read
     // pipeline: a container directive, one image per line, blank line between.
-    const article = await fetchArticle(page, projectId, articleId);
+    const article = await fetchArticle(page, articleId);
     expect(article.body).toMatch(
       /:::gallery\n!\[\]\(\S+\)\n\n!\[\]\(\S+\)\n:::/,
     );
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 
   test("reorders and removes images from the gallery", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
     await insertImage(page, 0);
     await dropImageFileOn(page, ".markdown-article img");
     await expect(gallerySlides(page)).toHaveCount(2, { timeout: 30_000 });
@@ -146,11 +146,11 @@ test.describe("Article image galleries", () => {
 
     await expect(gallerySlides(page)).toHaveCount(2);
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 
   test("collapses back to a plain image when only one is left", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
     await insertImage(page, 0);
     await dropImageFileOn(page, ".markdown-article img");
     await expect(gallerySlides(page)).toHaveCount(2, { timeout: 30_000 });
@@ -163,9 +163,9 @@ test.describe("Article image galleries", () => {
     await expect(bodyImages(page)).toHaveCount(1);
 
     await saveDraft(page);
-    const article = await fetchArticle(page, projectId, articleId);
+    const article = await fetchArticle(page, articleId);
     expect(article.body).not.toContain(":::gallery");
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 });

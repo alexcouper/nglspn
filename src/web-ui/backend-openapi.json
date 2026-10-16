@@ -475,6 +475,94 @@
         ]
       }
     },
+    "/api/auth/me/articles": {
+      "post": {
+        "operationId": "api_routers_auth_create_own_article",
+        "summary": "Create Own Article",
+        "parameters": [],
+        "responses": {
+          "201": {
+            "description": "Created",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleOut"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "A draft published under the caller's own name. No channel to choose:\npublish attaches the caller's personal one. System users and inactive\naccounts never get here: `auth` resolves tokens through\n`get_active_by_id`, which excludes both.",
+        "tags": [
+          "Authentication"
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OwnArticleCreate"
+              }
+            }
+          },
+          "required": true
+        },
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      },
+      "get": {
+        "operationId": "api_routers_auth_list_own_articles",
+        "summary": "List Own Articles",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/OwnArticleResponse"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "Everything the caller wrote, of both kinds and in every state — the\nowner's profile list, with what its badges need.",
+        "tags": [
+          "Authentication"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
     "/api/auth/verify-email": {
       "post": {
         "operationId": "api_routers_auth_verify_email",
@@ -1847,20 +1935,11 @@
         ]
       }
     },
-    "/api/projects/{slug}/articles/{article_id}": {
+    "/api/articles/{article_id}": {
       "get": {
-        "operationId": "api_routers_articles_get_article",
+        "operationId": "api_routers_article_items_get_article",
         "summary": "Get Article",
         "parameters": [
-          {
-            "in": "path",
-            "name": "slug",
-            "schema": {
-              "title": "Slug",
-              "type": "string"
-            },
-            "required": true
-          },
           {
             "in": "path",
             "name": "article_id",
@@ -1885,16 +1964,6 @@
           },
           "401": {
             "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -1914,6 +1983,7 @@
             }
           }
         },
+        "description": "The editor's read: the article as its author or a contributor sees it,\nwhatever its state or visibility.",
         "tags": [
           "Articles"
         ],
@@ -1924,18 +1994,9 @@
         ]
       },
       "patch": {
-        "operationId": "api_routers_articles_patch_article",
+        "operationId": "api_routers_article_items_patch_article",
         "summary": "Patch Article",
         "parameters": [
-          {
-            "in": "path",
-            "name": "slug",
-            "schema": {
-              "title": "Slug",
-              "type": "string"
-            },
-            "required": true
-          },
           {
             "in": "path",
             "name": "article_id",
@@ -1960,16 +2021,6 @@
           },
           "401": {
             "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -2019,18 +2070,9 @@
         ]
       },
       "delete": {
-        "operationId": "api_routers_articles_delete_article",
+        "operationId": "api_routers_article_items_delete_article",
         "summary": "Delete Article",
         "parameters": [
-          {
-            "in": "path",
-            "name": "slug",
-            "schema": {
-              "title": "Slug",
-              "type": "string"
-            },
-            "required": true
-          },
           {
             "in": "path",
             "name": "article_id",
@@ -2048,16 +2090,6 @@
           },
           "401": {
             "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -2087,20 +2119,11 @@
         ]
       }
     },
-    "/api/projects/{slug}/articles/{article_id}/publish": {
+    "/api/articles/{article_id}/publish": {
       "post": {
-        "operationId": "api_routers_articles_publish_article",
+        "operationId": "api_routers_article_items_publish_article",
         "summary": "Publish Article",
         "parameters": [
-          {
-            "in": "path",
-            "name": "slug",
-            "schema": {
-              "title": "Slug",
-              "type": "string"
-            },
-            "required": true
-          },
           {
             "in": "path",
             "name": "article_id",
@@ -2125,16 +2148,6 @@
           },
           "401": {
             "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -2184,20 +2197,11 @@
         ]
       }
     },
-    "/api/projects/{slug}/articles/{article_id}/images/upload-url": {
+    "/api/articles/{article_id}/images/upload-url": {
       "post": {
-        "operationId": "api_routers_articles_get_article_image_upload_url",
+        "operationId": "api_routers_article_items_get_article_image_upload_url",
         "summary": "Get Article Image Upload Url",
         "parameters": [
-          {
-            "in": "path",
-            "name": "slug",
-            "schema": {
-              "title": "Slug",
-              "type": "string"
-            },
-            "required": true
-          },
           {
             "in": "path",
             "name": "article_id",
@@ -2240,16 +2244,6 @@
               }
             }
           },
-          "403": {
-            "description": "Forbidden",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
           "404": {
             "description": "Not Found",
             "content": {
@@ -2281,20 +2275,11 @@
         ]
       }
     },
-    "/api/projects/{slug}/articles/{article_id}/images/{image_id}/complete": {
+    "/api/articles/{article_id}/images/{image_id}/complete": {
       "post": {
-        "operationId": "api_routers_articles_complete_article_image_upload",
+        "operationId": "api_routers_article_items_complete_article_image_upload",
         "summary": "Complete Article Image Upload",
         "parameters": [
-          {
-            "in": "path",
-            "name": "slug",
-            "schema": {
-              "title": "Slug",
-              "type": "string"
-            },
-            "required": true
-          },
           {
             "in": "path",
             "name": "article_id",
@@ -2322,7 +2307,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectImageResponse"
+                  "$ref": "#/components/schemas/ImageResponse"
                 }
               }
             }
@@ -2339,16 +2324,6 @@
           },
           "401": {
             "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -2388,20 +2363,11 @@
         ]
       }
     },
-    "/api/projects/{slug}/articles/{article_id}/images/{image_id}": {
+    "/api/articles/{article_id}/images/{image_id}": {
       "delete": {
-        "operationId": "api_routers_articles_delete_article_image",
+        "operationId": "api_routers_article_items_delete_article_image",
         "summary": "Delete Article Image",
         "parameters": [
-          {
-            "in": "path",
-            "name": "slug",
-            "schema": {
-              "title": "Slug",
-              "type": "string"
-            },
-            "required": true
-          },
           {
             "in": "path",
             "name": "article_id",
@@ -2429,16 +2395,6 @@
           },
           "401": {
             "description": "Unauthorized",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Error"
-                }
-              }
-            }
-          },
-          "403": {
-            "description": "Forbidden",
             "content": {
               "application/json": {
                 "schema": {
@@ -3607,7 +3563,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectImageResponse"
+                  "$ref": "#/components/schemas/ImageResponse"
                 }
               }
             }
@@ -3693,7 +3649,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ProjectImageResponse"
+                  "$ref": "#/components/schemas/ImageResponse"
                 }
               }
             }
@@ -4556,7 +4512,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/PublicUserProfile"
+                  "$ref": "#/components/schemas/UserProfileResponse"
                 }
               }
             }
@@ -4668,6 +4624,311 @@
         },
         "tags": [
           "Users"
+        ]
+      }
+    },
+    "/api/users/{user_id}/articles/by-slug/{article_slug}": {
+      "get": {
+        "operationId": "api_routers_users_get_author_article_by_slug",
+        "summary": "Get Author Article By Slug",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "article_slug",
+            "schema": {
+              "title": "Article Slug",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ArticleOut"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "An author-owned article at its public address. Same draft and\nvisibility rules as the project form: hidden ones 404 for everyone but the\nauthor.",
+        "tags": [
+          "Users"
+        ]
+      }
+    },
+    "/api/users/{user_id}/follow": {
+      "post": {
+        "operationId": "api_routers_users_follow_user",
+        "summary": "Follow User",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowStateResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Bad Request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Follows"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "api_routers_users_unfollow_user",
+        "summary": "Unfollow User",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Follows"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      }
+    },
+    "/api/users/{user_id}/follow/channels/{channel_id}": {
+      "post": {
+        "operationId": "api_routers_users_follow_user_channel",
+        "summary": "Follow User Channel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "channel_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Channel Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChannelFollowStateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "description": "The Following page's channel toggle, for a followed person. Mirrors the\nproject form at `/api/projects/{slug}/follow/channels/{id}`.",
+        "tags": [
+          "Follows"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
+        ]
+      },
+      "delete": {
+        "operationId": "api_routers_users_unfollow_user_channel",
+        "summary": "Unfollow User Channel",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "user_id",
+            "schema": {
+              "format": "uuid",
+              "title": "User Id",
+              "type": "string"
+            },
+            "required": true
+          },
+          {
+            "in": "path",
+            "name": "channel_id",
+            "schema": {
+              "format": "uuid",
+              "title": "Channel Id",
+              "type": "string"
+            },
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FollowStateResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Unauthorized",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Error"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Follows"
+        ],
+        "security": [
+          {
+            "JWTAuth": []
+          }
         ]
       }
     },
@@ -5180,6 +5441,604 @@
           }
         },
         "title": "ImageUploadCompleteRequest",
+        "type": "object"
+      },
+      "ArticleChannelRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "ArticleChannelRef",
+        "type": "object"
+      },
+      "ArticleOut": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "project": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArticleProjectRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArticleChannelRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PublicUserProfile"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "body": {
+            "title": "Body",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "summary_display": {
+            "title": "Summary Display",
+            "type": "string"
+          },
+          "listing_image_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Image Id"
+          },
+          "listing_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Image Url"
+          },
+          "listing_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listing_image_mode": {
+            "$ref": "#/components/schemas/ListingImageMode"
+          },
+          "listing_image": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ImageResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "images": {
+            "items": {
+              "$ref": "#/components/schemas/ImageResponse"
+            },
+            "title": "Images",
+            "type": "array"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "source": {
+            "title": "Source",
+            "type": "string"
+          },
+          "external_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "External Url"
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "global_visibility": {
+            "title": "Global Visibility",
+            "type": "string"
+          },
+          "is_globally_visible": {
+            "title": "Is Globally Visible",
+            "type": "boolean"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "updated_at": {
+            "format": "date-time",
+            "title": "Updated At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "project",
+          "channel",
+          "author",
+          "title",
+          "body",
+          "summary",
+          "summary_display",
+          "listing_image_id",
+          "listing_image_url",
+          "listing_crop",
+          "listing_image_mode",
+          "listing_image",
+          "images",
+          "slug",
+          "source",
+          "external_url",
+          "state",
+          "published_at",
+          "global_visibility",
+          "is_globally_visible",
+          "created_at",
+          "updated_at"
+        ],
+        "title": "ArticleOut",
+        "type": "object"
+      },
+      "ArticleProjectRef": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title"
+        ],
+        "title": "ArticleProjectRef",
+        "type": "object"
+      },
+      "CropRect": {
+        "description": "A crop rectangle normalised 0-1 against the source image.",
+        "properties": {
+          "x": {
+            "title": "X",
+            "type": "number"
+          },
+          "y": {
+            "title": "Y",
+            "type": "number"
+          },
+          "w": {
+            "title": "W",
+            "type": "number"
+          },
+          "h": {
+            "title": "H",
+            "type": "number"
+          },
+          "ratio": {
+            "title": "Ratio",
+            "type": "number"
+          }
+        },
+        "required": [
+          "x",
+          "y",
+          "w",
+          "h",
+          "ratio"
+        ],
+        "title": "CropRect",
+        "type": "object"
+      },
+      "ImageResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "original_filename": {
+            "title": "Original Filename",
+            "type": "string"
+          },
+          "content_type": {
+            "title": "Content Type",
+            "type": "string"
+          },
+          "file_size": {
+            "title": "File Size",
+            "type": "integer"
+          },
+          "width": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Width"
+          },
+          "height": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Height"
+          },
+          "is_main": {
+            "title": "Is Main",
+            "type": "boolean"
+          },
+          "is_icon": {
+            "title": "Is Icon",
+            "type": "boolean"
+          },
+          "is_hero": {
+            "title": "Is Hero",
+            "type": "boolean"
+          },
+          "is_usage": {
+            "title": "Is Usage",
+            "type": "boolean"
+          },
+          "display_order": {
+            "title": "Display Order",
+            "type": "integer"
+          },
+          "upload_status": {
+            "title": "Upload Status",
+            "type": "string"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "variants": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/ImageVariantResponse"
+            },
+            "title": "Variants",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "url",
+          "original_filename",
+          "content_type",
+          "file_size",
+          "width",
+          "height",
+          "is_main",
+          "is_icon",
+          "is_hero",
+          "is_usage",
+          "display_order",
+          "upload_status",
+          "created_at"
+        ],
+        "title": "ImageResponse",
+        "type": "object"
+      },
+      "ImageVariantResponse": {
+        "properties": {
+          "size": {
+            "title": "Size",
+            "type": "string"
+          },
+          "url": {
+            "title": "Url",
+            "type": "string"
+          },
+          "width": {
+            "title": "Width",
+            "type": "integer"
+          },
+          "height": {
+            "title": "Height",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "size",
+          "url",
+          "width",
+          "height"
+        ],
+        "title": "ImageVariantResponse",
+        "type": "object"
+      },
+      "ListingImageMode": {
+        "description": "How an article's listing image was decided.\n\nA nullable ``listing_image`` cannot tell \"not chosen yet\" from \"deliberately\nremoved\", so removal would not survive the next save.",
+        "enum": [
+          "auto",
+          "chosen",
+          "none"
+        ],
+        "title": "ListingImageMode",
+        "type": "string"
+      },
+      "PublicUserProfile": {
+        "description": "What anyone may know about a user.\n\nEmbedded in every project (creator, contributors) and article (author), so\neverything here must come off the user row and its `avatar` FK — the list\nquerysets `select_related` that FK for exactly this reason. The person's\nprojects and articles are separate endpoints, never fields here.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "info": {
+            "title": "Info",
+            "type": "string"
+          },
+          "is_system_user": {
+            "default": false,
+            "title": "Is System User",
+            "type": "boolean"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "first_name",
+          "last_name",
+          "info",
+          "created_at"
+        ],
+        "title": "PublicUserProfile",
+        "type": "object"
+      },
+      "OwnArticleCreate": {
+        "description": "`ArticleCreate` without the channel: an author-owned article has none.",
+        "properties": {
+          "title": {
+            "default": "",
+            "title": "Title",
+            "type": "string"
+          },
+          "body": {
+            "default": "",
+            "title": "Body",
+            "type": "string"
+          }
+        },
+        "title": "OwnArticleCreate",
+        "type": "object"
+      },
+      "OwnArticleResponse": {
+        "description": "One entry in the owner's own article list: everything they wrote, in\nevery state, with what the my-projects badges need.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "published_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Published At"
+          },
+          "channel": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArticleChannelRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "project": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArticleProjectRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "listing_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Image Url"
+          },
+          "listing_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "state": {
+            "title": "State",
+            "type": "string"
+          },
+          "global_visibility": {
+            "title": "Global Visibility",
+            "type": "string"
+          },
+          "is_globally_visible": {
+            "title": "Is Globally Visible",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "summary",
+          "slug",
+          "published_at",
+          "channel",
+          "project",
+          "listing_image_url",
+          "listing_crop",
+          "state",
+          "global_visibility",
+          "is_globally_visible"
+        ],
+        "title": "OwnArticleResponse",
         "type": "object"
       },
       "VerifyEmailResponse": {
@@ -5925,34 +6784,6 @@
         "title": "ContributorSummary",
         "type": "object"
       },
-      "ImageVariantResponse": {
-        "properties": {
-          "size": {
-            "title": "Size",
-            "type": "string"
-          },
-          "url": {
-            "title": "Url",
-            "type": "string"
-          },
-          "width": {
-            "title": "Width",
-            "type": "integer"
-          },
-          "height": {
-            "title": "Height",
-            "type": "integer"
-          }
-        },
-        "required": [
-          "size",
-          "url",
-          "width",
-          "height"
-        ],
-        "title": "ImageVariantResponse",
-        "type": "object"
-      },
       "ProjectEntryResponse": {
         "properties": {
           "competition": {
@@ -5974,108 +6805,6 @@
           "entered_via"
         ],
         "title": "ProjectEntryResponse",
-        "type": "object"
-      },
-      "ProjectImageResponse": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "url": {
-            "title": "Url",
-            "type": "string"
-          },
-          "original_filename": {
-            "title": "Original Filename",
-            "type": "string"
-          },
-          "content_type": {
-            "title": "Content Type",
-            "type": "string"
-          },
-          "file_size": {
-            "title": "File Size",
-            "type": "integer"
-          },
-          "width": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Width"
-          },
-          "height": {
-            "anyOf": [
-              {
-                "type": "integer"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Height"
-          },
-          "is_main": {
-            "title": "Is Main",
-            "type": "boolean"
-          },
-          "is_icon": {
-            "title": "Is Icon",
-            "type": "boolean"
-          },
-          "is_hero": {
-            "title": "Is Hero",
-            "type": "boolean"
-          },
-          "is_usage": {
-            "title": "Is Usage",
-            "type": "boolean"
-          },
-          "display_order": {
-            "title": "Display Order",
-            "type": "integer"
-          },
-          "upload_status": {
-            "title": "Upload Status",
-            "type": "string"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "variants": {
-            "default": [],
-            "items": {
-              "$ref": "#/components/schemas/ImageVariantResponse"
-            },
-            "title": "Variants",
-            "type": "array"
-          }
-        },
-        "required": [
-          "id",
-          "url",
-          "original_filename",
-          "content_type",
-          "file_size",
-          "width",
-          "height",
-          "is_main",
-          "is_icon",
-          "is_hero",
-          "is_usage",
-          "display_order",
-          "upload_status",
-          "created_at"
-        ],
-        "title": "ProjectImageResponse",
         "type": "object"
       },
       "ProjectResponse": {
@@ -6209,7 +6938,7 @@
           "images": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/ProjectImageResponse"
+              "$ref": "#/components/schemas/ImageResponse"
             },
             "title": "Images",
             "type": "array"
@@ -6263,58 +6992,6 @@
           "tags"
         ],
         "title": "ProjectResponse",
-        "type": "object"
-      },
-      "PublicUserProfile": {
-        "description": "What anyone may know about a user.\n\nEmbedded in every project (creator, contributors) and article (author), so\neverything here must come off the user row and its `avatar` FK — the list\nquerysets `select_related` that FK for exactly this reason. The person's\nprojects and articles are separate endpoints, never fields here.",
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "first_name": {
-            "title": "First Name",
-            "type": "string"
-          },
-          "last_name": {
-            "title": "Last Name",
-            "type": "string"
-          },
-          "info": {
-            "title": "Info",
-            "type": "string"
-          },
-          "is_system_user": {
-            "default": false,
-            "title": "Is System User",
-            "type": "boolean"
-          },
-          "avatar_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Avatar Url"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "first_name",
-          "last_name",
-          "info",
-          "created_at"
-        ],
-        "title": "PublicUserProfile",
         "type": "object"
       },
       "DiscussionAuthor": {
@@ -6494,14 +7171,37 @@
         "type": "object"
       },
       "FollowResponse": {
+        "description": "A followed project or a followed person; `target` says which and the\nother side's fields are null.",
         "properties": {
-          "project_slug": {
-            "title": "Project Slug",
+          "target": {
+            "enum": [
+              "project",
+              "user"
+            ],
+            "title": "Target",
             "type": "string"
           },
+          "project_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Slug"
+          },
           "project_title": {
-            "title": "Project Title",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Title"
           },
           "project_hero_image_url": {
             "anyOf": [
@@ -6513,6 +7213,40 @@
               }
             ],
             "title": "Project Hero Image Url"
+          },
+          "user_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Id"
+          },
+          "user_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Name"
+          },
+          "user_avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "User Avatar Url"
           },
           "created_at": {
             "format": "date-time",
@@ -6528,288 +7262,12 @@
           }
         },
         "required": [
-          "project_slug",
-          "project_title",
+          "target",
           "created_at",
           "channels"
         ],
         "title": "FollowResponse",
         "type": "object"
-      },
-      "ArticleChannelRef": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name"
-        ],
-        "title": "ArticleChannelRef",
-        "type": "object"
-      },
-      "ArticleOut": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "project": {
-            "$ref": "#/components/schemas/ArticleProjectRef"
-          },
-          "channel": {
-            "$ref": "#/components/schemas/ArticleChannelRef"
-          },
-          "author": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/PublicUserProfile"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          },
-          "body": {
-            "title": "Body",
-            "type": "string"
-          },
-          "summary": {
-            "title": "Summary",
-            "type": "string"
-          },
-          "summary_display": {
-            "title": "Summary Display",
-            "type": "string"
-          },
-          "listing_image_id": {
-            "anyOf": [
-              {
-                "format": "uuid",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Listing Image Id"
-          },
-          "listing_image_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Listing Image Url"
-          },
-          "listing_crop": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/CropRect"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "listing_image_mode": {
-            "$ref": "#/components/schemas/ListingImageMode"
-          },
-          "listing_image": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ProjectImageResponse"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "images": {
-            "items": {
-              "$ref": "#/components/schemas/ProjectImageResponse"
-            },
-            "title": "Images",
-            "type": "array"
-          },
-          "slug": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Slug"
-          },
-          "source": {
-            "title": "Source",
-            "type": "string"
-          },
-          "external_url": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "External Url"
-          },
-          "state": {
-            "title": "State",
-            "type": "string"
-          },
-          "published_at": {
-            "anyOf": [
-              {
-                "format": "date-time",
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Published At"
-          },
-          "global_visibility": {
-            "title": "Global Visibility",
-            "type": "string"
-          },
-          "is_globally_visible": {
-            "title": "Is Globally Visible",
-            "type": "boolean"
-          },
-          "created_at": {
-            "format": "date-time",
-            "title": "Created At",
-            "type": "string"
-          },
-          "updated_at": {
-            "format": "date-time",
-            "title": "Updated At",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "project",
-          "channel",
-          "author",
-          "title",
-          "body",
-          "summary",
-          "summary_display",
-          "listing_image_id",
-          "listing_image_url",
-          "listing_crop",
-          "listing_image_mode",
-          "listing_image",
-          "images",
-          "slug",
-          "source",
-          "external_url",
-          "state",
-          "published_at",
-          "global_visibility",
-          "is_globally_visible",
-          "created_at",
-          "updated_at"
-        ],
-        "title": "ArticleOut",
-        "type": "object"
-      },
-      "ArticleProjectRef": {
-        "properties": {
-          "id": {
-            "format": "uuid",
-            "title": "Id",
-            "type": "string"
-          },
-          "slug": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "null"
-              }
-            ],
-            "title": "Slug"
-          },
-          "title": {
-            "title": "Title",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "slug",
-          "title"
-        ],
-        "title": "ArticleProjectRef",
-        "type": "object"
-      },
-      "CropRect": {
-        "description": "A crop rectangle normalised 0-1 against the source image.",
-        "properties": {
-          "x": {
-            "title": "X",
-            "type": "number"
-          },
-          "y": {
-            "title": "Y",
-            "type": "number"
-          },
-          "w": {
-            "title": "W",
-            "type": "number"
-          },
-          "h": {
-            "title": "H",
-            "type": "number"
-          },
-          "ratio": {
-            "title": "Ratio",
-            "type": "number"
-          }
-        },
-        "required": [
-          "x",
-          "y",
-          "w",
-          "h",
-          "ratio"
-        ],
-        "title": "CropRect",
-        "type": "object"
-      },
-      "ListingImageMode": {
-        "description": "How an article's listing image was decided.\n\nA nullable ``listing_image`` cannot tell \"not chosen yet\" from \"deliberately\nremoved\", so removal would not survive the next save.",
-        "enum": [
-          "auto",
-          "chosen",
-          "none"
-        ],
-        "title": "ListingImageMode",
-        "type": "string"
       },
       "ArticleCreate": {
         "properties": {
@@ -6886,7 +7344,14 @@
             "type": "boolean"
           },
           "channel": {
-            "$ref": "#/components/schemas/ArticleChannelRef"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArticleChannelRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "listing_image_url": {
             "anyOf": [
@@ -7201,8 +7666,49 @@
             "title": "Project Slug"
           },
           "project_title": {
-            "title": "Project Title",
-            "type": "string"
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Title"
+          },
+          "author_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Id"
+          },
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
+          "author_avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Avatar Url"
           },
           "listing_image_url": {
             "anyOf": [
@@ -7234,6 +7740,9 @@
           "channel_name",
           "project_slug",
           "project_title",
+          "author_id",
+          "author_name",
+          "author_avatar_url",
           "listing_image_url",
           "listing_crop"
         ],
@@ -8049,7 +8558,7 @@
           "images": {
             "default": [],
             "items": {
-              "$ref": "#/components/schemas/ProjectImageResponse"
+              "$ref": "#/components/schemas/ImageResponse"
             },
             "title": "Images",
             "type": "array"
@@ -8686,6 +9195,63 @@
         "title": "CompetitionSummaryResponse",
         "type": "object"
       },
+      "UserProfileResponse": {
+        "description": "The profile page's own response: the public profile plus what the viewer\nhas to do with it. Resolved in the router, never embedded anywhere — a\nper-requester field on `PublicUserProfile` would cost a query per byline.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "first_name": {
+            "title": "First Name",
+            "type": "string"
+          },
+          "last_name": {
+            "title": "Last Name",
+            "type": "string"
+          },
+          "info": {
+            "title": "Info",
+            "type": "string"
+          },
+          "is_system_user": {
+            "default": false,
+            "title": "Is System User",
+            "type": "boolean"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          },
+          "created_at": {
+            "format": "date-time",
+            "title": "Created At",
+            "type": "string"
+          },
+          "is_followed": {
+            "default": false,
+            "title": "Is Followed",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "id",
+          "first_name",
+          "last_name",
+          "info",
+          "created_at"
+        ],
+        "title": "UserProfileResponse",
+        "type": "object"
+      },
       "UserProjectResponse": {
         "description": "One entry in a user's public project list.\n\n`role` is the contributor row's role. `full_edit` is deliberately absent:\nit is an editing permission, not a public fact.",
         "properties": {
@@ -8757,7 +9323,7 @@
         "type": "object"
       },
       "UserArticleResponse": {
-        "description": "One entry in a user's public article list.\n\nThe public half of `ArticleListItem` plus the project, because the article's\nURL lives under its project and the profile shows articles from many. No\nvisibility fields: everything the list returns is published and visible.",
+        "description": "One entry in a user's public article list.\n\nThe public half of `ArticleListItem` plus the project, because a project\narticle's URL lives under its project and the profile shows articles from\nmany. `project` is null for an author-owned article, whose URL is under the\nprofile itself. No visibility fields: everything the list returns is\npublished and visible.",
         "properties": {
           "id": {
             "format": "uuid",
@@ -8796,10 +9362,24 @@
             "title": "Published At"
           },
           "channel": {
-            "$ref": "#/components/schemas/ArticleChannelRef"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArticleChannelRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "project": {
-            "$ref": "#/components/schemas/ArticleProjectRef"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ArticleProjectRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "listing_image_url": {
             "anyOf": [
@@ -8855,6 +9435,37 @@
         "title": "NotificationSummaryResponse",
         "type": "object"
       },
+      "NotificationAuthorResponse": {
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Avatar Url"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "avatar_url"
+        ],
+        "title": "NotificationAuthorResponse",
+        "type": "object"
+      },
       "NotificationGroupKind": {
         "enum": [
           "discussion",
@@ -8869,7 +9480,14 @@
             "$ref": "#/components/schemas/NotificationGroupKind"
           },
           "project": {
-            "$ref": "#/components/schemas/NotificationProjectResponse"
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NotificationProjectResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "latest_body_excerpt": {
             "title": "Latest Body Excerpt",
@@ -8925,6 +9543,16 @@
               }
             ],
             "title": "Latest Comment Id"
+          },
+          "author": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/NotificationAuthorResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "article_id": {
             "anyOf": [

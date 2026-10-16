@@ -6,7 +6,7 @@ from django.core.management.base import BaseCommand
 from django.db.models import Count
 
 from apps.projects.models import (
-    ProjectImage,
+    Image,
     VariantSize,
 )
 from services import HANDLERS
@@ -27,7 +27,7 @@ class Command(BaseCommand):
         # the max possible variants and let the handler skip sizes that don't
         # apply (>= original width) or already exist.
         images = (
-            ProjectImage.objects.uploaded()
+            Image.objects.uploaded()
             .annotate(variant_count=Count("variants"))
             .filter(variant_count__lt=expected_count)
             .order_by("created_at")

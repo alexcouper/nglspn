@@ -24,8 +24,8 @@ from services.project.exceptions import (
 from services.project.handler_interface import CreateProjectInput, UpdateProjectInput
 from tests.factories import (
     CompetitionFactory,
+    ImageFactory,
     ProjectFactory,
-    ProjectImageFactory,
     TagFactory,
     UserFactory,
 )
@@ -43,7 +43,7 @@ def _ready_draft(**kwargs):
         published_at=None,
         **kwargs,
     )
-    ProjectImageFactory(project=project, is_main=True, upload_status="uploaded")
+    ImageFactory(project=project, is_main=True, upload_status="uploaded")
     return project
 
 
@@ -339,7 +339,7 @@ class TestPublish:
         # Bring the draft up to publish-ready state.
         project.status = ProjectStatus.DRAFT
         project.save(update_fields=["status"])
-        ProjectImageFactory(project=project, is_main=True, upload_status="uploaded")
+        ImageFactory(project=project, is_main=True, upload_status="uploaded")
 
         with patch("api.tasks.email.send_new_project_notification"):
             result = handler.publish(project.id, user.id)

@@ -35,6 +35,14 @@ class StorageService:
         """
         return f"projects/{project_id}/{self._unique_object_path(filename)}"
 
+    def generate_article_upload_key(self, article_id: str, filename: str) -> str:
+        """Generate a unique storage key for an image of an author-owned article.
+
+        Format: articles/{article_id}/{uuid}/{filename}. A project article's
+        images stay under its project (`generate_upload_key`).
+        """
+        return f"articles/{article_id}/{self._unique_object_path(filename)}"
+
     def generate_avatar_upload_key(self, user_id: str, filename: str) -> str:
         """Generate a unique storage key for a user's avatar.
 

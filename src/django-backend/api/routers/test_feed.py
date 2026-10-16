@@ -12,8 +12,8 @@ from services import HANDLERS
 from services.feed.django_impl.query import MAX_PAGE_SIZE
 from tests.factories import (
     ArticleFactory,
+    ImageFactory,
     ProjectFactory,
-    ProjectImageFactory,
     UserFactory,
 )
 
@@ -365,7 +365,7 @@ class TestFeedEntryShape:
 
     def test_project_entry_carries_the_project_icon(self, client):
         project = approved_project()
-        ProjectImageFactory(project=project, is_icon=True)
+        ImageFactory(project=project, is_icon=True)
 
         entry = get_feed(client)["entries"][0]
 
@@ -373,7 +373,7 @@ class TestFeedEntryShape:
 
     def test_tipoff_entry_carries_the_icon_too(self, client):
         project = approved_project(is_community_tipoff=True)
-        ProjectImageFactory(project=project, is_icon=True)
+        ImageFactory(project=project, is_icon=True)
 
         entry = get_feed(client)["entries"][0]
 
@@ -393,7 +393,7 @@ class TestFeedEntryShape:
 
 def seed_one_of_each() -> None:
     published_article()
-    ProjectImageFactory(project=approved_project(), is_icon=True)
+    ImageFactory(project=approved_project(), is_icon=True)
     approved_project(is_community_tipoff=True)
 
 
@@ -434,10 +434,10 @@ class TestFeedQueryCount:
 
     def test_project_icons_do_not_cost_a_query_each(self, client):
         """The icons are prefetched — adding more must not add round trips."""
-        ProjectImageFactory(project=approved_project(), is_icon=True)
+        ImageFactory(project=approved_project(), is_icon=True)
         baseline = count_feed_queries(client)
 
         for _ in range(8):
-            ProjectImageFactory(project=approved_project(), is_icon=True)
+            ImageFactory(project=approved_project(), is_icon=True)
 
         assert count_feed_queries(client) == baseline

@@ -31,7 +31,7 @@ async function insertBodyImage(page: Page, index: number) {
 async function saveDraft(page: Page) {
   const saved = page.waitForResponse(
     (r) =>
-      /\/api\/projects\/.*\/articles/.test(r.url()) &&
+      /\/api\/articles\//.test(r.url()) &&
       r.request().method() === "PATCH",
   );
   await page.getByRole("button", { name: "Save draft" }).click();
@@ -42,7 +42,7 @@ async function saveDraft(page: Page) {
 async function openListingSettings(page: Page) {
   const saved = page.waitForResponse(
     (r) =>
-      /\/api\/projects\/.*\/articles/.test(r.url()) &&
+      /\/api\/articles\//.test(r.url()) &&
       r.request().method() === "PATCH",
   );
   await page.getByRole("tab", { name: "Listing settings" }).click();
@@ -59,7 +59,7 @@ async function savedListingImageId(
   projectId: string,
   articleId: string,
 ): Promise<string | null> {
-  const article = await fetchArticle(page, projectId, articleId);
+  const article = await fetchArticle(page, articleId);
   return (article.listing_image_id as string | null) ?? null;
 }
 
@@ -138,11 +138,11 @@ test.describe("Article listing image", () => {
     await expect(listingThumb(page)).toHaveCount(0);
     expect(await savedListingImageId(page, projectId, articleId)).toBeNull();
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 
   test("previews an imageless article as a text-only card in both variants", async () => {
-    const { projectId, articleId } = await openBlankArticleEditor(page);
+    const { articleId } = await openBlankArticleEditor(page);
     await page.fill('input[placeholder="Article title"]', "No image at all");
     await editorBody(page).fill("A body with no pictures in it whatsoever.");
 
@@ -158,6 +158,6 @@ test.describe("Article listing image", () => {
       await expect(card).toContainText("No image at all");
     }
 
-    await cleanUp(page, projectId, articleId, uploadedImageIds);
+    await cleanUp(page, articleId, uploadedImageIds);
   });
 });

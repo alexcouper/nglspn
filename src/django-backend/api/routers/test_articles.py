@@ -9,6 +9,7 @@ from hamcrest import (
     has_length,
 )
 
+from api.auth.jwt import create_access_token
 from apps.articles.models import Article, ArticleGlobalVisibility, ArticleState
 from apps.projects.models import (
     ImageVariant,
@@ -17,11 +18,13 @@ from apps.projects.models import (
 )
 from tests.factories import (
     ArticleFactory,
+    AuthorArticleFactory,
     ChannelFactory,
+    ImageFactory,
     PendingArticleFactory,
     ProjectFactory,
-    ProjectImageFactory,
     PublishedArticleFactory,
+    UserFactory,
     article_image,
 )
 
@@ -125,11 +128,11 @@ class TestCreateArticle:
     ) -> None:
         project = ProjectFactory(owner=user)
         article = ArticleFactory(project=project)
-        foreign_image = ProjectImageFactory()  # belongs to a different project
+        foreign_image = ImageFactory()  # belongs to a different project
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"listing_image_id": str(foreign_image.id)},
             auth_headers,
         )
@@ -224,29 +227,43 @@ class TestGetArticleById:
     def test_unauthenticated_returns_401(self, client) -> None:
         project = ProjectFactory()
         article = PublishedArticleFactory(project=project)
-        response = client.get(f"/api/projects/{project.id}/articles/{article.id}")
+        response = client.get(f"/api/articles/{article.id}")
         assert_that(response.status_code, equal_to(401))
 
-    def test_published_visible_to_any_authed_user(self, client, auth_headers) -> None:
+    def test_published_is_404_for_a_reader_without_edit_rights(
+        self, client, auth_headers
+    ) -> None:
+        """The id route is the editor's read; readers use the slug routes."""
         project = ProjectFactory(status=ProjectStatus.APPROVED)
         article = PublishedArticleFactory(project=project)
         response = client.get(
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
+            **auth_headers,
+        )
+        assert_that(response.status_code, equal_to(404))
+
+    def test_full_edit_contributor_reads_a_published_article(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user, status=ProjectStatus.APPROVED)
+        article = PublishedArticleFactory(project=project, author=UserFactory())
+        response = client.get(
+            f"/api/articles/{article.id}",
             **auth_headers,
         )
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json(), has_entries(id=str(article.id)))
 
-    def test_draft_returns_403_for_non_author_non_full_edit(
+    def test_draft_returns_404_for_non_author_non_full_edit(
         self, client, auth_headers
     ) -> None:
         project = ProjectFactory(status=ProjectStatus.APPROVED)
         draft = ArticleFactory(project=project)
         response = client.get(
-            f"/api/projects/{project.id}/articles/{draft.id}",
+            f"/api/articles/{draft.id}",
             **auth_headers,
         )
-        assert_that(response.status_code, equal_to(403))
+        assert_that(response.status_code, equal_to(404))
 
     def test_pending_project_404s_for_authed_non_editor(
         self, client, auth_headers
@@ -254,7 +271,7 @@ class TestGetArticleById:
         project = ProjectFactory(status=ProjectStatus.PENDING)
         article = PublishedArticleFactory(project=project)
         response = client.get(
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             **auth_headers,
         )
         assert_that(response.status_code, equal_to(404))
@@ -263,42 +280,38 @@ class TestGetArticleById:
         project = ProjectFactory(owner=user)
         draft = ArticleFactory(project=project, author=user)
         response = client.get(
-            f"/api/projects/{project.id}/articles/{draft.id}",
+            f"/api/articles/{draft.id}",
             **auth_headers,
         )
         assert_that(response.status_code, equal_to(200))
 
-    def test_article_on_different_project_returns_404(
+    def test_article_the_caller_cannot_edit_returns_404(
         self, client, user, auth_headers
     ) -> None:
-        project = ProjectFactory(owner=user)
         other_project = ProjectFactory()
         article = PublishedArticleFactory(project=other_project)
 
         response = client.get(
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             **auth_headers,
         )
         assert_that(response.status_code, equal_to(404))
 
     def test_unknown_article_returns_404(self, client, auth_headers) -> None:
-        project = ProjectFactory(status=ProjectStatus.APPROVED)
         fake = "00000000-0000-0000-0000-000000000000"
-        response = client.get(
-            f"/api/projects/{project.id}/articles/{fake}", **auth_headers
-        )
+        response = client.get(f"/api/articles/{fake}", **auth_headers)
         assert_that(response.status_code, equal_to(404))
 
-    def test_awaiting_review_returns_403_for_non_author_non_full_edit(
+    def test_awaiting_review_returns_404_for_non_author_non_full_edit(
         self, client, auth_headers
     ) -> None:
         project = ProjectFactory(status=ProjectStatus.APPROVED)
         article = PendingArticleFactory(project=project)
         response = client.get(
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             **auth_headers,
         )
-        assert_that(response.status_code, equal_to(403))
+        assert_that(response.status_code, equal_to(404))
 
     def test_awaiting_review_visible_to_author(
         self, client, user, auth_headers
@@ -306,7 +319,7 @@ class TestGetArticleById:
         project = ProjectFactory(owner=user)
         article = PendingArticleFactory(project=project, author=user)
         response = client.get(
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             **auth_headers,
         )
         assert_that(response.status_code, equal_to(200))
@@ -319,7 +332,7 @@ class TestGetArticleById:
             global_visibility=ArticleGlobalVisibility.DEMOTED,
         )
         response = client.get(
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             **auth_headers,
         )
         assert_that(response.status_code, equal_to(200))
@@ -420,21 +433,21 @@ class TestPatchArticle:
         article = ArticleFactory(project=project)
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"title": "New"},
         )
         assert_that(response.status_code, equal_to(401))
 
-    def test_non_full_edit_user_returns_403(self, client, auth_headers) -> None:
+    def test_non_full_edit_user_returns_404(self, client, auth_headers) -> None:
         project = ProjectFactory()  # creator is someone else
         article = ArticleFactory(project=project)
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"title": "New"},
             auth_headers,
         )
-        assert_that(response.status_code, equal_to(403))
+        assert_that(response.status_code, equal_to(404))
 
     def test_owner_can_update_title(self, client, user, auth_headers) -> None:
         project = ProjectFactory(owner=user)
@@ -442,7 +455,7 @@ class TestPatchArticle:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"title": "Updated"},
             auth_headers,
         )
@@ -451,16 +464,15 @@ class TestPatchArticle:
         article.refresh_from_db()
         assert_that(article.title, equal_to("Updated"))
 
-    def test_article_on_different_project_returns_404(
+    def test_article_the_caller_cannot_edit_returns_404(
         self, client, user, auth_headers
     ) -> None:
-        project = ProjectFactory(owner=user)
         other = ProjectFactory()
         article = ArticleFactory(project=other)
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"title": "Updated"},
             auth_headers,
         )
@@ -472,7 +484,7 @@ class TestPatchArticle:
 
         set_response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"summary": "An authored hook."},
             auth_headers,
         )
@@ -484,7 +496,7 @@ class TestPatchArticle:
 
         clear_response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"summary": ""},
             auth_headers,
         )
@@ -505,7 +517,7 @@ class TestPatchArticle:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"title": "Updated"},
             auth_headers,
         )
@@ -523,7 +535,7 @@ class TestPatchArticle:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"listing_image_id": None, "listing_image_mode": "none"},
             auth_headers,
         )
@@ -542,7 +554,7 @@ class TestPatchArticle:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"listing_image_id": None, "listing_image_mode": "none"},
             auth_headers,
         )
@@ -577,7 +589,7 @@ def _choose(client, project, article, auth_headers, image, crop=None):
         payload["listing_crop"] = crop
     response = _patch(
         client,
-        f"/api/projects/{project.id}/articles/{article.id}",
+        f"/api/articles/{article.id}",
         payload,
         auth_headers,
     )
@@ -612,7 +624,7 @@ class TestListingImageMode:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"title": "Saved"},
             auth_headers,
         )
@@ -660,7 +672,7 @@ class TestListingImageMode:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"title": "Saved again"},
             auth_headers,
         )
@@ -675,14 +687,14 @@ class TestListingImageMode:
         _sized_image(article)
         _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"listing_image_id": None, "listing_image_mode": "none"},
             auth_headers,
         )
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"title": "Saved again"},
             auth_headers,
         )
@@ -698,7 +710,7 @@ class TestListingImageMode:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"listing_image_mode": "nonsense"},
             auth_headers,
         )
@@ -718,7 +730,7 @@ class TestArticleCrops:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"listing_crop": None},
             auth_headers,
         )
@@ -772,7 +784,7 @@ class TestArticleCrops:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"listing_crop": _crop(x=1.4, y=0.3, w=0.6)},
             auth_headers,
         )
@@ -792,7 +804,7 @@ class TestArticleCrops:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"listing_crop": four_by_three},
             auth_headers,
         )
@@ -809,7 +821,7 @@ class TestArticleCrops:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"listing_crop": LISTING_CROP},
             auth_headers,
         )
@@ -890,21 +902,21 @@ class TestPublishArticle:
         article = ArticleFactory(project=project)
         response = _post(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}/publish",
+            f"/api/articles/{article.id}/publish",
             {},
         )
         assert_that(response.status_code, equal_to(401))
 
-    def test_non_full_edit_user_returns_403(self, client, auth_headers) -> None:
+    def test_non_full_edit_user_returns_404(self, client, auth_headers) -> None:
         project = ProjectFactory()
         article = ArticleFactory(project=project)
         response = _post(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}/publish",
+            f"/api/articles/{article.id}/publish",
             {},
             auth_headers,
         )
-        assert_that(response.status_code, equal_to(403))
+        assert_that(response.status_code, equal_to(404))
 
     def test_owner_can_publish(self, client, user, auth_headers) -> None:
         project = ProjectFactory(owner=user)
@@ -912,7 +924,7 @@ class TestPublishArticle:
 
         response = _post(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}/publish",
+            f"/api/articles/{article.id}/publish",
             {},
             auth_headers,
         )
@@ -930,7 +942,7 @@ class TestPublishArticle:
 
         response = _post(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}/publish",
+            f"/api/articles/{article.id}/publish",
             {},
             auth_headers,
         )
@@ -944,18 +956,17 @@ class TestPublishArticle:
 
         response = _post(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}/publish",
+            f"/api/articles/{article.id}/publish",
             {},
             auth_headers,
         )
         assert_that(response.status_code, equal_to(422))
 
     def test_unknown_article_returns_404(self, client, user, auth_headers) -> None:
-        project = ProjectFactory(owner=user)
         fake = "00000000-0000-0000-0000-000000000000"
         response = _post(
             client,
-            f"/api/projects/{project.id}/articles/{fake}/publish",
+            f"/api/articles/{fake}/publish",
             {},
             auth_headers,
         )
@@ -967,39 +978,38 @@ class TestDeleteArticle:
     def test_unauthenticated_returns_401(self, client) -> None:
         project = ProjectFactory()
         article = ArticleFactory(project=project)
-        response = client.delete(f"/api/projects/{project.id}/articles/{article.id}")
+        response = client.delete(f"/api/articles/{article.id}")
         assert_that(response.status_code, equal_to(401))
 
-    def test_non_full_edit_user_returns_403(self, client, auth_headers) -> None:
+    def test_non_full_edit_user_returns_404(self, client, auth_headers) -> None:
         project = ProjectFactory()
         article = ArticleFactory(project=project)
         response = client.delete(
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             **auth_headers,
         )
-        assert_that(response.status_code, equal_to(403))
+        assert_that(response.status_code, equal_to(404))
 
     def test_owner_can_delete(self, client, user, auth_headers) -> None:
         project = ProjectFactory(owner=user)
         article = ArticleFactory(project=project)
 
         response = client.delete(
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             **auth_headers,
         )
 
         assert_that(response.status_code, equal_to(204))
         assert not Article.objects.filter(pk=article.id).exists()
 
-    def test_article_on_different_project_returns_404(
+    def test_article_the_caller_cannot_edit_returns_404(
         self, client, user, auth_headers
     ) -> None:
-        project = ProjectFactory(owner=user)
         other = ProjectFactory()
         article = ArticleFactory(project=other)
 
         response = client.delete(
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             **auth_headers,
         )
         assert_that(response.status_code, equal_to(404))
@@ -1040,7 +1050,7 @@ class TestArticleEndpointsIgnoreProjectStatus:
 
         response = _patch(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             {"title": "Edited"},
             auth_headers,
         )
@@ -1056,7 +1066,7 @@ class TestArticleEndpointsIgnoreProjectStatus:
 
         response = _post(
             client,
-            f"/api/projects/{project.id}/articles/{article.id}/publish",
+            f"/api/articles/{article.id}/publish",
             {},
             auth_headers,
         )
@@ -1072,7 +1082,7 @@ class TestArticleEndpointsIgnoreProjectStatus:
         article = ArticleFactory(project=project)
 
         response = client.delete(
-            f"/api/projects/{project.id}/articles/{article.id}",
+            f"/api/articles/{article.id}",
             **auth_headers,
         )
 
@@ -1085,7 +1095,7 @@ class TestRouterHasNoOrmAccess:
     directly. All DB access goes through HANDLERS / REPO.
 
     Two spellings, because banning `<Model>.objects` alone misses the one the
-    file actually used: `get_object_or_404(ProjectImage, ...)` takes the model
+    file actually used: `get_object_or_404(Image, ...)` takes the model
     class and reaches `_default_manager` itself, writing no `.objects` at all.
     Model names are not banned — they are legitimate return annotations.
 
@@ -1093,18 +1103,19 @@ class TestRouterHasNoOrmAccess:
     raises the cost of the mistake; it does not make it impossible.
     """
 
-    def test_no_direct_orm_access(self) -> None:
-        src = Path(__file__).resolve().parent.parent / "routers" / "articles.py"
+    @pytest.mark.parametrize("module", ["articles.py", "article_items.py"])
+    def test_no_direct_orm_access(self, module: str) -> None:
+        src = Path(__file__).resolve().parent.parent / "routers" / module
         text = src.read_text()
         for forbidden in (
             "Article.objects",
             "Channel.objects",
             "FollowedChannel.objects",
-            "ProjectImage.objects",
+            "Image.objects",
             "get_object_or_404",
         ):
             assert forbidden not in text, (
-                f"{forbidden} must not appear in api/routers/articles.py"
+                f"{forbidden} must not appear in api/routers/{module}"
             )
 
 
@@ -1130,9 +1141,7 @@ class TestArticleListingImage:
         )
         _choose(client, project, article, auth_headers, image)
 
-        response = client.get(
-            f"/api/projects/{project.id}/articles/{article.id}", **auth_headers
-        )
+        response = client.get(f"/api/articles/{article.id}", **auth_headers)
 
         assert_that(response.status_code, equal_to(200))
         payload = response.json()["listing_image"]
@@ -1146,9 +1155,7 @@ class TestArticleListingImage:
         project = ProjectFactory(owner=user)
         article = ArticleFactory(project=project)
 
-        response = client.get(
-            f"/api/projects/{project.id}/articles/{article.id}", **auth_headers
-        )
+        response = client.get(f"/api/articles/{article.id}", **auth_headers)
 
         assert_that(response.json()["listing_image"], equal_to(None))
 
@@ -1176,9 +1183,7 @@ class TestArticleImageList:
         first = article_image(article)
         second = article_image(article)
 
-        response = client.get(
-            f"/api/projects/{project.id}/articles/{article.id}", **auth_headers
-        )
+        response = client.get(f"/api/articles/{article.id}", **auth_headers)
 
         ids = [image["id"] for image in response.json()["images"]]
         assert_that(ids, equal_to([str(first.id), str(second.id)]))
@@ -1189,12 +1194,81 @@ class TestArticleImageList:
         project = ProjectFactory(owner=user)
         article = ArticleFactory(project=project)
         mine = article_image(article)
-        ProjectImageFactory(project=project)
+        ImageFactory(project=project)
         article_image(ArticleFactory(project=project))
 
-        response = client.get(
-            f"/api/projects/{project.id}/articles/{article.id}", **auth_headers
-        )
+        response = client.get(f"/api/articles/{article.id}", **auth_headers)
 
         ids = [image["id"] for image in response.json()["images"]]
         assert_that(ids, equal_to([str(mine.id)]))
+
+
+@pytest.mark.django_db
+class TestAuthorOwnedArticleById:
+    def test_author_patches_their_own_article(self, client, user, auth_headers) -> None:
+        article = AuthorArticleFactory(author=user)
+
+        response = _patch(
+            client, f"/api/articles/{article.id}", {"body": "Rewritten"}, auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(body="Rewritten", project=None))
+
+    def test_a_stranger_gets_404(self, client, auth_headers) -> None:
+        article = AuthorArticleFactory()
+
+        response = _patch(
+            client, f"/api/articles/{article.id}", {"body": "Mine now"}, auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_an_administrator_is_a_stranger_too(self, client) -> None:
+        article = AuthorArticleFactory()
+        admin = UserFactory(is_staff=True, is_superuser=True)
+        headers = {"HTTP_AUTHORIZATION": f"Bearer {create_access_token(admin.id)}"}
+
+        response = _patch(client, f"/api/articles/{article.id}", {"body": "x"}, headers)
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_a_channel_is_rejected_with_422(self, client, user, auth_headers) -> None:
+        article = AuthorArticleFactory(author=user)
+        channel = ChannelFactory()
+
+        response = _patch(
+            client,
+            f"/api/articles/{article.id}",
+            {"channel_id": str(channel.id)},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(422))
+
+    def test_author_publishes_and_deletes(self, client, user, auth_headers) -> None:
+        article = AuthorArticleFactory(author=user)
+
+        published = _post(
+            client, f"/api/articles/{article.id}/publish", {}, auth_headers
+        )
+        assert_that(published.status_code, equal_to(200))
+        assert_that(published.json()["channel"], has_entries(name="Articles"))
+
+        deleted = client.delete(f"/api/articles/{article.id}", **auth_headers)
+        assert_that(deleted.status_code, equal_to(204))
+
+    def test_the_old_project_nested_id_route_is_gone(
+        self, client, user, auth_headers
+    ) -> None:
+        project = ProjectFactory(owner=user)
+        article = ArticleFactory(project=project)
+
+        response = _patch(
+            client,
+            f"/api/projects/{project.slug}/articles/{article.id}",
+            {"title": "x"},
+            auth_headers,
+        )
+
+        assert_that(response.status_code, equal_to(404))

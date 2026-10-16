@@ -5,9 +5,15 @@ import pytest
 from apps.articles.models import ArticleState
 from apps.articles.slugs import (
     assign_unique_article_slug,
+    author_has_article_with_slug,
     project_has_article_with_slug,
 )
-from tests.factories import ArticleFactory, ProjectFactory
+from tests.factories import (
+    ArticleFactory,
+    AuthorArticleFactory,
+    ProjectFactory,
+    UserFactory,
+)
 
 
 def _publishable_draft(project, title):
@@ -93,3 +99,52 @@ class TestProjectHasArticleWithSlug:
         )
 
         assert project_has_article_with_slug(project_b.id, "my-slug") is False
+
+
+@pytest.mark.django_db
+class TestAuthorOwnedSlugScope:
+    def test_two_authors_may_share_a_slug(self):
+        AuthorArticleFactory(title="Hello", slug="hello", state=ArticleState.PUBLISHED)
+        article = AuthorArticleFactory(title="Hello", slug=None)
+
+        assign_unique_article_slug(article)
+
+        article.refresh_from_db()
+        assert article.slug == "hello"
+
+    def test_same_author_collides_and_takes_a_suffix(self):
+        author = UserFactory()
+        AuthorArticleFactory(
+            author=author, title="Hello", slug="hello", state=ArticleState.PUBLISHED
+        )
+        article = AuthorArticleFactory(author=author, title="Hello", slug=None)
+
+        assign_unique_article_slug(article)
+
+        article.refresh_from_db()
+        assert article.slug == "hello-2"
+
+    def test_author_slug_does_not_collide_with_the_authors_project_article(self):
+        author = UserFactory()
+        project = ProjectFactory(owner=author)
+        ArticleFactory(
+            project=project,
+            author=author,
+            title="Hello",
+            slug="hello",
+            state=ArticleState.PUBLISHED,
+        )
+        article = AuthorArticleFactory(author=author, title="Hello", slug=None)
+
+        assign_unique_article_slug(article)
+
+        article.refresh_from_db()
+        assert article.slug == "hello"
+
+    def test_author_has_article_with_slug_ignores_project_articles(self):
+        author = UserFactory()
+        ArticleFactory(project=ProjectFactory(owner=author), author=author, slug="x")
+
+        assert author_has_article_with_slug(author.id, "x") is False
+        AuthorArticleFactory(author=author, slug="x")
+        assert author_has_article_with_slug(author.id, "x") is True

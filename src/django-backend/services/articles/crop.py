@@ -94,7 +94,7 @@ def validate_crop(
     checks that it overlaps the image at all rather than that it sits inside it.
 
     ``width``/``height`` are the source's pixel dimensions. They are nullable on
-    ``ProjectImage``, and when absent the rect-versus-ratio consistency check is
+    ``Image``, and when absent the rect-versus-ratio consistency check is
     skipped rather than guessed at.
     """
     if crop.w <= 0 or crop.h <= 0:

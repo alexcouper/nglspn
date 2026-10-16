@@ -43,6 +43,17 @@ class DjangoArticleQuery(ArticleQueryInterface):
             .first()
         )
 
+    def get_by_author_and_slug(
+        self,
+        author_id: UUID,
+        article_slug: str,
+    ) -> Article | None:
+        return (
+            article_detail_queryset()
+            .filter(author_id=author_id, project__isnull=True, slug=article_slug)
+            .first()
+        )
+
     def for_project(
         self,
         project_id: UUID,

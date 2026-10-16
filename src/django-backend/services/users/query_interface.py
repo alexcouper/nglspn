@@ -61,6 +61,14 @@ class UserQueryInterface(ABC):
 
     @abstractmethod
     def list_public_articles_for(self, user_id: UUID) -> QuerySet[Article]:
-        """Globally visible articles the user wrote on approved projects, newest
-        first. The project check keeps the list free of links that would 404.
+        """Globally visible articles the user wrote, newest first: author-owned
+        ones, and ones on approved projects. The project check keeps the list
+        free of links that would 404.
+        """
+
+    @abstractmethod
+    def list_own_articles_for(self, user_id: UUID) -> QuerySet[Article]:
+        """Every article the user wrote, of both kinds and in every state,
+        drafts first then newest first. The owner's profile list; nothing
+        public reads this.
         """

@@ -209,33 +209,43 @@ class UploadStatus(models.TextChoices):
     FAILED = "failed", "Upload Failed"
 
 
-class ProjectImageQuerySet(models.QuerySet):
-    def uploaded(self) -> "ProjectImageQuerySet":
+class ImageQuerySet(models.QuerySet):
+    def uploaded(self) -> "ImageQuerySet":
         """Rows whose object actually exists in storage.
 
         A row is created `PENDING` before the client PUTs to S3 and nothing
         deletes it when that PUT fails, so "a linked image" and "an image that
         will render" are different sets. Anything that picks an image for
-        display goes through here (or `ProjectImage.is_uploaded`, its in-memory
+        display goes through here (or `Image.is_uploaded`, its in-memory
         twin for prefetched relations) so the rule has one home.
         """
         return self.filter(upload_status=UploadStatus.UPLOADED)
 
 
-class ProjectImage(models.Model):
+class Image(models.Model):
+    """An uploaded image: a project's, an article's, or both.
+
+    A project article's images carry both links so they share the project's
+    storage prefix and variant pipeline; an author-owned article's images have
+    no project at all. The check constraint below is what rules out a row with
+    neither owner — such a row would belong to nothing and never be reaped.
+    """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
         Project,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="images",
     )
-    # Article uploads live on the project so they share the storage and variant
-    # pipeline, but they describe an article rather than the project, so they
-    # stay out of the project's galleries, cover-image picks and image cap.
-    # "Is this an article image" is this link being set — there is no separate
-    # flag that could disagree with it. CASCADE, not SET_NULL: an unlinked
-    # article image is indistinguishable from a project one and would surface in
-    # the gallery.
+    # Article uploads on a project live on the project so they share the storage
+    # and variant pipeline, but they describe an article rather than the
+    # project, so they stay out of the project's galleries, cover-image picks
+    # and image cap. "Is this an article image" is this link being set — there
+    # is no separate flag that could disagree with it. CASCADE, not SET_NULL: an
+    # unlinked article image is indistinguishable from a project one and would
+    # surface in the gallery.
     article = models.ForeignKey(
         "articles.Article",
         on_delete=models.CASCADE,
@@ -270,18 +280,25 @@ class ProjectImage(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     uploaded_at = models.DateTimeField(null=True, blank=True)
 
-    objects = ProjectImageQuerySet.as_manager()
+    objects = ImageQuerySet.as_manager()
 
     class Meta:
-        db_table = "project_images"
+        db_table = "images"
         ordering = ["display_order", "created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(project__isnull=False) | Q(article__isnull=False),
+                name="images_project_or_article",
+            ),
+        ]
 
     def __str__(self) -> str:
-        return f"{self.project.title} - {self.original_filename}"
+        owner = self.project.title if self.project_id else f"article {self.article_id}"
+        return f"{owner} - {self.original_filename}"
 
     @property
     def is_uploaded(self) -> bool:
-        """In-memory form of `ProjectImageQuerySet.uploaded()`.
+        """In-memory form of `ImageQuerySet.uploaded()`.
 
         For callers holding a prefetched relation, where filtering in the
         database would throw the prefetch away.
@@ -312,7 +329,7 @@ VARIANT_SIZE_WIDTHS: dict[str, int] = {
 class ImageVariant(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     image = models.ForeignKey(
-        ProjectImage,
+        Image,
         on_delete=models.CASCADE,
         related_name="variants",
     )
@@ -340,7 +357,7 @@ class OrphanedStorageObject(models.Model):
     """A storage key whose owning row is gone.
 
     Written by a `pre_delete` receiver (`apps/projects/signals.py`) rather than
-    by each delete path, because `ProjectImage` rows disappear by cascade from
+    by each delete path, because `Image` rows disappear by cascade from
     `Article` and `Project` as well as by explicit deletion, and a caller that
     forgets is exactly how the keys were lost in the first place. The receiver
     runs inside Django's deletion transaction, so the tombstone and the row

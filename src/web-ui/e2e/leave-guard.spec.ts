@@ -7,7 +7,7 @@ import { test, expect, type Page } from "@playwright/test";
 // These tests do not drive the article editor. It needs a login, so the guard's
 // click interceptor is transcribed here onto a public page and exercised there;
 // what the editor does with the verdict is covered by
-// `src/app/projects/[slug]/articles/use-leave-guard.test.tsx`.
+// `src/app/articles/use-leave-guard.test.tsx`.
 //
 // Needs a running Next dev server (`make dev` in src/web-ui). Not in CI, like
 // the rest of `e2e/`.

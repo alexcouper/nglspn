@@ -1,6 +1,6 @@
 """Article images are addressed under the article that owns them.
 
-The rows are still `ProjectImage` — same storage, same variant pipeline — but
+The rows are still `Image` — same storage, same variant pipeline — but
 the article is in the path, so there is no `source` / `source_id` pair that
 could name a different article than the one the row is stored against.
 """
@@ -13,9 +13,13 @@ import pytest
 from hamcrest import assert_that, contains_string, equal_to, is_, is_not
 from moto import mock_aws
 
-from apps.projects.models import ProjectImage, UploadStatus
+from apps.projects.models import Image, UploadStatus
 from services.images.handler_interface import MAX_IMAGES_PER_ARTICLE
-from tests.factories import ArticleFactory, ProjectFactory, article_image
+from tests.factories import (
+    ArticleFactory,
+    AuthorArticleFactory,
+    article_image,
+)
 
 TEST_BUCKET = "test-bucket"
 TEST_REGION = "us-east-1"
@@ -51,7 +55,7 @@ def article(project):
 
 
 def images_url(article) -> str:
-    return f"/api/projects/{article.project_id}/articles/{article.id}/images"
+    return f"/api/articles/{article.id}/images"
 
 
 def request_upload_url(client, article, auth_headers, **overrides):
@@ -79,8 +83,8 @@ def complete_upload(client, article, image, auth_headers, storage, **dimensions)
         )
 
 
-def make_pending_image(article, **overrides) -> ProjectImage:
-    return ProjectImage.objects.create(
+def make_pending_image(article, **overrides) -> Image:
+    return Image.objects.create(
         project=article.project,
         article=article,
         storage_key="test/pending.png",
@@ -99,7 +103,7 @@ class TestGetUploadUrl:
         response = request_upload_url(client, article, auth_headers)
 
         assert_that(response.status_code, equal_to(200))
-        image = ProjectImage.objects.get(id=response.json()["image_id"])
+        image = Image.objects.get(id=response.json()["image_id"])
         assert_that(image.article_id, equal_to(article.id))
         assert_that(image.project_id, equal_to(article.project_id))
         assert_that(image.upload_status, equal_to(UploadStatus.PENDING))
@@ -134,32 +138,21 @@ class TestGetUploadUrl:
         assert_that(response.status_code, equal_to(400))
         assert_that(response.json()["detail"], contains_string("File size"))
 
-    def test_rejects_an_article_on_another_project(
-        self, client, project, auth_headers, mock_storage_service
+    def test_rejects_an_article_the_caller_cannot_edit(
+        self, client, auth_headers, mock_storage_service
     ) -> None:
         foreign = ArticleFactory()
 
-        response = client.post(
-            f"/api/projects/{project.id}/articles/{foreign.id}/images/upload-url",
-            data=json.dumps(
-                {
-                    "filename": "figure.png",
-                    "content_type": "image/png",
-                    "file_size": 1024,
-                }
-            ),
-            content_type="application/json",
-            **auth_headers,
-        )
+        response = request_upload_url(client, foreign, auth_headers)
 
         assert_that(response.status_code, equal_to(404))
 
-    def test_rejects_a_user_without_edit_rights(
+    def test_rejects_a_user_without_edit_rights_with_404(
         self, client, other_auth_headers, article, mock_storage_service
     ) -> None:
         response = request_upload_url(client, article, other_auth_headers)
 
-        assert_that(response.status_code, is_(equal_to(403)))
+        assert_that(response.status_code, is_(equal_to(404)))
 
     def test_requires_authentication(
         self, client, article, mock_storage_service
@@ -290,7 +283,7 @@ class TestCompleteUpload:
     def test_rejects_a_project_gallery_image(
         self, client, project, article, auth_headers, mock_storage_service
     ) -> None:
-        gallery = ProjectImage.objects.create(
+        gallery = Image.objects.create(
             project=project,
             storage_key="test/gallery.png",
             original_filename="gallery.png",
@@ -315,7 +308,7 @@ class TestDeleteImage:
         response = client.delete(f"{images_url(article)}/{image.id}", **auth_headers)
 
         assert_that(response.status_code, equal_to(204))
-        assert_that(ProjectImage.objects.filter(id=image.id).exists(), is_(False))
+        assert_that(Image.objects.filter(id=image.id).exists(), is_(False))
 
     def test_removes_a_pending_row_the_wizard_abandoned(
         self, client, article, auth_headers, mock_storage_service
@@ -325,12 +318,12 @@ class TestDeleteImage:
         response = client.delete(f"{images_url(article)}/{image.id}", **auth_headers)
 
         assert_that(response.status_code, equal_to(204))
-        assert_that(ProjectImage.objects.filter(id=image.id).exists(), is_(False))
+        assert_that(Image.objects.filter(id=image.id).exists(), is_(False))
 
     def test_leaves_a_project_gallery_image_alone(
         self, client, project, article, auth_headers, mock_storage_service
     ) -> None:
-        gallery = ProjectImage.objects.create(
+        gallery = Image.objects.create(
             project=project,
             storage_key="test/gallery.png",
             original_filename="gallery.png",
@@ -342,7 +335,7 @@ class TestDeleteImage:
         response = client.delete(f"{images_url(article)}/{gallery.id}", **auth_headers)
 
         assert_that(response.status_code, equal_to(404))
-        assert_that(ProjectImage.objects.filter(id=gallery.id).exists(), is_(True))
+        assert_that(Image.objects.filter(id=gallery.id).exists(), is_(True))
 
     def test_rejects_a_user_without_edit_rights(
         self, client, other_auth_headers, article, mock_storage_service
@@ -353,8 +346,8 @@ class TestDeleteImage:
             f"{images_url(article)}/{image.id}", **other_auth_headers
         )
 
-        assert_that(response.status_code, equal_to(403))
-        assert_that(ProjectImage.objects.filter(id=image.id).exists(), is_(True))
+        assert_that(response.status_code, equal_to(404))
+        assert_that(Image.objects.filter(id=image.id).exists(), is_(True))
 
 
 class TestArticleResponseImages:
@@ -364,36 +357,40 @@ class TestArticleResponseImages:
         uploaded = article_image(article)
         make_pending_image(article)
 
-        response = client.get(
-            f"/api/projects/{article.project_id}/articles/{article.id}",
-            **auth_headers,
-        )
+        response = client.get(f"/api/articles/{article.id}", **auth_headers)
 
         assert_that(response.status_code, equal_to(200))
         listed = [image["id"] for image in response.json()["images"]]
         assert_that(listed, equal_to([str(uploaded.id)]))
 
 
-class TestAddressingByProjectSlug:
-    def test_uploads_resolve_the_project_by_slug(
+class TestAuthorOwnedArticleImages:
+    def test_upload_lands_under_the_article_with_no_project(
         self, client, user, auth_headers, mock_storage_service
     ) -> None:
-        project = ProjectFactory(owner=user, slug="a-project")
-        article = ArticleFactory(project=project)
+        article = AuthorArticleFactory(author=user)
 
-        response = client.post(
-            f"/api/projects/{project.slug}/articles/{article.id}/images/upload-url",
-            data=json.dumps(
-                {
-                    "filename": "figure.png",
-                    "content_type": "image/png",
-                    "file_size": 1024,
-                }
-            ),
-            content_type="application/json",
-            **auth_headers,
-        )
+        response = request_upload_url(client, article, auth_headers)
 
         assert_that(response.status_code, equal_to(200))
-        image = ProjectImage.objects.get(id=response.json()["image_id"])
+        image = Image.objects.get(id=response.json()["image_id"])
         assert_that(image.article_id, equal_to(article.id))
+        assert_that(image.project_id, equal_to(None))
+        assert_that(image.storage_key, contains_string(f"articles/{article.id}/"))
+
+    def test_complete_and_delete_round_trip(
+        self, client, user, auth_headers, mock_storage_service
+    ) -> None:
+        article = AuthorArticleFactory(author=user)
+        image = Image.objects.get(
+            id=request_upload_url(client, article, auth_headers).json()["image_id"]
+        )
+
+        completed = complete_upload(
+            client, article, image, auth_headers, mock_storage_service
+        )
+        assert_that(completed.status_code, equal_to(200))
+
+        deleted = client.delete(f"{images_url(article)}/{image.id}", **auth_headers)
+        assert_that(deleted.status_code, equal_to(204))
+        assert_that(Image.objects.filter(pk=image.pk).exists(), is_(False))

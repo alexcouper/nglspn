@@ -5,8 +5,9 @@ One batch, three layouts, chosen by how many articles are in it. The sender
 (`apps/notifications/admin.py`) both come through `build_article_digest`, so
 they cannot disagree about what goes out.
 
-- One article: subject `<Project>: <Title>`, or the title alone for the
-  house project; template `article_digest_single`.
+- One article: subject `<Project>: <Title>` (`<Author>: <Title>` for an
+  author-owned article), or the title alone for the house project; template
+  `article_digest_single`.
 - Two to `LIST_LAYOUT_MIN_ARTICLES - 1`: subject names the newest and adds
   `, and N more`; template `article_digest_lead`.
 - `LIST_LAYOUT_MIN_ARTICLES` or more: subject `N new articles - Naglasúpan`;
@@ -74,6 +75,7 @@ def _relations(prefix: str) -> tuple[list[str], list]:
         f"{prefix}project",
         f"{prefix}channel",
         f"{prefix}author",
+        f"{prefix}author__avatar",
         f"{prefix}listing_image",
     ]
     prefetch = [
@@ -165,19 +167,34 @@ def _newest_first(notifications: Sequence[Notification]) -> list[Notification]:
 
 
 def _subject_title(article: Article) -> str:
+    if article.project is None:
+        return f"{_author_name(article)}: {article.title}"
     if article.project.is_house_project:
         return article.title
     return f"{article.project.title}: {article.title}"
 
 
-def _project_url(article: Article) -> str:
+def _project_url(article: Article) -> str | None:
+    if article.project is None:
+        return None
     return (
         f"{settings.FRONTEND_URL}/projects/{article.project.slug or article.project.id}"
     )
 
 
+def _author_url(article: Article) -> str | None:
+    if article.author_id is None:
+        return None
+    return f"{settings.FRONTEND_URL}/users/{article.author_id}"
+
+
+def _container_url(article: Article) -> str:
+    """Where the article lives: its project, or its author's profile."""
+    return _project_url(article) or _author_url(article) or settings.FRONTEND_URL
+
+
 def _article_url(article: Article) -> str:
-    return f"{_project_url(article)}/articles/{article.slug or article.id}"
+    return f"{_container_url(article)}/articles/{article.slug or article.id}"
 
 
 def _author_name(article: Article) -> str:
@@ -187,20 +204,35 @@ def _author_name(article: Article) -> str:
     return author.full_name or ""
 
 
+def _channel_name(article: Article) -> str:
+    """The channel label, hidden for an author-owned article: the personal
+    channel's name is a placeholder nobody chose."""
+    if article.project is None or article.channel is None:
+        return ""
+    return article.channel.name
+
+
 def _body_image_urls(article: Article) -> dict[str, str]:
     """Original URL to medium-variant URL for every image on the article."""
     return {image.url: variant_url(image, "medium") for image in article.images.all()}
 
 
 def _byline_context(article: Article) -> dict:
+    """What every layout says about where an article came from.
+
+    `project_*` is None for an author-owned article; the templates then show
+    the author in the project's place and drop the trailing "by" that would
+    repeat it.
+    """
     return {
         "article_title": article.title,
         "article_url": _article_url(article),
-        "project_title": article.project.title,
+        "project_title": article.project.title if article.project else None,
         "project_url": _project_url(article),
-        "channel_name": article.channel.name,
+        "channel_name": _channel_name(article),
         "published_at": article.published_at,
         "author_name": _author_name(article),
+        "author_url": _author_url(article),
     }
 
 
@@ -236,6 +268,8 @@ def _digest_article_image_url(article: Article) -> str | None:
     hero = article.listing_image
     if hero is not None:
         return variant_url(hero, "thumb")
+    if article.project is None:
+        return None
     return REPO.project.get_project_icon_url(article.project)
 
 
@@ -251,13 +285,9 @@ def build_article_digest_entries(notifications: Sequence[Notification]) -> list[
         )
         entries.append(
             {
-                "project_title": article.project.title,
-                "project_url": _project_url(article),
-                "channel_name": article.channel.name,
-                "article_title": article.title,
+                **_byline_context(article),
                 "article_image_url": _digest_article_image_url(article),
                 "body_excerpt": body_excerpt,
-                "article_url": _article_url(article),
             }
         )
     return entries

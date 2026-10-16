@@ -9,8 +9,8 @@ from services.follows.django_impl.query import DjangoFollowQuery
 from services.follows.query_interface import FollowState
 from tests.factories import (
     ArticleFactory,
+    ImageFactory,
     ProjectFactory,
-    ProjectImageFactory,
     UserFactory,
     article_image,
 )
@@ -53,7 +53,7 @@ def _make_follow(user, project, channel_names):
 def _follow_projects_with_a_hero(user, count):
     for _ in range(count):
         project = ProjectFactory()
-        ProjectImageFactory(project=project, is_hero=True)
+        ImageFactory(project=project, is_hero=True)
         _make_follow(user, project, ["Updates", "Releases"])
 
 
@@ -122,7 +122,7 @@ class TestListUserFollowsHeroImage:
     def test_uses_the_projects_hero_image(self):
         user = UserFactory()
         project = ProjectFactory()
-        hero = ProjectImageFactory(project=project, is_hero=True)
+        hero = ImageFactory(project=project, is_hero=True)
         _make_follow(user, project, ["Updates"])
 
         (item,) = self.query.list_user_follows(user.id)
@@ -142,7 +142,7 @@ class TestListUserFollowsHeroImage:
     def test_ignores_an_upload_that_never_completed(self):
         user = UserFactory()
         project = ProjectFactory()
-        ProjectImageFactory(project=project, is_hero=True, upload_status="pending")
+        ImageFactory(project=project, is_hero=True, upload_status="pending")
         _make_follow(user, project, ["Updates"])
 
         (item,) = self.query.list_user_follows(user.id)

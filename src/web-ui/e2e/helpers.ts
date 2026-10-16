@@ -5,10 +5,12 @@ import { expect, type Page } from "@playwright/test";
  * stays in that spec.
  */
 
-// The e2e stack is `make dev` in both services, so the backend origin is fixed.
+// The backend's origin. `make dev` takes the first free port from 8000, so a
+// second checkout running its own stack is not on 8000; `login` learns the
+// real origin from the login request the page makes and overwrites this.
 // Passed into `page.evaluate` rather than closed over — that code runs in the
 // browser, where this module does not exist.
-export const API_URL = "http://localhost:8000";
+export let API_URL = "http://localhost:8000";
 
 // Credentials come from .env.claude, which playwright.config.ts parses itself.
 // Login is rate limited to 5/min per IP, so a spec logs in once in `beforeAll`
@@ -21,10 +23,12 @@ export async function login(page: Page) {
     );
   }
 
+  const loginResponse = page.waitForResponse((r) => r.url().endsWith("/api/auth/login"));
   await page.goto("/login");
   await page.fill("#email", process.env.TEST_USER_EMAIL || "test@example.com");
   await page.fill("#password", password);
   await page.click('button[type="submit"]');
+  API_URL = new URL((await loginResponse).url()).origin;
   await expect(page).toHaveURL(/\/my-projects/);
 }
 
@@ -69,20 +73,20 @@ export function trackUploadedImageIds(page: Page): string[] {
 }
 
 // The article's JSON, for assertions the DOM cannot answer — two uploads of one
-// fixture look identical on screen but carry different ids.
+// fixture look identical on screen but carry different ids. Articles are
+// addressed by id alone; the project is not part of the route.
 export async function fetchArticle(
   page: Page,
-  projectId: string,
   articleId: string,
 ): Promise<Record<string, unknown>> {
   return page.evaluate(
-    async ({ apiUrl, projectId, articleId }) =>
-      fetch(`${apiUrl}/api/projects/${projectId}/articles/${articleId}`, {
+    async ({ apiUrl, articleId }) =>
+      fetch(`${apiUrl}/api/articles/${articleId}`, {
         headers: {
           Authorization: `Bearer ${localStorage.getItem("access_token")}`,
         },
       }).then((r) => r.json()),
-    { apiUrl: API_URL, projectId, articleId },
+    { apiUrl: API_URL, articleId },
   );
 }
 
@@ -91,30 +95,29 @@ export async function fetchArticle(
 // behind, because opening the editor creates one.
 export async function cleanUp(
   page: Page,
-  projectId: string,
   articleId: string,
   imageIds: string[] = [],
 ) {
   await page.evaluate(
-    async ({ apiUrl, projectId, articleId, imageIds }) => {
+    async ({ apiUrl, articleId, imageIds }) => {
       const headers = {
         Authorization: `Bearer ${localStorage.getItem("access_token")}`,
       };
 
       await Promise.all(
         imageIds.map((imageId: string) =>
-          fetch(
-            `${apiUrl}/api/projects/${projectId}/articles/${articleId}/images/${imageId}`,
-            { method: "DELETE", headers },
-          ),
+          fetch(`${apiUrl}/api/articles/${articleId}/images/${imageId}`, {
+            method: "DELETE",
+            headers,
+          }),
         ),
       );
-      await fetch(`${apiUrl}/api/projects/${projectId}/articles/${articleId}`, {
+      await fetch(`${apiUrl}/api/articles/${articleId}`, {
         method: "DELETE",
         headers,
       });
     },
-    { apiUrl: API_URL, projectId, articleId, imageIds: imageIds.splice(0) },
+    { apiUrl: API_URL, articleId, imageIds: imageIds.splice(0) },
   );
 }
 

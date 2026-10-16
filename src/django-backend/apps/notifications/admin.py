@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from django.conf import settings
 from django.contrib import admin
@@ -28,6 +28,13 @@ if TYPE_CHECKING:
 
 
 DIGEST_KINDS = ("discussion", "article")
+
+
+def _article_container_title(article: Any) -> str:
+    """The project's title, or the author's name for an author-owned article."""
+    if article.project_id:
+        return article.project.title
+    return str(article.author)
 
 
 @admin.register(Notification)
@@ -106,6 +113,7 @@ class NotificationAdmin(admin.ModelAdmin):
                 "article",
                 "article__project",
                 "article__channel",
+                "article__author",
             )
             .order_by("recipient_id", "created_at")
         )
@@ -127,7 +135,7 @@ class NotificationAdmin(admin.ModelAdmin):
         for n in article_unsent:
             entry = by_recipient[n.recipient_id]
             entry["recipient"] = n.recipient
-            entry["article_projects"][n.article.project.title] += 1
+            entry["article_projects"][_article_container_title(n.article)] += 1
             entry["article_count"] += 1
 
         recipients_data = []

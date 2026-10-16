@@ -29,26 +29,29 @@ the side it touches; groups 1–3 are commits on their own.
 
 ## 2. Models and migrations
 
-- [ ] 2.1 `apps/projects/models.py`: `Image.project` nullable, add the
+- [x] 2.1 `apps/projects/models.py`: `Image.project` nullable, add the
   "project or article" `CheckConstraint`, make `__str__` null-safe; migration;
   model test that a row with neither owner is rejected.
-- [ ] 2.2 `apps/follows/models.py`: `Channel.owner` (FK User, CASCADE,
+- [x] 2.2 `apps/follows/models.py`: `Channel.owner` (FK User, CASCADE,
   nullable, `related_name="personal_channels"`), `Follow.followed_user` (FK
   User, CASCADE, nullable, `related_name="followed_by"`); replace both
   `unique_together` with `UniqueConstraint`s per target; add the exactly-one
   checks and the `user != followed_user` check; `PERSONAL_CHANNEL_NAME`
   constant; null-safe `__str__`s; migration; model tests for each rejected
   shape per `specs/user-following/spec.md`.
-- [ ] 2.3 `apps/articles/models.py`: `project` and `channel` nullable;
+- [x] 2.3 `apps/articles/models.py`: `project` and `channel` nullable;
   narrow `articles_project_slug_uniq` to `project IS NOT NULL`; add
   `articles_author_slug_uniq` on `(author, slug)` where `project IS NULL`; add
   the project-implies-channel check; null-safe `__str__`; migration; model
   tests for the two slug constraints and the check.
-- [ ] 2.4 `apps/users/signals.py`: `pre_delete` receiver on `User` deleting
-  the user's author-owned articles; test that deleting a user with one
-  author-owned and one project article leaves only the project one, with
-  `author` null.
-- [ ] 2.5 `apps/follows/signals.py`: the channel `post_save` receiver enrols
+- [x] 2.4 Deleting a user deletes their author-owned articles. Done as
+  owner-aware `on_delete` callables on `Article.author` and `Article.channel`
+  (`apps/articles/models.py`) rather than a `pre_delete` receiver on `User`:
+  the collector raises `ProtectedError` for the personal channel's `PROTECT`
+  before any `pre_delete` fires, so a receiver could not have worked for a
+  published article. Test that deleting a user with one author-owned and one
+  project article leaves only the project one, with `author` null.
+- [x] 2.5 `apps/follows/signals.py`: the channel `post_save` receiver enrols
   `Follow.objects.filter(followed_user=instance.owner)` when `owner` is set;
   test that a follower of a person gains a `FollowedChannel` row when the
   person's channel is created.

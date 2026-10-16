@@ -17,10 +17,10 @@ def enrol_followers_in_new_channel(
     created: bool,  # noqa: FBT001
     **kwargs: Any,
 ) -> None:
-    """Subscribe everyone already following the project to its new channel.
+    """Subscribe everyone already following the target to its new channel.
 
-    Following a project is the consent; a follower who wants out unfollows the
-    project, after which no future channel can reach them. Channels that
+    Following a project (or a person) is the consent; a follower who wants out
+    unfollows it, after which no future channel can reach them. Channels that
     predate a follow are still enrolled by `DjangoFollowHandler.follow` — this
     only covers the ones that arrive afterwards.
 
@@ -36,7 +36,15 @@ def enrol_followers_in_new_channel(
     if not created:
         return
 
-    follows = Follow.objects.filter(project_id=instance.project_id).iterator()
+    # A person's channel enrols the people following that person, exactly as
+    # a project's enrols the project's followers. Following a person before
+    # they have published is the tolerated "follow with no channels" state;
+    # this is where it gets its channel.
+    if instance.project_id is not None:
+        follows = Follow.objects.filter(project_id=instance.project_id)
+    else:
+        follows = Follow.objects.filter(followed_user_id=instance.owner_id)
+    follows = follows.iterator()
     FollowedChannel.objects.bulk_create(
         [FollowedChannel(follow=follow, channel=instance) for follow in follows],
         batch_size=ENROL_BATCH_SIZE,

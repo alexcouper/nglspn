@@ -22,7 +22,14 @@ class ArticleAdmin(admin.ModelAdmin):
         "published_at",
     )
     list_filter = ("state", "source", "global_visibility", "created_at")
-    search_fields = ("title", "body", "project__title", "author__email")
+    search_fields = (
+        "title",
+        "body",
+        "project__title",
+        "author__email",
+        "author__first_name",
+        "author__last_name",
+    )
     readonly_fields = (
         "id",
         "slug",
@@ -115,5 +122,9 @@ class ArticleAdmin(admin.ModelAdmin):
     def render_link(self, obj: Article) -> str:
         if not obj.slug or obj.state != "published":
             return "—"
-        url = f"{settings.FRONTEND_URL}/projects/{obj.project.slug}/articles/{obj.slug}"
+        if obj.project_id:
+            container = f"/projects/{obj.project.slug}"
+        else:
+            container = f"/users/{obj.author_id}"
+        url = f"{settings.FRONTEND_URL}{container}/articles/{obj.slug}"
         return format_html('<a href="{}" target="_blank">{}</a>', url, url)

@@ -216,10 +216,16 @@ articles by the same badge the project tab already shows.
 
 ### Author deletion deletes author-owned articles
 
-A `pre_delete` receiver on `User` deletes `Article.objects.filter(author=user,
-project__isnull=True)`. Without it the existing `author = SET_NULL` would
-produce a row with no project and no author, which the check constraint
-rejects, and the delete would fail. Images cascade from the article as today.
+Two owner-aware `on_delete` callables in `apps/articles/models.py`:
+`Article.author` cascades an author-owned article and sets null on a project
+one (the old `SET_NULL`); `Article.channel` protects a project's channel while
+articles sit in it (the old `PROTECT`) and cascades a person's channel to their
+articles. Without the first, `SET_NULL` would produce a row with no project and
+no author, which the check constraint rejects. Without the second, the account
+could not be deleted at all: `Channel.owner` cascades to the personal channel,
+whose `PROTECT` the collector raises on before any `pre_delete` receiver runs —
+which is why this is not the `pre_delete` receiver on `User` first planned.
+Images and notifications cascade from the article as today.
 
 ## Risks / Trade-offs
 

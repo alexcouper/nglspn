@@ -1,9 +1,11 @@
 import uuid
+from typing import Any
 
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
+from django.db.models.deletion import CASCADE, PROTECT, SET_NULL
 
 
 class ArticleSource(models.TextChoices):
@@ -72,21 +74,65 @@ class ArticleQuerySet(models.QuerySet):
         return self.filter(globally_visible_q())
 
 
+def delete_author_owned_else_keep(
+    collector: Any, field: Any, sub_objs: Any, using: str
+) -> None:
+    """`on_delete` for `Article.author`.
+
+    Deleting a user takes their author-owned articles with them — nobody else
+    may edit those, and a row with neither project nor author is one the check
+    constraint rejects. Articles on a project stay and lose their byline, as
+    they always have. Decided on the row's shape with queryset filters rather
+    than attribute reads: the collector hands over a deferred queryset.
+    """
+    CASCADE(collector, field, sub_objs.filter(project__isnull=True), using)
+    SET_NULL(collector, field, sub_objs.filter(project__isnull=False), using)
+
+
+def protect_project_channel(
+    collector: Any, field: Any, sub_objs: Any, using: str
+) -> None:
+    """`on_delete` for `Article.channel`.
+
+    A project's channel cannot go while articles sit in it (`PROTECT`, as
+    before). A person's channel only goes when the person does, and their
+    articles go with them — `PROTECT` here would make the account undeletable.
+    """
+    on_project = sub_objs.filter(project__isnull=False)
+    if on_project.exists():
+        PROTECT(collector, field, on_project, using)
+    CASCADE(collector, field, sub_objs.filter(project__isnull=True), using)
+
+
 class Article(models.Model):
+    """A piece of writing on a project, or under its author's own name.
+
+    An article with a `project` sits in one of that project's channels. One
+    without is author-owned: `author` is required, `channel` is null while it is
+    a draft and becomes the author's personal channel on publish (see
+    `services.articles`). The constraints below hold the shape; which channel
+    an author-owned article may carry is a handler rule, since a CHECK cannot
+    join to the channel's own owner.
+    """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
         "projects.Project",
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="articles",
     )
     channel = models.ForeignKey(
         "follows.Channel",
-        on_delete=models.PROTECT,
+        on_delete=protect_project_channel,
+        null=True,
+        blank=True,
         related_name="articles",
     )
     author = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
+        on_delete=delete_author_owned_else_keep,
         null=True,
         blank=True,
         related_name="authored_articles",
@@ -158,8 +204,13 @@ class Article(models.Model):
         constraints = [
             models.UniqueConstraint(
                 fields=("project", "slug"),
-                condition=Q(slug__isnull=False),
+                condition=Q(slug__isnull=False, project__isnull=False),
                 name="articles_project_slug_uniq",
+            ),
+            models.UniqueConstraint(
+                fields=("author", "slug"),
+                condition=Q(slug__isnull=False, project__isnull=True),
+                name="articles_author_slug_uniq",
             ),
             models.CheckConstraint(
                 condition=(
@@ -168,10 +219,25 @@ class Article(models.Model):
                 ),
                 name="articles_source_external_url_consistent",
             ),
+            # A project article always has a channel; an author-owned one may
+            # or may not (draft vs published).
+            models.CheckConstraint(
+                condition=Q(project__isnull=True) | Q(channel__isnull=False),
+                name="articles_project_implies_channel",
+            ),
+            # Author-owned means someone owns it; `delete_author_owned_else_keep`
+            # is what keeps a user delete from producing a row that fails this.
+            models.CheckConstraint(
+                condition=Q(project__isnull=False) | Q(author__isnull=False),
+                name="articles_project_or_author",
+            ),
         ]
 
     def __str__(self) -> str:
-        return f"{self.project.title}: {self.title or '(untitled draft)'}"
+        title = self.title or "(untitled draft)"
+        if self.project_id:
+            return f"{self.project.title}: {title}"
+        return f"{self.author}: {title}"
 
     def save(self, *args: object, **kwargs: object) -> None:
         # SQLite parity: the CHECK constraint above is not enforced identically
@@ -182,7 +248,24 @@ class Article(models.Model):
         if self.source == ArticleSource.EXTERNAL and not self.external_url:
             msg = "External articles MUST carry an external_url."
             raise ValidationError({"external_url": msg})
+        # An author-owned article's channel is the author's own or nothing. A
+        # CHECK cannot see the channel's owner, so this is the one place the
+        # rule is enforced on the row itself; the handler rejects it earlier.
+        if self.project_id is None and self.channel_id is not None:
+            channel_project_id = (
+                type(self.channel)
+                .objects.filter(pk=self.channel_id)
+                .values_list("project_id", flat=True)
+                .first()
+            )
+            if channel_project_id is not None:
+                msg = "An author-owned article cannot sit in a project's channel."
+                raise ValidationError({"channel": msg})
         super().save(*args, **kwargs)
+
+    @property
+    def is_author_owned(self) -> bool:
+        return self.project_id is None
 
     @property
     def is_globally_visible(self) -> bool:

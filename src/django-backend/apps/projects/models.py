@@ -223,19 +223,29 @@ class ImageQuerySet(models.QuerySet):
 
 
 class Image(models.Model):
+    """An uploaded image: a project's, an article's, or both.
+
+    A project article's images carry both links so they share the project's
+    storage prefix and variant pipeline; an author-owned article's images have
+    no project at all. The check constraint below is what rules out a row with
+    neither owner — such a row would belong to nothing and never be reaped.
+    """
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     project = models.ForeignKey(
         Project,
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="images",
     )
-    # Article uploads live on the project so they share the storage and variant
-    # pipeline, but they describe an article rather than the project, so they
-    # stay out of the project's galleries, cover-image picks and image cap.
-    # "Is this an article image" is this link being set — there is no separate
-    # flag that could disagree with it. CASCADE, not SET_NULL: an unlinked
-    # article image is indistinguishable from a project one and would surface in
-    # the gallery.
+    # Article uploads on a project live on the project so they share the storage
+    # and variant pipeline, but they describe an article rather than the
+    # project, so they stay out of the project's galleries, cover-image picks
+    # and image cap. "Is this an article image" is this link being set — there
+    # is no separate flag that could disagree with it. CASCADE, not SET_NULL: an
+    # unlinked article image is indistinguishable from a project one and would
+    # surface in the gallery.
     article = models.ForeignKey(
         "articles.Article",
         on_delete=models.CASCADE,
@@ -275,9 +285,16 @@ class Image(models.Model):
     class Meta:
         db_table = "images"
         ordering = ["display_order", "created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(project__isnull=False) | Q(article__isnull=False),
+                name="images_project_or_article",
+            ),
+        ]
 
     def __str__(self) -> str:
-        return f"{self.project.title} - {self.original_filename}"
+        owner = self.project.title if self.project_id else f"article {self.article_id}"
+        return f"{owner} - {self.original_filename}"
 
     @property
     def is_uploaded(self) -> bool:

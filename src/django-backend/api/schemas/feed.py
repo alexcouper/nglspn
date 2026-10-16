@@ -25,8 +25,12 @@ class FeedArticleRef(Schema):
     title: str
     summary: str
     channel_name: str
+    # Null for an author-owned article; the author fields are its flag then.
     project_slug: str | None
-    project_title: str
+    project_title: str | None
+    author_id: UUID | None
+    author_name: str | None
+    author_avatar_url: str | None
     listing_image_url: str | None
     listing_crop: CropRect | None
 
@@ -63,14 +67,19 @@ class FeedEntryResponse(Schema):
         if article is None:
             return None
         image = article.listing_image
+        project = article.project
+        author = article.author
         return {
             "id": article.id,
             "slug": article.slug,
             "title": article.title,
             "summary": article.summary or derive_summary(article.body),
-            "channel_name": article.channel.name,
-            "project_slug": article.project.slug,
-            "project_title": article.project.title,
+            "channel_name": article.channel.name if article.channel else "",
+            "project_slug": project.slug if project else None,
+            "project_title": project.title if project else None,
+            "author_id": author.id if author else None,
+            "author_name": author.full_name if author else None,
+            "author_avatar_url": author.avatar_url if author else None,
             "listing_image_url": image.url if image is not None else None,
             "listing_crop": article.listing_crop,
         }

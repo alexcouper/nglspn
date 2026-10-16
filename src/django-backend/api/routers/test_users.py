@@ -1,5 +1,6 @@
 import uuid
 
+import pytest
 from hamcrest import (
     assert_that,
     contains_exactly,
@@ -13,17 +14,22 @@ from hamcrest import (
     not_,
 )
 
+from api.auth.jwt import create_access_token
 from apps.articles.models import ArticleGlobalVisibility
+from apps.follows.models import Follow, FollowedChannel
 from apps.projects.models import ContributorRole, ProjectContributor, ProjectStatus
 from tests.factories import (
     ArticleFactory,
+    AuthorArticleFactory,
     ImageFactory,
     PendingArticleFactory,
     ProjectCategoryFactory,
     ProjectFactory,
     PublishedArticleFactory,
+    PublishedAuthorArticleFactory,
     UserFactory,
     give_avatar,
+    personal_channel,
 )
 
 
@@ -103,6 +109,7 @@ class TestPublicProfile:
                 "is_system_user",
                 "avatar_url",
                 "created_at",
+                "is_followed",
             ),
         )
 
@@ -307,3 +314,181 @@ class TestPublicArticles:
             client.get(f"/api/users/{inactive.id}/articles").status_code,
             equal_to(404),
         )
+
+
+def follow(client, user_id, headers):
+    return client.post(f"/api/users/{user_id}/follow", **headers)
+
+
+def unfollow(client, user_id, headers):
+    return client.delete(f"/api/users/{user_id}/follow", **headers)
+
+
+def is_followed(client, user_id, headers) -> bool:
+    return client.get(f"/api/users/{user_id}", **headers).json()["is_followed"]
+
+
+@pytest.mark.django_db
+class TestFollowAPerson:
+    def test_anonymous_is_401_on_both(self, client, user) -> None:
+        assert_that(follow(client, user.id, {}).status_code, equal_to(401))
+        assert_that(unfollow(client, user.id, {}).status_code, equal_to(401))
+
+    def test_follow_then_profile_reports_it(self, client, auth_headers) -> None:
+        person = UserFactory()
+
+        response = follow(client, person.id, auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(is_followed=True))
+        assert_that(is_followed(client, person.id, auth_headers), equal_to(True))
+
+    def test_anonymous_profile_reports_not_followed(self, client, user, auth_headers):
+        person = UserFactory()
+        follow(client, person.id, auth_headers)
+
+        assert_that(
+            client.get(f"/api/users/{person.id}").json()["is_followed"], equal_to(False)
+        )
+
+    def test_follow_is_idempotent(self, client, auth_headers) -> None:
+        person = UserFactory()
+        follow(client, person.id, auth_headers)
+
+        assert_that(follow(client, person.id, auth_headers).status_code, equal_to(200))
+        assert_that(Follow.objects.filter(followed_user=person).count(), equal_to(1))
+
+    def test_following_someone_who_published_enrols_their_channel(
+        self, client, user, auth_headers
+    ) -> None:
+        person = UserFactory()
+        channel = personal_channel(person)
+
+        follow(client, person.id, auth_headers)
+
+        assert_that(
+            FollowedChannel.objects.filter(follow__user=user, channel=channel).exists(),
+            equal_to(True),
+        )
+
+    def test_unfollow_is_204_and_clears_rows(self, client, user, auth_headers) -> None:
+        person = UserFactory()
+        personal_channel(person)
+        follow(client, person.id, auth_headers)
+
+        response = unfollow(client, person.id, auth_headers)
+
+        assert_that(response.status_code, equal_to(204))
+        assert_that(Follow.objects.filter(user=user).exists(), equal_to(False))
+        assert_that(is_followed(client, person.id, auth_headers), equal_to(False))
+
+    def test_unfollow_when_not_following_is_204(self, client, auth_headers) -> None:
+        assert_that(
+            unfollow(client, UserFactory().id, auth_headers).status_code, equal_to(204)
+        )
+
+    def test_self_follow_is_400(self, client, user, auth_headers) -> None:
+        response = follow(client, user.id, auth_headers)
+
+        assert_that(response.status_code, equal_to(400))
+        assert_that(Follow.objects.filter(user=user).exists(), equal_to(False))
+
+    def test_system_and_inactive_users_are_404(self, client, auth_headers) -> None:
+        for person in (UserFactory(is_system_user=True), UserFactory(is_active=False)):
+            assert_that(
+                follow(client, person.id, auth_headers).status_code, equal_to(404)
+            )
+            assert_that(
+                unfollow(client, person.id, auth_headers).status_code, equal_to(404)
+            )
+
+
+@pytest.mark.django_db
+class TestPublicArticlesMixBothKinds:
+    def test_author_owned_article_is_listed_with_a_null_project(self, client, user):
+        project = approved_project(creator=user)
+        on_project = PublishedArticleFactory(project=project, author=user)
+        owned = PublishedAuthorArticleFactory(author=user)
+
+        response = client.get(f"/api/users/{user.id}/articles")
+
+        by_id = {row["id"]: row for row in response.json()}
+        assert_that(set(by_id), equal_to({str(on_project.id), str(owned.id)}))
+        assert_that(by_id[str(owned.id)]["project"], equal_to(None))
+        assert_that(
+            by_id[str(on_project.id)]["project"], has_entries(slug=project.slug)
+        )
+
+    def test_a_visitor_sees_no_draft_or_pending_author_owned_article(
+        self, client, user
+    ):
+        AuthorArticleFactory(author=user)
+        PublishedAuthorArticleFactory(
+            author=user, global_visibility=ArticleGlobalVisibility.PENDING
+        )
+
+        assert_that(client.get(f"/api/users/{user.id}/articles").json(), empty())
+
+
+@pytest.mark.django_db
+class TestAuthorArticleBySlug:
+    def url(self, article) -> str:
+        return f"/api/users/{article.author_id}/articles/by-slug/{article.slug}"
+
+    def test_published_renders_for_anyone(self, client, user) -> None:
+        article = PublishedAuthorArticleFactory(author=user, slug="hello")
+
+        response = client.get(self.url(article))
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(slug="hello", project=None))
+        assert_that(response.json()["author"], has_entries(id=str(user.id)))
+
+    def test_draft_404s_for_the_public_and_renders_for_the_author(
+        self, client, user, auth_headers
+    ) -> None:
+        draft = AuthorArticleFactory(author=user, slug="draft")
+
+        assert_that(client.get(self.url(draft)).status_code, equal_to(404))
+        assert_that(
+            client.get(self.url(draft), **auth_headers).status_code, equal_to(200)
+        )
+
+    def test_pending_and_demoted_render_at_their_own_url(self, client, user) -> None:
+        for visibility in (
+            ArticleGlobalVisibility.PENDING,
+            ArticleGlobalVisibility.DEMOTED,
+        ):
+            article = PublishedAuthorArticleFactory(
+                author=user, global_visibility=visibility, slug=str(visibility)
+            )
+
+            assert_that(client.get(self.url(article)).status_code, equal_to(404))
+            # The author sees their own.
+            own_headers = {
+                "HTTP_AUTHORIZATION": f"Bearer {create_access_token(user.id)}"
+            }
+            assert_that(
+                client.get(self.url(article), **own_headers).status_code, equal_to(200)
+            )
+
+    def test_wrong_author_in_the_url_is_404(self, client, user) -> None:
+        PublishedAuthorArticleFactory(author=user, slug="hello")
+
+        response = client.get(f"/api/users/{UserFactory().id}/articles/by-slug/hello")
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_a_project_articles_slug_is_not_served_here(self, client, user) -> None:
+        project = approved_project(creator=user)
+        article = PublishedArticleFactory(project=project, author=user, slug="hello")
+
+        assert_that(client.get(self.url(article)).status_code, equal_to(404))
+
+    def test_an_author_owned_article_is_not_served_under_a_project(self, client, user):
+        project = approved_project(creator=user)
+        PublishedAuthorArticleFactory(author=user, slug="hello")
+
+        response = client.get(f"/api/projects/{project.slug}/articles/by-slug/hello")
+
+        assert_that(response.status_code, equal_to(404))

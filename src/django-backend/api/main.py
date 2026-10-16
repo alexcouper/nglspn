@@ -5,6 +5,7 @@ from ninja import NinjaAPI
 
 from api.parser import JsonOnlyParser
 from api.routers import (
+    article_items,
     articles,
     auth,
     channels,
@@ -33,6 +34,7 @@ api.add_router("/projects", projects.router)
 api.add_router("/projects", discussions.router)
 api.add_router("/projects", follows.router)
 api.add_router("/projects", articles.router)
+api.add_router("/articles", article_items.router)
 api.add_router("/projects", channels.router)
 api.add_router("/feed", feed.router)
 api.add_router("/follows", follows.collection_router)

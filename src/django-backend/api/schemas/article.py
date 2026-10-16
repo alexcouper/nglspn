@@ -33,6 +33,13 @@ class ArticleCreate(Schema):
     # sets the listing image by PATCH.
 
 
+class OwnArticleCreate(Schema):
+    """`ArticleCreate` without the channel: an author-owned article has none."""
+
+    title: str = ""
+    body: str = ""
+
+
 class ArticleUpdate(Schema):
     title: str | None = None
     body: str | None = None
@@ -85,8 +92,10 @@ class ArticleChannelRef(Schema):
 
 class ArticleOut(Schema):
     id: UUID
-    project: ArticleProjectRef
-    channel: ArticleChannelRef
+    # Both null on an author-owned article: no project, and no channel until
+    # publish attaches the author's personal one. `author` carries the owner.
+    project: ArticleProjectRef | None
+    channel: ArticleChannelRef | None
     author: PublicUserProfile | None
     title: str
     body: str
@@ -117,13 +126,17 @@ class ArticleOut(Schema):
     updated_at: datetime
 
     @staticmethod
-    def resolve_project(obj: Any) -> dict[str, Any]:
+    def resolve_project(obj: Any) -> dict[str, Any] | None:
         project = obj.project
+        if project is None:
+            return None
         return {"id": project.id, "slug": project.slug, "title": project.title}
 
     @staticmethod
-    def resolve_channel(obj: Any) -> dict[str, Any]:
+    def resolve_channel(obj: Any) -> dict[str, Any] | None:
         channel = obj.channel
+        if channel is None:
+            return None
         return {"id": channel.id, "name": channel.name}
 
     @staticmethod
@@ -175,14 +188,13 @@ class ArticleListItem(Schema):
     # invisible rows at all, and the rule for which ones those are belongs on one
     # side of the wire.
     is_globally_visible: bool
-    channel: ArticleChannelRef
+    channel: ArticleChannelRef | None
     listing_image_url: str | None
     listing_crop: CropRect | None
 
     @staticmethod
-    def resolve_channel(obj: Any) -> dict[str, Any]:
-        channel = obj.channel
-        return {"id": channel.id, "name": channel.name}
+    def resolve_channel(obj: Any) -> dict[str, Any] | None:
+        return ArticleOut.resolve_channel(obj)
 
     @staticmethod
     def resolve_is_globally_visible(obj: Any) -> bool:
@@ -206,9 +218,11 @@ class ArticleListItem(Schema):
 class UserArticleResponse(Schema):
     """One entry in a user's public article list.
 
-    The public half of `ArticleListItem` plus the project, because the article's
-    URL lives under its project and the profile shows articles from many. No
-    visibility fields: everything the list returns is published and visible.
+    The public half of `ArticleListItem` plus the project, because a project
+    article's URL lives under its project and the profile shows articles from
+    many. `project` is null for an author-owned article, whose URL is under the
+    profile itself. No visibility fields: everything the list returns is
+    published and visible.
     """
 
     id: UUID
@@ -216,17 +230,17 @@ class UserArticleResponse(Schema):
     summary: str
     slug: str | None
     published_at: datetime | None
-    channel: ArticleChannelRef
-    project: ArticleProjectRef
+    channel: ArticleChannelRef | None
+    project: ArticleProjectRef | None
     listing_image_url: str | None
     listing_crop: CropRect | None
 
     @staticmethod
-    def resolve_channel(obj: Any) -> dict[str, Any]:
-        return ArticleListItem.resolve_channel(obj)
+    def resolve_channel(obj: Any) -> dict[str, Any] | None:
+        return ArticleOut.resolve_channel(obj)
 
     @staticmethod
-    def resolve_project(obj: Any) -> dict[str, Any]:
+    def resolve_project(obj: Any) -> dict[str, Any] | None:
         return ArticleOut.resolve_project(obj)
 
     @staticmethod
@@ -236,3 +250,16 @@ class UserArticleResponse(Schema):
     @staticmethod
     def resolve_listing_image_url(obj: Any) -> str | None:
         return ArticleListItem.resolve_listing_image_url(obj)
+
+
+class OwnArticleResponse(UserArticleResponse):
+    """One entry in the owner's own article list: everything they wrote, in
+    every state, with what the my-projects badges need."""
+
+    state: str
+    global_visibility: str
+    is_globally_visible: bool
+
+    @staticmethod
+    def resolve_is_globally_visible(obj: Any) -> bool:
+        return obj.is_globally_visible

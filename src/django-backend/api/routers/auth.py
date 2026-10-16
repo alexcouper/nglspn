@@ -23,6 +23,7 @@ from api.auth.jwt import (
 )
 from api.auth.security import auth
 from api.rate_limit import check_rate_limit
+from api.schemas.article import ArticleOut, OwnArticleCreate, OwnArticleResponse
 from api.schemas.auth import (
     AccessToken,
     ForgotPasswordRequest,
@@ -61,6 +62,8 @@ from services.users.handler_interface import RegisterUserInput
 
 if TYPE_CHECKING:
     from django.contrib.auth.models import AbstractUser
+
+    from apps.articles.models import Article
 
 logger = logging.getLogger(__name__)
 router = Router()
@@ -314,6 +317,45 @@ def complete_avatar_upload(
 )
 def remove_avatar(request: HttpRequest) -> AbstractUser:
     return HANDLERS.users.remove_avatar(request.auth)
+
+
+# ----------------------------------------------------------------------
+# Author-owned articles. The caller's own writing, with no project behind it.
+# Here beside /me/avatar rather than under /api/users/me, which would have to
+# be registered ahead of `{user_id: UUID}` and read as a trick.
+# ----------------------------------------------------------------------
+
+
+@router.post(
+    "/me/articles",
+    response={201: ArticleOut, 401: Error},
+    auth=auth,
+    tags=["Authentication"],
+)
+def create_own_article(
+    request: HttpRequest,
+    payload: OwnArticleCreate,
+) -> tuple[int, Article]:
+    """A draft published under the caller's own name. No channel to choose:
+    publish attaches the caller's personal one. System users and inactive
+    accounts never get here: `auth` resolves tokens through
+    `get_active_by_id`, which excludes both."""
+    article = HANDLERS.articles.create_draft(
+        author_id=request.auth.id, title=payload.title, body=payload.body
+    )
+    return 201, article
+
+
+@router.get(
+    "/me/articles",
+    response={200: list[OwnArticleResponse], 401: Error},
+    auth=auth,
+    tags=["Authentication"],
+)
+def list_own_articles(request: HttpRequest) -> list[Article]:
+    """Everything the caller wrote, of both kinds and in every state — the
+    owner's profile list, with what its badges need."""
+    return list(REPO.users.list_own_articles_for(request.auth.id))
 
 
 @router.post(

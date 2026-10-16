@@ -55,7 +55,7 @@ the side it touches; groups 1–3 are commits on their own.
   `Follow.objects.filter(followed_user=instance.owner)` when `owner` is set;
   test that a follower of a person gains a `FollowedChannel` row when the
   person's channel is created.
-- [ ] 2.6 Admin: `apps/articles/admin.py`, `apps/follows/admin.py`,
+- [x] 2.6 Admin: `apps/articles/admin.py`, `apps/follows/admin.py`,
   `apps/projects/admin.py` columns, search and `render_link` tolerate a null
   project and show the author/owner; `apps/notifications/admin.py` digest
   preview counter keys on project title or author name; verify the admin
@@ -64,10 +64,10 @@ the side it touches; groups 1–3 are commits on their own.
 
 ## 3. Services: articles, images, follows, notifications, feed, users
 
-- [ ] 3.1 `apps/articles/slugs.py`: scope `assign_unique_article_slug` and
+- [x] 3.1 `apps/articles/slugs.py`: scope `assign_unique_article_slug` and
   the existence check by project, or by `(author, project IS NULL)`; tests for
   the three slug scenarios in `specs/author-articles/spec.md`.
-- [ ] 3.2 `services/articles`: `create_draft` accepts `project_id=None` with
+- [x] 3.2 `services/articles`: `create_draft` accepts `project_id=None` with
   no channel; `update_article` rejects `channel_id` on an author-owned article
   (`ChannelOnWrongProjectError` or a new `NoChannelForAuthorArticleError` →
   422); `publish` on an author-owned article `get_or_create`s the personal
@@ -75,7 +75,7 @@ the side it touches; groups 1–3 are commits on their own.
   validation accepts the article's own image or the project match; tests
   cover first and second publish, the channel attach, and the listing-image
   rejection.
-- [ ] 3.3 `services/storage.py`: `generate_article_upload_key(article_id,
+- [x] 3.3 `services/storage.py`: `generate_article_upload_key(article_id,
   filename)` → `articles/{article_id}/{unique}/{filename}`;
   `services/images/django_impl/handler.py`: `_reserve` takes
   `project | None` and picks the key by owner, `complete_upload` and
@@ -83,26 +83,26 @@ the side it touches; groups 1–3 are commits on their own.
   `article.project`; `services/images/django_impl/query.py` unchanged;
   tests: upload against an author-owned article lands under `articles/`, has
   variants, is reaped and tombstoned like a project one.
-- [ ] 3.4 `services/follows`: `follow_user` / `unfollow_user` on the handler
+- [x] 3.4 `services/follows`: `follow_user` / `unfollow_user` on the handler
   (idempotent, self-follow raises, enrols the personal channel if present);
   `is_following_user` on the query; `FollowWithPreferences` gains `target`,
   `user_id`, `user_name`, `user_avatar_url`, project fields optional;
   `list_follows_with_preferences` selects `followed_user` and its avatar and
   channels; tests per `specs/user-following/spec.md` endpoints requirement
   and the mixed `GET /api/follows` scenario.
-- [ ] 3.5 `services/notifications/django_impl/handler.py`: drop the
+- [x] 3.5 `services/notifications/django_impl/handler.py`: drop the
   `follow__project_id` filter, make the house check
   `channel.project_id is not None and channel.project.is_house_project`,
   `_build_article_group` emits `project=None` plus a new `NotificationAuthor`
   (id, name, avatar URL) on `NotificationGroup`; tests: author-owned fan-out
   reaches the person's followers, no house log line, project follower is not
   delivered a person's article.
-- [ ] 3.6 `services/email/django_impl/article_digest.py` and the five
+- [x] 3.6 `services/email/django_impl/article_digest.py` and the five
   `templates/email/_article_*` / `article_digest_*` templates: `_article_url`
   by container, byline from the author when there is no project, no icon;
   `send_article_digest_sample` still runs; snapshot/content tests for an
   author-owned entry in each template.
-- [ ] 3.7 `apps/feed/models.py`: `visible_subject` admits
+- [x] 3.7 `apps/feed/models.py`: `visible_subject` admits
   `article__project__isnull=True`; `services/users/django_impl/query.py`:
   `list_public_articles_for` admits author-owned articles and
   `list_own_articles_for` returns everything the user authored with state;
@@ -111,20 +111,20 @@ the side it touches; groups 1–3 are commits on their own.
 
 ## 4. API and OpenAPI
 
-- [ ] 4.1 New `api/routers/article_items.py` mounted at `/api/articles`:
+- [x] 4.1 New `api/routers/article_items.py` mounted at `/api/articles`:
   `GET`, `PATCH`, `DELETE /{id}`, `POST /{id}/publish`, the three image
   routes, with `can_edit(article, user)` in `api/routers/_helpers.py`; remove
   the id-addressed routes from `api/routers/articles.py`; move the tests in
   `test_articles.py` and `test_article_images.py` across and add the
   stranger-404, author-patch and `channel_id`-422 cases.
-- [ ] 4.2 `api/routers/auth.py`: `POST /me/articles` (create author-owned
+- [x] 4.2 `api/routers/auth.py`: `POST /me/articles` (create author-owned
   draft) and `GET /me/articles`; `api/routers/users.py`:
   `GET /{id}/articles/by-slug/{slug}`, `POST` / `DELETE /{id}/follow`,
   `is_followed` on the profile response via a `UserProfileResponse` subclass;
   tests per the endpoint requirements in `specs/author-articles/spec.md` and
   `specs/user-following/spec.md`, including 404 for system/inactive users and
   400 for self-follow.
-- [ ] 4.3 Schemas: `ArticleOut.project` and `UserArticleResponse.project`
+- [x] 4.3 Schemas: `ArticleOut.project` and `UserArticleResponse.project`
   optional; `FeedArticleRef.project_title` optional plus `author_id`,
   `author_name`, `author_avatar_url`; `NotificationGroupResponse.project`
   optional plus `author`; `FollowResponse` gains `target`, `user_id`,

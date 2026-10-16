@@ -33,9 +33,16 @@ class NotificationProjectResponse(Schema):
     image_url: str | None
 
 
+class NotificationAuthorResponse(Schema):
+    id: UUID
+    name: str
+    avatar_url: str | None
+
+
 class NotificationGroupResponse(Schema):
     kind: NotificationGroupKind
-    project: NotificationProjectResponse
+    # Null for an author-owned article's group, which `author` heads instead.
+    project: NotificationProjectResponse | None
     latest_body_excerpt: str
     latest_event_at: datetime
     unread_count: int
@@ -45,6 +52,7 @@ class NotificationGroupResponse(Schema):
     actor_names: list[str] = []
     latest_comment_id: UUID | None = None
     # Article-specific (null for discussion groups)
+    author: NotificationAuthorResponse | None = None
     article_id: UUID | None = None
     article_slug: str | None = None
     article_title: str | None = None
@@ -60,7 +68,16 @@ class NotificationGroupResponse(Schema):
                 slug=group.project.slug,
                 title=group.project.title,
                 image_url=group.project.image_url,
-            ),
+            )
+            if group.project is not None
+            else None,
+            author=NotificationAuthorResponse(
+                id=group.author.id,
+                name=group.author.name,
+                avatar_url=group.author.avatar_url,
+            )
+            if group.author is not None
+            else None,
             latest_body_excerpt=group.latest_body_excerpt,
             latest_event_at=group.latest_event_at,
             unread_count=group.unread_count,

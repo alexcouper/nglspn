@@ -27,9 +27,13 @@ collection_router = Router()
 
 def _to_follow_response(item: FollowWithPreferences) -> FollowResponse:
     return FollowResponse(
+        target=item.target,
         project_slug=item.project_slug,
         project_title=item.project_title,
         project_hero_image_url=item.project_hero_image_url,
+        user_id=item.user_id,
+        user_name=item.user_name,
+        user_avatar_url=item.user_avatar_url,
         created_at=item.created_at,
         channels=[
             ChannelFollowStateResponse(

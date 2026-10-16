@@ -1,9 +1,16 @@
 import pytest
-from hamcrest import assert_that, equal_to, has_length, is_
+from hamcrest import assert_that, equal_to, has_entries, has_length, is_
 
 from apps.follows.models import Channel, Follow, FollowedChannel
 from apps.projects.models import ProjectStatus
-from tests.factories import ProjectFactory, make_followed_channel
+from services import HANDLERS
+from tests.factories import (
+    ProjectFactory,
+    UserFactory,
+    give_avatar,
+    make_followed_channel,
+    personal_channel,
+)
 
 
 @pytest.mark.django_db
@@ -135,6 +142,49 @@ class TestListFollows:
         assert_that(body[0]["channels"], has_length(1))
         assert_that(body[0]["channels"][0]["channel_name"], equal_to("Updates"))
         assert_that(body[0]["channels"][0]["followed"], is_(True))
+        assert_that(body[0]["target"], equal_to("project"))
+
+    def test_a_followed_person_is_listed_beside_a_project(
+        self, client, user, auth_headers
+    ):
+        Follow.objects.filter(user=user).delete()
+        project = ProjectFactory(slug="alpha", title="Alpha")
+        Follow.objects.create(user=user, project=project)
+        person = UserFactory(first_name="Ada", last_name="Lovelace")
+        give_avatar(person)
+        HANDLERS.follows.follow_user(user.id, person)
+
+        response = client.get("/api/follows", **auth_headers)
+
+        by_target = {row["target"]: row for row in response.json()}
+        assert_that(set(by_target), equal_to({"project", "user"}))
+        assert_that(
+            by_target["user"],
+            has_entries(
+                user_id=str(person.id),
+                user_name="Ada Lovelace",
+                user_avatar_url=person.avatar_url,
+                project_slug=None,
+                project_title=None,
+                channels=[],
+            ),
+        )
+        assert_that(
+            by_target["project"], has_entries(project_slug="alpha", user_id=None)
+        )
+
+    def test_a_followed_persons_channel_is_listed(self, client, user, auth_headers):
+        Follow.objects.filter(user=user).delete()
+        person = UserFactory()
+        personal_channel(person)
+        HANDLERS.follows.follow_user(user.id, person)
+
+        [row] = client.get("/api/follows", **auth_headers).json()
+
+        assert_that(row["channels"], has_length(1))
+        assert_that(
+            row["channels"][0], has_entries(channel_name="Articles", followed=True)
+        )
 
 
 @pytest.mark.django_db

@@ -1,4 +1,5 @@
 import type { FeedEntry } from "@/lib/api";
+import { withOrigin } from "@/app/projects/[slug]/articles/[articleSlug]/origin";
 
 type ArticleRef = NonNullable<FeedEntry["article"]>;
 type ListingCrop = ArticleRef["listing_crop"];
@@ -96,7 +97,10 @@ export function renderEntry(entry: FeedEntry, flagFor: FlagTranslator): Rendered
 function articleHref(entry: FeedEntry): string | null {
   const article = entry.article;
   if (!article?.slug || !article.project_slug) return null;
-  return `/projects/${article.project_slug}/articles/${article.slug}`;
+  return withOrigin(
+    `/projects/${article.project_slug}/articles/${article.slug}`,
+    "latest",
+  );
 }
 
 function bareHeadline(entry: FeedEntry): string {

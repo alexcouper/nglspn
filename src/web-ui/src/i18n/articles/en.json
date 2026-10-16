@@ -117,7 +117,20 @@
   },
   "render": {
     "draftBadge": "Draft — visible only to the author and project editors",
-    "byline": "by <link>{name}</link>"
+    "readTime": "{minutes} min read",
+    "backToLatest": "Latest"
+  },
+  "onward": {
+    "heading": {
+      "channel": "More in {channel}",
+      "project": "More from {project}",
+      "elsewhere": "Elsewhere on Naglasúpan"
+    },
+    "moreFromProject": "All {count, plural, one {# article} other {# articles}} from {project}",
+    "moreLatest": "Everything that's happened lately",
+    "projectPage": "Project page",
+    "articleCount": "{count, plural, one {# article} other {# articles}}",
+    "articleCountInChannels": "{count, plural, one {# article} other {# articles}} in {channels} channels"
   },
   "page": {
     "metaTitle": "{articleTitle} — {projectTitle}"

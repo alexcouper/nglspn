@@ -112,6 +112,16 @@ describe("renderEntry", () => {
     expect(rendered.hasArticle).toBe(true);
   });
 
+  it("links an article with the feed as the way back", () => {
+    const rendered = renderEntry(
+      entry({ kind: "article_published", article: articleRef() }),
+    );
+
+    expect(rendered.href).toBe(
+      "/projects/naglasupan/articles/how-broadside-won?from=latest",
+    );
+  });
+
   it("does not repeat the project in the meta line below it", () => {
     const rendered = renderEntry(
       entry({

@@ -12,6 +12,7 @@ from apps.discussions.models import Discussion
 from apps.follows.models import FollowedChannel
 from apps.notifications.models import Notification, NotificationCadence
 from services.articles.summary import derive_summary
+from services.email.django_impl.article_digest import with_article_digest_relations
 from services.images.django_impl.query import gallery_prefetch
 from services.notifications import (
     NotificationGroup,
@@ -323,7 +324,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
     def send_article_digest(self, cadence: str) -> None:
         if cadence == NotificationCadence.NEVER:
             return
-        unsent = (
+        unsent = with_article_digest_relations(
             Notification.objects.filter(
                 email_cadence=cadence,
                 email_sent=False,
@@ -331,23 +332,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
                 recipient__is_active=True,
                 article__isnull=False,
             )
-            .select_related(
-                "recipient",
-                "article",
-                "article__project",
-                "article__channel",
-                "article__listing_image",
-            )
-            .prefetch_related(
-                "article__listing_image__variants",
-                # `get_project_icon_url` falls back to `images[0]` with no
-                # filtering of its own, so the prefetch is the only thing
-                # keeping an article figure or a failed upload out of the
-                # project icon.
-                gallery_prefetch("article__project__images"),
-            )
-            .order_by("recipient_id", "created_at")
-        )
+        ).order_by("recipient_id", "created_at")
 
         by_recipient: defaultdict[UUID, list[Notification]] = defaultdict(list)
         for notification in unsent:

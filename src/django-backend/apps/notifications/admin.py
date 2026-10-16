@@ -12,10 +12,12 @@ from django.urls import path, reverse
 from django.utils import timezone
 
 from services.email.django_impl import render_email
-from services.email.django_impl.handler import (
-    build_article_digest_entries,
-    build_digest_groups,
+from services.email.django_impl.article_digest import (
+    LAYOUTS,
+    build_article_digest,
+    with_article_digest_relations,
 )
+from services.email.django_impl.handler import build_digest_groups
 
 from .models import Notification
 
@@ -195,18 +197,13 @@ class NotificationAdmin(admin.ModelAdmin):
             )
         else:
             notifications = list(
-                Notification.objects.filter(
-                    recipient_id=recipient_id,
-                    email_sent=False,
-                    article__isnull=False,
-                )
-                .select_related(
-                    "recipient",
-                    "article",
-                    "article__project",
-                    "article__channel",
-                )
-                .order_by("created_at")
+                with_article_digest_relations(
+                    Notification.objects.filter(
+                        recipient_id=recipient_id,
+                        email_sent=False,
+                        article__isnull=False,
+                    )
+                ).order_by("created_at")
             )
 
         if not notifications:
@@ -215,26 +212,27 @@ class NotificationAdmin(admin.ModelAdmin):
                 content_type="text/html",
             )
 
-        recipient = notifications[0].recipient
-        base_context = {
-            "recipient_name": recipient.first_name or "there",
-            "site_url": settings.FRONTEND_URL,
-            "profile_url": f"{settings.FRONTEND_URL}/profile",
-            "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
-            "current_year": timezone.now().year,
-        }
-
         if kind == "discussion":
-            context = {**base_context, "groups": build_digest_groups(notifications)}
-            template_name = "discussion_digest"
-        else:
+            recipient = notifications[0].recipient
             context = {
-                **base_context,
-                "entries": build_article_digest_entries(notifications),
+                "recipient_name": recipient.first_name or "there",
+                "site_url": settings.FRONTEND_URL,
+                "profile_url": f"{settings.FRONTEND_URL}/profile",
+                "logo_url": f"{settings.S3_PUBLIC_URL_BASE}/email/logo.png",
+                "current_year": timezone.now().year,
+                "groups": build_digest_groups(notifications),
             }
-            template_name = "article_digest"
-
-        html, text = render_email(template_name, context)
+            html, text = render_email("discussion_digest", context)
+        else:
+            # Same builder as the sender, so the preview is what goes out.
+            # `?layout=` forces one of the three layouts onto this batch; the
+            # list layout otherwise needs five unsent articles to appear.
+            layout = request.GET.get("layout") or None
+            if layout is not None and layout not in LAYOUTS:
+                raise Http404
+            digest = build_article_digest(notifications, layout=layout)
+            html, text = render_email(digest.template_name, digest.context)
+            text = f"Subject: {digest.subject}\n\n{text}"
 
         if request.GET.get("format") == "text":
             return HttpResponse(

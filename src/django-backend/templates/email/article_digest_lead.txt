@@ -1,0 +1,11 @@
+{{ lead.article_title }}
+{{ lead.channel_name }} on {{ lead.project_title }}{% if lead.published_at %} - {{ lead.published_at|date:"j F Y" }}{% endif %}{% if lead.author_name %} - by {{ lead.author_name }}{% endif %}
+
+{{ lead.body_markdown }}
+
+{% if lead.truncated %}Continue reading{% else %}Read on Naglasúpan{% endif %}: {{ lead.article_url }}
+
+---
+
+{% include "email/_article_digest_entries.txt" %}
+Change your article email frequency: {{ profile_url }}

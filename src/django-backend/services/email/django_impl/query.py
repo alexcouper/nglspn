@@ -6,6 +6,7 @@ import markdown
 from django.conf import settings
 from django.utils import timezone
 
+from services.articles.render import MARKDOWN_EXTENSIONS
 from services.email import EMAIL_LOGO_URL
 from services.email.query_interface import EmailQueryInterface
 from services.users.django_impl import DjangoUserQuery
@@ -22,7 +23,7 @@ class DjangoEmailQuery(EmailQueryInterface):
     def render_broadcast_email(self, broadcast: BroadcastEmail) -> tuple[str, str]:
         body_html = markdown.markdown(
             broadcast.body_markdown,
-            extensions=["extra", "smarty"],
+            extensions=MARKDOWN_EXTENSIONS,
         )
         context = {
             "subject": broadcast.subject,

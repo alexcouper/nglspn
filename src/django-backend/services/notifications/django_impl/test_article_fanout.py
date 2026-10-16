@@ -12,7 +12,7 @@ from apps.follows.models import Follow, FollowedChannel
 from apps.notifications.models import Notification, NotificationCadence
 from apps.users.models import ArticleEmailFrequency
 from services.articles.django_impl.handler import DjangoArticleHandler
-from services.email.django_impl.handler import build_article_digest_entries
+from services.email.django_impl.article_digest import build_article_digest_entries
 from services.notifications.django_impl.handler import DjangoNotificationHandler
 from tests.factories import (
     ArticleFactory,

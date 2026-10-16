@@ -1,0 +1,22 @@
+{% extends "email/base.mjml" %}
+
+{% block title %}{{ article.article_title }}{% endblock %}
+
+{% block content %}
+<mj-section background-color="#ffffff" border-radius="12px" padding="0">
+  <mj-column>
+    <mj-text padding="28px 32px 20px">
+      {% include "email/_article_byline.mjml" %}
+    </mj-text>
+    <mj-divider border-color="#f1f5f9" border-width="1px" padding="0 32px" />
+    <mj-text padding="20px 32px 0" font-size="15px" line-height="1.7" color="#334155">
+      {{ article.body_html|safe }}
+    </mj-text>
+    <mj-button href="{{ article.article_url }}" align="center" padding="28px 32px 28px" width="100%">
+      Read on Naglasúpan
+    </mj-button>
+  </mj-column>
+</mj-section>
+{% endblock %}
+
+{% block footer_extra %}{% include "email/_article_digest_footer.mjml" %}{% endblock %}

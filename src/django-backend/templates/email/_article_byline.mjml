@@ -1,0 +1,11 @@
+{% comment %}
+Expects `article` with article_title, article_url, project_title, project_url,
+channel_name, published_at and author_name. What the web article header shows.
+{% endcomment %}
+<p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: #6366f1; text-transform: uppercase; letter-spacing: 0.06em;">{{ article.channel_name }}</p>
+<p style="margin: 0; font-size: 24px; font-weight: 700; color: #0f172a; line-height: 1.3;">
+  <a href="{{ article.article_url }}" style="color: #0f172a; text-decoration: none;">{{ article.article_title }}</a>
+</p>
+<p style="margin: 8px 0 0; font-size: 13px; color: #64748b;">
+  <a href="{{ article.project_url }}" style="color: #64748b; text-decoration: none;">{{ article.project_title }}</a>{% if article.published_at %} &middot; {{ article.published_at|date:"j F Y" }}{% endif %}{% if article.author_name %} &middot; by {{ article.author_name }}{% endif %}
+</p>

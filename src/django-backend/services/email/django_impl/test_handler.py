@@ -6,10 +6,6 @@ from apps.emails.models import BroadcastEmailRecipient, SentEmail, SentEmailType
 from apps.projects.models import ContributorRole, ProjectContributor
 from services import REPO
 from services.email.django_impl import DjangoEmailHandler
-from services.email.django_impl.handler import (
-    ARTICLE_DIGEST_EXCERPT_MAX,
-    build_article_digest_entries,
-)
 from tests.factories import (
     ArticleFactory,
     BroadcastEmailFactory,
@@ -428,53 +424,17 @@ class TestSendDiscussionDigestEmail:
         assert expected in html
 
 
-def _article_notification(body="", summary=""):
-    from apps.notifications.models import Notification  # noqa: PLC0415
-
-    return Notification.objects.create(
+def _article_notification(body="", summary="", **article_kwargs):
+    return NotificationFactory(
         recipient=UserFactory(),
         discussion=None,
-        article=ArticleFactory(body=body, summary=summary),
+        article=ArticleFactory(body=body, summary=summary, **article_kwargs),
     )
 
 
-def _excerpt_of(notification):
-    return build_article_digest_entries([notification])[0]["body_excerpt"]
-
-
 @pytest.mark.django_db
-class TestArticleDigestExcerpt:
-    def test_strips_markdown_syntax_from_the_body(self):
-        notification = _article_notification(
-            body="Read the [full write-up](https://example.com/post) today."
-        )
-
-        assert _excerpt_of(notification) == "Read the full write-up today."
-
-    def test_skips_leading_heading_and_image_blocks(self):
-        notification = _article_notification(
-            body="# The Results\n\n![](https://cdn.example.com/hero.jpg)\n\n"
-            "Eight entries."
-        )
-
-        assert _excerpt_of(notification) == "Eight entries."
-
-    def test_prefers_the_authored_summary(self):
-        notification = _article_notification(
-            body="## Ignored\n\nDerived from the body.",
-            summary="The authored summary.",
-        )
-
-        assert _excerpt_of(notification) == "The authored summary."
-
-    def test_truncates_a_long_body_on_a_word_boundary(self):
-        notification = _article_notification(body="chili " * 200)
-
-        excerpt = _excerpt_of(notification)
-        assert len(excerpt) <= ARTICLE_DIGEST_EXCERPT_MAX + 1
-        assert excerpt.endswith("chili…")
-
-    def test_digest_email_html_carries_no_markdown_syntax(self, mailoutbox):
+class TestSendArticleDigestEmail:
+    def test_single_article_renders_the_body_as_html(self, mailoutbox):
         notification = _article_notification(
             body="Winner: [Broadside](https://example.com/broadside)\n\n"
             "### Congratulations\n\n*Fast, tactical naval battles.*"
@@ -483,6 +443,46 @@ class TestArticleDigestExcerpt:
         handler.send_article_digest_email([notification])
 
         html, _ = mailoutbox[0].alternatives[0]
-        assert "Winner: Broadside" in html
+        assert '<a href="https://example.com/broadside"' in html
+        assert "<h3>Congratulations</h3>" in html
+        assert "<em>Fast, tactical naval battles.</em>" in html
         assert "[Broadside]" not in html
         assert "### Congratulations" not in html
+
+    def test_single_article_subject_is_project_and_title(self, mailoutbox):
+        notification = _article_notification(
+            title="Næsta stig", project=ProjectFactory(title="Broadside")
+        )
+
+        handler.send_article_digest_email([notification])
+
+        assert mailoutbox[0].subject == "Broadside: Næsta stig"
+
+    def test_house_project_subject_is_the_title_alone(self, mailoutbox):
+        notification = _article_notification(
+            title="Project Review: Næsta Stig",
+            project=ProjectFactory(is_house_project=True),
+        )
+
+        handler.send_article_digest_email([notification])
+
+        assert mailoutbox[0].subject == "Project Review: Næsta Stig"
+
+    def test_text_part_carries_the_markdown_and_link(self, mailoutbox):
+        notification = _article_notification(body="Plain **bold** text.")
+
+        handler.send_article_digest_email([notification])
+
+        text = mailoutbox[0].body
+        assert "Plain **bold** text." in text
+        assert f"/articles/{notification.article.id}" in text
+
+    def test_logs_the_digest_with_its_subject(self):
+        notification = _article_notification(
+            title="Hello", project=ProjectFactory(title="P")
+        )
+
+        handler.send_article_digest_email([notification])
+
+        logged = SentEmail.objects.get(email_type=SentEmailType.ARTICLE_DIGEST)
+        assert logged.subject == "P: Hello"

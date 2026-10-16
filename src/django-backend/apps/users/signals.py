@@ -19,7 +19,7 @@ def auto_follow_house_project(
         return
     # Local import: apps.follows depends on apps.users via AUTH_USER_MODEL FKs,
     # so deferring the import avoids any import-order pitfalls.
-    from apps.follows.services import create_house_project_follow
+    from apps.follows.services import create_house_project_follow  # noqa: PLC0415
 
     create_house_project_follow(instance)
 

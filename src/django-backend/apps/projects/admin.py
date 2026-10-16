@@ -301,7 +301,7 @@ class ProjectAdmin(admin.ModelAdmin):
             )
             return
 
-        from apps.follows.services import anoint_house_project
+        from apps.follows.services import anoint_house_project  # noqa: PLC0415
 
         project = queryset.first()
         result = anoint_house_project(project)
@@ -551,6 +551,7 @@ class ImageAdmin(admin.ModelAdmin):
         "thumbnail",
         "original_filename",
         "project_link",
+        "article_link",
         "is_main",
         "upload_status",
         "file_size_display",
@@ -559,7 +560,13 @@ class ImageAdmin(admin.ModelAdmin):
         "created_at",
     )
     list_filter = ("is_main", "upload_status", "content_type", "created_at")
-    search_fields = ("original_filename", "project__title", "project__creator__email")
+    search_fields = (
+        "original_filename",
+        "project__title",
+        "project__creator__email",
+        "article__title",
+        "article__author__email",
+    )
     ordering = ("-created_at",)
     inlines = (ImageVariantInline,)
     readonly_fields = (
@@ -584,6 +591,7 @@ class ImageAdmin(admin.ModelAdmin):
             {
                 "fields": (
                     "project",
+                    "article",
                     "is_main",
                     "is_icon",
                     "is_hero",
@@ -628,6 +636,14 @@ class ImageAdmin(admin.ModelAdmin):
             return format_html('<a href="{}">{}</a>', url, title)
         return "-"
 
+    @admin.display(description="Article", ordering="article__title")
+    def article_link(self, obj: Image) -> SafeString | str:
+        if obj.article_id:
+            url = reverse("admin:articles_article_change", args=[obj.article_id])
+            title = obj.article.title or "(untitled draft)"
+            return format_html('<a href="{}">{}</a>', url, title)
+        return "-"
+
     @admin.display(description="Size")
     def file_size_display(self, obj: Image) -> str:
         kb = 1024
@@ -652,7 +668,7 @@ class ImageAdmin(admin.ModelAdmin):
         return (
             super()
             .get_queryset(request)
-            .select_related("project", "project__creator")
+            .select_related("project", "project__creator", "article")
             .annotate(variant_count=Count("variants"))
         )
 

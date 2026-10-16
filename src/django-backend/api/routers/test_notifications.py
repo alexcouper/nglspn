@@ -146,7 +146,7 @@ class TestMarkThreadReadEndpoint:
         assert_that(response.json(), equal_to({"marked": 0}))
 
     def test_scoped_to_caller(self, client, user, other_user, auth_headers) -> None:
-        from apps.notifications.models import Notification
+        from apps.notifications.models import Notification  # noqa: PLC0415
 
         project = ProjectFactory()
         root = DiscussionFactory(project=project)
@@ -243,7 +243,7 @@ class TestMarkThreadReadByArticle:
         assert_that(response.json(), equal_to({"marked": 1}))
 
     def test_scoped_to_caller(self, client, user, other_user, auth_headers) -> None:
-        from apps.notifications.models import Notification
+        from apps.notifications.models import Notification  # noqa: PLC0415
 
         project = ProjectFactory()
         article = PublishedArticleFactory(project=project)
@@ -378,7 +378,7 @@ class TestMarkAllReadEndpoint:
     def test_does_not_touch_other_users(
         self, client, user, other_user, auth_headers
     ) -> None:
-        from apps.notifications.models import Notification
+        from apps.notifications.models import Notification  # noqa: PLC0415
 
         project = ProjectFactory()
         root = DiscussionFactory(project=project)

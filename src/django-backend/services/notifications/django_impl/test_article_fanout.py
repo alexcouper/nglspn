@@ -343,7 +343,7 @@ class TestHouseChannelLogging:
         self.handler = DjangoNotificationHandler()
 
     def test_logs_for_house_channel_article(self, caplog):
-        from tests.factories import ensure_house_project
+        from tests.factories import ensure_house_project  # noqa: PLC0415
 
         house = ensure_house_project()
         channel = ChannelFactory(project=house, name="Competition Winners")
@@ -363,7 +363,7 @@ class TestHouseChannelLogging:
         assert str(follower.id) in relevant[0].getMessage()
 
     def test_logs_for_never_cadence_too(self, caplog):
-        from tests.factories import ensure_house_project
+        from tests.factories import ensure_house_project  # noqa: PLC0415
 
         house = ensure_house_project()
         channel = ChannelFactory(project=house, name="Updates")

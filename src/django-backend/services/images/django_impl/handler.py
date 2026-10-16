@@ -104,7 +104,7 @@ class DjangoImageHandler(ImageHandlerInterface):
 
         image.save()
 
-        from api.tasks.images import generate_image_variants
+        from api.tasks.images import generate_image_variants  # noqa: PLC0415
 
         generate_image_variants.enqueue(str(image.id))
         return image
@@ -164,7 +164,7 @@ class DjangoImageHandler(ImageHandlerInterface):
         never heard back", not "there is nothing there", so the object may or
         may not exist and the delete has to be attempted either way.
         """
-        from apps.users.models import UserAvatar
+        from apps.users.models import UserAvatar  # noqa: PLC0415
 
         cutoff = timezone.now() - timedelta(hours=PENDING_UPLOAD_MAX_AGE_HOURS)
         reaped = 0

@@ -38,7 +38,7 @@ class UserResponse(Schema):
 
     @staticmethod
     def resolve_pending_onboarding_steps(obj: Any) -> list[str]:
-        from services import HANDLERS
+        from services import HANDLERS  # noqa: PLC0415
 
         return [step.id for step in HANDLERS.registration.get_pending_steps(obj)]
 

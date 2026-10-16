@@ -38,7 +38,7 @@ class DjangoDiscussionHandler(DiscussionHandlerInterface):
             body=body,
         )
 
-        from api.tasks.notifications import (
+        from api.tasks.notifications import (  # noqa: PLC0415
             create_discussion_notifications,
         )
 

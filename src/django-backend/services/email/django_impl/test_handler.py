@@ -394,11 +394,11 @@ class TestSendDiscussionDigestEmail:
     def test_cta_per_project_group_uses_latest_comment_deep_link(
         self, mailoutbox, settings
     ):
-        from datetime import timedelta
+        from datetime import timedelta  # noqa: PLC0415
 
-        from django.utils import timezone
+        from django.utils import timezone  # noqa: PLC0415
 
-        from apps.notifications.models import Notification
+        from apps.notifications.models import Notification  # noqa: PLC0415
 
         recipient = UserFactory()
         project = ProjectFactory(slug="my-app", title="My App")

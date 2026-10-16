@@ -55,7 +55,7 @@ class Command(BaseCommand):
             )
             raise CommandError(msg)
 
-        from api.tasks import notifications
+        from api.tasks import notifications  # noqa: PLC0415
 
         getattr(notifications, task_name).enqueue()
 

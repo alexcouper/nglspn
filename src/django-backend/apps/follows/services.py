@@ -56,8 +56,8 @@ def anoint_house_project(project: Project) -> dict[str, int]:
     gives local dev and any fresh install the same starting point without
     replaying migrations.
     """
-    from apps.projects.signals import DEFAULT_CHANNEL_NAME
-    from services.users.django_impl.query import (
+    from apps.projects.signals import DEFAULT_CHANNEL_NAME  # noqa: PLC0415
+    from services.users.django_impl.query import (  # noqa: PLC0415
         BROADCAST_CHANNEL_BY_EMAIL_TYPE,
     )
 

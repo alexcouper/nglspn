@@ -60,7 +60,7 @@ class FeedEventQuerySet(models.QuerySet["FeedEvent"]):
         """
         # Local import: `services` builds the whole handler registry on import,
         # and that registry reaches back into this module.
-        from services.images.django_impl.query import gallery_prefetch
+        from services.images.django_impl.query import gallery_prefetch  # noqa: PLC0415
 
         return self.select_related(
             "project",

@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 @task()
 def generate_image_variants(image_id: str) -> None:
-    from services import HANDLERS
+    from services import HANDLERS  # noqa: PLC0415
 
     HANDLERS.images.generate_variants(image_id)
 
@@ -22,7 +22,7 @@ def generate_image_variants(image_id: str) -> None:
 # nothing in this repo will tell you.
 @task()
 def sweep_orphaned_storage_objects(batch_size: int = 500) -> None:
-    from services import HANDLERS
+    from services import HANDLERS  # noqa: PLC0415
 
     result = HANDLERS.images.sweep_orphaned_objects(batch_size=batch_size)
     logger.info(

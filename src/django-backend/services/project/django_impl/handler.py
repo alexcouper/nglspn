@@ -55,7 +55,7 @@ def _validate_tags(tag_ids: list[UUID]) -> QuerySet[Tag]:
 
 
 def _enqueue_new_project_notification(project: Project) -> None:
-    from api.tasks import email as email_tasks
+    from api.tasks import email as email_tasks  # noqa: PLC0415
 
     try:
         email_tasks.send_new_project_notification.enqueue(str(project.id))

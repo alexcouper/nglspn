@@ -61,7 +61,7 @@ def _is_backdated(approved_at: datetime | None) -> bool:
 
 def _enqueue_fan_out(article: Article) -> None:
     # Local import: api.tasks reaches back into the service layer.
-    from api.tasks.notifications import (
+    from api.tasks.notifications import (  # noqa: PLC0415
         create_article_notifications,
     )
 

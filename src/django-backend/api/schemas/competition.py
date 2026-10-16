@@ -65,7 +65,7 @@ class CompetitionResponse(Schema):
     def from_competition(cls, competition: Any) -> "CompetitionResponse":
         # Deferred: a schema module reaching `services` at import time risks a
         # cycle. Same pattern as `api/schemas/user.py`.
-        from services import REPO
+        from services import REPO  # noqa: PLC0415
 
         approved_projects = list(
             competition.projects.filter(status=ProjectStatus.APPROVED)

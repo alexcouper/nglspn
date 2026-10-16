@@ -8,4 +8,4 @@ class FollowsConfig(AppConfig):
     def ready(self) -> None:
         # Django convention: import signal handlers in ready() so they are
         # connected once the app registry is fully loaded.
-        from apps.follows import signals  # noqa: F401
+        from apps.follows import signals  # noqa: F401, PLC0415

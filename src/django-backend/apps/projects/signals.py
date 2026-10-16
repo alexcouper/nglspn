@@ -32,7 +32,7 @@ def create_default_channel(
         return
     # Local import: the follows app depends on projects, so importing at module
     # load time would create a circular import path through apps/follows/models.
-    from apps.follows.models import Channel
+    from apps.follows.models import Channel  # noqa: PLC0415
 
     Channel.objects.get_or_create(project=instance, name=DEFAULT_CHANNEL_NAME)
 

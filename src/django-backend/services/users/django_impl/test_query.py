@@ -85,7 +85,7 @@ class TestListOptedInForBroadcastType:
         assert list(result) == [follower]
 
     def test_excludes_users_on_never_article_cadence(self):
-        from apps.users.models import ArticleEmailFrequency
+        from apps.users.models import ArticleEmailFrequency  # noqa: PLC0415
 
         make_broadcast_follower(
             "competition_results",

@@ -356,7 +356,7 @@ class TestMarkThreadReadForComment:
         assert_that(marked, equal_to(2))
 
     def test_returns_zero_when_comment_does_not_exist(self, handler) -> None:
-        from uuid import uuid4
+        from uuid import uuid4  # noqa: PLC0415
 
         user = UserFactory()
 
@@ -440,7 +440,7 @@ class TestDeleteOldReadNotifications:
 @pytest.mark.django_db
 class TestNeverCadenceCreatesRowNoEmail:
     def test_in_app_delivery_works_for_never(self, handler) -> None:
-        from apps.projects.models import ProjectStatus
+        from apps.projects.models import ProjectStatus  # noqa: PLC0415
 
         owner = UserFactory(discussion_email_frequency=NotificationCadence.NEVER)
         project = ProjectFactory(owner=owner, status=ProjectStatus.APPROVED)

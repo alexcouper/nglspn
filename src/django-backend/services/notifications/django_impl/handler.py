@@ -63,7 +63,7 @@ def _plain_text_excerpt(text: str) -> str:
 
 
 def _build_group(rows: Iterable[Notification], root_id: UUID) -> NotificationGroup:
-    from services import REPO
+    from services import REPO  # noqa: PLC0415
 
     rows = sorted(rows, key=lambda n: n.discussion.created_at, reverse=True)
     latest = rows[0]
@@ -111,7 +111,7 @@ def _article_listing_image_url(article: Article) -> str | None:
 
 
 def _build_article_group(rows: list[Notification]) -> NotificationGroup:
-    from services import REPO
+    from services import REPO  # noqa: PLC0415
 
     rows = sorted(
         rows,
@@ -157,7 +157,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
 
         recipients: set[User] = set()
 
-        from services import REPO
+        from services import REPO  # noqa: PLC0415
 
         for contributor in REPO.project.list_notifiable_contributors(
             discussion.project.id
@@ -175,7 +175,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
             .values_list("author_id", flat=True)
             .distinct()
         )
-        from apps.users.models import User as UserModel
+        from apps.users.models import User as UserModel  # noqa: PLC0415
 
         participants = UserModel.objects.filter(id__in=participant_ids, is_active=True)
         recipients.update(participants)
@@ -263,7 +263,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
     def _send_immediate(
         self, notification: Notification, discussion: Discussion
     ) -> None:
-        from services import HANDLERS
+        from services import HANDLERS  # noqa: PLC0415
 
         try:
             HANDLERS.email.send_discussion_notification_email(
@@ -302,7 +302,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
         for notification in unsent:
             by_recipient[notification.recipient_id].append(notification)
 
-        from services import HANDLERS
+        from services import HANDLERS  # noqa: PLC0415
 
         for _recipient_id, notifications in by_recipient.items():
             try:
@@ -338,7 +338,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
         for notification in unsent:
             by_recipient[notification.recipient_id].append(notification)
 
-        from services import HANDLERS
+        from services import HANDLERS  # noqa: PLC0415
 
         for _recipient_id, notifications in by_recipient.items():
             try:
@@ -360,7 +360,7 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
     def list_unread_groups_for_user(
         self, user_id: UUID, limit: int = 50
     ) -> list[NotificationGroup]:
-        from services import REPO
+        from services import REPO  # noqa: PLC0415
 
         discussion_rows = list(
             REPO.notifications.list_unread_for_user(user_id).prefetch_related(
@@ -391,13 +391,13 @@ class DjangoNotificationHandler(NotificationHandlerInterface):
         return groups[:limit]
 
     def get_unread_summary_for_user(self, user_id: UUID) -> NotificationSummary:
-        from services import REPO
+        from services import REPO  # noqa: PLC0415
 
         count = REPO.notifications.count_unread_groups_for_user(user_id)
         return NotificationSummary(has_unread=count > 0, unread_group_count=count)
 
     def mark_thread_read_for_user(self, user_id: UUID, root_discussion_id: UUID) -> int:
-        from services import REPO
+        from services import REPO  # noqa: PLC0415
 
         return REPO.notifications.unread_rows_for_thread(
             user_id, root_discussion_id

@@ -46,6 +46,21 @@ class FollowHandlerInterface(ABC):
         """Hard-delete the Follow of a person (idempotent — no-op when absent)."""
 
     @abstractmethod
+    def follow_user_channel(
+        self, user_id: UUID, followed_user: User, channel_id: UUID
+    ) -> ChannelFollowState:
+        """`follow_channel` for a person's channel under an existing person
+        follow. Same errors (``ChannelNotOnProjectError`` when the channel is
+        not the person's), same idempotence."""
+
+    @abstractmethod
+    def unfollow_user_channel(
+        self, user_id: UUID, followed_user: User, channel_id: UUID
+    ) -> FollowState:
+        """`unfollow_channel` for a person's channel. A person has one, so
+        dropping it is a full unfollow and the returned state says so."""
+
+    @abstractmethod
     def follow_channel(
         self, user_id: UUID, project_slug: str, channel_id: UUID
     ) -> ChannelFollowState:

@@ -10,7 +10,8 @@ class NotFollowingError(FollowError):
 
 
 class ChannelNotOnProjectError(FollowError):
-    """The channel referenced does not belong to the project."""
+    """The channel referenced does not belong to the follow's target — the
+    project, or for a person follow, the person."""
 
 
 class SelfFollowError(FollowError):

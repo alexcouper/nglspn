@@ -492,3 +492,53 @@ class TestAuthorArticleBySlug:
         response = client.get(f"/api/projects/{project.slug}/articles/by-slug/hello")
 
         assert_that(response.status_code, equal_to(404))
+
+
+@pytest.mark.django_db
+class TestFollowedPersonsChannelToggle:
+    def url(self, person, channel) -> str:
+        return f"/api/users/{person.id}/follow/channels/{channel.id}"
+
+    def test_unticking_the_one_channel_unfollows_the_person(
+        self, client, user, auth_headers
+    ) -> None:
+        person = UserFactory()
+        channel = personal_channel(person)
+        follow(client, person.id, auth_headers)
+
+        response = client.delete(self.url(person, channel), **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(response.json(), has_entries(is_followed=False))
+        assert_that(Follow.objects.filter(user=user).exists(), equal_to(False))
+
+    def test_ticking_it_back_on_needs_the_follow(self, client, auth_headers) -> None:
+        person = UserFactory()
+        channel = personal_channel(person)
+
+        response = client.post(self.url(person, channel), **auth_headers)
+
+        assert_that(response.status_code, equal_to(404))
+
+    def test_ticking_it_on_under_a_follow(self, client, user, auth_headers) -> None:
+        person = UserFactory()
+        follow(client, person.id, auth_headers)
+        channel = personal_channel(person)
+        FollowedChannel.objects.filter(follow__user=user).delete()
+
+        response = client.post(self.url(person, channel), **auth_headers)
+
+        assert_that(response.status_code, equal_to(200))
+        assert_that(
+            response.json(), has_entries(channel_name="Articles", followed=True)
+        )
+
+    def test_someone_elses_channel_is_404(self, client, auth_headers) -> None:
+        person, other = UserFactory(), UserFactory()
+        follow(client, person.id, auth_headers)
+
+        response = client.post(
+            self.url(person, personal_channel(other)), **auth_headers
+        )
+
+        assert_that(response.status_code, equal_to(404))

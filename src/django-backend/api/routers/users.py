@@ -11,10 +11,14 @@ from api.routers._helpers import get_optional_user
 from api.routers.articles import can_view_hidden
 from api.schemas.article import ArticleOut, UserArticleResponse
 from api.schemas.errors import Error
-from api.schemas.follow import FollowStateResponse
+from api.schemas.follow import ChannelFollowStateResponse, FollowStateResponse
 from api.schemas.user import UserProfileResponse, UserProjectResponse
 from services import HANDLERS, REPO
-from services.follows.exceptions import SelfFollowError
+from services.follows.exceptions import (
+    ChannelNotOnProjectError,
+    NotFollowingError,
+    SelfFollowError,
+)
 
 if TYPE_CHECKING:
     from apps.articles.models import Article
@@ -149,3 +153,55 @@ def unfollow_user(
         return NOT_FOUND
     HANDLERS.follows.unfollow_user(request.auth.id, person)
     return 204, None
+
+
+@router.post(
+    "/{user_id}/follow/channels/{channel_id}",
+    response={200: ChannelFollowStateResponse, 401: Error, 404: Error},
+    auth=auth,
+    tags=["Follows"],
+)
+def follow_user_channel(
+    request: HttpRequest, user_id: UUID, channel_id: UUID
+) -> ChannelFollowStateResponse | tuple[int, Error]:
+    """The Following page's channel toggle, for a followed person. Mirrors the
+    project form at `/api/projects/{slug}/follow/channels/{id}`."""
+    person = _profile_user_or_none(user_id)
+    if person is None:
+        return NOT_FOUND
+    try:
+        state = HANDLERS.follows.follow_user_channel(
+            request.auth.id, person, channel_id
+        )
+    except (ChannelNotOnProjectError, NotFollowingError):
+        return 404, Error(detail="Not found")
+    return ChannelFollowStateResponse(
+        channel_id=state.channel_id,
+        channel_name=state.channel_name,
+        followed=state.followed,
+    )
+
+
+@router.delete(
+    "/{user_id}/follow/channels/{channel_id}",
+    response={200: FollowStateResponse, 401: Error, 404: Error},
+    auth=auth,
+    tags=["Follows"],
+)
+def unfollow_user_channel(
+    request: HttpRequest, user_id: UUID, channel_id: UUID
+) -> FollowStateResponse | tuple[int, Error]:
+    person = _profile_user_or_none(user_id)
+    if person is None:
+        return NOT_FOUND
+    try:
+        state = HANDLERS.follows.unfollow_user_channel(
+            request.auth.id, person, channel_id
+        )
+    except (ChannelNotOnProjectError, NotFollowingError):
+        return 404, Error(detail="Not found")
+    # A person has one channel, so dropping it unfollowed them; the caller needs
+    # the resulting follow state, not an empty 204.
+    return FollowStateResponse(
+        is_followed=state.is_followed, created_at=state.created_at
+    )

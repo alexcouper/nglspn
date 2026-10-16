@@ -64,6 +64,43 @@ class DjangoFollowHandler(FollowHandlerInterface):
     def unfollow_user(self, user_id: UUID, followed_user: User) -> None:
         Follow.objects.filter(user_id=user_id, followed_user=followed_user).delete()
 
+    def _resolve_user_channel(
+        self, user_id: UUID, followed_user: User, channel_id: UUID
+    ) -> tuple[Follow, Channel]:
+        try:
+            channel = Channel.objects.get(pk=channel_id, owner=followed_user)
+        except Channel.DoesNotExist as exc:
+            raise ChannelNotOnProjectError from exc
+        try:
+            follow = Follow.objects.get(user_id=user_id, followed_user=followed_user)
+        except Follow.DoesNotExist as exc:
+            raise NotFollowingError from exc
+        return follow, channel
+
+    def follow_user_channel(
+        self, user_id: UUID, followed_user: User, channel_id: UUID
+    ) -> ChannelFollowState:
+        follow, channel = self._resolve_user_channel(user_id, followed_user, channel_id)
+        FollowedChannel.objects.get_or_create(follow=follow, channel=channel)
+        return ChannelFollowState(
+            channel_id=channel.id, channel_name=channel.name, followed=True
+        )
+
+    def unfollow_user_channel(
+        self, user_id: UUID, followed_user: User, channel_id: UUID
+    ) -> FollowState:
+        # Same rule as `unfollow_channel`: the last channel going is the person
+        # asking to stop.
+        with transaction.atomic():
+            follow, channel = self._resolve_user_channel(
+                user_id, followed_user, channel_id
+            )
+            FollowedChannel.objects.filter(follow=follow, channel=channel).delete()
+            if not FollowedChannel.objects.filter(follow=follow).exists():
+                follow.delete()
+                return FollowState(is_followed=False)
+        return FollowState(is_followed=True, created_at=follow.created_at)
+
     def _resolve(
         self, user_id: UUID, project_slug: str, channel_id: UUID
     ) -> tuple[Follow, Channel]:

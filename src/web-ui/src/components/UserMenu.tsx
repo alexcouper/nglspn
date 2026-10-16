@@ -46,8 +46,11 @@ export function UserMenu() {
         <div className="absolute right-0 mt-2 w-44 bg-white rounded-lg shadow-lg border border-border py-1 z-10">
           {user && user.pending_onboarding_steps.length === 0 && (
             <>
+              {/* The public page, not the edit form: that is where the
+                  person's articles, projects and Write article live. Editing
+                  is a button on it. */}
               <Link
-                href="/profile"
+                href={`/users/${user.id}`}
                 className="block px-3 py-2 text-sm text-foreground hover:bg-muted transition-colors"
                 onClick={() => setIsOpen(false)}
               >

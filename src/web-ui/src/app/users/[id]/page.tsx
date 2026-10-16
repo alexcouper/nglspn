@@ -414,9 +414,11 @@ function OwnArticleList({ articles }: { articles: OwnArticle[] }) {
                   </span>
                 </div>
                 <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs text-muted-foreground">
-                  <span className="font-semibold uppercase tracking-wide text-accent">
-                    {article.project ? article.project.title : t("ownName")}
-                  </span>
+                  {article.project && (
+                    <span className="font-semibold uppercase tracking-wide text-accent">
+                      {article.project.title}
+                    </span>
+                  )}
                   {article.published_at && (
                     <time dateTime={article.published_at}>
                       {formatDate(article.published_at, {

@@ -5,16 +5,7 @@
 {% block content %}
 <mj-section background-color="#ffffff" border-radius="12px" padding="0">
   <mj-column>
-    <mj-text padding="28px 32px 20px">
-      <p style="margin: 0 0 12px; font-size: 16px; line-height: 1.5; color: #0f172a;">
-        Hi {{ recipient_name }},
-      </p>
-      <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #475569;">
-        Here are the latest articles from the projects you follow:
-      </p>
-    </mj-text>
-    <mj-divider border-color="#f1f5f9" border-width="1px" padding="0 32px" />
-    <mj-text padding="24px 32px 28px">
+    <mj-text padding="28px 32px">
       {% include "email/_article_digest_entries.mjml" %}
     </mj-text>
   </mj-column>

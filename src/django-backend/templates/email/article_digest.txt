@@ -1,6 +1,2 @@
-Hi {{ recipient_name }},
-
-Here are the latest articles from the projects you follow:
-
 {% include "email/_article_digest_entries.txt" %}
 Change your article email frequency: {{ profile_url }}

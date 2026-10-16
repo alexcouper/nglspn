@@ -119,9 +119,7 @@ def build_article_digest(
     ordered = _newest_first(notifications)
     if layout is None:
         layout = _layout_for(len(ordered))
-    recipient = ordered[0].recipient
     context = {
-        "recipient_name": recipient.first_name or "there",
         "site_url": settings.FRONTEND_URL,
         "profile_url": f"{settings.FRONTEND_URL}/profile",
         "logo_url": EMAIL_LOGO_URL,

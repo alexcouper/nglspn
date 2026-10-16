@@ -19,7 +19,6 @@ from django.utils import timezone
 
 from apps.articles.models import Article, ArticleState
 from apps.notifications.models import Notification
-from apps.users.models import User
 from services.email.django_impl import render_email
 from services.email.django_impl.article_digest import (
     LAYOUT_LEAD,
@@ -73,14 +72,9 @@ class Command(BaseCommand):
             msg = "No published articles to build a digest from."
             raise CommandError(msg)
 
-        recipient = User.objects.filter(email=to).first() or User(
-            email=to, first_name=""
-        )
         for layout in layouts:
             batch = articles[: _ARTICLES_BY_LAYOUT[layout]]
-            digest = build_article_digest(
-                _unsaved_notifications(recipient, batch), layout=layout
-            )
+            digest = build_article_digest(_unsaved_notifications(batch), layout=layout)
             html, text = render_email(digest.template_name, digest.context)
             subject = f"[digest sample: {layout}] {digest.subject}"
             email = EmailMultiAlternatives(
@@ -118,13 +112,8 @@ def _by_id(queryset: QuerySet[Article], value: str) -> Article | None:
     return queryset.filter(pk=article_id).first()
 
 
-def _unsaved_notifications(
-    recipient: User, articles: Sequence[Article]
-) -> list[Notification]:
-    # Unsaved rows: the builder reads `article`, `recipient` and `created_at`
-    # and nothing else, and nothing here should leave a Notification behind.
+def _unsaved_notifications(articles: Sequence[Article]) -> list[Notification]:
+    # Unsaved rows: the builder reads `article` and `created_at` and nothing
+    # else, and nothing here should leave a Notification behind.
     now = timezone.now()
-    return [
-        Notification(recipient=recipient, article=article, created_at=now)
-        for article in articles
-    ]
+    return [Notification(article=article, created_at=now) for article in articles]

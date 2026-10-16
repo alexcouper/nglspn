@@ -209,9 +209,7 @@ class TestPreviewDigestLayouts:
         assert_that(response.status_code, equal_to(200))
         assert_that(
             response.content.decode(),
-            contains_string(
-                "Here are the latest articles from the projects you follow"
-            ),
+            contains_string("New articles - Naglasúpan"),
         )
 
     def test_unknown_layout_is_a_404(self, admin_client):

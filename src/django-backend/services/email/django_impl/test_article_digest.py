@@ -58,6 +58,11 @@ def assert_rendered_in_order(html: str, *titles: str) -> None:
     assert positions == sorted(positions), f"expected order {titles}"
 
 
+def assert_no_greeting(rendered: str) -> None:
+    assert "Hi " not in rendered
+    assert "latest articles from the projects you follow" not in rendered
+
+
 @pytest.mark.django_db
 class TestLayoutSelection:
     def test_one_article_is_the_single_layout(self):
@@ -236,6 +241,16 @@ class TestRenderedTemplates:
         assert "change your article email frequency" in html
         assert "Body text here." in text
 
+    def test_single_text_carries_the_markdown_verbatim(self):
+        body = "> Quoted & cited\n\nIf a < b, it's fine."
+        notification = _notification(title="Don't escape me", body=body)
+
+        digest = build_article_digest([notification])
+        _, text = render_email(digest.template_name, digest.context)
+
+        assert "Don't escape me" in text
+        assert body in text
+
     def test_lead_html_shows_lead_then_the_rest(self):
         batch = _batch(3)
 
@@ -295,3 +310,13 @@ class TestArticleDigestExcerpt:
         excerpt = _excerpt_of(notification)
         assert len(excerpt) <= ARTICLE_DIGEST_EXCERPT_MAX + 1
         assert excerpt.endswith("chili…")
+
+    def test_list_opens_with_the_entries_not_a_greeting(self):
+        batch = _batch(LIST_LAYOUT_MIN_ARTICLES)
+
+        digest = build_article_digest(batch)
+        html, text = render_email(digest.template_name, digest.context)
+
+        assert_no_greeting(html)
+        assert_no_greeting(text)
+        assert text.startswith(f"Article {LIST_LAYOUT_MIN_ARTICLES - 1}")

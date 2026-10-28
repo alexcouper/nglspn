@@ -1,10 +1,5 @@
 {
   "authoring": {
-    "tabs": {
-      "content": "Content",
-      "listing": "Listing settings"
-    },
-    "tablistLabel": "Article editor",
     "notAllowed": {
       "title": "Not allowed",
       "body": "You need full edit access on this project to author articles.",
@@ -22,7 +17,23 @@
     "deleteArticle": "Delete article",
     "titlePlaceholder": "Article title",
     "backToProfile": "Back to your profile",
-    "yourProfile": "Your profile"
+    "yourProfile": "Your profile",
+    "summary": {
+      "label": "Standfirst",
+      "placeholder": "A line or two under the title: on the page, in the email and on cards.",
+      "hint": "Shown under the title, in the email and on cards. Leave empty to use the start of the article.",
+      "count": "{count}/{max}"
+    },
+    "cover": {
+      "add": "Add a cover image",
+      "change": "Change…",
+      "remove": "Remove cover"
+    },
+    "view": {
+      "label": "Editing or preview",
+      "edit": "Edit",
+      "preview": "Preview"
+    }
   },
   "route": {
     "openProjectFailed": {
@@ -49,11 +60,6 @@
   },
   "leaveGuard": {
     "prompt": "You have unsaved changes to this article. Leave without saving?"
-  },
-  "cardPreview": {
-    "tablistLabel": "Card preview",
-    "lead": "As lead story",
-    "grid": "In the grid"
   },
   "editor": {
     "languages": {
@@ -92,31 +98,17 @@
     "button": "Insert image"
   },
   "listingImageDialog": {
-    "pickTitle": "Choose a listing image",
-    "pickDescription": "Pick one of this article's images, or upload a new one.",
-    "frameTitle": "Frame the card",
+    "pickTitle": "Choose a cover image",
+    "pickDescription": "Shown at the top of the article and on its cards. Pick one of this article's images, or upload a new one.",
+    "frameTitle": "Frame the cover",
     "frameDescription": "Drag to move the image, and zoom to change how much of it is used.",
     "framePreviewLabel": "Card",
     "uncroppable": "We couldn't read that image's dimensions, so there's nothing to frame yet. Try another image.",
-    "removeImage": "Remove image",
+    "removeImage": "Remove cover",
     "next": "Next",
     "useIt": "Use it",
     "uploading": "Uploading…",
     "uploadNew": "Upload new"
-  },
-  "listingSettings": {
-    "summary": "Summary",
-    "summaryHint": "Leave empty to use the start of the article.",
-    "summaryCount": "{count}/{max}",
-    "image": "Image",
-    "noImage": "No image",
-    "mode": {
-      "auto": "Following the first image in this article.",
-      "chosen": "Your choice.",
-      "none": "This article shows no image in listings."
-    },
-    "changeImage": "Change…",
-    "chooseImage": "Choose an image…"
   },
   "publishDialog": {
     "title": "Publish article",
@@ -146,5 +138,11 @@
   "page": {
     "metaTitle": "{articleTitle} — {projectTitle}",
     "metaTitleAuthor": "{articleTitle} — {authorName}"
+  },
+  "preview": {
+    "tablistLabel": "Preview as",
+    "article": "The article",
+    "lead": "As lead story",
+    "grid": "In the grid"
   }
 }

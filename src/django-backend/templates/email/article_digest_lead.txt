@@ -1,6 +1,8 @@
 {{ lead.article_title }}
 {% if lead.project_title %}{{ lead.channel_name }} on {{ lead.project_title }}{% else %}by {{ lead.author_name }}{% endif %}{% if lead.published_at %} - {{ lead.published_at|date:"j F Y" }}{% endif %}{% if lead.project_title and lead.author_name %} - by {{ lead.author_name }}{% endif %}
-
+{% if lead.standfirst %}
+{{ lead.standfirst }}
+{% endif %}
 {{ lead.body_markdown }}
 
 {% if lead.truncated %}Continue reading{% else %}Read on Naglasúpan{% endif %}: {{ lead.article_url }}

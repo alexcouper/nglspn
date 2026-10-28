@@ -50,6 +50,14 @@ def _batch(count, **article_kwargs):
     ]
 
 
+def _cover(article, **image_kwargs):
+    """An image chosen as the article's cover."""
+    image = article_image(article, **image_kwargs)
+    article.listing_image = image
+    article.save()
+    return image
+
+
 def _excerpt_of(notification):
     return build_article_digest_entries([notification])[0]["body_excerpt"]
 
@@ -241,6 +249,65 @@ class TestRenderedTemplates:
         assert f"/articles/{notification.article.id}" in html
         assert "change your article email frequency" in html
         assert "Body text here." in text
+
+    def test_single_shows_the_standfirst_under_the_byline(self):
+        notification = _notification(
+            title="The Title", summary="The standfirst.", body="Body text here."
+        )
+
+        digest = build_article_digest([notification])
+        html, text = render_email(digest.template_name, digest.context)
+
+        for part in (html, text):
+            assert_rendered_in_order(
+                part, "The Title", "The standfirst.", "Body text here."
+            )
+
+    def test_standfirst_is_derived_from_the_body_when_none_was_written(self):
+        notification = _notification(summary="", body="Opening line.\n\nMore.")
+
+        article = build_article_digest([notification]).context["article"]
+
+        assert article["standfirst"] == "Opening line."
+
+    def test_single_shows_the_cover_between_standfirst_and_body(self):
+        notification = _notification(
+            title="The Title", summary="The standfirst.", body="Body text here."
+        )
+        image = _cover(notification.article)
+
+        digest = build_article_digest([notification])
+        html, _ = render_email(digest.template_name, digest.context)
+
+        assert_rendered_in_order(
+            html, "The Title", "The standfirst.", image.url, "Body text here."
+        )
+
+    def test_cover_uses_the_medium_variant(self):
+        notification = _notification()
+        image = _cover(notification.article, storage_key="articles/cover.jpg")
+        ImageVariant.objects.create(
+            image=image,
+            size="medium",
+            storage_key="articles/cover-medium.jpg",
+            width=768,
+            height=432,
+            file_size=100,
+        )
+
+        article = build_article_digest([notification]).context["article"]
+
+        assert "articles/cover-medium.jpg" in article["cover_image_url"]
+
+    def test_lead_shows_standfirst_and_cover_too(self):
+        batch = _batch(2, summary="Lead standfirst.")
+        image = _cover(batch[1].article)
+
+        digest = build_article_digest(batch)
+        html, text = render_email(digest.template_name, digest.context)
+
+        assert_rendered_in_order(html, "Article 1", "Lead standfirst.", image.url)
+        assert "Lead standfirst." in text
 
     def test_single_text_carries_the_markdown_verbatim(self):
         body = "> Quoted & cited\n\nIf a < b, it's fine."

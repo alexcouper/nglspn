@@ -593,6 +593,16 @@ def localise_body(body: str) -> str:
     return body.replace(f"{PROD_CDN_BASE}/", f"{settings.S3_PUBLIC_URL_BASE}/")
 
 
+def _prod_listing_image(ad: dict) -> dict:
+    """The cover as prod will carry it once `listing_image_mode` is gone: an
+    image the author chose, or none. A pre-migration payload still says
+    `auto` for an image derived from the first upload, which the migration
+    drops, so the copy drops it too."""
+    if ad.get("listing_image_mode") == "auto":
+        return {"image": None, "crop": None}
+    return {"image": ad.get("listing_image"), "crop": ad.get("listing_crop")}
+
+
 def create_articles(
     article_data: list[dict], by_prod_id: dict[str, Project], editor: User | None
 ) -> int:
@@ -622,8 +632,8 @@ def create_articles(
 
 
 def _create_article(ad: dict, project: Project | None, author: User) -> int:
-    """The article row, its images and its listing image. Returns the image
-    count."""
+    """The article row, its images and its cover. Returns the image count."""
+    listing = _prod_listing_image(ad)
     article = Article.objects.create(
         id=UUID(ad["id"]),
         project=project,
@@ -632,8 +642,7 @@ def _create_article(ad: dict, project: Project | None, author: User) -> int:
         title=ad["title"],
         body=localise_body(ad["body"]),
         summary=ad.get("summary") or "",
-        listing_crop=ad.get("listing_crop"),
-        listing_image_mode=ad["listing_image_mode"],
+        listing_crop=listing["crop"],
         slug=ad["slug"],
         source=ad["source"],
         external_url=ad.get("external_url"),
@@ -649,11 +658,10 @@ def _create_article(ad: dict, project: Project | None, author: User) -> int:
         image = create_article_image(image_data, article, project)
         if image:
             images_by_id[image_data["id"]] = image
-    listing = ad.get("listing_image")
-    if listing:
-        listing_image = images_by_id.get(listing["id"]) or create_article_image(
-            listing, article, project
-        )
+    if listing["image"]:
+        listing_image = images_by_id.get(
+            listing["image"]["id"]
+        ) or create_article_image(listing["image"], article, project)
         if listing_image:
             article.listing_image = listing_image
             article.save(update_fields=["listing_image"])

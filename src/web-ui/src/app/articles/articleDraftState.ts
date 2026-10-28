@@ -1,4 +1,4 @@
-import type { Article, ListingImageMode } from "@/lib/api";
+import type { Article } from "@/lib/api";
 import type { CropRect } from "@/components/CroppedImage";
 
 // The article authoring page's state, as pure data. No React, no network: the
@@ -11,11 +11,11 @@ export interface ArticleFormFields {
   // The authored standfirst. "" is meaningful: it clears the override and
   // returns the card to the summary derived server-side from the body.
   summary: string;
+  // The cover: shown at the top of the article and on its cards. Null is no
+  // cover and a text-only card.
   listing_image_id: string | null;
-  // The author's 16:9 framing of the listing image. Null renders as 16:9
-  // centred, which is what `auto` always gets.
+  // The author's 16:9 framing of the cover. Null renders as 16:9 centred.
   listing_crop: CropRect | null;
-  listing_image_mode: ListingImageMode;
 }
 
 // The fields plus the body. The body is not part of the form: MDXEditor holds
@@ -32,7 +32,6 @@ export function fieldsFromArticle(article: Article): ArticleFormFields {
     summary: article.summary,
     listing_image_id: article.listing_image_id,
     listing_crop: article.listing_crop,
-    listing_image_mode: article.listing_image_mode,
   };
 }
 
@@ -51,7 +50,6 @@ export function hasUnsavedChanges(
     fields.summary !== article.summary ||
     fields.channel_id !== (article.channel?.id ?? "") ||
     fields.listing_image_id !== article.listing_image_id ||
-    fields.listing_image_mode !== article.listing_image_mode ||
     JSON.stringify(fields.listing_crop) !== JSON.stringify(article.listing_crop)
   );
 }

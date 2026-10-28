@@ -38,19 +38,25 @@ async function saveDraft(page: Page) {
   await saved;
 }
 
-// Switching to the listing tab saves first, so this waits on the same write.
-async function openListingSettings(page: Page) {
+// Switching to the preview saves first, so this waits on the same write.
+async function openPreview(page: Page) {
   const saved = page.waitForResponse(
     (r) =>
       /\/api\/articles\//.test(r.url()) &&
       r.request().method() === "PATCH",
   );
-  await page.getByRole("tab", { name: "Listing settings" }).click();
+  await page.getByRole("button", { name: "Preview" }).click();
   await saved;
-  await expect(page.getByLabel("Summary")).toBeVisible();
+  await expect(page.getByRole("tab", { name: "The article" })).toBeVisible();
 }
 
-const listingThumb = (page: Page) => page.getByTestId("listing-image-thumb");
+async function backToEditing(page: Page) {
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  await expect(page.getByTestId("cover-slot")).toBeVisible();
+}
+
+const coverSlot = (page: Page) => page.getByTestId("cover-slot");
+const coverImage = (page: Page) => coverSlot(page).locator("img");
 
 // Two uploads of the same fixture get different storage keys and identical
 // filenames, so which one is showing is only answerable from the API.
@@ -67,28 +73,28 @@ async function savedListingImageId(
 // page, and the editor has its own Remove/Change controls.
 const wizard = (page: Page) => page.locator("dialog[open]");
 
-// Picks the nth image in the wizard and frames it with the default rectangle.
-async function chooseListingImage(page: Page, index: number) {
-  await page.getByRole("button", { name: /Change|Choose an image/ }).click();
+// Picks the nth image in the dialog and frames it with the default rectangle.
+async function chooseCover(page: Page, index: number) {
+  await page.getByRole("button", { name: /Change|Add a cover image/ }).click();
   await expect(
-    wizard(page).getByRole("heading", { name: "Choose a listing image" }),
+    wizard(page).getByRole("heading", { name: "Choose a cover image" }),
   ).toBeVisible();
   await wizard(page).locator("button[aria-pressed]").nth(index).click();
   await wizard(page).getByRole("button", { name: "Next", exact: true }).click();
   await expect(
-    wizard(page).getByRole("heading", { name: "Frame the card" }),
+    wizard(page).getByRole("heading", { name: "Frame the cover" }),
   ).toBeVisible();
   await wizard(page).getByRole("button", { name: "Use it" }).click();
   await expect(
-    page.getByRole("heading", { name: "Frame the card" }),
+    page.getByRole("heading", { name: "Frame the cover" }),
   ).toHaveCount(0);
 }
 
-async function removeListingImage(page: Page) {
-  await page.getByRole("button", { name: "Remove", exact: true }).click();
+async function removeCover(page: Page) {
+  await page.getByRole("button", { name: "Remove cover" }).click();
 }
 
-test.describe("Article listing image", () => {
+test.describe("Article cover", () => {
   let page: Page;
   let uploadedImageIds: string[];
 
@@ -103,53 +109,53 @@ test.describe("Article listing image", () => {
     await page.close();
   });
 
-  test("adopts the first body image, then keeps the author's choice", async () => {
+  test("a body image is not the cover until the author picks it", async () => {
     const { projectId, articleId } = await openBlankArticleEditor(page);
-    await page.fill('input[placeholder="Article title"]', "Listing image test");
+    await page.fill('input[placeholder="Article title"]', "Cover test");
     await insertBodyImage(page, 0);
     await insertBodyImage(page, 1);
     await saveDraft(page);
 
-    // auto mode: the earlier of the two uploads, resolved server-side on save.
-    await openListingSettings(page);
-    await expect(page.getByText("Following the first image")).toBeVisible();
-    const [first, second] = uploadedImageIds;
-    await expect(listingThumb(page)).toBeVisible();
-    expect(await savedListingImageId(page, projectId, articleId)).toBe(first);
+    // Nothing is derived from the body: the slot is empty and so is the card.
+    await expect(coverImage(page)).toHaveCount(0);
+    expect(await savedListingImageId(page, projectId, articleId)).toBeNull();
 
-    // Choosing the second one commits it, and it survives a save and a reload.
-    await chooseListingImage(page, 1);
-    await expect(page.getByText("Your choice.")).toBeVisible();
+    // Choosing the second upload makes it the cover and the card image, and
+    // it survives a save and a reload.
+    const [, second] = uploadedImageIds;
+    await chooseCover(page, 1);
+    await expect(coverImage(page)).toBeVisible();
     await saveDraft(page);
 
     await page.reload();
-    await openListingSettings(page);
-    await expect(page.getByText("Your choice.")).toBeVisible();
+    await expect(coverImage(page)).toBeVisible();
     expect(await savedListingImageId(page, projectId, articleId)).toBe(second);
 
-    // Removal sticks: it is a mode, not an empty id the next save re-fills.
-    await removeListingImage(page);
-    await expect(page.getByText("shows no image in listings")).toBeVisible();
+    await openPreview(page);
+    await page.getByRole("tab", { name: "As lead story" }).click();
+    await expect(page.locator("article img").first()).toBeVisible();
+    await backToEditing(page);
+
+    // Removal sticks across a save.
+    await removeCover(page);
+    await expect(coverImage(page)).toHaveCount(0);
     await saveDraft(page);
 
     await page.reload();
-    await openListingSettings(page);
-    await expect(page.getByText("shows no image in listings")).toBeVisible();
-    await expect(listingThumb(page)).toHaveCount(0);
+    await expect(coverImage(page)).toHaveCount(0);
     expect(await savedListingImageId(page, projectId, articleId)).toBeNull();
 
     await cleanUp(page, articleId, uploadedImageIds);
   });
 
-  test("previews an imageless article as a text-only card in both variants", async () => {
+  test("previews an article without a cover as a text-only card", async () => {
     const { articleId } = await openBlankArticleEditor(page);
     await page.fill('input[placeholder="Article title"]', "No image at all");
     await editorBody(page).fill("A body with no pictures in it whatsoever.");
 
-    await openListingSettings(page);
+    await openPreview(page);
 
-    // No image was ever uploaded, so `auto` resolves to nothing.
-    await expect(listingThumb(page)).toHaveCount(0);
+    await expect(page.locator("h1", { hasText: "No image at all" })).toBeVisible();
     for (const variant of ["As lead story", "In the grid"]) {
       await page.getByRole("tab", { name: variant }).click();
       const card = page.locator("article").first();

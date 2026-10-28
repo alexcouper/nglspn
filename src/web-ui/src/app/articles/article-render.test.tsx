@@ -140,7 +140,7 @@ describe("ArticleRenderContent", () => {
     cleanup();
   });
 
-  it("shows the listing image as a band when the article has one", async () => {
+  it("shows the article's image as a cover above the body", async () => {
     const { container, cleanup } = await render({
       article: article({ listing_image_url: "https://example.test/lead.jpg" }),
     });

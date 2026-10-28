@@ -9,8 +9,6 @@ export type OwnArticle = components["schemas"]["OwnArticleResponse"];
 export type ArticleUpdate = components["schemas"]["ArticleUpdate"];
 export type ArticlePublish = components["schemas"]["ArticlePublish"];
 // How the article's listing image was decided. Generated from
-// ListingImageMode in apps/articles/models.py.
-export type ListingImageMode = components["schemas"]["ListingImageMode"];
 export type Image = components["schemas"]["ImageResponse"];
 export type PresignedUploadResponse =
   components["schemas"]["PresignedUploadResponse"];

@@ -6,7 +6,7 @@
 <mj-section background-color="#ffffff" border-radius="12px" padding="0">
   <mj-column>
     <mj-text padding="28px 32px 20px">
-      {% with article=lead %}{% include "email/_article_byline.mjml" %}{% endwith %}
+      {% with article=lead %}{% include "email/_article_byline.mjml" %}{% include "email/_article_lead_in.mjml" %}{% endwith %}
     </mj-text>
     <mj-divider border-color="#f1f5f9" border-width="1px" padding="0 32px" />
     <mj-text padding="20px 32px 0" font-size="15px" line-height="1.7" color="#334155">

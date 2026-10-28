@@ -55,7 +55,7 @@ This applies to all of:
 
 ### Requirement: Article model
 
-The system SHALL provide an `Article` model in a new `apps/articles` Django app. The model SHALL include: `id` (UUID), `project` (FK to Project, nullable, `on_delete=CASCADE`, `related_name="articles"`), `channel` (FK to Channel, nullable, `on_delete=PROTECT`), `author` (FK to User, nullable), `title` (CharField, max 200), `body` (TextField, markdown), `listing_image` (FK to `projects.Image`, nullable, `on_delete=SET_NULL`), `listing_crop` (JSONField, nullable), `listing_image_mode` (CharField, choices `auto` / `chosen` / `none`, default `auto`), `slug` (SlugField, nullable), `source` (CharField, choices `internal` / `external`, default `internal`), `external_url` (URLField, nullable), `state` (CharField, choices `draft` / `published`, default `draft`), `published_at` (DateTimeField, nullable), `global_visibility` (CharField, choices `auto` / `pending` / `approved` / `demoted`, default `auto`), `created_at`, `updated_at`.
+The system SHALL provide an `Article` model in a new `apps/articles` Django app. The model SHALL include: `id` (UUID), `project` (FK to Project, nullable, `on_delete=CASCADE`, `related_name="articles"`), `channel` (FK to Channel, nullable, `on_delete=PROTECT`), `author` (FK to User, nullable), `title` (CharField, max 200), `body` (TextField, markdown), `listing_image` (FK to `projects.Image`, nullable, `on_delete=SET_NULL`; the cover, and null when the author picked none), `listing_crop` (JSONField, nullable), `slug` (SlugField, nullable), `source` (CharField, choices `internal` / `external`, default `internal`), `external_url` (URLField, nullable), `state` (CharField, choices `draft` / `published`, default `draft`), `published_at` (DateTimeField, nullable), `global_visibility` (CharField, choices `auto` / `pending` / `approved` / `demoted`, default `auto`), `created_at`, `updated_at`.
 
 An article with a `project` SHALL have a `channel` on that project. An article with no `project` is author-owned: it SHALL have a non-null `author`, a null `channel` while draft, and the author's personal channel once published (see the `author-articles` and `user-following` capabilities).
 
@@ -304,7 +304,9 @@ The system SHALL provide a "Write article" entry point on the project page that 
 The system SHALL provide one authoring page at `/articles/edit/<id>`, which always addresses an existing draft of either kind, and SHALL redirect the former `/projects/<project-slug>/articles/edit/<id>` to it. The authoring page SHALL provide:
 - A markdown editor with side-by-side preview on viewports `≥ md` and tabbed (Edit / Preview) below that.
 - Drag-to-insert image upload: dropping an image file on the editor SHALL upload it against the article it is being written into and insert a `![](url)` reference at the cursor. Article images are addressed under the article that owns them (`/api/articles/{id}/images/...`), not through the project's gallery endpoints, and SHALL NOT count against the project's image cap or become its cover image.
-- A **Listing settings** tab holding the summary, the listing-image control and a preview of the article's card.
+- A standfirst field under the title: it renders under the title on the page, in the digest email and on cards, so it is edited where it will appear.
+- A **cover slot** above the body. The cover is the one image an author picks for the article (`Article.listing_image` and its crop): it renders wide at the top of the page and in the email, and is the image on the article's cards. Nothing is derived from the body — an article without a cover has a text-only card. The slot offers "Add a cover image" (opening the image dialog, which picks from the article's uploads or a new upload and frames it at 16:9) and, once set, renders the cover as the page frames it with Change and Remove cover.
+- An **Edit / Preview** switch above the title. Switching to the preview saves the draft first, then shows the saved article one way at a time: the article as its page renders it, as the lead card, and as a grid card. There is no separate listing-settings tab.
 - A channel dropdown listing this project's channels, for a project article only.
 - A "Save draft" button (no field requirements) and a "Publish" button (requires title and body; opens a confirm dialog with optional `published_at` override).
 
@@ -360,7 +362,7 @@ When the article cannot be resolved for the caller — it does not exist, or the
 
 ### Requirement: Article render page
 
-The system SHALL serve a render page at `/projects/<project-slug>/articles/<article-slug>` for an article on a project, and at `/users/<author-id>/articles/<article-slug>` for an author-owned article, that displays the Article's title, optional byline, and the markdown-rendered body. It SHALL NOT display an image band above the body — an author who wants one inserts it into the body. The project page SHALL reuse the project-page header so the Article is unambiguously part of its project; the author page SHALL show the author's name and avatar in its place (see the `author-articles` capability).
+The system SHALL serve a render page at `/projects/<project-slug>/articles/<article-slug>` for an article on a project, and at `/users/<author-id>/articles/<article-slug>` for an author-owned article, that displays the Article's title, the standfirst (`summary`, or the derived excerpt when none is written), optional byline, and the markdown-rendered body. It SHALL display the article's cover (`listing_image`), when it has one, wide between the byline and the body. The project page SHALL reuse the project-page header so the Article is unambiguously part of its project; the author page SHALL show the author's name and avatar in its place (see the `author-articles` capability).
 
 The page SHALL return 404 when:
 - the slug does not exist under that container, OR
@@ -397,7 +399,7 @@ When linked from a Phase 5 carousel, internal article links SHALL open in a new 
 
 ### Requirement: Edit and delete after publish
 
-A `ProjectContributor` with `full_edit = True` SHALL be able to edit `title`, `body`, the listing image and its framing, `channel`, and `published_at` on a published Article on a project. The author of an author-owned Article SHALL be able to edit the same fields except `channel`. Editing SHALL NOT alter `slug` or `global_visibility`. Editing SHALL NOT fire notifications.
+A `ProjectContributor` with `full_edit = True` SHALL be able to edit `title`, `body`, the cover and its framing, `channel`, and `published_at` on a published Article on a project. The author of an author-owned Article SHALL be able to edit the same fields except `channel`. Editing SHALL NOT alter `slug` or `global_visibility`. Editing SHALL NOT fire notifications.
 
 The same people SHALL be able to hard-delete a published Article. Deletion SHALL cascade-delete any related Notification rows that point at the Article.
 

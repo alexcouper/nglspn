@@ -236,9 +236,25 @@ def _byline_context(article: Article) -> dict:
     }
 
 
+def _cover_image_url(article: Article) -> str | None:
+    """The cover as the web page shows it, above the body. Uncropped: the
+    author's framing is CSS on the page, and nothing renders a cropped file
+    yet, so this is the same whole image the social card gets."""
+    if article.listing_image is None:
+        return None
+    return variant_url(article.listing_image, "medium")
+
+
+def _standfirst(article: Article) -> str:
+    """What the web page shows under the title."""
+    return article.summary or derive_summary(article.body or "")
+
+
 def _full_article_context(article: Article) -> dict:
     return {
         **_byline_context(article),
+        "standfirst": _standfirst(article),
+        "cover_image_url": _cover_image_url(article),
         "body_html": render_markdown_for_email(
             article.body, image_urls=_body_image_urls(article)
         ),
@@ -254,6 +270,8 @@ def _lead_article_context(article: Article) -> dict:
     )
     return {
         **_byline_context(article),
+        "standfirst": _standfirst(article),
+        "cover_image_url": _cover_image_url(article),
         "body_html": render_markdown_for_email(
             excerpt, image_urls=_body_image_urls(article)
         ),

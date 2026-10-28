@@ -536,7 +536,7 @@ class TestPatchArticle:
         response = _patch(
             client,
             f"/api/articles/{article.id}",
-            {"listing_image_id": None, "listing_image_mode": "none"},
+            {"listing_image_id": None},
             auth_headers,
         )
 
@@ -555,7 +555,7 @@ class TestPatchArticle:
         response = _patch(
             client,
             f"/api/articles/{article.id}",
-            {"listing_image_id": None, "listing_image_mode": "none"},
+            {"listing_image_id": None},
             auth_headers,
         )
 
@@ -584,7 +584,7 @@ LISTING_CROP = _crop(x=0.2, y=0.3, w=0.6)
 
 def _choose(client, project, article, auth_headers, image, crop=None):
     """Set the article's listing image through the API, as the wizard does."""
-    payload = {"listing_image_id": str(image.id), "listing_image_mode": "chosen"}
+    payload = {"listing_image_id": str(image.id)}
     if crop is not None:
         payload["listing_crop"] = crop
     response = _patch(
@@ -598,8 +598,8 @@ def _choose(client, project, article, auth_headers, image, crop=None):
 
 
 @pytest.mark.django_db
-class TestListingImageMode:
-    def test_a_new_article_starts_in_auto(self, client, user, auth_headers) -> None:
+class TestArticleCover:
+    def test_a_new_article_has_no_cover(self, client, user, auth_headers) -> None:
         project = ProjectFactory(owner=user)
         channel = ChannelFactory(project=project, name="Updates")
 
@@ -611,15 +611,13 @@ class TestListingImageMode:
         )
 
         assert_that(response.status_code, equal_to(201))
-        assert_that(response.json()["listing_image_mode"], equal_to("auto"))
         assert_that(response.json()["listing_image_id"], equal_to(None))
 
-    def test_auto_adopts_the_first_upload_on_save(
+    def test_an_upload_does_not_become_the_cover_on_save(
         self, client, user, auth_headers
     ) -> None:
         project = ProjectFactory(owner=user)
         article = ArticleFactory(project=project)
-        first = _sized_image(article)
         _sized_image(article)
 
         response = _patch(
@@ -631,11 +629,7 @@ class TestListingImageMode:
 
         assert_that(
             response.json(),
-            has_entries(
-                listing_image_id=str(first.id),
-                listing_image_mode="auto",
-                listing_crop=None,
-            ),
+            has_entries(listing_image_id=None, listing_crop=None),
         )
 
     def test_choosing_an_image_and_a_crop_round_trips(
@@ -650,13 +644,7 @@ class TestListingImageMode:
             client, project, article, auth_headers, chosen, crop=LISTING_CROP
         )
 
-        assert_that(
-            response.json(),
-            has_entries(
-                listing_image_id=str(chosen.id),
-                listing_image_mode="chosen",
-            ),
-        )
+        assert_that(response.json()["listing_image_id"], equal_to(str(chosen.id)))
         assert_that(response.json()["listing_crop"], has_entries(x=0.2, w=0.6))
         article.refresh_from_db()
         assert_that(article.listing_crop, has_entries(x=0.2, w=0.6))
@@ -684,11 +672,11 @@ class TestListingImageMode:
     ) -> None:
         project = ProjectFactory(owner=user)
         article = ArticleFactory(project=project)
-        _sized_image(article)
+        _choose(client, project, article, auth_headers, _sized_image(article))
         _patch(
             client,
             f"/api/articles/{article.id}",
-            {"listing_image_id": None, "listing_image_mode": "none"},
+            {"listing_image_id": None},
             auth_headers,
         )
 
@@ -699,25 +687,7 @@ class TestListingImageMode:
             auth_headers,
         )
 
-        assert_that(
-            response.json(),
-            has_entries(listing_image_id=None, listing_image_mode="none"),
-        )
-
-    def test_an_unknown_mode_is_rejected(self, client, user, auth_headers) -> None:
-        project = ProjectFactory(owner=user)
-        article = ArticleFactory(project=project)
-
-        response = _patch(
-            client,
-            f"/api/articles/{article.id}",
-            {"listing_image_mode": "nonsense"},
-            auth_headers,
-        )
-
-        assert_that(response.status_code, equal_to(422))
-        article.refresh_from_db()
-        assert_that(article.listing_image_mode, equal_to("auto"))
+        assert_that(response.json()["listing_image_id"], equal_to(None))
 
 
 @pytest.mark.django_db

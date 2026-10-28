@@ -4,16 +4,21 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { type CSSProperties, useMemo, useState } from "react";
 import { useTranslations } from "next-intl";
-import { ArrowPathIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { ArrowPathIcon, EyeIcon, PencilIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useAuth } from "@/contexts/auth";
 import type { Article, Project } from "@/lib/api";
 import { ArticleAuthoringSkeleton } from "./ArticleAuthoringSkeleton";
 import { PublishDialog } from "./PublishDialog";
 import { ChannelDropdown } from "./ChannelDropdown";
+import { CoverSlot } from "./CoverSlot";
 import { ListingImageDialog } from "./ListingImageDialog";
-import { ListingSettingsPanel } from "./ListingSettingsPanel";
+import { ArticlePreview } from "./ArticlePreview";
+import { authorContainer, projectContainer } from "./container";
 import { useArticleDraft } from "./useArticleDraft";
 import { useStickyChromeOffset } from "./useStickyChromeOffset";
+import { pickVariant } from "@/lib/utils";
+
+const SUMMARY_MAX = 300;
 
 // The import stays inline: next/dynamic's compile-time transform has to see the
 // literal `import()` to register the chunk in the loadable manifest. Hoisting
@@ -25,9 +30,11 @@ const ArticleEditor = dynamic(
   { ssr: false, loading: () => <div className="skeleton h-[60vh] w-full" /> },
 );
 
-type Tab = "content" | "listing";
+// Editing, or looking at what the reader will get. Switching to the preview
+// saves first: the derived summary and the rendered body are the server's.
+type View = "edit" | "preview";
 
-const TABS: Tab[] = ["content", "listing"];
+const VIEWS: View[] = ["edit", "preview"];
 
 interface Props {
   // Null for an author-owned article: no channel dropdown, and the breadcrumb
@@ -48,12 +55,12 @@ export function ArticleAuthoringPage({ project, initialArticle }: Props) {
   const articleId = initialArticle.id;
   const t = useTranslations("articles.authoring");
   const tc = useTranslations("common.actions");
-  // Spelled out rather than t(`tabs.${key}`): a template-literal key is not
-  // checked against the messages, so adding a tab would render its own key
-  // path. `tsc` now fails on a missing message and on a missing tab alike.
-  const tabLabels: Record<Tab, string> = {
-    content: t("tabs.content"),
-    listing: t("tabs.listing"),
+  // Spelled out rather than t(`view.${key}`): a template-literal key is not
+  // checked against the messages, so adding a view would render its own key
+  // path. `tsc` now fails on a missing message and on a missing view alike.
+  const viewLabels: Record<View, string> = {
+    edit: t("view.edit"),
+    preview: t("view.preview"),
   };
 
   // Where the author came from and goes back to: the project page, or their
@@ -68,9 +75,9 @@ export function ArticleAuthoringPage({ project, initialArticle }: Props) {
   // the action bar rather than behind it. See article-markdown.css.
   const { ref: actionBarRef, offset: chromeOffset } = useStickyChromeOffset();
   const [showPublishDialog, setShowPublishDialog] = useState(false);
-  const [showImageWizard, setShowImageWizard] = useState(false);
-  const [tab, setTab] = useState<Tab>("content");
-  const [isSwitchingTab, setIsSwitchingTab] = useState(false);
+  const [showCoverDialog, setShowCoverDialog] = useState(false);
+  const [view, setView] = useState<View>("edit");
+  const [isSwitchingView, setIsSwitchingView] = useState(false);
 
   // Same rule the backend applies: a `full_edit` contributor on the project,
   // or the author of an author-owned article.
@@ -142,21 +149,27 @@ export function ArticleAuthoringPage({ project, initialArticle }: Props) {
     await draft.remove();
   };
 
-  // The previewed summary is derived server-side from the saved body, so the
-  // listing tab has to render a saved article — otherwise it would show a stale
-  // excerpt for text the author has just typed. On failure the tab does not
-  // open, and draft.error already says why.
-  const handleTabClick = async (next: Tab) => {
-    if (next === tab) return;
-    if (next !== "listing") {
-      setTab(next);
+  // The preview renders the saved article — the derived summary only exists
+  // server-side, and the body lives in the editor until a save — so switching
+  // to it saves first. On failure the view stays put, and draft.error already
+  // says why.
+  const handleViewClick = async (next: View) => {
+    if (next === view) return;
+    if (next === "edit") {
+      setView(next);
       return;
     }
-    setIsSwitchingTab(true);
+    setIsSwitchingView(true);
     const saved = await draft.save();
-    setIsSwitchingTab(false);
-    if (saved) setTab("listing");
+    setIsSwitchingView(false);
+    if (saved) setView("preview");
   };
+
+  const container = project
+    ? projectContainer(project)
+    : article.author
+      ? authorContainer(article.author)
+      : null;
 
   return (
     <>
@@ -180,6 +193,35 @@ export function ArticleAuthoringPage({ project, initialArticle }: Props) {
             )}
             <span className="mx-2">/</span>
             <span className="text-foreground font-medium">{mode}</span>
+          </div>
+          <div
+            role="group"
+            aria-label={t("view.label")}
+            className="inline-flex rounded-lg border border-border bg-muted p-0.5"
+          >
+            {VIEWS.map((key) => (
+              <button
+                key={key}
+                type="button"
+                aria-pressed={view === key}
+                disabled={isSwitchingView}
+                onClick={() => handleViewClick(key)}
+                className={`inline-flex items-center gap-1.5 rounded-md px-3 py-1 text-sm transition-colors ${
+                  view === key
+                    ? "bg-white font-medium text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                {key === "edit" ? (
+                  <PencilIcon className="w-4 h-4" />
+                ) : isSwitchingView ? (
+                  <ArrowPathIcon className="w-4 h-4 animate-spin" />
+                ) : (
+                  <EyeIcon className="w-4 h-4" />
+                )}
+                {viewLabels[key]}
+              </button>
+            ))}
           </div>
           <div className="flex items-center gap-2">
             {draft.successMessage && (
@@ -233,15 +275,17 @@ export function ArticleAuthoringPage({ project, initialArticle }: Props) {
         </div>
       </div>
 
+      {/* Mounted, not unmounted, when previewing: MDXEditor holds the body
+          uncontrolled, and remounting it on every switch would lose the cursor
+          and re-run its plugin setup. */}
       <div
-        className="max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4"
+        className={`max-w-4xl mx-auto px-4 sm:px-6 py-6 space-y-4 ${
+          view === "edit" ? "" : "hidden"
+        }`}
         style={
           { "--article-chrome-offset": `${chromeOffset}px` } as CSSProperties
         }
       >
-        {/* Above the tabs: the title is article identity and it is what the
-            card preview renders, so tuning a headline for the card should not
-            mean changing tabs. */}
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-3 sm:items-center">
           <input
             type="text"
@@ -259,52 +303,51 @@ export function ArticleAuthoringPage({ project, initialArticle }: Props) {
           )}
         </div>
 
-        <div role="tablist" aria-label={t("tablistLabel")} className="flex gap-1">
-          {TABS.map((key) => (
-            <button
-              key={key}
-              role="tab"
-              aria-selected={tab === key}
-              disabled={isSwitchingTab}
-              onClick={() => handleTabClick(key)}
-              className={`flex items-center gap-1.5 border-b-2 px-3 py-2 text-sm transition-colors ${
-                tab === key
-                  ? "border-accent font-medium text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tabLabels[key]}
-              {key === "listing" && isSwitchingTab && (
-                <ArrowPathIcon className="w-3.5 h-3.5 animate-spin" />
-              )}
-            </button>
-          ))}
+        {/* The standfirst sits under the title on the page, in the email and
+            on cards, so it is edited under the title here too. */}
+        <div>
+          <label htmlFor="article-summary" className="sr-only">
+            {t("summary.label")}
+          </label>
+          <textarea
+            id="article-summary"
+            value={form.summary}
+            placeholder={article.summary_display || t("summary.placeholder")}
+            maxLength={SUMMARY_MAX}
+            rows={2}
+            onChange={(e) => draft.updateForm({ summary: e.target.value })}
+            className="w-full rounded-lg border border-border bg-white px-3.5 py-2 text-base text-muted-foreground placeholder:text-[#94a3b8] focus:outline-none focus:border-accent focus:ring-[3px] focus:ring-accent/12 transition-[border-color,box-shadow]"
+          />
+          <div className="mt-1 flex items-center justify-between text-xs text-muted-foreground">
+            <span>{t("summary.hint")}</span>
+            <span>
+              {t("summary.count", { count: form.summary.length, max: SUMMARY_MAX })}
+            </span>
+          </div>
         </div>
 
-        {/* Mounted, not unmounted, when hidden: MDXEditor holds the body
-            uncontrolled, and remounting it on every tab switch would lose the
-            cursor and re-run its plugin setup. */}
-        <div className={tab === "content" ? undefined : "hidden"}>
-          <ArticleEditor
-            articleId={article.id}
-            initialMarkdown={article.body}
-            onChange={draft.handleBodyChange}
-          />
-        </div>
-
-        {tab === "listing" && (
-          <ListingSettingsPanel
-            article={article}
-            summary={form.summary}
-            listingImage={draft.listingImage}
-            crop={form.listing_crop}
-            mode={form.listing_image_mode}
-            onSummaryChange={(value) => draft.updateForm({ summary: value })}
-            onChangeImage={() => setShowImageWizard(true)}
-            onRemoveImage={draft.removeListingImage}
-          />
-        )}
+        <CoverSlot
+          imageUrl={
+            draft.cover
+              ? (pickVariant(draft.cover.variants, "medium") ?? draft.cover.url)
+              : null
+          }
+          crop={form.listing_crop}
+          onPick={() => setShowCoverDialog(true)}
+          onRemove={draft.removeCover}
+        />
+        <ArticleEditor
+          articleId={article.id}
+          initialMarkdown={article.body}
+          onChange={draft.handleBodyChange}
+        />
       </div>
+
+      {view === "preview" && container && (
+        <div className="py-6">
+          <ArticlePreview article={article} container={container} />
+        </div>
+      )}
 
       {showPublishDialog && (
         <PublishDialog
@@ -318,21 +361,21 @@ export function ArticleAuthoringPage({ project, initialArticle }: Props) {
         />
       )}
 
-      {showImageWizard && (
+      {showCoverDialog && (
         <ListingImageDialog
           articleId={article.id}
           images={draft.images}
           currentImageId={form.listing_image_id}
           currentCrop={form.listing_crop}
           onConfirm={(image, crop) => {
-            draft.chooseListingImage(image, crop);
-            setShowImageWizard(false);
+            draft.chooseCover(image, crop);
+            setShowCoverDialog(false);
           }}
           onRemove={() => {
-            draft.removeListingImage();
-            setShowImageWizard(false);
+            draft.removeCover();
+            setShowCoverDialog(false);
           }}
-          onClose={() => setShowImageWizard(false)}
+          onClose={() => setShowCoverDialog(false)}
         />
       )}
     </>

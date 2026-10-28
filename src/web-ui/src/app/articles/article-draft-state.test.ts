@@ -24,7 +24,6 @@ function article(overrides: Partial<Article> = {}): Article {
     listing_image_url: null,
     listing_image: null,
     listing_crop: null,
-    listing_image_mode: "auto",
     images: [],
     slug: null,
     state: "draft",
@@ -67,7 +66,6 @@ describe("fieldsFromArticle", () => {
         summary: "A standfirst.",
         listing_image_id: "image-1",
         listing_crop: CROP,
-        listing_image_mode: "chosen",
       }),
     );
 
@@ -77,7 +75,6 @@ describe("fieldsFromArticle", () => {
       summary: "A standfirst.",
       listing_image_id: "image-1",
       listing_crop: CROP,
-      listing_image_mode: "chosen",
     } satisfies ArticleFormFields);
   });
 });
@@ -117,7 +114,6 @@ describe("hasUnsavedChanges", () => {
     ["summary", { summary: "A new standfirst." }],
     ["channel", { channel_id: "channel-2" }],
     ["listing image", { listing_image_id: "image-1" }],
-    ["listing image mode", { listing_image_mode: "none" as const }],
     ["listing crop", { listing_crop: CROP }],
   ])("notices an edited %s", (_field, patch) => {
     expect(isDirtyAfter(patch)).toBe(true);

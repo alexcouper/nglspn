@@ -117,7 +117,6 @@ def patch_article(
             summary=payload.summary,
             listing_image_id=provided.get("listing_image_id", UNSET),
             listing_crop=provided.get("listing_crop", UNSET),
-            listing_image_mode=payload.listing_image_mode,
             channel_id=payload.channel_id,
             published_at=payload.published_at,
         )

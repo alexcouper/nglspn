@@ -87,7 +87,6 @@ function article(overrides: Partial<Article> = {}): Article {
     listing_image_url: null,
     listing_image: null,
     listing_crop: null,
-    listing_image_mode: "auto",
     images: [],
     slug: null,
     state: "draft",
@@ -246,18 +245,19 @@ describe("a load that fails", () => {
   });
 });
 
-describe("choosing a listing image", () => {
-  it("shows an image uploaded in the wizard before any save", async () => {
+describe("choosing a cover", () => {
+  it("shows an image uploaded in the dialog before any save", async () => {
     const uploaded = image({ id: "fresh-upload" });
     const harness = await mountDraft({ articleId: "article-1" });
 
     await harness.act(() => {
-      harness.draft().chooseListingImage(uploaded, CROP);
+      harness.draft().chooseCover(uploaded, CROP);
     });
 
-    expect(harness.draft().listingImage?.id).toBe("fresh-upload");
+    expect(harness.draft().cover?.id).toBe("fresh-upload");
     expect(harness.draft().images).toEqual([uploaded]);
-    expect(harness.draft().form?.listing_image_mode).toBe("chosen");
+    expect(harness.draft().form?.listing_image_id).toBe("fresh-upload");
+    expect(harness.draft().form?.listing_crop).toEqual(CROP);
 
     await harness.unmount();
   });
@@ -268,7 +268,7 @@ describe("choosing a listing image", () => {
     const harness = await mountDraft({ articleId: "article-1" });
 
     await harness.act(() => {
-      harness.draft().chooseListingImage(known, CROP);
+      harness.draft().chooseCover(known, CROP);
     });
 
     expect(harness.draft().images).toHaveLength(1);
@@ -276,32 +276,33 @@ describe("choosing a listing image", () => {
     await harness.unmount();
   });
 
-  it("falls back to the saved image the server resolved for `auto`", async () => {
-    const resolved = image({ id: "auto-resolved" });
+  it("falls back to the cover the server holds when it is not in the list", async () => {
+    const held = image({ id: "server-held" });
     articles.get.mockResolvedValue(
       article({
-        listing_image_id: "auto-resolved",
-        listing_image: resolved,
+        listing_image_id: "server-held",
+        listing_image: held,
         images: [],
       }),
     );
 
     const harness = await mountDraft({ articleId: "article-1" });
 
-    expect(harness.draft().listingImage?.id).toBe("auto-resolved");
+    expect(harness.draft().cover?.id).toBe("server-held");
 
     await harness.unmount();
   });
 
-  it("clears the image and says so when it is removed", async () => {
+  it("clears the image and its crop when the cover is removed", async () => {
     const harness = await mountDraft({ articleId: "article-1" });
 
     await harness.act(() => {
-      harness.draft().removeListingImage();
+      harness.draft().removeCover();
     });
 
-    expect(harness.draft().listingImage).toBeNull();
-    expect(harness.draft().form?.listing_image_mode).toBe("none");
+    expect(harness.draft().cover).toBeNull();
+    expect(harness.draft().form?.listing_image_id).toBeNull();
+    expect(harness.draft().form?.listing_crop).toBeNull();
 
     await harness.unmount();
   });
@@ -365,12 +366,9 @@ describe("saving", () => {
     await harness.unmount();
   });
 
-  it("adopts the image ids the server resolved for `auto`", async () => {
+  it("adopts the cover the server settled on after a save", async () => {
     articles.update.mockResolvedValue(
-      article({
-        listing_image_id: "server-picked",
-        listing_image_mode: "auto",
-      }),
+      article({ listing_image_id: "server-picked" }),
     );
     const harness = await mountDraft({ articleId: "article-1" });
 

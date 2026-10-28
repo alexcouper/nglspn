@@ -61,7 +61,6 @@ class ArticleHandlerInterface(ABC):
         # Same reason as listing_image_id: null clears the framing back to the
         # default 16:9 centred rectangle.
         listing_crop: dict[str, float] | None | UnsetType = UNSET,
-        listing_image_mode: str | None = None,
         channel_id: UUID | None = None,
         published_at: datetime | None = None,
     ) -> Article: ...

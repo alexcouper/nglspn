@@ -4,7 +4,6 @@ from uuid import UUID
 
 from ninja import Schema
 
-from apps.articles.models import ListingImageMode
 from services.articles.summary import derive_summary
 
 from .project import ImageResponse
@@ -46,18 +45,12 @@ class ArticleUpdate(Schema):
     # "" is meaningful here: it clears the override and returns the article to
     # the derived fallback.
     summary: str | None = None
-    # null is meaningful on both of these, so patch_article reads them out of
-    # dict(exclude_unset=True) rather than treating null as "not sent": null on
-    # listing_image_id clears the image, and null on listing_crop drops back to
-    # the 16:9 centred default.
+    # The cover. null is meaningful on both of these, so patch_article reads
+    # them out of dict(exclude_unset=True) rather than treating null as "not
+    # sent": null on listing_image_id removes the cover, and null on
+    # listing_crop drops back to the 16:9 centred default.
     listing_image_id: UUID | None = None
     listing_crop: CropRect | None = None
-    # Omitted means "leave it as it is", except that sending an image or a crop
-    # without a mode commits the author's choice. Typed as the model enum rather
-    # than a literal so the accepted values cannot drift from the column's
-    # choices — Django does not enforce those on save, so this schema is the
-    # only place an unknown mode gets turned away.
-    listing_image_mode: ListingImageMode | None = None
     channel_id: UUID | None = None
     published_at: datetime | None = None
 
@@ -106,7 +99,6 @@ class ArticleOut(Schema):
     listing_image_id: UUID | None
     listing_image_url: str | None
     listing_crop: CropRect | None
-    listing_image_mode: ListingImageMode
     # The full image, with variants. The editor needs this: article images are
     # excluded from `ProjectResponse.images`, so it cannot look the listing
     # image up there when loading an article for editing.

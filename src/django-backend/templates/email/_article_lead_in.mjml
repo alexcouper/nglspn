@@ -1,0 +1,7 @@
+{% comment %}
+What sits between the byline and the body on the web page: the standfirst
+under the title, then the cover. Expects `article` with standfirst and
+cover_image_url; both may be empty. Inside an mj-text, so plain HTML.
+{% endcomment %}
+{% if article.standfirst %}<p style="margin: 12px 0 0; font-size: 16px; line-height: 1.6; color: #64748b;">{{ article.standfirst }}</p>{% endif %}
+{% if article.cover_image_url %}<a href="{{ article.article_url }}" style="text-decoration: none;"><img src="{{ article.cover_image_url }}" alt="" width="536" style="display: block; width: 100%; max-width: 536px; height: auto; margin-top: 20px; border-radius: 10px; border: 0;" /></a>{% endif %}

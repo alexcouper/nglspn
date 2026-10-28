@@ -137,27 +137,18 @@ export function useArticleDraft({
   );
   useLeaveGuard(isDirty);
 
-  // The wizard's outcome: an image and the rectangle the author drew on it.
-  // Any choice commits the mode, so the next save does not re-derive the image
-  // out from under a rectangle they just drew.
-  const chooseListingImage = useCallback(
+  // The dialog's outcome: an image and the rectangle the author drew on it.
+  // That image is the cover and the card image both; there is no second one.
+  const chooseCover = useCallback(
     (image: Image, crop: CropRect | null) => {
       adoptImage(image);
-      updateFields({
-        listing_image_id: image.id,
-        listing_crop: crop,
-        listing_image_mode: "chosen",
-      });
+      updateFields({ listing_image_id: image.id, listing_crop: crop });
     },
     [adoptImage, updateFields],
   );
 
-  const removeListingImage = useCallback(() => {
-    updateFields({
-      listing_image_id: null,
-      listing_crop: null,
-      listing_image_mode: "none",
-    });
+  const removeCover = useCallback(() => {
+    updateFields({ listing_image_id: null, listing_crop: null });
   }, [updateFields]);
 
   const save = useCallback(async (): Promise<Article | null> => {
@@ -196,7 +187,7 @@ export function useArticleDraft({
     article,
     form: fields,
     images,
-    listingImage,
+    cover: listingImage,
     isLoading,
     error,
     setError,
@@ -209,8 +200,8 @@ export function useArticleDraft({
     updateForm: updateFields,
     snapshotForm: snapshot,
     isDirty,
-    chooseListingImage,
-    removeListingImage,
+    chooseCover,
+    removeCover,
     save,
     publish,
     remove,

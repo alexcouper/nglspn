@@ -5548,9 +5548,6 @@
               }
             ]
           },
-          "listing_image_mode": {
-            "$ref": "#/components/schemas/ListingImageMode"
-          },
           "listing_image": {
             "anyOf": [
               {
@@ -5641,7 +5638,6 @@
           "listing_image_id",
           "listing_image_url",
           "listing_crop",
-          "listing_image_mode",
           "listing_image",
           "images",
           "slug",
@@ -5851,16 +5847,6 @@
         ],
         "title": "ImageVariantResponse",
         "type": "object"
-      },
-      "ListingImageMode": {
-        "description": "How an article's listing image was decided.\n\nA nullable ``listing_image`` cannot tell \"not chosen yet\" from \"deliberately\nremoved\", so removal would not survive the next save.",
-        "enum": [
-          "auto",
-          "chosen",
-          "none"
-        ],
-        "title": "ListingImageMode",
-        "type": "string"
       },
       "PublicUserProfile": {
         "description": "What anyone may know about a user.\n\nEmbedded in every project (creator, contributors) and article (author), so\neverything here must come off the user row and its `avatar` FK — the list\nquerysets `select_related` that FK for exactly this reason. The person's\nprojects and articles are separate endpoints, never fields here.",
@@ -7442,16 +7428,6 @@
             "anyOf": [
               {
                 "$ref": "#/components/schemas/CropRect"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "listing_image_mode": {
-            "anyOf": [
-              {
-                "$ref": "#/components/schemas/ListingImageMode"
               },
               {
                 "type": "null"

@@ -12,7 +12,6 @@ from apps.articles.models import (
     ArticleGlobalVisibility,
     ArticleSource,
     ArticleState,
-    ListingImageMode,
 )
 from apps.articles.slugs import assign_unique_article_slug
 from apps.follows.models import PERSONAL_CHANNEL_NAME, Channel
@@ -104,15 +103,14 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             if project_id is not None
             else None
         )
-        # No listing image on create: an image cannot be uploaded against an
-        # article that does not exist yet, so `auto` has nothing to resolve to.
+        # No cover on create: an image cannot be uploaded against an article
+        # that does not exist yet.
         article = Article(
             project_id=project_id,
             channel=channel,
             author_id=author_id,
             title=title,
             body=body,
-            listing_image_mode=ListingImageMode.AUTO,
             source=ArticleSource.INTERNAL,
             state=ArticleState.DRAFT,
         )
@@ -128,7 +126,6 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         summary: str | None = None,
         listing_image_id: UUID | None | UnsetType = UNSET,
         listing_crop: dict[str, float] | None | UnsetType = UNSET,
-        listing_image_mode: str | None = None,
         channel_id: UUID | None = None,
         published_at: datetime | None = None,
     ) -> Article:
@@ -148,7 +145,6 @@ class DjangoArticleHandler(ArticleHandlerInterface):
             article,
             listing_image_id=listing_image_id,
             listing_crop=listing_crop,
-            listing_image_mode=listing_image_mode,
         )
         if channel_id is not None and channel_id != article.channel_id:
             if article.is_author_owned:
@@ -337,105 +333,34 @@ class DjangoArticleHandler(ArticleHandlerInterface):
         *,
         listing_image_id: UUID | None | UnsetType,
         listing_crop: dict[str, float] | None | UnsetType,
-        listing_image_mode: str | None,
     ) -> list[str]:
-        """Settle the listing image, its crop and its mode; return fields touched.
+        """Settle the cover and its crop; return the fields touched.
 
-        Called on every update, because ``auto`` is resolved on save rather than
-        on read — a listing card is then a plain FK join instead of a per-card
-        subquery.
+        UNSET leaves a value alone. A rectangle drawn on one image means
+        nothing on another, so an image that changed or went away takes its
+        framing with it unless a new crop came with the request.
         """
-        mode = self._resolve_mode(
-            article,
-            listing_image_id=listing_image_id,
-            listing_crop=listing_crop,
-            listing_image_mode=listing_image_mode,
-        )
+        if listing_image_id is UNSET:
+            image = article.listing_image
+        else:
+            image = self._resolve_listing_image(listing_image_id, article)
+        image_changed = (image.pk if image else None) != article.listing_image_id
 
-        if mode == ListingImageMode.NONE:
-            image: Image | None = None
-            rect: dict[str, float] | None = None
-        elif mode == ListingImageMode.AUTO:
-            # Read off the prefetch: `.uploaded()` on the related manager would
-            # issue a fresh query and throw the prefetch away. `is_uploaded` is
-            # the documented in-memory twin of `.uploaded()`, and this is the
-            # same filter and sort `ArticleOut.resolve_images` applies, so the
-            # wizard's list and `auto`'s pick stay in the same order.
-            # `Image.Meta.ordering` leads with display_order, which is
-            # identical across an article's uploads, so order explicitly.
-            image = next(
-                iter(
-                    sorted(
-                        (img for img in article.images.all() if img.is_uploaded),
-                        key=lambda img: img.created_at,
-                    )
-                ),
-                None,
-            )
+        if listing_crop is not UNSET:
+            rect = self._validated_crop(listing_crop, image)
+        elif image_changed:
             rect = None
         else:
-            image = self._chosen_image(article, listing_image_id)
-            rect = self._chosen_crop(
-                article,
-                image,
-                listing_crop=listing_crop,
-                image_changed=(image.pk if image else None) != article.listing_image_id,
-            )
+            rect = article.listing_crop
 
         touched: list[str] = []
-        if (image.pk if image else None) != article.listing_image_id:
+        if image_changed:
             article.listing_image = image
             touched.append("listing_image")
         if rect != article.listing_crop:
             article.listing_crop = rect
             touched.append("listing_crop")
-        if mode != article.listing_image_mode:
-            article.listing_image_mode = mode
-            touched.append("listing_image_mode")
         return touched
-
-    def _resolve_mode(
-        self,
-        article: Article,
-        *,
-        listing_image_id: UUID | None | UnsetType,
-        listing_crop: dict[str, float] | None | UnsetType,
-        listing_image_mode: str | None,
-    ) -> str:
-        """An explicit mode wins; otherwise touching the image or its framing
-        commits the author's choice, so the next save does not re-derive the
-        image out from under a rectangle they just drew.
-        """
-        if listing_image_mode is not None:
-            return listing_image_mode
-        if listing_image_id is not UNSET or listing_crop is not UNSET:
-            return ListingImageMode.CHOSEN
-        return article.listing_image_mode
-
-    def _chosen_image(
-        self,
-        article: Article,
-        listing_image_id: UUID | None | UnsetType,
-    ) -> Image | None:
-        if listing_image_id is UNSET:
-            return article.listing_image
-        return self._resolve_listing_image(listing_image_id, article)
-
-    def _chosen_crop(
-        self,
-        article: Article,
-        image: Image | None,
-        *,
-        listing_crop: dict[str, float] | None | UnsetType,
-        image_changed: bool,
-    ) -> dict[str, float] | None:
-        if listing_crop is not UNSET:
-            return self._validated_crop(listing_crop, image)
-        # A rectangle drawn on one image means nothing on another, so an image
-        # that changed or went away takes its framing with it.
-        if image_changed:
-            return None
-        return article.listing_crop
 
     def _validated_crop(
         self,

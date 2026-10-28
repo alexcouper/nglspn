@@ -43,7 +43,6 @@ export function useArticleMutations({
           summary: payload.summary,
           listing_image_id: payload.listing_image_id,
           listing_crop: payload.listing_crop,
-          listing_image_mode: payload.listing_image_mode,
         });
         onPersisted(updated);
         return updated;

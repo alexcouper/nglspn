@@ -18,18 +18,6 @@ class ArticleState(models.TextChoices):
     PUBLISHED = "published", "Published"
 
 
-class ListingImageMode(models.TextChoices):
-    """How an article's listing image was decided.
-
-    A nullable ``listing_image`` cannot tell "not chosen yet" from "deliberately
-    removed", so removal would not survive the next save.
-    """
-
-    AUTO = "auto", "First image uploaded to the article"
-    CHOSEN = "chosen", "Author's choice"
-    NONE = "none", "No image"
-
-
 class ArticleGlobalVisibility(models.TextChoices):
     AUTO = "auto", "Auto-approved (trusted author)"
     PENDING = "pending", "Pending admin review"
@@ -142,6 +130,11 @@ class Article(models.Model):
     # Optional authored standfirst for listing cards. When blank, listings fall
     # back to services.articles.summary.derive_summary(body).
     summary = models.CharField(max_length=300, default="", blank=True)
+    # The cover: the one image an author picks for the article, shown wide at
+    # the top of the page and in the email, and on its listing cards. Null is
+    # "no cover", which also means a text-only card — nothing is derived from
+    # the body on the author's behalf.
+    #
     # SET_NULL, not PROTECT: Image.article cascades from this article, so
     # deleting an article collects rows that this column points at. Rather than
     # rely on how the collector orders that cycle, a deleted image simply blanks
@@ -159,11 +152,6 @@ class Article(models.Model):
     # listing card can reserve its box without being told the source's pixel
     # size. Null means the default: 16:9, centred.
     listing_crop = models.JSONField(null=True, blank=True)
-    listing_image_mode = models.CharField(
-        max_length=20,
-        choices=ListingImageMode.choices,
-        default=ListingImageMode.AUTO,
-    )
     slug = models.SlugField(max_length=200, null=True, blank=True)
     source = models.CharField(
         max_length=20,

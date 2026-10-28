@@ -295,7 +295,7 @@ describe("ListingImageDialog", () => {
       dialog({ currentImageId: "one", onRemove }),
     );
 
-    await click(buttonLabelled(container, "Remove image"));
+    await click(buttonLabelled(container, "Remove cover"));
 
     expect(onRemove).toHaveBeenCalledOnce();
 

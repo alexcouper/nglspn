@@ -17,7 +17,6 @@ from apps.articles.models import (
     ArticleGlobalVisibility,
     ArticleSource,
     ArticleState,
-    ListingImageMode,
 )
 from apps.follows.models import Follow, FollowedChannel
 from apps.notifications.models import Notification
@@ -111,7 +110,6 @@ class TestCreateDraft:
         assert article.title == ""
         assert article.body == ""
         assert article.listing_image_id is None
-        assert article.listing_image_mode == ListingImageMode.AUTO
         assert article.slug is None
         assert article.published_at is None
         assert article.global_visibility == ArticleGlobalVisibility.AUTO
@@ -708,97 +706,24 @@ class TestArticleSummary:
 
 
 @pytest.mark.django_db
-class TestListingImageAutoMode:
-    def setup_method(self):
-        self.handler = DjangoArticleHandler()
-
-    def test_adopts_the_earliest_upload_on_save(self):
-        article = ArticleFactory()
-        first = article_image(article)
-        article_image(article)
-
-        updated = self.handler.update_article(article.id, title="New title")
-
-        assert updated.listing_image_id == first.id
-        assert updated.listing_crop is None
-        assert updated.listing_image_mode == ListingImageMode.AUTO
-
-    def test_orders_by_upload_time_not_display_order(self):
-        # An article's uploads all take display_order from the project's
-        # non-article image count, so Meta.ordering cannot break the tie.
-        article = ArticleFactory()
-        first = article_image(article, display_order=7)
-        article_image(article, display_order=0)
-
-        updated = self.handler.update_article(article.id, title="New title")
-
-        assert updated.listing_image_id == first.id
-
-    def test_a_later_upload_does_not_displace_it(self):
-        article = ArticleFactory()
-        first = article_image(article)
-        self.handler.update_article(article.id, title="One")
-
-        article_image(article)
-        updated = self.handler.update_article(article.id, title="Two")
-
-        assert updated.listing_image_id == first.id
-
-    def test_deleting_the_first_promotes_the_next(self):
-        article = ArticleFactory()
-        first = article_image(article)
-        second = article_image(article)
-        self.handler.update_article(article.id, title="One")
-
-        first.delete()
-        updated = self.handler.update_article(article.id, title="Two")
-
-        assert updated.listing_image_id == second.id
-
-    def test_stays_null_with_no_linked_images(self):
-        article = ArticleFactory()
-        ImageFactory(project=article.project)
-
-        updated = self.handler.update_article(article.id, title="New title")
-
-        assert updated.listing_image_id is None
-        assert updated.listing_image_mode == ListingImageMode.AUTO
-
-    def test_skips_an_upload_that_never_completed(self):
-        # The row is created before the S3 PUT and nothing deletes it when the
-        # PUT fails, so the earliest row is not necessarily a usable image.
-        article = ArticleFactory()
-        article_image(article, upload_status=UploadStatus.PENDING)
-        completed = article_image(article)
-
-        updated = self.handler.update_article(article.id, title="New title")
-
-        assert updated.listing_image_id == completed.id
-
-    def test_skips_a_failed_upload(self):
-        article = ArticleFactory()
-        article_image(article, upload_status=UploadStatus.FAILED)
-        completed = article_image(article)
-
-        updated = self.handler.update_article(article.id, title="New title")
-
-        assert updated.listing_image_id == completed.id
-
-    def test_stays_null_when_every_upload_is_incomplete(self):
-        article = ArticleFactory()
-        article_image(article, upload_status=UploadStatus.PENDING)
-
-        updated = self.handler.update_article(article.id, title="New title")
-
-        assert updated.listing_image_id is None
-
-
-@pytest.mark.django_db
 class TestListingImageChoice:
     def setup_method(self):
         self.handler = DjangoArticleHandler()
 
-    def test_choosing_an_image_commits_the_mode(self):
+    def test_new_article_has_no_cover(self):
+        article = ArticleFactory()
+
+        assert article.listing_image_id is None
+
+    def test_uploading_an_image_does_not_make_it_the_cover(self):
+        article = ArticleFactory()
+        article_image(article)
+
+        updated = self.handler.update_article(article.id, title="New title")
+
+        assert updated.listing_image_id is None
+
+    def test_choosing_an_image_sets_the_cover(self):
         article = ArticleFactory()
         article_image(article)
         chosen = article_image(article)
@@ -806,9 +731,9 @@ class TestListingImageChoice:
         updated = self.handler.update_article(article.id, listing_image_id=chosen.id)
 
         assert updated.listing_image_id == chosen.id
-        assert updated.listing_image_mode == ListingImageMode.CHOSEN
+        assert updated.listing_crop is None
 
-    def test_a_chosen_image_is_not_re_derived_on_a_later_save(self):
+    def test_a_chosen_image_survives_a_later_save(self):
         article = ArticleFactory()
         article_image(article)
         chosen = article_image(article)
@@ -818,14 +743,13 @@ class TestListingImageChoice:
 
         assert updated.listing_image_id == chosen.id
 
-    def test_adjusting_only_the_crop_commits_the_choice(self):
+    def test_adjusting_only_the_crop_keeps_the_image(self):
         article = ArticleFactory()
         first = article_image(article, width=4000, height=4000)
-        self.handler.update_article(article.id, title="One")
+        self.handler.update_article(article.id, listing_image_id=first.id)
 
         updated = self.handler.update_article(article.id, listing_crop=_crop())
 
-        assert updated.listing_image_mode == ListingImageMode.CHOSEN
         assert updated.listing_image_id == first.id
         assert updated.listing_crop["ratio"] == pytest.approx(CARD_RATIO, abs=1e-4)
 
@@ -867,14 +791,10 @@ class TestListingImageChoice:
 
     def test_clearing_the_image_on_a_published_article_is_allowed(self):
         article = PublishedArticleFactory(slug="a-post")
-        article_image(article)
-        self.handler.update_article(article.id, title="One")
+        image = article_image(article)
+        self.handler.update_article(article.id, listing_image_id=image.id)
 
-        updated = self.handler.update_article(
-            article.id,
-            listing_image_id=None,
-            listing_image_mode=ListingImageMode.NONE,
-        )
+        updated = self.handler.update_article(article.id, listing_image_id=None)
 
         assert updated.listing_image_id is None
 
@@ -886,33 +806,24 @@ class TestListingImageRemoval:
 
     def test_removal_survives_later_saves(self):
         article = ArticleFactory()
-        article_image(article)
-        self.handler.update_article(article.id, title="One")
+        image = article_image(article)
+        self.handler.update_article(article.id, listing_image_id=image.id)
 
-        self.handler.update_article(
-            article.id,
-            listing_image_id=None,
-            listing_image_mode=ListingImageMode.NONE,
-        )
+        self.handler.update_article(article.id, listing_image_id=None)
         updated = self.handler.update_article(article.id, title="Two")
 
         assert updated.listing_image_id is None
-        assert updated.listing_image_mode == ListingImageMode.NONE
 
-    def test_returning_to_auto_re_adopts_the_first_upload(self):
+    def test_removal_takes_the_crop_with_it(self):
         article = ArticleFactory()
-        first = article_image(article)
+        image = article_image(article, width=4000, height=4000)
         self.handler.update_article(
-            article.id,
-            listing_image_id=None,
-            listing_image_mode=ListingImageMode.NONE,
+            article.id, listing_image_id=image.id, listing_crop=_crop()
         )
 
-        updated = self.handler.update_article(
-            article.id, listing_image_mode=ListingImageMode.AUTO
-        )
+        updated = self.handler.update_article(article.id, listing_image_id=None)
 
-        assert updated.listing_image_id == first.id
+        assert updated.listing_crop is None
 
 
 @pytest.mark.django_db
@@ -939,4 +850,3 @@ class TestImageArticleLink:
 
         article.refresh_from_db()
         assert article.listing_image_id is None
-        assert article.listing_image_mode == ListingImageMode.CHOSEN

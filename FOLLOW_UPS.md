@@ -132,9 +132,14 @@ Raised as finding 9 of the branch's own `REVIEW.md` (since deleted; see
 Checking it turned up the absence behind the comment, which is the part worth
 keeping.
 
-There is no preview — of a draft or of a published article. The editor has a
-listing-card preview (`ArticleCardPreview`), which shows how the article looks
-in a list, not how it reads. The only route to an unpublished article is
+**Partly done.** The editor now has an Edit / Preview switch
+(`ArticleAuthoringPage.tsx`): the preview saves the draft and renders it in
+place through `ArticleRenderContent`, with the two card variants beside it
+(`ArticlePreview.tsx`). What is still missing is a preview *address* — a link
+an author can send a co-editor before publishing. The rest of this item is
+about that.
+
+There is no preview route for a draft or a published article. The only route to an unpublished article is
 `/my-projects/[id]` → `MyProjectArticles.tsx:95` → `articles/edit/[articleId]`,
 and the only route to a rendered article is the public
 `/projects/[slug]/articles/[articleSlug]`, which drafts cannot reach.

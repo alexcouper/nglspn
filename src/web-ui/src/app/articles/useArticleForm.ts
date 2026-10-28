@@ -44,8 +44,8 @@ export function useArticleForm() {
     return { ...fields, body: bodyRef.current };
   }, [fields]);
 
-  // `auto` is resolved server-side on every save, so the response is the only
-  // place the resolved listing image exists.
+  // The server has the last word on the cover: it validates the crop and
+  // blanks an image that was deleted underneath the article.
   const applySaved = useCallback((saved: Article) => {
     setFields((prev) =>
       prev
@@ -53,7 +53,6 @@ export function useArticleForm() {
             ...prev,
             listing_image_id: saved.listing_image_id,
             listing_crop: saved.listing_crop,
-            listing_image_mode: saved.listing_image_mode,
           }
         : prev,
     );

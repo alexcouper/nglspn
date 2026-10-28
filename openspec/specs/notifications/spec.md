@@ -216,6 +216,8 @@ Discussion notification emails (immediate and digest) SHALL identify the project
 
 Article digest emails SHALL list new articles. Each article entry SHALL include the project name, the article title, the channel name, and a short body excerpt (one paragraph or less), with a CTA link of the form `/projects/<project-slug>/articles/<article-slug>`.
 
+When a digest carries one article, or leads with one, the email SHALL render that article the way its page does: byline, then the standfirst, then the cover when the article has one, then the body. The cover is the listing image's medium variant, uncropped — nothing renders a cropped file, so this is the same whole image the social card gets. The list layout keeps its thumbnail and shows no cover.
+
 Discussion and article emails SHALL be separate emails — there SHALL NOT be a "mixed" digest that combines both kinds.
 
 #### Scenario: Immediate discussion email content

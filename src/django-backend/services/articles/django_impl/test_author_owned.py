@@ -157,14 +157,6 @@ class TestAuthorOwnedListingImage:
         with pytest.raises(ListingImageOnWrongProjectError):
             handler.update_article(article.id, listing_image_id=gallery.id)
 
-    def test_auto_mode_adopts_the_first_own_upload(self, handler):
-        article = AuthorArticleFactory()
-        first = article_image(article)
-
-        updated = handler.update_article(article.id, title="Touched")
-
-        assert updated.listing_image_id == first.id
-
 
 @pytest.mark.django_db
 class TestPersonalChannelIsNotManaged:

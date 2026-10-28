@@ -19,8 +19,8 @@ import "./article-markdown.css";
 import { ArticleOnward } from "./ArticleOnward";
 import type { Onward } from "./onward";
 import type { Origin } from "./origin";
+import { ArticleCover } from "./ArticleCover";
 import { Avatar } from "@/components/Avatar";
-import { CroppedImage } from "@/components/CroppedImage";
 import { useAuth } from "@/contexts/auth";
 import { useNotifications } from "@/contexts/notifications";
 import type { Article } from "@/lib/api";
@@ -34,6 +34,9 @@ interface Props {
   onward: Onward | null;
   articleCount: number;
   channelCount: number;
+  // Rendered inside the editor: nothing is marked read, since the author is
+  // looking at their own draft.
+  preview?: boolean;
 }
 
 // Past this a title steps down a size.
@@ -46,6 +49,7 @@ export function ArticleRenderContent({
   onward,
   articleCount,
   channelCount,
+  preview = false,
 }: Props) {
   const t = useTranslations("articles.render");
   const { isAuthenticated } = useAuth();
@@ -67,13 +71,16 @@ export function ArticleRenderContent({
 
   const standfirst = article.summary || article.summary_display;
   const isLongTitle = article.title.length > LONG_TITLE;
+  // The cover is the one image the author picked for the article; the cards
+  // show the same one. Nothing is derived from the body.
+  const coverUrl = article.listing_image_url;
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || preview) return;
     markArticleRead(article.id).catch(() => {
       // Best-effort; the bell will eventually reconcile from the server.
     });
-  }, [article.id, isAuthenticated, markArticleRead]);
+  }, [article.id, isAuthenticated, markArticleRead, preview]);
 
   return (
     <>
@@ -174,24 +181,16 @@ export function ArticleRenderContent({
                 </span>
               </div>
 
-              {!article.listing_image_url && (
+              {!coverUrl && (
                 <div className="mt-8 sm:mt-10 h-[3px] w-12 rounded-full bg-accent sm:mx-auto" />
               )}
             </div>
           </div>
         </header>
 
-        {article.listing_image_url && (
+        {coverUrl && (
           <figure className="max-w-6xl mx-auto px-4 sm:px-6 mt-6 sm:mt-10">
-            <div className="max-w-[52rem] mx-auto rounded-lg sm:rounded-xl overflow-hidden">
-              <CroppedImage
-                src={article.listing_image_url}
-                alt=""
-                crop={article.listing_crop}
-                priority
-                testId="article-listing-image"
-              />
-            </div>
+            <ArticleCover src={coverUrl} crop={article.listing_crop} priority />
           </figure>
         )}
 

@@ -1,10 +1,17 @@
 #!/usr/bin/env python
 """Seed script that mirrors live production data locally.
 
-Fetches projects, tags, categories, and competitions from
-api.naglasupan.is, then downloads each referenced image from the prod
-CDN and uploads it to local MinIO so the listing renders real
-artwork. Re-running picks up new prod projects (idempotent per record).
+Fetches projects, tags, categories, competitions and published articles
+from api.naglasupan.is, then downloads each referenced image from the prod
+CDN and uploads it to local MinIO so the listing renders real artwork.
+Re-running picks up new prod projects and articles (idempotent per record).
+
+Articles keep their production UUIDs, slugs, authors (as local users with
+the prod id and the default password), channels, images and listing-image
+choices. Body image URLs are rewritten from the prod CDN to local storage
+so the copy is self-contained. Each article's author, and the bootstrap
+test user, get full edit rights on the project so the editor can be opened
+on real content.
 
 Projects keep their production UUIDs, so a taxonomy report exported from prod
 (docs/taxonomy/) can be applied against this database with `apply_taxonomy`.
@@ -24,6 +31,7 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime
+from http import HTTPStatus
 from pathlib import Path
 from typing import Any
 from uuid import UUID
@@ -37,18 +45,23 @@ import django
 
 django.setup()
 
+from django.conf import settings
 from django.utils import timezone
 from django.utils.text import slugify
 
+from apps.articles.models import Article
+from apps.follows.models import Channel
 from apps.projects.models import (
     Competition,
     CompetitionEntry,
     CompetitionStatus,
+    ContributorRole,
     EntrySource,
     Image,
     ImageVariant,
     Project,
     ProjectCategory,
+    ProjectContributor,
     ProjectStatus,
     UploadStatus,
     VariantSize,
@@ -246,6 +259,7 @@ def create_projects(
             created_at = datetime.fromisoformat(pd["created_at"])
             project = Project.objects.create(
                 id=prod_id,
+                slug=pd["slug"],
                 title=pd["title"],
                 tagline=pd.get("tagline") or "",
                 description=pd.get("tagline")
@@ -271,6 +285,11 @@ def create_projects(
         if project.category_id != new_cat_id:
             project.category = category
             project.save(update_fields=["category"])
+        # The slug is the project's public address, and an article's URL hangs
+        # off it, so a copy made before this was mirrored gets it on re-run.
+        if project.slug != pd["slug"]:
+            project.slug = pd["slug"]
+            project.save(update_fields=["slug"])
 
         by_prod_id[pd["id"]] = project
 
@@ -403,6 +422,244 @@ def create_competitions(
             print(f"  {verb}: {comp.name} (winner: {project.title})")
 
 
+def fetch_json_or_none(url: str) -> Any:
+    try:
+        return fetch_json(url)
+    except urllib.error.HTTPError as e:
+        if e.code == HTTPStatus.NOT_FOUND:
+            return None
+        raise
+
+
+def fetch_prod_articles(project_data: list[dict]) -> list[dict]:
+    """Every published article prod will show, as full ArticleOut payloads.
+
+    Project articles come from each project's list; author-owned ones have no
+    project to list them under, so they are found through the feed, which
+    carries every publish since the stream existed.
+    """
+    print("\nFetching articles from api.naglasupan.is...")
+    articles = _fetch_project_articles(project_data)
+    articles += _fetch_author_owned_articles(seen={a["id"] for a in articles})
+    print(f"  Got {len(articles)} articles")
+    return articles
+
+
+def _fetch_project_articles(project_data: list[dict]) -> list[dict]:
+    articles: list[dict] = []
+    for pd in project_data:
+        base = f"{PROD_API_BASE}/projects/{pd['slug']}/articles"
+        listed = fetch_json_or_none(base) or []
+        for item in listed:
+            full = fetch_json_or_none(f"{base}/by-slug/{item['slug']}")
+            if full:
+                articles.append(full)
+        if listed:
+            print(f"  {pd['slug']}: {len(listed)} articles")
+    return articles
+
+
+def _fetch_author_owned_articles(seen: set[str]) -> list[dict]:
+    articles: list[dict] = []
+    # `before` is the feed's cursor parameter (api/routers/feed.py). Paging
+    # stops on a missing or repeated cursor, so a misread never spins forever.
+    cursor = None
+    visited: set[str] = set()
+    while True:
+        query = f"?per_page=50&before={cursor}" if cursor else "?per_page=50"
+        page = fetch_json(f"{PROD_API_BASE}/feed{query}")
+        for entry in page["entries"]:
+            summary = entry.get("article")
+            if entry["kind"] != "article_published" or not summary:
+                continue
+            if summary["id"] in seen or summary.get("project_slug"):
+                continue
+            full = fetch_json_or_none(
+                f"{PROD_API_BASE}/users/{summary['author_id']}"
+                f"/articles/by-slug/{summary['slug']}"
+            )
+            if full:
+                articles.append(full)
+                seen.add(full["id"])
+                print(f"  author-owned: {full['slug']}")
+        cursor = page.get("next_cursor")
+        if not cursor or cursor in visited:
+            return articles
+        visited.add(cursor)
+
+
+def get_or_create_author(author_data: dict) -> User:
+    """The prod author as a local user with the same id, so profile and
+    author-owned article URLs match production."""
+    prod_id = UUID(author_data["id"])
+    user = User.objects.filter(pk=prod_id).first()
+    if user:
+        return user
+    user = User.objects.create(
+        id=prod_id,
+        email=f"prodcopy-{author_data['id'][:8]}@example.com",
+        first_name=author_data.get("first_name") or "",
+        last_name=author_data.get("last_name") or "",
+        info=author_data.get("info") or "",
+        kennitala=generate_kennitala(),
+        is_verified=True,
+    )
+    user.set_password(DEFAULT_PASSWORD)
+    user.save()
+    print(f"  Created author: {user.email} ({user.full_name})")
+    return user
+
+
+def grant_full_edit(project: Project, user: User) -> None:
+    ProjectContributor.objects.get_or_create(
+        project=project,
+        user=user,
+        defaults={"role": ContributorRole.OWNER, "full_edit": True},
+    )
+
+
+def get_or_create_channel(
+    channel_data: dict | None, project: Project | None, author: User
+) -> Channel | None:
+    if channel_data is None:
+        return None
+    existing = Channel.objects.filter(pk=UUID(channel_data["id"])).first()
+    if existing:
+        return existing
+    owner = {"project": project} if project else {"owner": author}
+    channel, _ = Channel.objects.get_or_create(
+        name=channel_data["name"], **owner, defaults={"id": UUID(channel_data["id"])}
+    )
+    return channel
+
+
+def _set_timestamps(model: type, pk: Any, created_at: str, updated_at: str) -> None:
+    # auto_now_add and auto_now ignore values passed to create(), so the prod
+    # timestamps go in afterwards with an update that bypasses save().
+    model.objects.filter(pk=pk).update(
+        created_at=datetime.fromisoformat(created_at),
+        updated_at=datetime.fromisoformat(updated_at),
+    )
+
+
+def create_article_image(
+    image_data: dict, article: Article, project: Project | None
+) -> Image | None:
+    """Mirror the original and every variant, then the rows pointing at them."""
+    original_key, _ = mirror_image(image_data["url"])
+    if not original_key:
+        return None
+    image, created = Image.objects.get_or_create(
+        pk=UUID(image_data["id"]),
+        defaults={
+            "project": project,
+            "article": article,
+            "storage_key": original_key,
+            "original_filename": image_data["original_filename"],
+            "content_type": image_data["content_type"],
+            "file_size": image_data["file_size"] or 0,
+            "width": image_data.get("width"),
+            "height": image_data.get("height"),
+            "display_order": image_data.get("display_order") or 0,
+            "upload_status": UploadStatus.UPLOADED,
+            "uploaded_at": timezone.now(),
+        },
+    )
+    if created:
+        # `auto` listing mode picks the earliest upload, so creation order has
+        # to be prod's, not the seed's.
+        Image.objects.filter(pk=image.pk).update(
+            created_at=datetime.fromisoformat(image_data["created_at"])
+        )
+    for variant in image_data.get("variants") or []:
+        variant_key, _ = mirror_image(variant["url"])
+        if not variant_key:
+            continue
+        ImageVariant.objects.get_or_create(
+            image=image,
+            size=variant["size"],
+            defaults={
+                "storage_key": variant_key,
+                "width": variant["width"],
+                "height": variant["height"],
+                "file_size": 0,
+            },
+        )
+    return image
+
+
+def localise_body(body: str) -> str:
+    """Body image URLs point at local storage, where the mirrored copies are."""
+    return body.replace(f"{PROD_CDN_BASE}/", f"{settings.S3_PUBLIC_URL_BASE}/")
+
+
+def create_articles(
+    article_data: list[dict], by_prod_id: dict[str, Project], editor: User | None
+) -> int:
+    """Recreate prod articles with their authors, channels and images."""
+    print("\nCreating articles...")
+    count = 0
+    for ad in article_data:
+        project = by_prod_id.get(ad["project"]["id"]) if ad.get("project") else None
+        if ad.get("project") and project is None:
+            print(f"  Skipping {ad['slug']}: project not mirrored")
+            continue
+        if not ad.get("author"):
+            print(f"  Skipping {ad['slug']}: no author")
+            continue
+        author = get_or_create_author(ad["author"])
+        for user in (author, editor):
+            if project and user:
+                grant_full_edit(project, user)
+
+        if Article.objects.filter(pk=UUID(ad["id"])).exists():
+            print(f"  Exists : {ad['title']}")
+            continue
+        image_count = _create_article(ad, project, author)
+        count += 1
+        print(f"  Created: {ad['title']} ({image_count} images)")
+    return count
+
+
+def _create_article(ad: dict, project: Project | None, author: User) -> int:
+    """The article row, its images and its listing image. Returns the image
+    count."""
+    article = Article.objects.create(
+        id=UUID(ad["id"]),
+        project=project,
+        channel=get_or_create_channel(ad.get("channel"), project, author),
+        author=author,
+        title=ad["title"],
+        body=localise_body(ad["body"]),
+        summary=ad.get("summary") or "",
+        listing_crop=ad.get("listing_crop"),
+        listing_image_mode=ad["listing_image_mode"],
+        slug=ad["slug"],
+        source=ad["source"],
+        external_url=ad.get("external_url"),
+        state=ad["state"],
+        published_at=ad.get("published_at"),
+        global_visibility=ad["global_visibility"],
+        approved_at=ad.get("published_at"),
+    )
+    _set_timestamps(Article, article.pk, ad["created_at"], ad["updated_at"])
+
+    images_by_id: dict[str, Image] = {}
+    for image_data in ad.get("images") or []:
+        image = create_article_image(image_data, article, project)
+        if image:
+            images_by_id[image_data["id"]] = image
+    listing = ad.get("listing_image")
+    if listing:
+        listing_image = images_by_id.get(listing["id"]) or create_article_image(
+            listing, article, project
+        )
+        if listing_image:
+            article.listing_image = listing_image
+            article.save(update_fields=["listing_image"])
+    return len(images_by_id)
+
+
 def main() -> None:
     print("=== Seeding database with production-like data ===\n")
 
@@ -418,13 +675,20 @@ def main() -> None:
     )
     image_count = create_project_images(projects_data, by_prod_id)
     create_competitions(competitions_data, projects_data, by_prod_id)
+    editor = User.objects.filter(email="test@example.com").first()
+    article_count = create_articles(
+        fetch_prod_articles(projects_data), by_prod_id, editor
+    )
 
     print("\n=== Prod-copy seed complete ===")
     print(f"  Categories: {len(categories_by_slug)}")
     print(f"  Users:      {len(users)}")
     print(f"  Projects:   {len(by_prod_id)}")
     print(f"  Images:     {image_count}")
-    print(f"\nAll seed users have password: {DEFAULT_PASSWORD}")
+    print(f"  Articles:   {article_count}")
+    print(
+        f"\nAll seed users (including article authors) have password: {DEFAULT_PASSWORD}"
+    )
 
 
 if __name__ == "__main__":

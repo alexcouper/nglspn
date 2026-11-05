@@ -69,9 +69,20 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const [loadingGroups, setLoadingGroups] = useState(false);
   const lastGroupKeysRef = useRef<Set<string>>(new Set());
   const lastGroupCountRef = useRef<number>(0);
+  // Whether the unread backlog present at page load has been recorded. Until
+  // it has, nothing is "newly active": a diff against an empty set would
+  // announce every unread group as if it had just arrived, and someone back
+  // after a month would get their whole backlog as a wall of toasts.
+  const baselineRecordedRef = useRef(false);
   const listenersRef = useRef<Set<DiffListener>>(new Set());
 
   const fireDiff = useCallback((nextGroups: NotificationGroup[]) => {
+    const nextKeys = new Set(keyedGroups(nextGroups).map(({ key }) => key));
+    if (!baselineRecordedRef.current) {
+      baselineRecordedRef.current = true;
+      lastGroupKeysRef.current = nextKeys;
+      return;
+    }
     const newlyActiveKeys = diffActiveKeys(
       lastGroupKeysRef.current,
       nextGroups
@@ -85,9 +96,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         listener({ newlyActiveKeys, groupsByKey });
       }
     }
-    lastGroupKeysRef.current = new Set(
-      keyedGroups(nextGroups).map(({ key }) => key)
-    );
+    lastGroupKeysRef.current = nextKeys;
   }, []);
 
   const refreshGroups = useCallback(async () => {
@@ -109,6 +118,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     try {
       const next = await api.notifications.getSummary();
       setSummary(next);
+      if (next.unread_group_count === 0) {
+        // Groups are only fetched when the count moves, so with nothing
+        // unread at load the baseline is simply empty: the first group to
+        // arrive after this is genuinely new.
+        baselineRecordedRef.current = true;
+      }
       if (next.unread_group_count !== lastGroupCountRef.current) {
         lastGroupCountRef.current = next.unread_group_count;
         // group count changed — refetch groups to update popover/toaster
@@ -173,6 +188,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       setGroups([]);
       lastGroupKeysRef.current = new Set();
       lastGroupCountRef.current = 0;
+      baselineRecordedRef.current = false;
       return;
     }
 

@@ -36,5 +36,8 @@
       "daysAgo": "{count}d ago",
       "weeksAgo": "{count}w ago"
     }
+  },
+  "toaster": {
+    "burst": "{count, plural, one {# new notification} other {# new notifications}}"
   }
 }

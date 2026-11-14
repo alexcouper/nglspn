@@ -31,15 +31,17 @@ export function ArticleAuthoringRoute({ articleId }: Props) {
   const [loaded, setLoaded] = useState<Loaded | null>(null);
   const [error, setError] = useState("");
 
-  // The editor is by far the largest thing on this route — the bundle budget
-  // gives it 400 kB against 55 kB for everything else. next/dynamic only starts
-  // its import when the component first renders, and ArticleAuthoringPage does
+  // The editor is the largest thing on this route that every visit needs —
+  // about 370 kB, against a 55 kB budget for the eager JS (the lazy budget
+  // also covers the preview, which loads only when its tab is opened).
+  // next/dynamic only starts its import when the component first renders, and
+  // ArticleAuthoringPage does
   // not render until the article below has landed, so the biggest download
   // would otherwise queue behind a round trip it does not depend on. Warmed
   // here it downloads alongside the article. Same specifier as the dynamic()
   // in ArticleAuthoringPage, so this is the same chunk, not a second copy.
   // `isReady` is read from the stored token, not the network, so gating on it
-  // costs nothing and spares a visitor on their way to /login the 400 kB.
+  // costs nothing and spares a visitor on their way to /login the download.
   useEffect(() => {
     if (!isReady) return;
     void import("./ArticleEditor");

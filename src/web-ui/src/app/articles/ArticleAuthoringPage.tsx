@@ -12,7 +12,6 @@ import { PublishDialog } from "./PublishDialog";
 import { ChannelDropdown } from "./ChannelDropdown";
 import { CoverSlot } from "./CoverSlot";
 import { ListingImageDialog } from "./ListingImageDialog";
-import { ArticlePreview } from "./ArticlePreview";
 import { authorContainer, projectContainer } from "./container";
 import { useArticleDraft } from "./useArticleDraft";
 import { useStickyChromeOffset } from "./useStickyChromeOffset";
@@ -27,6 +26,15 @@ const SUMMARY_MAX = 300;
 // silently start guarding nothing.
 const ArticleEditor = dynamic(
   () => import("./ArticleEditor").then((m) => m.ArticleEditor),
+  { ssr: false, loading: () => <div className="skeleton h-[60vh] w-full" /> },
+);
+
+// The preview renders the body with the full Markdown pipeline (react-markdown,
+// rehype/remark plugins, Prism) — several hundred kB that only the preview tab
+// needs. Imported statically it lands in the route's eager JS and blows the
+// 55 kB budget, so it loads on first switch to the preview, like the editor.
+const ArticlePreview = dynamic(
+  () => import("./ArticlePreview").then((m) => m.ArticlePreview),
   { ssr: false, loading: () => <div className="skeleton h-[60vh] w-full" /> },
 );
 

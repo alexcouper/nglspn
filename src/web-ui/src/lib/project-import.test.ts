@@ -4,6 +4,7 @@ import {
   PROJECT_IMPORT_FORMAT,
   buildProjectImportPrompt,
   parseProjectImport,
+  type CurrentListing,
   type ImportTagGroup,
 } from "./project-import";
 
@@ -30,13 +31,21 @@ const VALID = {
   tags: ["open source", "python"],
 };
 
+const CURRENT: CurrentListing = {
+  website_url: "https://old.example.is",
+  title: "Old name",
+  tagline: "What it used to say",
+  description: "A short note.",
+  tags: ["SaaS"],
+};
+
 function parse(input: unknown, groups = TAG_GROUPS) {
   const text = typeof input === "string" ? input : JSON.stringify(input);
   return parseProjectImport(text, groups);
 }
 
 describe("parseProjectImport", () => {
-  it("maps a valid document to create fields and tag ids", () => {
+  it("maps a valid document to form fields and tag ids", () => {
     const result = parse(VALID);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
@@ -67,6 +76,14 @@ describe("parseProjectImport", () => {
     expect(result.ok && result.project.tag_ids).toEqual(["t-saas", "t-oss"]);
   });
 
+  it("leaves tags out when none match, so the current ones are kept", () => {
+    const result = parse({ ...VALID, tags: ["Blockchain"] });
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.project.tag_ids).toBeUndefined();
+    expect(result.warnings).toContainEqual({ code: "unknownTag", value: "Blockchain" });
+  });
+
   it("skips unknown tags with a warning instead of failing", () => {
     const result = parse({ ...VALID, tags: ["Python", "Blockchain"] });
     expect(result.ok).toBe(true);
@@ -83,15 +100,19 @@ describe("parseProjectImport", () => {
     });
   });
 
-  it("trims strings and drops empty optional fields", () => {
+  it("trims strings and drops empty fields, which then keep their current value", () => {
     const result = parse({ website_url: " https://example.is ", title: "  ", tagline: " Hi " });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.project).toEqual({
       website_url: "https://example.is",
       tagline: "Hi",
-      tag_ids: [],
     });
+  });
+
+  it("accepts a reply that only changes some fields", () => {
+    const result = parse({ description: "Rewritten." });
+    expect(result.ok && result.project).toEqual({ description: "Rewritten." });
   });
 
   it.each([
@@ -112,8 +133,7 @@ describe("parseProjectImport", () => {
     ]);
   });
 
-  it("requires an http(s) website_url", () => {
-    expect(!parse({ ...VALID, website_url: undefined }).ok).toBe(true);
+  it("refuses a website_url that isn't http(s)", () => {
     const result = parse({ ...VALID, website_url: "javascript:alert(1)" });
     expect(!result.ok && result.errors).toEqual([
       { code: "invalidUrl", field: "website_url" },
@@ -139,7 +159,7 @@ describe("parseProjectImport", () => {
 
 describe("buildProjectImportPrompt", () => {
   it("names the format, the limits and every tag by category", () => {
-    const prompt = buildProjectImportPrompt(TAG_GROUPS);
+    const prompt = buildProjectImportPrompt(TAG_GROUPS, CURRENT);
     expect(prompt).toContain(PROJECT_IMPORT_FORMAT);
     expect(prompt).toContain("100");
     expect(prompt).toContain("200");
@@ -148,12 +168,25 @@ describe("buildProjectImportPrompt", () => {
   });
 
   it("tells the assistant to leave tags empty when none are known", () => {
-    const prompt = buildProjectImportPrompt([]);
+    const prompt = buildProjectImportPrompt([], CURRENT);
     expect(prompt).toContain('"tags": []');
   });
 
+  it("carries the current listing for the assistant to improve", () => {
+    const prompt = buildProjectImportPrompt(TAG_GROUPS, {
+      ...CURRENT,
+      description: "Line one.\n\n```sh\nmake\n```",
+    });
+    expect(prompt).toContain('"title": "Old name"');
+    expect(prompt).toContain('"website_url": "https://old.example.is"');
+    expect(prompt).toContain('"tags": [\n    "SaaS"\n  ]');
+    // Newlines are escaped inside the JSON string, so a fence in the
+    // description can't close the prompt's own fence early.
+    expect(prompt).toContain("Line one.\\n\\n```sh");
+  });
+
   it("produces an example that its own parser accepts", () => {
-    const prompt = buildProjectImportPrompt(TAG_GROUPS);
+    const prompt = buildProjectImportPrompt(TAG_GROUPS, CURRENT);
     const result = parseProjectImport(prompt, TAG_GROUPS);
     expect(result.ok).toBe(true);
   });

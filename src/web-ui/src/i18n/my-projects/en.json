@@ -36,7 +36,8 @@
     "notFound": "Project not found",
     "backToMyProjects": "Back to my projects",
     "preview": "Preview",
-    "untitled": "Untitled Project"
+    "untitled": "Untitled Project",
+    "aiApplied": "Filled in from your assistant. Check it, then Save."
   },
   "editContent": {
     "status": {
@@ -53,12 +54,55 @@
     "tabs": {
       "description": "Description",
       "articles": "Articles",
-      "settings": "Settings"
+      "settings": "Settings",
+      "ai": "Improve with AI"
     },
     "markdown": "Markdown",
     "descriptionPlaceholder": "Tell us about your project...",
     "statusLabel": "Status:",
-    "submittedOn": "Submitted {date}"
+    "submittedOn": "Submitted {date}",
+    "ai": {
+      "step1Title": "1. Copy the prompt",
+      "step1Body": "It carries this project's current title, tagline, description and tags, plus our length limits and the tags that exist here, so your assistant improves what's there instead of starting over.",
+      "copyPrompt": "Copy prompt",
+      "copied": "Copied!",
+      "downloadPrompt": "Download as file",
+      "copyFailed": "Your browser blocked copying. Select the prompt below and copy it yourself.",
+      "promptLabel": "Prompt for your AI assistant",
+      "step2Title": "2. Give it to your assistant",
+      "step2Body": "Paste it into ChatGPT, Claude, Gemini or a coding agent. Add anything new after it: a README, release notes, or a few lines on what has changed.",
+      "step3Title": "3. Paste the reply here",
+      "pastePlaceholder": "Paste the whole reply. Text around the JSON is fine.",
+      "or": "or",
+      "uploadFile": "upload the .json file it gave you",
+      "cannotUse": "We can't use this yet:",
+      "previewLabel": "What will change",
+      "previewHeading": "This is what will change",
+      "noChanges": "The reply matches what's already here, so there's nothing to apply.",
+      "fields": {
+        "title": "Title",
+        "tagline": "Tagline",
+        "website_url": "Link",
+        "description": "Description",
+        "tags": "Tags"
+      },
+      "keptNote": "Anything the reply leaves out stays as it is.",
+      "submit": "Apply to this project",
+      "notSavedNote": "This fills in the form. Nothing is saved until you press Save.",
+      "errors": {
+        "noJson": "We couldn't find a JSON object in it. Ask your assistant to reply with the JSON block only.",
+        "invalidJson": "The JSON is broken (maybe cut off?). Ask your assistant to send it again.",
+        "unsupportedFormat": "This is in format \"{value}\", which this site doesn't read. Copy the prompt again and start over.",
+        "wrongType": "\"{field}\" has the wrong type.",
+        "invalidUrl": "\"{field}\" must be a link starting with http:// or https://.",
+        "tooLong": "\"{field}\" is {length} characters; the limit is {max}.",
+        "fileUnreadable": "We couldn't read that file."
+      },
+      "warnings": {
+        "unknownTag": "Tag \"{value}\" doesn't exist here, so it was skipped.",
+        "unknownField": "\"{value}\" isn't something we use, so it was ignored."
+      }
+    }
   },
   "banner": {
     "iconAlt": "Project icon",
@@ -120,48 +164,7 @@
     "tipoffDescription": "Someone else made this — I'm flagging it for the community.",
     "submitting": "Creating...",
     "submit": "Create Draft",
-    "backToHome": "Back to home",
-    "modeLabel": "How do you want to add it?",
-    "modeLink": "Just the link",
-    "modeAi": "Fill it in with AI",
-    "ai": {
-      "step1Title": "1. Copy the prompt",
-      "step1Body": "It tells an AI assistant exactly what we need: the format, the length limits and the tags that exist here.",
-      "copyPrompt": "Copy prompt",
-      "copied": "Copied!",
-      "downloadPrompt": "Download as file",
-      "copyFailed": "Your browser blocked copying. Select the prompt below and copy it yourself.",
-      "promptLabel": "Prompt for your AI assistant",
-      "step2Title": "2. Give it to your assistant",
-      "step2Body": "Paste it into ChatGPT, Claude, Gemini or a coding agent, and add your project's link, README or a few notes after it.",
-      "step3Title": "3. Paste the reply here",
-      "pastePlaceholder": "Paste the whole reply. Text around the JSON is fine.",
-      "or": "or",
-      "uploadFile": "upload the .json file it gave you",
-      "cannotUse": "We can't use this yet:",
-      "previewLabel": "What will be filled in",
-      "previewHeading": "This is what we'll fill in",
-      "noTitle": "(no title — we'll use the domain)",
-      "noDescription": "No description. You'll need one before you can publish.",
-      "tagsLabel": "Tags",
-      "imagesNote": "You can change everything, and add images, on the next page.",
-      "submitting": "Creating...",
-      "submit": "Create draft with these details",
-      "errors": {
-        "noJson": "We couldn't find a JSON object in it. Ask your assistant to reply with the JSON block only.",
-        "invalidJson": "The JSON is broken (maybe cut off?). Ask your assistant to send it again.",
-        "unsupportedFormat": "This is in format \"{value}\", which this site doesn't read. Copy the prompt again and start over.",
-        "missingField": "\"{field}\" is missing.",
-        "wrongType": "\"{field}\" has the wrong type.",
-        "invalidUrl": "\"{field}\" must be a link starting with http:// or https://.",
-        "tooLong": "\"{field}\" is {length} characters; the limit is {max}.",
-        "fileUnreadable": "We couldn't read that file."
-      },
-      "warnings": {
-        "unknownTag": "Tag \"{value}\" doesn't exist here, so it was skipped.",
-        "unknownField": "\"{value}\" isn't something we use, so it was ignored."
-      }
-    }
+    "backToHome": "Back to home"
   },
   "tagSelector": {
     "errors": {

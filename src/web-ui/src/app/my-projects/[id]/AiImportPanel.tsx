@@ -7,27 +7,34 @@ import {
   buildProjectImportPrompt,
   parseProjectImport,
   type ImportError,
+  type ImportTag,
   type ImportTagGroup,
   type ImportWarning,
   type ImportedProject,
 } from "@/lib/project-import";
+import type { ProjectFormData } from "./ProjectDetail";
 
 interface AiImportPanelProps {
-  isSubmitting: boolean;
-  onSubmit: (project: ImportedProject) => void;
-  /** The ownership fieldset, shared with the plain URL form. */
-  children: React.ReactNode;
+  /** The form as it stands, unsaved edits included: what the prompt shows and the preview compares against. */
+  current: ProjectFormData;
+  onApply: (fields: ImportedProject, matchedTags: ImportTag[]) => void;
 }
 
 const DESCRIPTION_PREVIEW_CHARS = 280;
 
+type ChangedField = "title" | "tagline" | "website_url" | "description" | "tags";
+
+function sameIds(a: string[], b: string[]) {
+  return a.length === b.length && [...a].sort().join() === [...b].sort().join();
+}
+
 /**
- * Bring-your-own-assistant: the site writes the prompt, any AI writes the
- * listing, the site reads it back. Nothing is sent anywhere until the maker
- * presses create — and then only to our own create endpoint.
+ * Bring-your-own-assistant: the site writes the prompt (with the listing as it
+ * is now), any AI rewrites it, the site reads it back into the form. Nothing is
+ * sent anywhere; the maker still presses Save.
  */
-export function AiImportPanel({ isSubmitting, onSubmit, children }: AiImportPanelProps) {
-  const t = useTranslations("my-projects.create.ai");
+export function AiImportPanel({ current, onApply }: AiImportPanelProps) {
+  const t = useTranslations("my-projects.editContent.ai");
   const [tagGroups, setTagGroups] = useState<ImportTagGroup[]>([]);
   const [text, setText] = useState("");
   const [copied, setCopied] = useState(false);
@@ -44,22 +51,48 @@ export function AiImportPanel({ isSubmitting, onSubmit, children }: AiImportPane
         setTagGroups(
           groups.map((g) => ({
             category: g.category.name,
-            tags: g.tags.map((tag) => ({ id: tag.id, name: tag.name, slug: tag.slug })),
+            tags: g.tags.map((tag) => ({ id: tag.id, name: tag.name, slug: tag.slug, color: tag.color })),
           })),
         );
       })
-      // Without the list the prompt says "no tags" and the import still works.
+      // Without the list the prompt says "no tags" and the rest still works.
       .catch(() => {});
     return () => {
       cancelled = true;
     };
   }, []);
 
-  const prompt = useMemo(() => buildProjectImportPrompt(tagGroups), [tagGroups]);
+  const tagName = useMemo(() => {
+    const names = new Map(tagGroups.flatMap((g) => g.tags).map((tag) => [tag.id, tag.name]));
+    return (id: string) => names.get(id);
+  }, [tagGroups]);
+
+  const prompt = useMemo(
+    () =>
+      buildProjectImportPrompt(tagGroups, {
+        website_url: current.website_url,
+        title: current.title,
+        tagline: current.tagline,
+        description: current.description,
+        tags: current.tag_ids.map(tagName).filter((n): n is string => !!n),
+      }),
+    [tagGroups, current, tagName],
+  );
   const result = useMemo(
     () => (text.trim() ? parseProjectImport(text, tagGroups) : null),
     [text, tagGroups],
   );
+
+  const changed: ChangedField[] = useMemo(() => {
+    if (!result?.ok) return [];
+    const p = result.project;
+    const fields: ChangedField[] = [];
+    for (const field of ["title", "tagline", "website_url", "description"] as const) {
+      if (p[field] !== undefined && p[field] !== current[field]) fields.push(field);
+    }
+    if (p.tag_ids && !sameIds(p.tag_ids, current.tag_ids)) fields.push("tags");
+    return fields;
+  }, [result, current]);
 
   const copyPrompt = async () => {
     setCopyFailed(false);
@@ -102,7 +135,6 @@ export function AiImportPanel({ isSubmitting, onSubmit, children }: AiImportPane
         return t(`errors.${error.code}`);
       case "unsupportedFormat":
         return t("errors.unsupportedFormat", { value: error.value });
-      case "missingField":
       case "wrongType":
       case "invalidUrl":
         return t(`errors.${error.code}`, { field: error.field });
@@ -115,11 +147,44 @@ export function AiImportPanel({ isSubmitting, onSubmit, children }: AiImportPane
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (result?.ok) onSubmit(result.project);
+    if (!result?.ok || changed.length === 0) return;
+    onApply(result.project, result.matchedTags);
+    setText("");
+  };
+
+  const renderValue = (field: ChangedField) => {
+    if (!result?.ok) return null;
+    const p = result.project;
+    switch (field) {
+      case "title":
+        return <p className="text-foreground font-semibold">{p.title}</p>;
+      case "tagline":
+        return <p className="text-sm text-foreground">{p.tagline}</p>;
+      case "website_url":
+        return <p className="text-xs text-muted-foreground break-all">{p.website_url}</p>;
+      case "description": {
+        const d = p.description ?? "";
+        return (
+          <p className="text-xs text-muted-foreground whitespace-pre-line">
+            {d.length > DESCRIPTION_PREVIEW_CHARS ? `${d.slice(0, DESCRIPTION_PREVIEW_CHARS)}…` : d}
+          </p>
+        );
+      }
+      case "tags":
+        return (
+          <ul className="flex flex-wrap gap-1.5">
+            {result.matchedTags.map((tag) => (
+              <li key={tag.id} className="badge badge-neutral">
+                {tag.name}
+              </li>
+            ))}
+          </ul>
+        );
+    }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-6" data-testid="ai-tab">
       <ol className="space-y-6">
         <li>
           <h3 className="text-sm font-semibold text-foreground">{t("step1Title")}</h3>
@@ -198,32 +263,24 @@ export function AiImportPanel({ isSubmitting, onSubmit, children }: AiImportPane
       )}
 
       {result?.ok && (
-        <section aria-label={t("previewLabel")} className="border border-border rounded-lg p-4 space-y-2 bg-muted/40">
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            {t("previewHeading")}
-          </p>
-          <p className="text-foreground font-semibold">{result.project.title ?? t("noTitle")}</p>
-          {result.project.tagline && (
-            <p className="text-sm text-foreground">{result.project.tagline}</p>
-          )}
-          <p className="text-xs text-muted-foreground break-all">{result.project.website_url}</p>
-          {result.project.description ? (
-            <p className="text-xs text-muted-foreground whitespace-pre-line">
-              {result.project.description.length > DESCRIPTION_PREVIEW_CHARS
-                ? `${result.project.description.slice(0, DESCRIPTION_PREVIEW_CHARS)}…`
-                : result.project.description}
-            </p>
+        <section aria-label={t("previewLabel")} className="border border-border rounded-lg p-4 space-y-3 bg-muted/40">
+          {changed.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noChanges")}</p>
           ) : (
-            <p className="text-xs text-amber-700">{t("noDescription")}</p>
-          )}
-          {result.matchedTags.length > 0 && (
-            <ul className="flex flex-wrap gap-1.5" aria-label={t("tagsLabel")}>
-              {result.matchedTags.map((tag) => (
-                <li key={tag.id} className="badge badge-neutral">
-                  {tag.name}
-                </li>
-              ))}
-            </ul>
+            <>
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                {t("previewHeading")}
+              </p>
+              <dl className="space-y-3">
+                {changed.map((field) => (
+                  <div key={field}>
+                    <dt className="text-xs font-medium text-muted-foreground">{t(`fields.${field}`)}</dt>
+                    <dd className="mt-0.5">{renderValue(field)}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p className="text-xs text-muted-foreground">{t("keptNote")}</p>
+            </>
           )}
           {result.warnings.length > 0 && (
             <ul className="text-xs text-amber-700 list-disc pl-5 space-y-0.5">
@@ -232,15 +289,15 @@ export function AiImportPanel({ isSubmitting, onSubmit, children }: AiImportPane
               ))}
             </ul>
           )}
-          <p className="text-xs text-muted-foreground">{t("imagesNote")}</p>
         </section>
       )}
 
-      {children}
-
-      <button type="submit" disabled={!result?.ok || isSubmitting} className="w-full btn-primary py-2.5">
-        {isSubmitting ? t("submitting") : t("submit")}
-      </button>
+      <div>
+        <button type="submit" disabled={!result?.ok || changed.length === 0} className="w-full btn-primary py-2.5">
+          {t("submit")}
+        </button>
+        <p className="text-xs text-muted-foreground mt-2 text-center">{t("notSavedNote")}</p>
+      </div>
     </form>
   );
 }

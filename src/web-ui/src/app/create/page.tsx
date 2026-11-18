@@ -6,10 +6,6 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { api } from "@/lib/api";
-import type { ImportedProject } from "@/lib/project-import";
-import { AiImportPanel } from "./AiImportPanel";
-
-type Mode = "link" | "ai";
 
 /**
  * Creating a project, and nothing else. Entering a competition is a separate
@@ -25,27 +21,6 @@ export default function CreateProjectPage() {
   const [iOwnThis, setIOwnThis] = useState(true);
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [mode, setMode] = useState<Mode>("link");
-
-  const createAndOpen = async (fields: ImportedProject) => {
-    setIsLoading(true);
-    try {
-      const project = await api.myProjects.create({
-        ...fields,
-        is_community_tipoff: !iOwnThis,
-      });
-      router.push(`/my-projects/${project.id}`);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t("errors.submitFailed"));
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleAiSubmit = (fields: ImportedProject) => {
-    setError("");
-    void createAndOpen(fields);
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -58,42 +33,20 @@ export default function CreateProjectPage() {
       return;
     }
 
-    await createAndOpen({ website_url: url, tag_ids: [] });
-  };
+    setIsLoading(true);
 
-  const ownership = (
-    <fieldset className="space-y-2">
-      <legend className="label mb-1">{t("ownershipLegend")}</legend>
-      <label htmlFor="ownership-mine" className="flex items-start gap-2 cursor-pointer">
-        <input
-          id="ownership-mine"
-          type="radio"
-          name="ownership"
-          checked={iOwnThis}
-          onChange={() => setIOwnThis(true)}
-          className="mt-1"
-        />
-        <span className="text-sm">
-          <span className="text-foreground font-medium">{t("mine")}</span>
-          <span className="block text-xs text-muted-foreground">{t("mineDescription")}</span>
-        </span>
-      </label>
-      <label htmlFor="ownership-tipoff" className="flex items-start gap-2 cursor-pointer">
-        <input
-          id="ownership-tipoff"
-          type="radio"
-          name="ownership"
-          checked={!iOwnThis}
-          onChange={() => setIOwnThis(false)}
-          className="mt-1"
-        />
-        <span className="text-sm">
-          <span className="text-foreground font-medium">{t("tipoff")}</span>
-          <span className="block text-xs text-muted-foreground">{t("tipoffDescription")}</span>
-        </span>
-      </label>
-    </fieldset>
-  );
+    try {
+      const project = await api.myProjects.create({
+        website_url: url,
+        is_community_tipoff: !iOwnThis,
+      });
+      router.push(`/my-projects/${project.id}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t("errors.submitFailed"));
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   if (authLoading || !isReady) {
     return (
@@ -122,58 +75,66 @@ export default function CreateProjectPage() {
             <h2 className="text-foreground font-semibold mb-4">
               {t("formTitle")}
             </h2>
-            <div role="tablist" aria-label={t("modeLabel")} className="grid grid-cols-2 gap-1 p-1 mb-5 bg-muted rounded-lg">
-              {(["link", "ai"] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === m}
-                  onClick={() => setMode(m)}
-                  className={`py-1.5 rounded-md text-sm font-medium transition-colors ${
-                    mode === m ? "bg-white text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  {m === "link" ? t("modeLink") : t("modeAi")}
-                </button>
-              ))}
-            </div>
-            {error && (
-              <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2.5 rounded-lg text-sm mb-4">
-                {error}
-              </div>
-            )}
-            {mode === "ai" ? (
-              <AiImportPanel isSubmitting={isLoading} onSubmit={handleAiSubmit}>
-                {ownership}
-              </AiImportPanel>
-            ) : (
-              <form onSubmit={handleSubmit} className="space-y-4">
-
-                <div>
-                  <label htmlFor="url" className="label">{t("urlLabel")}</label>
-                  <input
-                    id="url"
-                    type="url"
-                    required
-                    value={url}
-                    onChange={(e) => setUrl(e.target.value)}
-                    className="input"
-                    placeholder={t("urlPlaceholder")}
-                  />
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {error && (
+                <div className="bg-red-50 border border-red-200 text-red-700 px-3 py-2.5 rounded-lg text-sm">
+                  {error}
                 </div>
+              )}
 
-                {ownership}
+              <div>
+                <label htmlFor="url" className="label">{t("urlLabel")}</label>
+                <input
+                  id="url"
+                  type="url"
+                  required
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  className="input"
+                  placeholder={t("urlPlaceholder")}
+                />
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="w-full btn-primary py-2.5"
-                >
-                  {isLoading ? t("submitting") : t("submit")}
-                </button>
-              </form>
-            )}
+              <fieldset className="space-y-2">
+                <legend className="label mb-1">{t("ownershipLegend")}</legend>
+                <label htmlFor="ownership-mine" className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    id="ownership-mine"
+                    type="radio"
+                    name="ownership"
+                    checked={iOwnThis}
+                    onChange={() => setIOwnThis(true)}
+                    className="mt-1"
+                  />
+                  <span className="text-sm">
+                    <span className="text-foreground font-medium">{t("mine")}</span>
+                    <span className="block text-xs text-muted-foreground">{t("mineDescription")}</span>
+                  </span>
+                </label>
+                <label htmlFor="ownership-tipoff" className="flex items-start gap-2 cursor-pointer">
+                  <input
+                    id="ownership-tipoff"
+                    type="radio"
+                    name="ownership"
+                    checked={!iOwnThis}
+                    onChange={() => setIOwnThis(false)}
+                    className="mt-1"
+                  />
+                  <span className="text-sm">
+                    <span className="text-foreground font-medium">{t("tipoff")}</span>
+                    <span className="block text-xs text-muted-foreground">{t("tipoffDescription")}</span>
+                  </span>
+                </label>
+              </fieldset>
+
+              <button
+                type="submit"
+                disabled={isLoading}
+                className="w-full btn-primary py-2.5"
+              >
+                {isLoading ? t("submitting") : t("submit")}
+              </button>
+            </form>
 
             <p className="mt-6 text-center text-sm text-muted-foreground">
               <Link href="/" className="text-accent hover:text-accent-hover font-medium transition-colors">

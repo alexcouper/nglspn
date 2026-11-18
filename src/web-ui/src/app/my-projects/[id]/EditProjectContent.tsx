@@ -13,6 +13,8 @@ import type { SelectedTag } from "@/components/TagSelector";
 import type { ProjectFormData } from "./ProjectDetail";
 import { EditableProjectBanner } from "./EditableProjectBanner";
 import { MyProjectArticles } from "./MyProjectArticles";
+import { AiImportPanel } from "./AiImportPanel";
+import type { ImportTag, ImportedProject } from "@/lib/project-import";
 import { pickVariant, getAuthorName } from "@/lib/utils";
 
 interface UploadProgressItem {
@@ -45,6 +47,8 @@ interface EditProjectContentProps {
   competitionStanding: CompetitionStanding | null;
   competitionError: string;
   onEnterCompetition: (competitionId: string) => Promise<void>;
+  /** Fills the form from an assistant's reply. Saving stays the maker's call. */
+  onAiApply: (fields: ImportedProject, matchedTags: ImportTag[]) => void;
 }
 
 const MAX_IMAGES = 10;
@@ -113,6 +117,7 @@ export function EditProjectContent({
   competitionStanding,
   competitionError,
   onEnterCompetition,
+  onAiApply,
 }: EditProjectContentProps) {
   const t = useTranslations("my-projects.editContent");
   const authorName = getAuthorName(project.creator);
@@ -223,6 +228,21 @@ export function EditProjectContent({
       label: t("tabs.articles"),
       content: (
         <MyProjectArticles projectSlugOrId={project.slug ?? project.id} />
+      ),
+    },
+    {
+      id: "ai",
+      label: t("tabs.ai"),
+      content: (
+        <AiImportPanel
+          current={formData}
+          onApply={(fields, matchedTags) => {
+            onAiApply(fields, matchedTags);
+            // Show the result where it lands: the banner is always visible,
+            // the description is on its own tab.
+            window.location.hash = "description";
+          }}
+        />
       ),
     },
     {

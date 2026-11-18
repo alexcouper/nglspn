@@ -23,6 +23,7 @@ import { PublishDialog } from "./PublishDialog";
 import { EnterCompetitionDialog } from "./EnterCompetitionDialog";
 import { useImageUpload } from "@/hooks/useImageUpload";
 import type { SelectedTag } from "@/components/TagSelector";
+import type { ImportTag, ImportedProject } from "@/lib/project-import";
 
 export interface ProjectFormData {
   title: string;
@@ -180,6 +181,26 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
   const handleTagsChange = useCallback((tags: SelectedTag[]) => {
     setSelectedTags(tags);
   }, []);
+
+  const handleAiApply = useCallback(
+    (fields: ImportedProject, matchedTags: ImportTag[]) => {
+      setFormData((prev) => (prev ? { ...prev, ...fields } : prev));
+      if (fields.tag_ids) {
+        setSelectedTags(
+          matchedTags.map((tag) => ({
+            id: tag.id,
+            name: tag.name,
+            slug: tag.slug,
+            color: tag.color ?? null,
+          }))
+        );
+      }
+      setError("");
+      setSuccessMessage(t("aiApplied"));
+      setTimeout(() => setSuccessMessage(""), 6000);
+    },
+    [t]
+  );
 
   const handleSave = async () => {
     if (!formData || !project) return;
@@ -487,6 +508,7 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           onEnterCompetition={async (competitionId) => {
             await handleEnterCompetition(competitionId);
           }}
+          onAiApply={handleAiApply}
         />
       ) : (
         previewProject && (

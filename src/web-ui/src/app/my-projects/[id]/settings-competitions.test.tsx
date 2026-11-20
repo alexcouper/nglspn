@@ -12,6 +12,7 @@ vi.mock("@/components/TagSidebarSelector", () => ({
   TagSidebarSelector: () => null,
 }));
 vi.mock("./MyProjectArticles", () => ({ MyProjectArticles: () => null }));
+vi.mock("./AiImportPanel", () => ({ AiImportPanel: () => null }));
 vi.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(),
 }));
@@ -93,6 +94,7 @@ async function renderEditMode(standing: CompetitionStanding | null) {
       competitionStanding={standing}
       competitionError=""
       onEnterCompetition={vi.fn()}
+      onAiApply={vi.fn()}
     />,
   );
 }
@@ -161,6 +163,7 @@ describe("competitions in edit mode", () => {
         competitionStanding={STANDING}
         competitionError=""
         onEnterCompetition={vi.fn()}
+        onAiApply={vi.fn()}
       />,
     );
 

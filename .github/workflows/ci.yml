@@ -14,6 +14,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
+        with:
+          # What the Dockerfile runs. Unpinned, setup-uv takes the newest
+          # Python, and from 3.13 HTTP 422's phrase changed ("Unprocessable
+          # Content"), which Django Ninja copies into the OpenAPI spec — so
+          # check-openapi-sync fails against a spec generated on 3.12.
+          python-version: "3.12"
       - run: make install-deps
       - run: make lint
       - run: make extra-tests

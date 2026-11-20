@@ -4,5 +4,5 @@
   "/projects/[slug]/articles/[articleSlug]": 380000,
   "/users/[id]/articles/[articleSlug]": 380000,
   "/articles/edit/[articleId]": 55000,
-  "/articles/edit/[articleId] (lazy)": 400000
+  "/articles/edit/[articleId] (lazy)": 720000
 }

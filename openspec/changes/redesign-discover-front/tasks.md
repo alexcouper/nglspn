@@ -83,16 +83,16 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
 
 ## 4. PR 1 — Retire Latest
 
-- [ ] 4.1 "Read next": switch `articles/onward.ts` from `FeedEntry` to
+- [x] 4.1 "Read next": switch `articles/onward.ts` from `FeedEntry` to
   `FrontPageArticle`. Rename `feedArticleHref` to `frontPageArticleHref`, and
   `OnwardMore` `latest` to `discover` → `/projects`. Both article pages call
   `fetchRecentArticles(6)` instead of `fetchFeedPage()`. Update
   `onward.test.ts` and `article-render.test.tsx`, and the `articles` i18n key
   for the "more" link.
-- [ ] 4.2 `articles/origin.ts`: replace `latest` with `discover` →
+- [x] 4.2 `articles/origin.ts`: replace `latest` with `discover` →
   `/projects`. Update `origin.test.ts`, including a case that `?from=latest`
   now falls back to the container.
-- [ ] 4.3 Delete `app/latest/`, `lib/api/feed.ts` with its `api.feed` client
+- [x] 4.3 Delete `app/latest/`, `lib/api/feed.ts` with its `api.feed` client
   entry, `fetchFeedPage`, `i18n/feed/` and its line in `i18n/messages.ts`, and
   `projects.listingTabs.latest`. Remove the `latest` tab and `ListingTab` kind
   from `ListingTabs`, and update its comment. Leave

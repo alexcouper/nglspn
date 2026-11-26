@@ -1,5 +1,6 @@
 "use client";
 
+import { frontPageArticleHref } from "@/app/articles/onward";
 import { withOrigin } from "@/app/articles/origin";
 import { ArticleCard } from "@/components/ArticleCard";
 import type { FrontPageArticle } from "@/lib/api";
@@ -13,7 +14,7 @@ interface Props {
 // an author-owned article, and linked so the back control returns to Discover.
 export function DiscoverArticleCard({ article, variant }: Props) {
   const isAuthorOwned = article.project_slug === null;
-  const href = articleHref(article);
+  const href = frontPageArticleHref(article);
 
   return (
     <ArticleCard
@@ -27,11 +28,4 @@ export function DiscoverArticleCard({ article, variant }: Props) {
       variant={variant}
     />
   );
-}
-
-function articleHref(article: FrontPageArticle): string | null {
-  if (!article.slug) return null;
-  if (article.project_slug) return `/projects/${article.project_slug}/articles/${article.slug}`;
-  if (article.author_id) return `/users/${article.author_id}/articles/${article.slug}`;
-  return null;
 }

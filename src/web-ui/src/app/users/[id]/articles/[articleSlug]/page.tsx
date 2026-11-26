@@ -8,7 +8,7 @@ import { ORIGIN_PARAM, resolveOrigin } from "@/app/articles/origin";
 import { socialCard } from "@/lib/social-card";
 import {
   fetchAuthorArticleBySlug,
-  fetchFeedPage,
+  fetchRecentArticles,
   fetchUserArticles,
   getPublicProfileOr404,
   ApiNotFoundError,
@@ -83,12 +83,8 @@ export default async function AuthorArticleRenderPage({
 
   const own = (siblings ?? []).filter((a) => a.project === null);
   const others = own.filter((a) => a.id !== article.id).length;
-  const feed =
-    others >= ONWARD_SLOTS
-      ? null
-      : await fetchFeedPage()
-          .then((page) => page.entries)
-          .catch(() => null);
+  const recent =
+    others >= ONWARD_SLOTS ? null : await fetchRecentArticles(6).catch(() => null);
 
   const container = authorContainer(author);
   return (
@@ -97,7 +93,7 @@ export default async function AuthorArticleRenderPage({
         container={container}
         article={article}
         origin={resolveOrigin(query[ORIGIN_PARAM], container)}
-        onward={buildOnward({ container, article, siblings, feed })}
+        onward={buildOnward({ container, article, siblings, recent })}
         articleCount={own.length}
         channelCount={1}
       />

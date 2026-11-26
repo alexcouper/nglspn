@@ -11,7 +11,6 @@ export { ChannelsClient } from "./channels";
 export { CompetitionsClient } from "./competitions";
 export { DiscoverClient } from "./discover";
 export { DiscussionsClient } from "./discussions";
-export { FeedClient } from "./feed";
 export { FollowsClient } from "./follows";
 export { ProjectsClient } from "./projects";
 export { MyProjectsClient } from "./my-projects";
@@ -19,9 +18,6 @@ export { MyReviewClient } from "./my-review";
 export { NotificationsClient } from "./notifications";
 export { UsersClient } from "./users";
 export { TagsClient } from "./tags";
-
-// Types - Feed
-export type { FeedEntry, FeedPage, FeedEventKind } from "./feed";
 
 // Types - Users
 export type { PublicUserProfile, UserProfile, UserProject, UserArticle } from "./users";

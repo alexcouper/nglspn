@@ -16,14 +16,14 @@ export type ArticleCardItem = Pick<
 interface Props {
   article: ArticleCardItem;
   // The small label above the headline where the card sits outside its
-  // project — on a profile, a feed: the project's title, or the author's name
+  // project — on a profile, on Discover: the project's title, or the author's name
   // for an article published under their own name. The project page leaves
   // it out; every card there is the same project.
   flag?: string;
   // A person's channel is a placeholder nobody chose, so a card for an
   // author-owned article leaves it out.
   showChannel?: boolean;
-  // Supplied rather than derived from a project slug: a cross-project feed
+  // Supplied rather than derived from a project slug: a cross-project listing
   // builds its links differently. Omitted where there is nothing to link to —
   // an unpublished draft has no slug, so the authoring preview renders the
   // card inert rather than pointing at /articles/.

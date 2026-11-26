@@ -2,10 +2,9 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import type { CategoryItem } from "@/lib/api";
 
-// Shared chrome rather than part of the projects page: /latest and /projects are
-// peer views of the same place, so they render the identical bar and moving
-// between them costs one click.
-export type ListingTab = { kind: "latest" } | { kind: "discover" } | { kind: "category"; slug: string };
+// One bar over Discover and every category view: the views are peers of the
+// same place, so only the active tab changes as a visitor moves between them.
+export type ListingTab = { kind: "discover" } | { kind: "category"; slug: string };
 
 interface ListingTabsProps {
   categories: CategoryItem[];
@@ -23,7 +22,6 @@ export function ListingTabs({ categories, active }: ListingTabsProps) {
           className="flex gap-6 overflow-x-auto scrollbar-hide flex-1"
           aria-label={t("label")}
         >
-          <TabLink href="/latest" active={active.kind === "latest"} label={t("latest")} />
           <TabLink
             href="/projects"
             active={active.kind === "discover"}

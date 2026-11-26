@@ -23,11 +23,23 @@ function author(): Container {
 }
 
 describe("resolveOrigin", () => {
-  it("sends a reader who came from the feed back to the feed", () => {
-    expect(resolveOrigin("latest", project())).toEqual({
-      kind: "latest",
-      href: "/latest",
+  it("sends a reader who came from Discover back to Discover", () => {
+    expect(resolveOrigin("discover", project())).toEqual({
+      kind: "discover",
+      href: "/projects",
     });
+  });
+
+  it("sends an old link from the retired Latest page back to the project", () => {
+    expect(resolveOrigin("latest", project())).toEqual({
+      kind: "container",
+      href: "/projects/hot-spring-finder#articles",
+      title: "Hot Spring Finder",
+    });
+  });
+
+  it("sends an old link from the retired Latest page back to the author", () => {
+    expect(resolveOrigin("latest", author()).href).toBe("/users/u-1#profile-articles");
   });
 
   it("falls back to the project when there is no parameter", () => {
@@ -54,7 +66,7 @@ describe("resolveOrigin", () => {
   });
 
   it("takes the first value when the parameter is repeated", () => {
-    expect(resolveOrigin(["latest", "whatever"], project()).kind).toBe("latest");
+    expect(resolveOrigin(["discover", "whatever"], project()).kind).toBe("discover");
   });
 
   it("addresses a project by id when it has no slug yet", () => {
@@ -66,8 +78,8 @@ describe("resolveOrigin", () => {
 
 describe("withOrigin", () => {
   it("marks a link with where it was followed from", () => {
-    expect(withOrigin("/projects/a/articles/b", "latest")).toBe(
-      "/projects/a/articles/b?from=latest",
+    expect(withOrigin("/projects/a/articles/b", "discover")).toBe(
+      "/projects/a/articles/b?from=discover",
     );
   });
 });

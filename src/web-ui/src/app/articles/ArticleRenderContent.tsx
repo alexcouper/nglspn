@@ -93,7 +93,7 @@ export function ArticleRenderContent({
                 className="inline-flex items-center gap-1.5 pl-2 pr-3 py-1.5 text-sm font-medium rounded-full border border-border bg-white hover:border-accent hover:text-accent transition-colors"
               >
                 <ChevronLeftIcon className="w-4 h-4" />
-                {origin.kind === "container" ? origin.title : t("backToLatest")}
+                {origin.kind === "container" ? origin.title : t("backToDiscover")}
               </Link>
             </div>
 

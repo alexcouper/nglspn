@@ -9,7 +9,6 @@ import auth from "./auth/en.json";
 import common from "./common/en.json";
 import competitions from "./competitions/en.json";
 import discussions from "./discussions/en.json";
-import feed from "./feed/en.json";
 import guides from "./guides/en.json";
 import images from "./images/en.json";
 import myProjects from "./my-projects/en.json";
@@ -24,7 +23,6 @@ export const messages = {
   common,
   competitions,
   discussions,
-  feed,
   guides,
   images,
   "my-projects": myProjects,

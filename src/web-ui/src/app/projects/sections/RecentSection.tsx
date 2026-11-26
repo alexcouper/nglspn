@@ -16,6 +16,9 @@ export function RecentSection({ lead, second, slot }: Props) {
   if (!lead) return null;
 
   const rightColumnShared = !!second && !!slot;
+  // A grid cell stretches to its row, the card inside it does not; this
+  // passes the height down so cards sharing a row end level.
+  const fillCell = "md:[&>article]:h-full";
 
   return (
     <section aria-labelledby="discover-recent-heading">
@@ -25,12 +28,15 @@ export function RecentSection({ lead, second, slot }: Props) {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <div
           data-testid="recent-lead"
-          className={`order-1 ${rightColumnShared ? "md:row-span-2 md:[&>article]:h-full" : ""}`}
+          className={`order-1 ${second ? fillCell : ""} ${rightColumnShared ? "md:row-span-2" : ""}`}
         >
           <DiscoverArticleCard article={lead} variant="lead" />
         </div>
         {second && (
-          <div data-testid="recent-second" className="order-3 md:order-2">
+          <div
+            data-testid="recent-second"
+            className={`order-3 md:order-2 ${slot ? "" : fillCell}`}
+          >
             {/* Alone in the right column, the overlay card would leave the
                 column half empty; the grid card is as tall as the lead. */}
             <DiscoverArticleCard

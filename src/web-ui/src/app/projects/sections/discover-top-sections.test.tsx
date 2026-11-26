@@ -98,6 +98,12 @@ function linkOf(element: HTMLElement | null): string | null | undefined {
   return element?.querySelector("a")?.getAttribute("href");
 }
 
+// Grid cells stretch, cards don't: a card fills its cell only when its
+// wrapper passes the height down at the side-by-side breakpoint.
+function fillsItsCell(element: HTMLElement | null): boolean {
+  return !!element?.className.split(/\s+/).includes("md:[&>article]:h-full");
+}
+
 function isOverlayCard(element: HTMLElement | null): boolean {
   return !!element?.querySelector('[data-testid="article-card-overlay"]');
 }
@@ -138,6 +144,8 @@ describe("RecentSection", () => {
     expect(isOverlayCard(piece(container, "second"))).toBe(false);
     expect(piece(container, "second")?.textContent).toContain("Summary of b");
     expect(piece(container, "lead")?.className).not.toContain("md:row-span-2");
+    expect(fillsItsCell(piece(container, "second"))).toBe(true);
+    expect(fillsItsCell(piece(container, "lead"))).toBe(true);
 
     unmount();
   });

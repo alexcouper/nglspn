@@ -182,7 +182,7 @@ class CompetitionSummaryResponse(Schema):
     image_url: str | None = None
     project_count: int
     # Set only on a closed competition with a winner.
-    winner: CompetitionWinnerRef | None = None
+    winner: CompetitionWinnerRef | None
 
     @classmethod
     def from_competition(cls, competition: Any) -> "CompetitionSummaryResponse":

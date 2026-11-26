@@ -44,7 +44,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   winner. In `get_highlights`, add `select_related("winner")` and
   `gallery_prefetch("winner__images")`. Router tests cover: closed with a
   winner, closed without one, active rounds with null, and a query-count bound.
-- [ ] 2.5 Run `make extract-openapi` and commit `backend-openapi.json`, then
+- [x] 2.5 Run `make extract-openapi` and commit `backend-openapi.json`, then
   `make lint`, `make extra-tests` and `make test` in the backend.
 
 ## 3. PR 1 — The new top of Discover

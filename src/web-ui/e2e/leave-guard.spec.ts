@@ -19,16 +19,18 @@ import { test, expect, type Page } from "@playwright/test";
 // second checkout running its own server is not on 3000.
 const BASE = process.env.SPIKE_APP_URL ?? "http://localhost:3000";
 
-// The feed streams in behind a Suspense boundary, so waiting for a row waits
-// well past the point where the nav alone has rendered.
-const feedRow = (page: Page) =>
+// Discover streams in behind a Suspense boundary, so waiting for one of its
+// links waits well past the point where the nav alone has rendered.
+const discoverLink = (page: Page) =>
   page.locator("main a[href^='/projects/']").first();
 
-const siteLink = (page: Page) => page.locator("a[href='/projects']").first();
+// Somewhere other than the page under test, so a click that got through would
+// show in the URL.
+const siteLink = (page: Page) => page.locator("a[href='/competitions']").first();
 
 async function openHydrated(page: Page) {
-  await page.goto(`${BASE}/latest`);
-  await expect(feedRow(page)).toBeAttached({ timeout: 20_000 });
+  await page.goto(`${BASE}/projects`);
+  await expect(discoverLink(page)).toBeAttached({ timeout: 20_000 });
   await page.waitForTimeout(800);
 }
 
@@ -78,7 +80,7 @@ test("preventDefault alone cancels an App Router Link", async ({ page }) => {
   const result = await clickSiteLink(page);
 
   expect(result.saw).toBe(true);
-  expect(result.url).toContain("/latest");
+  expect(new URL(result.url).pathname).toBe("/projects");
   // No `stopPropagation`: `Link` bails on `defaultPrevented`, and the click
   // still reaches the handlers that close the drawer and the user menu.
   expect(result.bubbled).toBe(true);
@@ -98,5 +100,5 @@ test("a document-capture listener happens to cancel it too", async ({
   const result = await clickSiteLink(page);
 
   expect(result.saw).toBe(true);
-  expect(result.url).toContain("/latest");
+  expect(new URL(result.url).pathname).toBe("/projects");
 });

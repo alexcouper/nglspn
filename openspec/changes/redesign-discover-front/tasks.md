@@ -98,7 +98,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   from `ListingTabs`, and update its comment. Leave
   `use-leave-guard.test.tsx`'s `/latest` hrefs alone: they are arbitrary
   links.
-- [ ] 4.4 Remove `/latest` from `PUBLIC_STATIC_PAGES` in `sitemap.ts`. Add
+- [x] 4.4 Remove `/latest` from `PUBLIC_STATIC_PAGES` in `sitemap.ts`. Add
   the permanent redirect `/latest` → `/projects` in `next.config.ts`. Verify
   with `make test` (sitemap coverage) and `curl -sI localhost:3000/latest`
   showing a 308 to `/projects`.

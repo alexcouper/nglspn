@@ -73,6 +73,9 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  async redirects() {
+    return [{ source: "/latest", destination: "/projects", permanent: true }];
+  },
   async headers() {
     return [
       {

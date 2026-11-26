@@ -10,7 +10,6 @@ import { guideUrl } from "@/lib/guides";
 export const PUBLIC_STATIC_PAGES = [
   "/projects",
   "/competitions",
-  "/latest",
   "/about",
   "/about/why",
   "/about/prizes",

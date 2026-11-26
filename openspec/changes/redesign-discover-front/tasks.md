@@ -62,7 +62,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
 - [x] 3.3 Move `LargeHeroCard` out of `sections/FeaturedSection.tsx` into
   `components/ProjectHeroCard.tsx` and update `ImageRoleDialog`. Verify that
   `make lint` passes and the image-role dialog preview still renders.
-- [ ] 3.4 Add `variant="overlay"` to `ArticleCard`. Without an image it
+- [x] 3.4 Add `variant="overlay"` to `ArticleCard`. Without an image it
   renders as `grid`. Extend `components/article-card.test.tsx` for both cases.
 - [ ] 3.5 Build `CompetitionSlot` for its three states, linking to
   `/competitions/{slug}`. Reuse `getCompetitionDeadline` and the status

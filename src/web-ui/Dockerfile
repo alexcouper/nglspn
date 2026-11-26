@@ -1,4 +1,4 @@
-FROM node:20-alpine AS base
+FROM node:24-alpine AS base
 
 # Install dependencies only when needed
 FROM base AS deps
@@ -25,6 +25,10 @@ FROM base AS runner
 WORKDIR /app
 
 ENV NODE_ENV=production
+
+# The runtime only needs `node server.js`. npm and its bundled deps are dead
+# weight here and the main source of image-scan findings, so remove them.
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /opt/yarn* /usr/local/bin/yarn /usr/local/bin/yarnpkg
 
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs

@@ -13,4 +13,4 @@ if [ -n "${API_URL:-}" ]; then
 fi
 
 echo "Building Docker image $IMAGE"
-docker build -t "$IMAGE" --platform=linux/amd64 ${BUILD_ARGS[@]+"${BUILD_ARGS[@]}"} "$APP_DIR"
+docker build --pull -t "$IMAGE" --platform=linux/amd64 ${BUILD_ARGS[@]+"${BUILD_ARGS[@]}"} "$APP_DIR"

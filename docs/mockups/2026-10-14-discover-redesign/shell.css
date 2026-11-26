@@ -1,0 +1,101 @@
+/* Tokens taken from src/web-ui/src/app/globals.css, plus two additions the
+   options introduce: --broth (the competition lane) and a real type scale.
+   Everything else is the live app's palette, so these mockups read as the
+   product and not as a rebrand. */
+:root {
+  --ink: #0f172a;
+  --paper: #ffffff;
+  --wash: #f8fafc;
+  --rule: #e2e8f0;
+  --rule-soft: #eef1f5;
+  --muted: #64748b;
+  --muted-2: #94a3b8;
+  --accent: #6366f1;
+  --accent-hover: #4f46e5;
+  --accent-wash: #eef2ff;
+  /* amber-700. The app's winner treatment uses amber-400/200, which reads as a
+     warning. Deepened so it reads as an award and clears 4.5:1 on white. */
+  --broth: #b45309;
+  --broth-wash: #fffbeb;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-font-smoothing: antialiased; }
+body {
+  margin: 0;
+  background: var(--wash);
+  color: var(--ink);
+  font-family: Inter, -apple-system, system-ui, sans-serif;
+  font-size: 14px;
+  line-height: 1.5;
+}
+a { color: inherit; text-decoration: none; }
+img { display: block; }
+
+/* ---- type scale ---------------------------------------------------------
+   The live app sets every section heading at text-lg/600 and every card title
+   at text-sm/500, so nothing in the page says what matters more. One scale,
+   five steps, used consistently. */
+.t-lead    { font-size: 27px; line-height: 1.16; font-weight: 600; letter-spacing: -0.022em; }
+.t-sub     { font-size: 19px; line-height: 1.25; font-weight: 600; letter-spacing: -0.016em; }
+.t-section { font-size: 15px; line-height: 1.3;  font-weight: 600; letter-spacing: -0.01em; }
+.t-item    { font-size: 15px; line-height: 1.3;  font-weight: 500; letter-spacing: -0.008em; }
+.t-body    { font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+.t-small   { font-size: 12.5px; line-height: 1.45; color: var(--muted); }
+/* Dates are data: tabular figures line up down a column without reaching for a
+   monospace face. */
+.date { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: 0.005em; }
+
+.measure { max-width: 62ch; }
+
+/* ---- shell -------------------------------------------------------------- */
+.nav {
+  background: var(--ink); color: #f8fafc; height: 52px;
+  display: flex; align-items: center;
+}
+.nav-inner, .wrap { max-width: 1152px; margin: 0 auto; padding: 0 24px; width: 100%; }
+.nav-brand { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.tabs { background: var(--paper); border-bottom: 1px solid var(--rule); }
+.tabs-inner {
+  max-width: 1152px; margin: 0 auto; padding: 0 24px;
+  display: flex; gap: 22px; align-items: center;
+}
+.tab { padding: 12px 0; font-size: 13.5px; font-weight: 500; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; }
+.tab[aria-current] { color: var(--accent); border-bottom-color: var(--accent); }
+.tabs-cta {
+  margin-left: auto; background: var(--accent); color: #fff; font-size: 13px; font-weight: 500;
+  padding: 6px 13px; border-radius: 6px; white-space: nowrap;
+}
+.page { padding: 28px 0 56px; }
+
+/* ---- section heading ---------------------------------------------------- */
+.sec { margin-top: 40px; }
+.sec:first-child { margin-top: 0; }
+.sec-head { display: flex; align-items: baseline; gap: 10px; margin-bottom: 14px; }
+.sec-head .more { margin-left: auto; font-size: 13px; font-weight: 500; color: var(--accent); }
+.sec-note { font-size: 12.5px; color: var(--muted-2); }
+
+/* ---- surfaces -----------------------------------------------------------
+   Radius carries meaning here: 10px marks a tile that holds a picture, and a
+   list line has none. The live app puts the same 12px on everything. */
+.tile { background: var(--paper); border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+.shot { width: 100%; aspect-ratio: 16/9; object-fit: cover; background: var(--rule-soft); }
+
+/* ---- badges -------------------------------------------------------------
+   One badge shape, two meanings, both informational: the competition an entry
+   won, and a community tip-off. */
+.win {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-size: 12px; font-weight: 600; color: var(--broth);
+}
+.win::before { content: ""; width: 5px; height: 5px; border-radius: 50%; background: var(--broth); }
+.tip { font-size: 12px; font-weight: 600; color: #a16207; background: #fef3c7; border-radius: 4px; padding: 1px 6px; }
+
+/* ---- mockup chrome (not part of the design) ----------------------------- */
+.frame { border-top: 3px solid var(--ink); }
+.frame-label {
+  background: var(--ink); color: #f8fafc; padding: 10px 24px;
+  font-size: 12.5px; letter-spacing: 0.01em;
+}
+.frame-label b { font-weight: 600; }
+.frame-label span { color: var(--muted-2); }

@@ -5,6 +5,7 @@ from uuid import UUID
 from ninja import Schema
 
 from services.articles.summary import derive_summary
+from services.project.django_impl.query import variant_url
 
 from .project import ImageResponse
 from .user import PublicUserProfile
@@ -255,3 +256,53 @@ class OwnArticleResponse(UserArticleResponse):
     @staticmethod
     def resolve_is_globally_visible(obj: Any) -> bool:
         return obj.is_globally_visible
+
+
+class FrontPageArticle(Schema):
+    """A card on Discover's Recent and spotlight sections, and in "read next".
+
+    Flat, like the feed's article ref it replaces. An author-owned article has
+    null project fields; its author fields are its flag then.
+    """
+
+    id: UUID
+    slug: str | None
+    title: str
+    summary: str
+    published_at: datetime
+    channel_name: str
+    project_slug: str | None
+    project_title: str | None
+    author_id: UUID | None
+    author_name: str | None
+    author_avatar_url: str | None
+    listing_image_url: str | None
+    listing_crop: CropRect | None
+
+    @staticmethod
+    def resolve_summary(obj: Any) -> str:
+        return ArticleListItem.resolve_summary(obj)
+
+    @staticmethod
+    def resolve_channel_name(obj: Any) -> str:
+        return obj.channel.name if obj.channel else ""
+
+    @staticmethod
+    def resolve_project_slug(obj: Any) -> str | None:
+        return obj.project.slug if obj.project else None
+
+    @staticmethod
+    def resolve_project_title(obj: Any) -> str | None:
+        return obj.project.title if obj.project else None
+
+    @staticmethod
+    def resolve_author_name(obj: Any) -> str | None:
+        return obj.author.full_name if obj.author else None
+
+    @staticmethod
+    def resolve_author_avatar_url(obj: Any) -> str | None:
+        return obj.author.avatar_url if obj.author else None
+
+    @staticmethod
+    def resolve_listing_image_url(obj: Any) -> str | None:
+        return variant_url(obj.listing_image, "large")

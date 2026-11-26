@@ -29,7 +29,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   `spotlight(limit)` (adds `is_spotlight`). Select and prefetch everything the
   schema reads. Cover each spec scenario under "Front-page articles" with
   query tests, using factories and an assertion helper on the returned ids.
-- [ ] 2.2 Add a `FrontPageArticle` schema in `api/schemas/article.py`: the
+- [x] 2.2 Add a `FrontPageArticle` schema in `api/schemas/article.py`: the
   card fields from the spec, with the image from `variant_url(...,
   "large")`.
 - [ ] 2.3 Add `GET /api/articles/recent` and `GET /api/articles/spotlight`

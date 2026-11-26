@@ -40,6 +40,7 @@ export type {
   CompetitionProject,
   Tag,
   CompetitionHighlightsResponse,
+  CompetitionWinnerRef,
 } from "./competitions";
 
 // Types - Articles
@@ -49,6 +50,7 @@ export type {
   ArticleCreate,
   ArticleUpdate,
   ArticlePublish,
+  FrontPageArticle,
   OwnArticle,
   OwnArticleCreate,
 } from "./articles";

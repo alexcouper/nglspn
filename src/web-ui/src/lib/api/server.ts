@@ -13,6 +13,7 @@ import type {
   CompetitionOverviewListResponse,
   DiscoverProject,
   FeedPage,
+  FrontPageArticle,
   Project,
   WinnerProject,
 } from "./index";
@@ -122,6 +123,20 @@ export async function fetchCompetitionHighlights(): Promise<CompetitionHighlight
 
 export async function fetchFeedPage(): Promise<FeedPage> {
   return serverFetch<FeedPage>("/api/feed");
+}
+
+export async function fetchRecentArticles(
+  limit?: number,
+): Promise<FrontPageArticle[]> {
+  const query = limit === undefined ? "" : `?limit=${limit}`;
+  return serverFetch<FrontPageArticle[]>(`/api/articles/recent${query}`);
+}
+
+export async function fetchSpotlightArticles(
+  limit?: number,
+): Promise<FrontPageArticle[]> {
+  const query = limit === undefined ? "" : `?limit=${limit}`;
+  return serverFetch<FrontPageArticle[]>(`/api/articles/spotlight${query}`);
 }
 
 export async function fetchCategories(): Promise<CategoryItem[]> {

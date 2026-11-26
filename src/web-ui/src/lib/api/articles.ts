@@ -8,6 +8,7 @@ export type OwnArticleCreate = components["schemas"]["OwnArticleCreate"];
 export type OwnArticle = components["schemas"]["OwnArticleResponse"];
 export type ArticleUpdate = components["schemas"]["ArticleUpdate"];
 export type ArticlePublish = components["schemas"]["ArticlePublish"];
+export type FrontPageArticle = components["schemas"]["FrontPageArticle"];
 // How the article's listing image was decided. Generated from
 export type Image = components["schemas"]["ImageResponse"];
 export type PresignedUploadResponse =

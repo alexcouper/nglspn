@@ -68,7 +68,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   `/competitions/{slug}`. Reuse `getCompetitionDeadline` and the status
   colours. Write a test per state asserting the label, verb, days left and
   winner, using the English messages.
-- [ ] 3.6 Build `RecentSection` (1 + 2 grid, the no-slot and one-article
+- [x] 3.6 Build `RecentSection` (1 + 2 grid, the no-slot and one-article
   layouts, and mobile order lead → slot → second via CSS `order`) and
   `SpotlightSection` (up to three `grid` cards, heading only). Cards link with
   `?from=discover`. Test the layouts with one, two and no articles.

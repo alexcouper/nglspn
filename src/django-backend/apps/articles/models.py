@@ -181,6 +181,10 @@ class Article(models.Model):
     # on each transition into visibility, so a re-approval after a demotion is
     # judged on when it came back rather than when it first went out.
     approved_at = models.DateTimeField(null=True, blank=True)
+    # Set by an admin; puts the article in Discover's spotlight section.
+    is_spotlight = models.BooleanField(default=False)
+    # Set by an admin; once passed, the article drops out of Recent and "read next".
+    recent_until = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

@@ -6,7 +6,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
 
 ## 1. PR 1 — Article fields and admin
 
-- [ ] 1.1 Add `Article.is_spotlight` (bool, default false) and
+- [x] 1.1 Add `Article.is_spotlight` (bool, default false) and
   `Article.recent_until` (nullable datetime), each with a one-line comment
   saying who sets it and what it does. Write the migration, and verify with
   `uv run python manage.py makemigrations --check --dry-run`.

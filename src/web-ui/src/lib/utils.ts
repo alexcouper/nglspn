@@ -109,3 +109,10 @@ export function getContrastColor(hexColor: string): string {
   const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
   return luminance > 0.5 ? "#000000" : "#ffffff";
 }
+
+// A competition's prize as the API sends it ("50000.00"), grouped the
+// Icelandic way ("50.000"). Empty when there is no prize.
+export function formatPrizeAmount(amount: string | null | undefined): string {
+  if (!amount) return "";
+  return new Intl.NumberFormat("is-IS").format(parseFloat(amount));
+}

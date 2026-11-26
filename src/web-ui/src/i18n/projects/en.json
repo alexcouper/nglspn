@@ -88,5 +88,29 @@
   },
   "channelToggle": {
     "updateFailed": "Couldn't update channel"
+  },
+  "recent": {
+    "heading": "Recent"
+  },
+  "spotlight": {
+    "heading": "In the spotlight"
+  },
+  "competitionSlot": {
+    "voting": {
+      "label": "Voting open",
+      "verb": "Rank the entries"
+    },
+    "accepting": {
+      "label": "Open for entries",
+      "verb": "Enter your project"
+    },
+    "closed": {
+      "label": "Winner",
+      "wonBy": "Won by {project}",
+      "verb": "See the results"
+    },
+    "daysLeft": "{count, plural, =0 {Last day} one {# day left} other {# days left}}",
+    "entries": "{count, plural, one {# entry} other {# entries}}",
+    "enteredSoFar": "{count, plural, one {# entered so far} other {# entered so far}}"
   }
 }

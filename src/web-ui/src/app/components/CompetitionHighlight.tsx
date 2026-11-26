@@ -6,12 +6,7 @@ import type { CompetitionSummary } from "@/lib/api";
 import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
 import { HorizontalScroll } from "@/components/HorizontalScroll";
 import { getCompetitionDeadline } from "@/lib/competition-dates";
-
-function formatPrizeAmount(amount: string | null): string {
-  if (!amount) return "";
-  const num = parseFloat(amount);
-  return new Intl.NumberFormat("is-IS").format(num);
-}
+import { formatPrizeAmount } from "@/lib/utils";
 
 function CompetitionCard({ competition, className = "" }: { competition: CompetitionSummary; className?: string }) {
   const t = useTranslations("competitions.highlight");

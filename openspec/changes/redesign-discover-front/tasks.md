@@ -125,11 +125,13 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
     reload.
   - `/latest` redirects.
   - The back control from a Discover card returns to `/projects`.
-- [ ] 5.3 Before deploy, list production feed entries that are retired but
+- [x] 5.3 Before deploy, list production feed entries that are retired but
   whose article is still visible (`FeedEvent.objects.filter(retired_at__isnull=False,
   article__isnull=False)` on visible articles). For each, decide on
   `recent_until` with the user. Record the result in the PR.
-- [ ] 5.4 Open PR 1 using the repo template, referencing #102.
+  *Result, 2026-11-26: the query returned nothing in production, so no
+  `recent_until` is set.*
+- [x] 5.4 Open PR 1 using the repo template, referencing #102.
 
 ## 6. PR 2 — Remove the feed
 

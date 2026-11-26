@@ -10,7 +10,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   `Article.recent_until` (nullable datetime), each with a one-line comment
   saying who sets it and what it does. Write the migration, and verify with
   `uv run python manage.py makemigrations --check --dry-run`.
-- [ ] 1.2 Data migration: set `is_spotlight` on every globally visible
+- [x] 1.2 Data migration: set `is_spotlight` on every globally visible
   article in the channel named `Reviews` on the project with
   `is_house_project=True`, using historical models. A no-op if there is no
   house project. Test it with a migration test in the style of

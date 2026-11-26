@@ -6,6 +6,10 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 from django.db.models.deletion import CASCADE, PROTECT, SET_NULL
+from django.db.models.functions import Coalesce
+from django.utils import timezone
+
+from apps.projects.models import ProjectStatus
 
 
 class ArticleSource(models.TextChoices):
@@ -60,6 +64,22 @@ class ArticleQuerySet(models.QuerySet):
         own views opt out explicitly rather than by forgetting to filter.
         """
         return self.filter(globally_visible_q())
+
+    def on_front_page(self) -> "ArticleQuerySet":
+        """The articles Discover may show, newest to become visible first.
+
+        Ordered by `approved_at` rather than `published_at`, which its author
+        can edit after the fact; a row that predates `approved_at` falls back.
+        """
+        return (
+            self.globally_visible()
+            .filter(
+                Q(project__isnull=True) | Q(project__status=ProjectStatus.APPROVED),
+                published_at__lte=timezone.now(),
+            )
+            .annotate(front_page_at=Coalesce("approved_at", "published_at"))
+            .order_by("-front_page_at", "-created_at")
+        )
 
 
 def delete_author_owned_else_keep(

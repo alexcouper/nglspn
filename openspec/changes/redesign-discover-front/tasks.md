@@ -22,7 +22,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
 
 ## 2. PR 1 — Front-page endpoints and the competition winner
 
-- [ ] 2.1 Add `ArticleQuerySet.on_front_page()` (see design: visible,
+- [x] 2.1 Add `ArticleQuerySet.on_front_page()` (see design: visible,
   author-owned or on an approved project, `published_at` in the past, ordered
   by `Coalesce(approved_at, published_at)` descending), plus `REPO.articles`
   methods `recent(limit)` (adds `recent_until` null or in the future) and

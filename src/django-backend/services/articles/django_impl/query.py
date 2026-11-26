@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from django.db.models import F
+from django.db.models import F, Q
+from django.utils import timezone
 
 from apps.articles.models import Article
 from apps.follows.models import Channel
@@ -26,6 +27,17 @@ def article_detail_queryset() -> QuerySet[Article]:
     return Article.objects.select_related(
         "project", "channel", "author", "author__avatar", "listing_image"
     ).prefetch_related("listing_image__variants", "images__variants")
+
+
+def front_page_queryset() -> QuerySet[Article]:
+    """Front-page articles with everything `FrontPageArticle` reads."""
+    return (
+        Article.objects.on_front_page()
+        .select_related(
+            "project", "channel", "author", "author__avatar", "listing_image"
+        )
+        .prefetch_related("listing_image__variants")
+    )
 
 
 class DjangoArticleQuery(ArticleQueryInterface):
@@ -76,3 +88,10 @@ class DjangoArticleQuery(ArticleQueryInterface):
         self, project_id: UUID, channel_id: UUID
     ) -> Channel | None:
         return Channel.objects.filter(project_id=project_id, pk=channel_id).first()
+
+    def recent(self, limit: int) -> list[Article]:
+        not_expired = Q(recent_until__isnull=True) | Q(recent_until__gt=timezone.now())
+        return list(front_page_queryset().filter(not_expired)[:limit])
+
+    def spotlight(self, limit: int) -> list[Article]:
+        return list(front_page_queryset().filter(is_spotlight=True)[:limit])

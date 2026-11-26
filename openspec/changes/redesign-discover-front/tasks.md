@@ -16,7 +16,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   house project. Test it with a migration test in the style of
   `apps/projects/test_prune_reviews_migration.py`: a house Review gets the
   flag; a draft, a Review on another project and an Updates article don't.
-- [ ] 1.3 `ArticleAdmin`: add a "Front page" fieldset (`is_spotlight`,
+- [x] 1.3 `ArticleAdmin`: add a "Front page" fieldset (`is_spotlight`,
   `recent_until`), `is_spotlight` in `list_display`, `list_editable` and
   `list_filter`. Check in the local admin that toggling from the list saves.
 

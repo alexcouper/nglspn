@@ -106,7 +106,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   `/projects` instead of Latest. `leave-guard.spec.ts` opens `/projects` and
   waits for a Discover link instead of a feed row. Run both against a local
   stack.
-- [ ] 4.6 Run `make lint`, `make test`, `make build-app` and `make
+- [x] 4.6 Run `make lint`, `make test`, `make build-app` and `make
   extra-tests` (bundle budgets) in the web-ui.
 
 ## 5. PR 1 — Docs, end-to-end check, deploy

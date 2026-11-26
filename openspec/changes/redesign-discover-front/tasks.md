@@ -102,7 +102,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   the permanent redirect `/latest` → `/projects` in `next.config.ts`. Verify
   with `make test` (sitemap coverage) and `curl -sI localhost:3000/latest`
   showing a 308 to `/projects`.
-- [ ] 4.5 e2e: `author-article.spec.ts` checks V sees U's article in Recent on
+- [x] 4.5 e2e: `author-article.spec.ts` checks V sees U's article in Recent on
   `/projects` instead of Latest. `leave-guard.spec.ts` opens `/projects` and
   waits for a Discover link instead of a feed row. Run both against a local
   stack.
@@ -115,7 +115,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   this change for where the build departs. In
   `docs/2026-08-19-article-launch-followups.md`, correct the parts that assume
   the Latest feed.
-- [ ] 5.2 With both services and `make seed` running, sign in through
+- [x] 5.2 With both services and `make seed` running, sign in through
   Playwright and check `/projects` at 1280px and 390px:
   - Recent appears with the slot, and the stacked order is correct.
   - The spotlight has no duplicates.

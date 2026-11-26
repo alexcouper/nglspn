@@ -104,13 +104,36 @@ function fillsItsCell(element: HTMLElement | null): boolean {
   return !!element?.className.split(/\s+/).includes("md:[&>article]:h-full");
 }
 
-function isOverlayCard(element: HTMLElement | null): boolean {
-  return !!element?.querySelector('[data-testid="article-card-overlay"]');
+// The second card sits above the slot at its own height; the slot's row is
+// the one that grows when the lead is the taller side.
+function slotRowTakesTheSlack(container: HTMLElement): boolean {
+  const grid = piece(container, "lead")?.parentElement;
+  return !!grid?.className.split(/\s+/).includes("md:grid-rows-[auto_1fr]");
+}
+
+function visibleHeading(container: HTMLElement): HTMLElement | null {
+  const heading = container.querySelector("h2");
+  return heading && !heading.classList.contains("sr-only") ? heading : null;
 }
 
 // ---------------------------------------------------------------- the tests
 
 describe("RecentSection", () => {
+  it("shows its heading, set like the spotlight's", async () => {
+    const recent = await mount(
+      <RecentSection lead={projectArticle("a")} second={null} slot={null} />,
+    );
+    const spotlight = await mount(<SpotlightSection articles={[projectArticle("c")]} />);
+
+    expect(visibleHeading(recent.container)?.textContent).toBe("Recent");
+    expect(visibleHeading(recent.container)?.className).toBe(
+      visibleHeading(spotlight.container)?.className,
+    );
+
+    recent.unmount();
+    spotlight.unmount();
+  });
+
   it("puts the newest article first, the second beside it and the slot below that", async () => {
     const { container, unmount } = await mount(
       <RecentSection lead={projectArticle("a")} second={projectArticle("b")} slot={slot()} />,
@@ -118,9 +141,22 @@ describe("RecentSection", () => {
 
     expect(piece(container, "lead")?.textContent).toContain("Article a");
     expect(piece(container, "lead")?.className).toContain("md:row-span-2");
-    expect(isOverlayCard(piece(container, "second"))).toBe(true);
+    expect(piece(container, "second")?.querySelector("img")).not.toBeNull();
+    expect(piece(container, "second")?.textContent).toContain("Summary of b");
     expect(piece(container, "second")?.className).toContain("md:order-2");
     expect(piece(container, "slot")?.className).toContain("md:order-3");
+
+    unmount();
+  });
+
+  it("stretches the lead to the right column and lets the slot, not the second card, take up slack", async () => {
+    const { container, unmount } = await mount(
+      <RecentSection lead={projectArticle("a")} second={projectArticle("b")} slot={slot()} />,
+    );
+
+    expect(fillsItsCell(piece(container, "lead"))).toBe(true);
+    expect(fillsItsCell(piece(container, "second"))).toBe(false);
+    expect(slotRowTakesTheSlack(container)).toBe(true);
 
     unmount();
   });
@@ -141,7 +177,6 @@ describe("RecentSection", () => {
     );
 
     expect(piece(container, "slot")).toBeNull();
-    expect(isOverlayCard(piece(container, "second"))).toBe(false);
     expect(piece(container, "second")?.textContent).toContain("Summary of b");
     expect(piece(container, "lead")?.className).not.toContain("md:row-span-2");
     expect(fillsItsCell(piece(container, "second"))).toBe(true);

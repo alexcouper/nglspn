@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 
 import { CompetitionStatusBadge } from "@/components/CompetitionStatusBadge";
 import type { CompetitionSlot as Slot } from "@/lib/discover-top";
-import { formatPrizeAmount } from "@/lib/utils";
+import { formatKronurAmount } from "@/lib/utils";
 
 interface Props {
   slot: Slot;
@@ -46,7 +46,7 @@ export function CompetitionSlot({ slot, className = "" }: Props) {
       ];
       verb = t("accepting.verb");
       imageUrl = competition.image_url;
-      const amount = formatPrizeAmount(competition.prize_amount);
+      const amount = formatKronurAmount(competition.prize_amount);
       prize = amount ? th("prize", { amount }) : "";
       break;
     }

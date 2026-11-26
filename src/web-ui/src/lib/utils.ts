@@ -116,3 +116,13 @@ export function formatPrizeAmount(amount: string | null | undefined): string {
   if (!amount) return "";
   return new Intl.NumberFormat("is-IS").format(parseFloat(amount));
 }
+
+// The same prize in whole krónur with a dot between thousands ("50.000"),
+// spelled out rather than left to Intl: a browser without Icelandic locale
+// data falls back to "50,000", and the server and the browser then disagree.
+export function formatKronurAmount(amount: string | null | undefined): string {
+  if (!amount) return "";
+  return Math.round(parseFloat(amount))
+    .toString()
+    .replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+}

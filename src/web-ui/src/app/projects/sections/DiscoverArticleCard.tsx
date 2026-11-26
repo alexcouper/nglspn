@@ -7,7 +7,7 @@ import type { FrontPageArticle } from "@/lib/api";
 
 interface Props {
   article: FrontPageArticle;
-  variant: "lead" | "grid" | "overlay";
+  variant: "lead" | "grid";
 }
 
 // A front-page article as a card: flagged with its project, or its author for

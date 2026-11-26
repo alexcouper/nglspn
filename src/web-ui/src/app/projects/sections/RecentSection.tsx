@@ -22,10 +22,17 @@ export function RecentSection({ lead, second, slot }: Props) {
 
   return (
     <section aria-labelledby="discover-recent-heading">
-      <h2 id="discover-recent-heading" className="sr-only">
+      <h2
+        id="discover-recent-heading"
+        className="mb-4 text-lg font-semibold text-foreground"
+      >
         {t("heading")}
       </h2>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      {/* Sharing the right column, the second card keeps its own height and
+          the slot takes what the lead leaves over. */}
+      <div
+        className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${rightColumnShared ? "md:grid-rows-[auto_1fr]" : ""}`}
+      >
         <div
           data-testid="recent-lead"
           className={`order-1 ${second ? fillCell : ""} ${rightColumnShared ? "md:row-span-2" : ""}`}
@@ -37,12 +44,7 @@ export function RecentSection({ lead, second, slot }: Props) {
             data-testid="recent-second"
             className={`order-3 md:order-2 ${slot ? "" : fillCell}`}
           >
-            {/* Alone in the right column, the overlay card would leave the
-                column half empty; the grid card is as tall as the lead. */}
-            <DiscoverArticleCard
-              article={second}
-              variant={slot ? "overlay" : "grid"}
-            />
+            <DiscoverArticleCard article={second} variant="grid" />
           </div>
         )}
         {slot && (

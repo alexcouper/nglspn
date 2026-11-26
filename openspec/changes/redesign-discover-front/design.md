@@ -82,9 +82,9 @@ tested.
 **Components.**
 - The lead and the spotlight cards reuse `ArticleCard` (variants `lead` and
   `grid`) with `flag`.
-- The small top-right card is a new `variant="overlay"` on `ArticleCard`.
-  Without an image it falls back to the `grid` layout, so the text-led rule
-  stays in one component.
+- The top-right card is a `grid` card too, with the text under the image. An
+  `overlay` variant with the headline over the image was built and dropped in
+  review: its meta line was hard to read on the gradient.
 - `CompetitionSlot` is new. It reuses `getCompetitionDeadline`,
   `CompetitionStatusBadge`'s colours, and `competitions.highlight`'s plural
   messages where the wording matches.

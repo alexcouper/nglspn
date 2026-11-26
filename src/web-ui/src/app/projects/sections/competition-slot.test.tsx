@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 
@@ -61,6 +61,22 @@ function closedSlot(winnerTitle: string): Slot {
   };
 }
 
+// Headless Chromium ships without Icelandic locale data, so Intl formats
+// "is-IS" numbers the English way there; this makes the test runtime do the same.
+function withoutIcelandicNumberFormats() {
+  const EnglishNumberFormat = Intl.NumberFormat;
+  vi.spyOn(Intl, "NumberFormat").mockImplementation(function (
+    _locales?: Intl.LocalesArgument,
+    options?: Intl.NumberFormatOptions,
+  ) {
+    return new EnglishNumberFormat("en-US", options);
+  });
+}
+
+afterEach(() => {
+  vi.restoreAllMocks();
+});
+
 // --------------------------------------------------------------- assertions
 
 function expectText(container: HTMLElement, ...texts: string[]) {
@@ -83,6 +99,17 @@ describe("CompetitionSlot", () => {
 
     expectText(container, "Open for entries", "Tómatur", "11 days left", "2 entered so far", "50.000 ISK", "Enter your project");
     expectLinksTo(container, "/competitions/tomatur");
+
+    unmount();
+  });
+
+  it("writes the prize with a dot between thousands even without Icelandic locale data", async () => {
+    withoutIcelandicNumberFormats();
+    const { container, unmount } = await mount(
+      <CompetitionSlot slot={acceptingSlot(11, { prize_amount: "1250000.00" })} />,
+    );
+
+    expectText(container, "1.250.000 ISK");
 
     unmount();
   });

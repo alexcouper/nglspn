@@ -59,7 +59,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   duplicates; voting beats accepting; voting past its end date skipped;
   accepting only; closed with a winner; closed without a winner gives no slot;
   no competitions; `null` inputs (a failed fetch) treated as empty.
-- [ ] 3.3 Move `LargeHeroCard` out of `sections/FeaturedSection.tsx` into
+- [x] 3.3 Move `LargeHeroCard` out of `sections/FeaturedSection.tsx` into
   `components/ProjectHeroCard.tsx` and update `ImageRoleDialog`. Verify that
   `make lint` passes and the image-role dialog preview still renders.
 - [ ] 3.4 Add `variant="overlay"` to `ArticleCard`. Without an image it

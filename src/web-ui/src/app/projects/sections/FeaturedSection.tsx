@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 
 import type { DiscoverProject } from "@/lib/api";
 import { GradientPlaceholder } from "@/components/GradientPlaceholder";
+import { ProjectHeroCard } from "@/components/ProjectHeroCard";
 import { TipoffBadge } from "@/components/TipoffBadge";
 
 interface FeaturedSectionProps {
@@ -20,7 +21,7 @@ export function FeaturedSection({ projects }: FeaturedSectionProps) {
     <section>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Large hero card */}
-        <LargeHeroCard project={main} />
+        <ProjectHeroCard project={main} />
 
         {/* Small hero cards */}
         {side.length > 0 && (
@@ -32,46 +33,6 @@ export function FeaturedSection({ projects }: FeaturedSectionProps) {
         )}
       </div>
     </section>
-  );
-}
-
-export function LargeHeroCard({ project }: { project: DiscoverProject }) {
-  const tb = useTranslations("projects.tipoffBadge");
-  const imageUrl = project.hero_banner_url || project.in_use_image_url;
-
-  return (
-    <Link href={`/projects/${project.slug ?? project.id}`} className="group block">
-      <div className="card card-interactive overflow-hidden">
-        <div className="relative aspect-video">
-          {imageUrl ? (
-            /* eslint-disable-next-line @next/next/no-img-element */
-            <img
-              src={imageUrl}
-              alt={project.title}
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          ) : (
-            <GradientPlaceholder id={project.id} className="w-full h-full" />
-          )}
-        </div>
-        <div className="bg-[#0f172a] p-5">
-          <div className="flex items-center gap-2">
-            {project.category_name && (
-              <span className="text-xs font-semibold uppercase tracking-wider text-accent">
-                {project.category_name}
-              </span>
-            )}
-            {project.is_community_tipoff && <TipoffBadge size="sm" label={tb("short")} />}
-          </div>
-          <h3 className="text-lg font-semibold text-white mt-1 group-hover:text-accent-subtle transition-colors">
-            {project.title}
-          </h3>
-          <p className="text-sm text-slate-400 mt-1 line-clamp-2">
-            {project.tagline}
-          </p>
-        </div>
-      </div>
-    </Link>
   );
 }
 

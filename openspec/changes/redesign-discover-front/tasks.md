@@ -52,7 +52,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
 - [x] 3.1 `npm run generate-types`. Add `fetchRecentArticles(limit)` and
   `fetchSpotlightArticles(limit)` to `lib/api/server.ts`, and export a
   `FrontPageArticle` type from `lib/api`.
-- [ ] 3.2 Write `src/lib/discover-top.ts` (`selectDiscoverTop`) test-first, in
+- [x] 3.2 Write `src/lib/discover-top.ts` (`selectDiscoverTop`) test-first, in
   `discover-top.test.ts` with factory helpers for articles and competitions.
   Cases: two recent plus a slot; one recent; none; spotlight duplicates
   removed by id; spotlight capped at 3; nothing left after removing

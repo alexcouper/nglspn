@@ -143,10 +143,6 @@ export async function fetchCategories(): Promise<CategoryItem[]> {
   return serverFetch<CategoryItem[]>("/api/projects/categories");
 }
 
-export async function fetchFeaturedProjects(): Promise<DiscoverProject[]> {
-  return serverFetch<DiscoverProject[]>("/api/projects/featured");
-}
-
 export async function fetchNewArrivals(): Promise<DiscoverProject[]> {
   return serverFetch<DiscoverProject[]>("/api/projects/new-arrivals");
 }

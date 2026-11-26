@@ -72,11 +72,11 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   layouts, and mobile order lead → slot → second via CSS `order`) and
   `SpotlightSection` (up to three `grid` cards, heading only). Cards link with
   `?from=discover`. Test the layouts with one, two and no articles.
-- [ ] 3.7 Wire `projects/page.tsx` → `ProjectsPage` → `DiscoverView`: add the
+- [x] 3.7 Wire `projects/page.tsx` → `ProjectsPage` → `DiscoverView`: add the
   three fetches with `.catch(() => null)`. Drop `fetchFeaturedProjects` and
   the `featured` prop, and delete `FeaturedSection.tsx`. Verify `npm run
   build` succeeds.
-- [ ] 3.8 Put the strings in `i18n/projects/en.json` under `recent.*`,
+- [x] 3.8 Put the strings in `i18n/projects/en.json` under `recent.*`,
   `spotlight.*` and `competitionSlot.*`, with ICU plurals for days and
   entries. Verify `make lint`: the `no-hardcoded-ui-strings` rule passes with
   no new line in `i18n-pending.mjs`.

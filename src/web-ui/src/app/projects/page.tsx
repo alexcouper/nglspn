@@ -2,9 +2,11 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import {
   fetchCategories,
-  fetchFeaturedProjects,
+  fetchCompetitionHighlights,
   fetchNewArrivals,
+  fetchRecentArticles,
   fetchRecentTipoffs,
+  fetchSpotlightArticles,
   fetchWinners,
 } from "@/lib/api/server";
 import { ProjectsPage } from "./ProjectsPage";
@@ -36,20 +38,33 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 export default async function PreviewProjectsPage() {
-  const [categories, featured, newArrivals, recentTipoffs, winners] =
-    await Promise.all([
-      fetchCategories(),
-      fetchFeaturedProjects(),
-      fetchNewArrivals(),
-      fetchRecentTipoffs(),
-      fetchWinners(),
-    ]);
+  // The front-page reads fail on their own: null hides the part they feed.
+  const [
+    categories,
+    newArrivals,
+    recentTipoffs,
+    winners,
+    recentArticles,
+    spotlightArticles,
+    highlights,
+  ] = await Promise.all([
+    fetchCategories(),
+    fetchNewArrivals(),
+    fetchRecentTipoffs(),
+    fetchWinners(),
+    fetchRecentArticles().catch(() => null),
+    fetchSpotlightArticles().catch(() => null),
+    fetchCompetitionHighlights().catch(() => null),
+  ]);
 
   return (
     <main className="min-h-screen bg-muted pt-14">
       <ProjectsPage
         initialCategories={categories}
-        initialFeatured={featured}
+        initialRecentArticles={recentArticles}
+        initialSpotlightArticles={spotlightArticles}
+        initialCompetitions={highlights?.competitions ?? null}
+        today={new Date()}
         initialNewArrivals={newArrivals}
         initialRecentTipoffs={recentTipoffs}
         initialWinners={winners}

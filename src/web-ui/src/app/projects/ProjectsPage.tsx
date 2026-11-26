@@ -3,14 +3,26 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { CategoryItem, DiscoverProject, WinnerProject } from "@/lib/api";
+import type {
+  CategoryItem,
+  CompetitionSummary,
+  DiscoverProject,
+  FrontPageArticle,
+  WinnerProject,
+} from "@/lib/api";
 import { ListingTabs } from "@/components/ListingTabs";
+import { selectDiscoverTop } from "@/lib/discover-top";
 import { DiscoverView } from "./DiscoverView";
 import { CategoryView } from "./CategoryView";
 
 interface ProjectsPageProps {
   initialCategories: CategoryItem[];
-  initialFeatured: DiscoverProject[];
+  initialRecentArticles: FrontPageArticle[] | null;
+  initialSpotlightArticles: FrontPageArticle[] | null;
+  initialCompetitions: CompetitionSummary[] | null;
+  // The server's date, so the competition slot's days left render the same
+  // on the server and in the browser.
+  today: Date;
   initialNewArrivals: DiscoverProject[];
   initialRecentTipoffs: DiscoverProject[];
   initialWinners: WinnerProject[];
@@ -18,7 +30,10 @@ interface ProjectsPageProps {
 
 export function ProjectsPage({
   initialCategories,
-  initialFeatured,
+  initialRecentArticles,
+  initialSpotlightArticles,
+  initialCompetitions,
+  today,
   initialNewArrivals,
   initialRecentTipoffs,
   initialWinners,
@@ -51,7 +66,12 @@ export function ProjectsPage({
             />
           ) : (
             <DiscoverView
-              featured={initialFeatured}
+              top={selectDiscoverTop({
+                recent: initialRecentArticles,
+                spotlight: initialSpotlightArticles,
+                competitions: initialCompetitions,
+                today,
+              })}
               newArrivals={initialNewArrivals}
               recentTipoffs={initialRecentTipoffs}
               winners={initialWinners}

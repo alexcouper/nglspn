@@ -39,7 +39,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
   `recent_until` excluded from recent but kept in spotlight; the clamp;
   `recent` not read as an article id; a query-count bound, so card fields
   don't cost one query per article.
-- [ ] 2.4 Add a nullable `winner` (slug, title, image URL) to
+- [x] 2.4 Add a nullable `winner` (slug, title, image URL) to
   `CompetitionSummaryResponse`, set only for closed competitions with a
   winner. In `get_highlights`, add `select_related("winner")` and
   `gallery_prefetch("winner__images")`. Router tests cover: closed with a

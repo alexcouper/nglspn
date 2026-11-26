@@ -74,7 +74,11 @@ def list_competitions_with_projects(request: HttpRequest) -> CompetitionListResp
     tags=["Competitions"],
 )
 def get_highlights(request: HttpRequest) -> CompetitionHighlightsResponse:
-    base_qs = Competition.objects.annotate(project_count=Count("projects"))
+    base_qs = (
+        Competition.objects.annotate(project_count=Count("projects"))
+        .select_related("winner")
+        .prefetch_related(REPO.images.gallery_prefetch("winner__images"))
+    )
 
     active = list(
         base_qs.filter(

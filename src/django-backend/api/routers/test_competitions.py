@@ -3,7 +3,13 @@ from unittest.mock import PropertyMock, patch
 import pytest
 from hamcrest import assert_that, contains_inanyorder, equal_to, has_entries, has_length
 
-from apps.projects.models import Competition, CompetitionStatus, Project, ProjectStatus
+from apps.projects.models import (
+    Competition,
+    CompetitionStatus,
+    ImageVariant,
+    Project,
+    ProjectStatus,
+)
 from tests.factories import (
     ArticleFactory,
     CompetitionFactory,
@@ -644,3 +650,81 @@ class TestHighlights:
 
         assert_that(response.status_code, equal_to(200))
         assert_that(response.json()["competitions"], has_length(0))
+
+
+HIGHLIGHTS_URL = "/api/competitions/highlights"
+
+
+def winning_project(**kwargs) -> Project:
+    """A winner with a hero banner that has a `large` variant."""
+    project = ProjectFactory(status=ProjectStatus.APPROVED, **kwargs)
+    hero = ImageFactory(project=project, is_hero=True)
+    ImageVariant.objects.create(
+        image=hero,
+        size="large",
+        storage_key=f"{hero.storage_key}-large",
+        width=1200,
+        height=675,
+        file_size=1,
+    )
+    return project
+
+
+def closed_competition(**kwargs) -> Competition:
+    return CompetitionFactory(status=CompetitionStatus.CLOSED, **kwargs)
+
+
+def highlight_winners(client) -> dict[str, dict | None]:
+    response = client.get(HIGHLIGHTS_URL)
+    assert_that(response.status_code, equal_to(200))
+    return {c["name"]: c["winner"] for c in response.json()["competitions"]}
+
+
+@pytest.mark.django_db
+class TestHighlightWinner:
+    def test_closed_competition_carries_its_winner(self, client) -> None:
+        winner = winning_project(title="Alkóhól Listinn")
+        closed_competition(name="Grasker", winner=winner)
+        hero_large = ImageVariant.objects.get(image__project=winner, size="large")
+
+        winners = highlight_winners(client)
+
+        assert_that(
+            winners["Grasker"],
+            has_entries(
+                slug=winner.slug,
+                title="Alkóhól Listinn",
+                image_url=hero_large.url,
+            ),
+        )
+
+    def test_winner_without_images_has_no_image(self, client) -> None:
+        winner = ProjectFactory(status=ProjectStatus.APPROVED)
+        closed_competition(name="Grasker", winner=winner)
+
+        winners = highlight_winners(client)
+
+        assert_that(winners["Grasker"], has_entries(image_url=None))
+
+    def test_closed_competition_without_a_winner_has_none(self, client) -> None:
+        closed_competition(name="Grasker")
+
+        assert_that(highlight_winners(client), equal_to({"Grasker": None}))
+
+    def test_active_rounds_have_no_winner(self, client) -> None:
+        CompetitionFactory(name="Open", status=CompetitionStatus.ACCEPTING_APPLICATIONS)
+        CompetitionFactory(name="Voting", status=CompetitionStatus.VOTING)
+
+        assert_that(highlight_winners(client), equal_to({"Open": None, "Voting": None}))
+
+    def test_winner_costs_a_fixed_number_of_queries(
+        self, client, django_assert_max_num_queries
+    ) -> None:
+        for _ in range(3):
+            CompetitionFactory(status=CompetitionStatus.VOTING)
+        closed_competition(winner=winning_project())
+
+        # Active rounds, the closed one with its winner, the winner's gallery
+        # and that gallery's variants.
+        with django_assert_max_num_queries(4):
+            client.get(HIGHLIGHTS_URL)

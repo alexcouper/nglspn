@@ -7,8 +7,9 @@ from uuid import UUID
 from django.db.models.functions import Lower
 from ninja import Schema
 
-from apps.projects.models import ProjectStatus
+from apps.projects.models import CompetitionStatus, ProjectStatus
 from services.project.django_impl import to_list_item
+from services.project.django_impl.query import resolve_image_by_purpose, variant_url
 
 from .project import ImageVariantResponse
 from .tag import TagWithCategoryResponse
@@ -153,6 +154,24 @@ class CompetitionListResponse(Schema):
     pending_projects_count: int
 
 
+class CompetitionWinnerRef(Schema):
+    slug: str | None
+    title: str
+    image_url: str | None
+
+    @classmethod
+    def from_project(cls, project: Any) -> "CompetitionWinnerRef":
+        # The order `list_winners` resolves in, so a winner looks the same here
+        # as on the winners list. Reads the gallery `get_highlights` prefetches.
+        hero = resolve_image_by_purpose(project, "hero_banner")
+        in_use = resolve_image_by_purpose(project, "in_use")
+        return cls(
+            slug=project.slug,
+            title=project.title,
+            image_url=variant_url(hero, "large") or variant_url(in_use, "medium"),
+        )
+
+
 class CompetitionSummaryResponse(Schema):
     name: str
     slug: str
@@ -162,9 +181,14 @@ class CompetitionSummaryResponse(Schema):
     status: CompetitionStatusEnum
     image_url: str | None = None
     project_count: int
+    # Set only on a closed competition with a winner.
+    winner: CompetitionWinnerRef | None = None
 
     @classmethod
     def from_competition(cls, competition: Any) -> "CompetitionSummaryResponse":
+        winner = None
+        if competition.status == CompetitionStatus.CLOSED and competition.winner:
+            winner = CompetitionWinnerRef.from_project(competition.winner)
         return cls(
             name=competition.name,
             slug=competition.slug,
@@ -174,6 +198,7 @@ class CompetitionSummaryResponse(Schema):
             status=competition.status,
             image_url=competition.image_url,
             project_count=competition.project_count,
+            winner=winner,
         )
 
 

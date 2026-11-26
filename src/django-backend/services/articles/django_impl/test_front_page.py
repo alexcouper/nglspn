@@ -7,11 +7,7 @@ from hamcrest import assert_that, contains_exactly, empty
 from apps.articles.models import Article, ArticleGlobalVisibility
 from apps.projects.models import ProjectStatus
 from services import HANDLERS, REPO
-from tests.factories import (
-    ProjectFactory,
-    PublishedArticleFactory,
-    PublishedAuthorArticleFactory,
-)
+from tests.factories import PublishedAuthorArticleFactory, front_page_article
 
 
 def days_ago(days: float) -> datetime:
@@ -20,26 +16,6 @@ def days_ago(days: float) -> datetime:
 
 def days_ahead(days: float) -> datetime:
     return timezone.now() + timedelta(days=days)
-
-
-def front_page_article(
-    *,
-    published_at: datetime | None = None,
-    approved_at: datetime | None = None,
-    project_status: str = ProjectStatus.APPROVED,
-    **kwargs,
-) -> Article:
-    """A visible article on an approved project: eligible unless told otherwise.
-
-    `approved_at` defaults to `published_at`, as it is for a trusted author.
-    """
-    published_at = published_at or days_ago(1)
-    return PublishedArticleFactory(
-        project=ProjectFactory(status=project_status),
-        published_at=published_at,
-        approved_at=approved_at or published_at,
-        **kwargs,
-    )
 
 
 def assert_ids(articles, *expected: Article) -> None:

@@ -32,7 +32,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
 - [x] 2.2 Add a `FrontPageArticle` schema in `api/schemas/article.py`: the
   card fields from the spec, with the image from `variant_url(...,
   "large")`.
-- [ ] 2.3 Add `GET /api/articles/recent` and `GET /api/articles/spotlight`
+- [x] 2.3 Add `GET /api/articles/recent` and `GET /api/articles/spotlight`
   to `api/routers/article_items.py` with `auth=None`, registered before
   `/{article_id}`. `limit` defaults to 2 and 5 and is clamped to 1–10.
   Router tests cover: anonymous access; order; author-owned shape; expired

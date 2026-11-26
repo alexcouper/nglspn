@@ -111,7 +111,7 @@ once PR 1 is deployed (see [design.md](design.md#migration-plan)).
 
 ## 5. PR 1 — Docs, end-to-end check, deploy
 
-- [ ] 5.1 Add one line to `docs/2026-10-14-discover-redesign.md` pointing to
+- [x] 5.1 Add one line to `docs/2026-10-14-discover-redesign.md` pointing to
   this change for where the build departs. In
   `docs/2026-08-19-article-launch-followups.md`, correct the parts that assume
   the Latest feed.

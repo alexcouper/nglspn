@@ -15,11 +15,14 @@ and recorded below, and one is simply gone.
 ## Still to do
 
 **Stagger the pending article drafts.** The second half of
-`add-latest-feed` task 8.4. The feed is live and the backfill has run, so the
-stream has history; what it does not have is a run of published articles.
-Publish the pending drafts a few days apart, house announcement first, so each
-takes a turn as the lead story. The lead is freshness-gated and expires on its
-own (`GET /api/feed`), so publishing them together spends the slot once.
+`add-latest-feed` task 8.4, restated for Discover's Recent section, which
+replaced the Latest feed
+([`redesign-discover-front`](../openspec/changes/redesign-discover-front/design.md)).
+Recent shows the two newest front-page articles (`GET /api/articles/recent`),
+with no age limit and no expiry except `recent_until`, set in admin. Publish
+the pending drafts a few days apart, house announcement first, so each takes a
+turn as the lead; publishing them together pushes all but two off Recent at
+once.
 
 **Verify competition entries survived the migration.** `add-explicit`
 task 12.3 asked for a backfill run against a production copy before deploy. The
@@ -77,8 +80,8 @@ Three things the article work chose not to build. They live in
   channel, so the editor's channel dropdown has a single option everywhere. The
   CRUD backend ships and is tested; only the UI is held back.
 - **No signal for `article_trust = False` authors** (that change's
-  `design.md:237`). Their article silently never reaches the feed and nothing
-  tells them why. Closed for author-owned articles by
+  `design.md:237`). Their article silently never reaches the front page and
+  nothing tells them why. Closed for author-owned articles by
   [`author-owned-articles`](../openspec/changes/author-owned-articles/proposal.md):
   the owner's profile lists every article they wrote with the same
   draft / published / pending review / not shown badge the my-projects
@@ -91,7 +94,10 @@ Separate from all of the above:
 [`docs/superpowers/specs/2026-05-13-articles-following-news-design.md`](superpowers/specs/2026-05-13-articles-following-news-design.md)
 Phase 4 puts historical Naglasúpan output — old product updates, competition
 results that went out by email — onto the platform as backdated articles, so the
-feed is not empty above the launch date. Content op, not engineering: there is
+house project's Articles tab, the only site-wide article list since Latest was
+retired, is not empty above the launch date. A backdated auto-approved article
+gets `approved_at` equal to its `published_at`, so it sorts by that date and
+does not take over Recent. Content op, not engineering: there is
 no management command. `POST /articles/{id}/publish` takes `published_at`
 (`api/routers/articles.py:247`) and backdating suppresses notification fan-out,
 so the mechanism exists and someone has to write the copy and drive it.

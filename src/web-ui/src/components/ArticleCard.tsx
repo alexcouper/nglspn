@@ -33,6 +33,10 @@ interface Props {
   // articles with and without images, where a grid of stacked cards leaves
   // holes beside the short ones.
   variant: "lead" | "grid" | "row";
+  // `boxed` draws the card as a white bordered box. `ruled` sets it straight
+  // on the page with a hairline underneath, newspaper-front style, so a short
+  // item next to a tall one leaves page whitespace rather than an empty box.
+  frame?: "boxed" | "ruled";
 }
 
 // An article needs no image. Without one the card draws no placeholder — the
@@ -56,7 +60,9 @@ export function ArticleCard({
   showChannel = true,
   href,
   variant,
+  frame = "boxed",
 }: Props) {
+  const isRuled = frame === "ruled";
   const isLead = variant === "lead";
   const isRow = variant === "row";
   const hasImage = !!article.listing_image_url;
@@ -70,9 +76,9 @@ export function ArticleCard({
         // Always 16:9, so a grid of cards stays uniform.
         crop={article.listing_crop}
         priority={isLead}
-        className={isRow ? "sm:w-[220px] sm:flex-none sm:self-stretch" : ""}
+        className={`${isRow ? "sm:w-[220px] sm:flex-none sm:self-stretch" : ""} ${isRuled ? RULED_IMAGE : ""}`}
       />
-      <div className={`${isLead ? "p-5" : "p-4"} ${isRow ? "min-w-0" : ""}`}>
+      <div className={`${textInset(variant, frame, hasImage)} ${isRow ? "min-w-0" : ""}`}>
         {/* An imageless lead card is otherwise a bare block of text at full
             column width, which reads as a card whose image failed to load.
             The rule marks it as a deliberate text-led card; the grid variant
@@ -104,7 +110,9 @@ export function ArticleCard({
           )}
         </div>
         <h3
-          className={`mt-1.5 font-semibold text-foreground ${HEADLINE[variant][shape]}`}
+          className={`mt-1.5 font-semibold text-foreground ${HEADLINE[variant][shape]} ${
+            isRuled && href ? RULED_HOVER : ""
+          }`}
         >
           {article.title}
         </h3>
@@ -120,13 +128,12 @@ export function ArticleCard({
   );
 
   return (
-    <article
-      className={`rounded-lg border border-border bg-white overflow-hidden transition-colors ${
-        href ? "hover:border-accent/50" : ""
-      }`}
-    >
+    <article className={isRuled ? RULED_FRAME : boxedFrame(!!href)}>
       {href ? (
-        <Link href={href} className="block">
+        <Link
+          href={href}
+          className={`block ${isRuled ? "group rounded-md focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent" : ""}`}
+        >
           {body}
         </Link>
       ) : (
@@ -134,4 +141,33 @@ export function ArticleCard({
       )}
     </article>
   );
+}
+
+function boxedFrame(linked: boolean): string {
+  return `rounded-lg border border-border bg-white overflow-hidden transition-colors ${
+    linked ? "hover:border-accent/50" : ""
+  }`;
+}
+
+// No box, so nothing to inset the text from: it lines up with the image's
+// left edge and the section heading. The hairline sits under the text.
+const RULED_FRAME = "border-b border-border pb-5";
+
+// Free-standing on the grey page, a white-edged screenshot would lose its
+// edge; a faint ring keeps the picture's outline without reading as a box.
+const RULED_IMAGE = "rounded-md ring-1 ring-black/5";
+
+// Unboxed there is no border to recolour, so hover underlines the headline.
+const RULED_HOVER =
+  "decoration-1 underline-offset-[3px] group-hover:underline";
+
+function textInset(
+  variant: Props["variant"],
+  frame: NonNullable<Props["frame"]>,
+  hasImage: boolean,
+): string {
+  if (frame === "boxed") return variant === "lead" ? "p-5" : "p-4";
+  if (!hasImage) return "";
+  if (variant === "row") return "pt-3 sm:pt-0 sm:pl-4";
+  return variant === "lead" ? "pt-4" : "pt-3";
 }

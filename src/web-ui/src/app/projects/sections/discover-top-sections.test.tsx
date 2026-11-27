@@ -111,6 +111,11 @@ function slotRowTakesTheSlack(container: HTMLElement): boolean {
   return !!grid?.className.split(/\s+/).includes("md:grid-rows-[auto_1fr]");
 }
 
+function hasHairlineOnly(element: Element | null): boolean {
+  const classes = element?.className.split(/\s+/) ?? [];
+  return classes.includes("border-b") && !classes.includes("border") && !classes.includes("bg-white");
+}
+
 function visibleHeading(container: HTMLElement): HTMLElement | null {
   const heading = container.querySelector("h2");
   return heading && !heading.classList.contains("sr-only") ? heading : null;
@@ -157,6 +162,18 @@ describe("RecentSection", () => {
     expect(fillsItsCell(piece(container, "lead"))).toBe(true);
     expect(fillsItsCell(piece(container, "second"))).toBe(false);
     expect(slotRowTakesTheSlack(container)).toBe(true);
+
+    unmount();
+  });
+
+  it("sets every piece unboxed on the page with a hairline under it", async () => {
+    const { container, unmount } = await mount(
+      <RecentSection lead={projectArticle("a")} second={projectArticle("b")} slot={slot()} />,
+    );
+
+    expect(hasHairlineOnly(piece(container, "lead")?.querySelector("article") ?? null)).toBe(true);
+    expect(hasHairlineOnly(piece(container, "second")?.querySelector("article") ?? null)).toBe(true);
+    expect(hasHairlineOnly(piece(container, "slot"))).toBe(true);
 
     unmount();
   });
@@ -262,6 +279,7 @@ describe("SpotlightSection", () => {
     expect(linkOf(cards[0] as HTMLElement)).toBe(
       "/projects/naglasupan/articles/article-c?from=discover",
     );
+    cards.forEach((card) => expect(hasHairlineOnly(card)).toBe(true));
 
     unmount();
   });

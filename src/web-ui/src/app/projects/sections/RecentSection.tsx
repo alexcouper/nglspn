@@ -17,7 +17,8 @@ export function RecentSection({ lead, second, slot }: Props) {
 
   const rightColumnShared = !!second && !!slot;
   // A grid cell stretches to its row, the card inside it does not; this
-  // passes the height down so cards sharing a row end level.
+  // passes the height down so the hairlines under pieces sharing a row land
+  // on the same line, with the slack left as page whitespace above the rule.
   const fillCell = "md:[&>article]:h-full";
 
   return (
@@ -28,10 +29,10 @@ export function RecentSection({ lead, second, slot }: Props) {
       >
         {t("heading")}
       </h2>
-      {/* Sharing the right column, the second card keeps its own height and
-          the slot takes what the lead leaves over. */}
+      {/* Sharing the right column, the second article keeps its own height
+          and the slot takes what the lead leaves over. */}
       <div
-        className={`grid grid-cols-1 gap-4 md:grid-cols-2 ${rightColumnShared ? "md:grid-rows-[auto_1fr]" : ""}`}
+        className={`grid grid-cols-1 gap-y-6 md:grid-cols-2 md:gap-x-8 ${rightColumnShared ? "md:grid-rows-[auto_1fr]" : ""}`}
       >
         <div
           data-testid="recent-lead"

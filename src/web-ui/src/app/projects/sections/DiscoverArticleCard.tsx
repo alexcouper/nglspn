@@ -10,7 +10,7 @@ interface Props {
   variant: "lead" | "grid";
 }
 
-// A front-page article as a card: flagged with its project, or its author for
+// A front-page article, set unboxed on the page with a hairline under it: flagged with its project, or its author for
 // an author-owned article, and linked so the back control returns to Discover.
 export function DiscoverArticleCard({ article, variant }: Props) {
   const isAuthorOwned = article.project_slug === null;
@@ -26,6 +26,7 @@ export function DiscoverArticleCard({ article, variant }: Props) {
       showChannel={!isAuthorOwned}
       href={href ? withOrigin(href, "discover") : undefined}
       variant={variant}
+      frame="ruled"
     />
   );
 }

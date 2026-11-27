@@ -20,7 +20,7 @@ export function SpotlightSection({ articles }: Props) {
       </h2>
       <div
         data-testid="spotlight-cards"
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        className="grid grid-cols-1 gap-x-8 gap-y-6 sm:grid-cols-2 lg:grid-cols-3"
       >
         {articles.map((article) => (
           <DiscoverArticleCard key={article.id} article={article} variant="grid" />

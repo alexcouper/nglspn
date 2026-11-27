@@ -13,7 +13,9 @@ interface Props {
 }
 
 // The competition beside Recent, drawn as its state and what a visitor can do
-// about it rather than as an article card.
+// about it rather than as an article card. Unboxed like the articles around
+// it: a hairline underneath, its content at the top, and any height the grid
+// gives it left as page whitespace above the rule.
 export function CompetitionSlot({ slot, className = "" }: Props) {
   const t = useTranslations("projects.competitionSlot");
   const th = useTranslations("competitions.highlight");
@@ -63,10 +65,10 @@ export function CompetitionSlot({ slot, className = "" }: Props) {
     <Link
       href={`/competitions/${competition.slug}`}
       data-testid="competition-slot"
-      className={`group flex overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-accent/50 ${className}`}
+      className={`group flex items-start gap-4 rounded-md border-b border-border pb-5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${className}`}
     >
       {imageUrl && (
-        <div className="relative m-4 mr-0 aspect-video w-36 flex-none self-start overflow-hidden rounded-md bg-muted sm:w-56 md:w-44 lg:w-64">
+        <div className="relative aspect-video w-36 flex-none overflow-hidden rounded-md bg-muted ring-1 ring-black/5 sm:w-56 md:w-44 lg:w-64">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}
@@ -76,7 +78,7 @@ export function CompetitionSlot({ slot, className = "" }: Props) {
           />
         </div>
       )}
-      <div className="flex min-w-0 flex-1 flex-col p-4">
+      <div className="min-w-0 flex-1">
         <div>
           <CompetitionStatusBadge
             status={competition.status}
@@ -84,13 +86,13 @@ export function CompetitionSlot({ slot, className = "" }: Props) {
             className="text-xs font-medium px-2.5 py-1"
           />
         </div>
-        <h3 className="mt-2 font-semibold text-foreground line-clamp-2">
+        <h3 className="mt-2 font-semibold text-foreground line-clamp-2 decoration-1 underline-offset-[3px] group-hover:underline">
           {headline}
         </h3>
         <p className="mt-1 text-sm text-muted-foreground">
           {details.join(" · ")}
         </p>
-        <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-2 pt-3">
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2 pt-3">
           <span className="inline-flex items-center rounded-md bg-accent px-3 py-1.5 text-sm font-medium text-white transition-colors group-hover:bg-accent-hover">
             {verb}
           </span>

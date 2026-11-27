@@ -98,10 +98,11 @@ function linkOf(element: HTMLElement | null): string | null | undefined {
   return element?.querySelector("a")?.getAttribute("href");
 }
 
-// Grid cells stretch, cards don't: a card fills its cell only when its
-// wrapper passes the height down at the side-by-side breakpoint.
-function fillsItsCell(element: HTMLElement | null): boolean {
-  return !!element?.className.split(/\s+/).includes("md:[&>article]:h-full");
+// Side by side, no piece is stretched to its row: each ends at its own
+// content, so its hairline sits right under it.
+function piecesEndAtTheirOwnContent(container: HTMLElement): boolean {
+  const grid = piece(container, "lead")?.parentElement;
+  return !!grid?.className.split(/\s+/).includes("md:items-start");
 }
 
 // The second card sits above the slot at its own height; the slot's row is
@@ -154,13 +155,12 @@ describe("RecentSection", () => {
     unmount();
   });
 
-  it("stretches the lead to the right column and lets the slot, not the second card, take up slack", async () => {
+  it("ends each piece at its own content and keeps the slot right under the second article when the lead is taller", async () => {
     const { container, unmount } = await mount(
       <RecentSection lead={projectArticle("a")} second={projectArticle("b")} slot={slot()} />,
     );
 
-    expect(fillsItsCell(piece(container, "lead"))).toBe(true);
-    expect(fillsItsCell(piece(container, "second"))).toBe(false);
+    expect(piecesEndAtTheirOwnContent(container)).toBe(true);
     expect(slotRowTakesTheSlack(container)).toBe(true);
 
     unmount();
@@ -188,7 +188,7 @@ describe("RecentSection", () => {
     unmount();
   });
 
-  it("lets the second article fill the right column when there is no slot", async () => {
+  it("sets the second article beside the lead, each at its own height, when there is no slot", async () => {
     const { container, unmount } = await mount(
       <RecentSection lead={projectArticle("a")} second={projectArticle("b")} slot={null} />,
     );
@@ -196,8 +196,7 @@ describe("RecentSection", () => {
     expect(piece(container, "slot")).toBeNull();
     expect(piece(container, "second")?.textContent).toContain("Summary of b");
     expect(piece(container, "lead")?.className).not.toContain("md:row-span-2");
-    expect(fillsItsCell(piece(container, "second"))).toBe(true);
-    expect(fillsItsCell(piece(container, "lead"))).toBe(true);
+    expect(piecesEndAtTheirOwnContent(container)).toBe(true);
 
     unmount();
   });

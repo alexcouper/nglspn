@@ -113,12 +113,12 @@
   "publishDialog": {
     "title": "Publish article",
     "description": "Publishing makes the article visible to everyone on the project page.",
-    "descriptionOwn": "Publishing makes the article visible to everyone on your profile and in Latest."
+    "descriptionOwn": "Publishing makes the article visible to everyone on your profile and on Discover."
   },
   "render": {
     "draftBadge": "Draft — visible only to the author and project editors",
     "readTime": "{minutes} min read",
-    "backToLatest": "Latest"
+    "backToDiscover": "Discover"
   },
   "onward": {
     "heading": {
@@ -128,7 +128,7 @@
       "author": "More from {name}"
     },
     "moreFromProject": "All {count, plural, one {# article} other {# articles}} from {project}",
-    "moreLatest": "Everything that's happened lately",
+    "moreDiscover": "More on Discover",
     "projectPage": "Project page",
     "articleCount": "{count, plural, one {# article} other {# articles}}",
     "articleCountInChannels": "{count, plural, one {# article} other {# articles}} in {channels} channels",

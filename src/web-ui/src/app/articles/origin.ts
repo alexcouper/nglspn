@@ -1,13 +1,13 @@
 import { type Container, containerArticlesHref, containerTitle } from "./container";
 
 export type Origin =
-  | { kind: "latest"; href: string }
+  | { kind: "discover"; href: string }
   | { kind: "container"; href: string; title: string };
 
 // A Map rather than an object literal: `from` is attacker-controlled, and a
 // plain object answers to `constructor` and `toString` with something truthy.
 const ORIGINS = new Map<string, Origin>([
-  ["latest", { kind: "latest", href: "/latest" }],
+  ["discover", { kind: "discover", href: "/projects" }],
 ]);
 
 export const ORIGIN_PARAM = "from";

@@ -47,8 +47,8 @@ export function ArticleOnward({
         return t("moreFromProject", { count: m.count, project: m.project });
       case "author":
         return t("moreFromAuthor", { count: m.count, name: m.author });
-      case "latest":
-        return t("moreLatest");
+      case "discover":
+        return t("moreDiscover");
     }
   };
 

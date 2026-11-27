@@ -7,6 +7,9 @@ rendered from production data captured on 2026-10-14:
 
 ![Discover: Recent on top, In the spotlight below](mockups/2026-10-14-discover-redesign/discover.png)
 
+Built by [`redesign-discover-front`](../openspec/changes/redesign-discover-front/design.md#departures-from-the-design-doc),
+which lists where the build departs from this doc.
+
 ## The layout
 
 The top of the page is organised by kind of communication, in three tiers.

@@ -4,8 +4,8 @@ import { allowLeavingTheEditor, editorBody } from "./helpers";
 /*
  * An article published under a person's own name, end to end: U writes and
  * publishes one from their profile; V follows U first, then sees the article
- * in Latest flagged with U's name, opens it at /users/{U.id}/articles/{slug},
- * and finds it in the bell.
+ * in Recent on Discover flagged with U's name, opens it at
+ * /users/{U.id}/articles/{slug}, and finds it in the bell.
  *
  * Two logins in all (U and V), well under the 5/min login limit. Serial: the
  * steps build on each other and share the two pages. V is a seed user
@@ -129,9 +129,10 @@ test.describe("Author-owned article", () => {
     expect(slug).not.toBe("");
   });
 
-  test("V sees it in Latest flagged with U's name", async () => {
-    await v.goto("/latest");
-    const entry = v.locator("main article", { hasText: title }).first();
+  test("V sees it in Recent on Discover flagged with U's name", async () => {
+    await v.goto("/projects");
+    const recent = v.locator('section[aria-labelledby="discover-recent-heading"]');
+    const entry = recent.locator("article", { hasText: title }).first();
     await expect(entry).toBeVisible(FIRST_VISIT);
     await expect(entry).toContainText("Test User");
     await expect(entry.getByRole("link").first()).toHaveAttribute(

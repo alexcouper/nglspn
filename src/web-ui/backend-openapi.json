@@ -1935,6 +1935,80 @@
         ]
       }
     },
+    "/api/articles/recent": {
+      "get": {
+        "operationId": "api_routers_article_items_list_recent_articles",
+        "summary": "List Recent Articles",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 2,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FrontPageArticle"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Articles"
+        ]
+      }
+    },
+    "/api/articles/spotlight": {
+      "get": {
+        "operationId": "api_routers_article_items_list_spotlight_articles",
+        "summary": "List Spotlight Articles",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "limit",
+            "schema": {
+              "default": 5,
+              "title": "Limit",
+              "type": "integer"
+            },
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FrontPageArticle"
+                  },
+                  "title": "Response",
+                  "type": "array"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "Articles"
+        ]
+      }
+    },
     "/api/articles/{article_id}": {
       "get": {
         "operationId": "api_routers_article_items_get_article",
@@ -7377,6 +7451,138 @@
         "title": "ArticleListItem",
         "type": "object"
       },
+      "FrontPageArticle": {
+        "description": "A card on Discover's Recent and spotlight sections, and in \"read next\".\n\nFlat, like the feed's article ref it replaces. An author-owned article has\nnull project fields; its author fields are its flag then.",
+        "properties": {
+          "id": {
+            "format": "uuid",
+            "title": "Id",
+            "type": "string"
+          },
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "summary": {
+            "title": "Summary",
+            "type": "string"
+          },
+          "published_at": {
+            "format": "date-time",
+            "title": "Published At",
+            "type": "string"
+          },
+          "channel_name": {
+            "title": "Channel Name",
+            "type": "string"
+          },
+          "project_slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Slug"
+          },
+          "project_title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Project Title"
+          },
+          "author_id": {
+            "anyOf": [
+              {
+                "format": "uuid",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Id"
+          },
+          "author_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Name"
+          },
+          "author_avatar_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Author Avatar Url"
+          },
+          "listing_image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Listing Image Url"
+          },
+          "listing_crop": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CropRect"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "slug",
+          "title",
+          "summary",
+          "published_at",
+          "channel_name",
+          "project_slug",
+          "project_title",
+          "author_id",
+          "author_name",
+          "author_avatar_url",
+          "listing_image_url",
+          "listing_crop"
+        ],
+        "title": "FrontPageArticle",
+        "type": "object"
+      },
       "ArticleUpdate": {
         "properties": {
           "title": {
@@ -9159,6 +9365,16 @@
           "project_count": {
             "title": "Project Count",
             "type": "integer"
+          },
+          "winner": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/CompetitionWinnerRef"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -9166,9 +9382,47 @@
           "slug",
           "submission_deadline",
           "status",
-          "project_count"
+          "project_count",
+          "winner"
         ],
         "title": "CompetitionSummaryResponse",
+        "type": "object"
+      },
+      "CompetitionWinnerRef": {
+        "properties": {
+          "slug": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Slug"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          },
+          "image_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Url"
+          }
+        },
+        "required": [
+          "slug",
+          "title",
+          "image_url"
+        ],
+        "title": "CompetitionWinnerRef",
         "type": "object"
       },
       "UserProfileResponse": {

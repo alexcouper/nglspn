@@ -15,6 +15,8 @@ export type CompetitionSummary =
   components["schemas"]["CompetitionSummaryResponse"];
 export type CompetitionHighlightsResponse =
   components["schemas"]["CompetitionHighlightsResponse"];
+export type CompetitionWinnerRef =
+  components["schemas"]["CompetitionWinnerRef"];
 
 export class CompetitionsClient {
   constructor(private client: APIClient) {}

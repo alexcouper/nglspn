@@ -46,3 +46,11 @@ class ArticleQueryInterface(ABC):
     def get_channel_in_project(
         self, project_id: UUID, channel_id: UUID
     ) -> Channel | None: ...
+
+    @abstractmethod
+    def recent(self, limit: int) -> list[Article]:
+        """Front-page articles whose `recent_until` has not passed."""
+
+    @abstractmethod
+    def spotlight(self, limit: int) -> list[Article]:
+        """Front-page articles an admin has spotlighted, `recent_until` aside."""

@@ -20,8 +20,16 @@ class ArticleAdmin(admin.ModelAdmin):
         "state",
         "global_visibility",
         "published_at",
+        "is_spotlight",
     )
-    list_filter = ("state", "source", "global_visibility", "created_at")
+    list_editable = ("is_spotlight",)
+    list_filter = (
+        "state",
+        "source",
+        "global_visibility",
+        "is_spotlight",
+        "created_at",
+    )
     search_fields = (
         "title",
         "body",
@@ -81,6 +89,7 @@ class ArticleAdmin(admin.ModelAdmin):
                 ),
             },
         ),
+        ("Front page", {"fields": ("is_spotlight", "recent_until")}),
         ("Render", {"fields": ("render_link",)}),
         ("Audit", {"fields": ("created_at", "updated_at")}),
     )

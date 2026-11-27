@@ -5,7 +5,7 @@ import { XMarkIcon, TrashIcon } from "@heroicons/react/24/outline";
 import { useTranslations } from "next-intl";
 import type { Image, DiscoverProject } from "@/lib/api";
 import { pickVariant } from "@/lib/utils";
-import { LargeHeroCard } from "@/app/projects/sections/FeaturedSection";
+import { ProjectHeroCard } from "@/components/ProjectHeroCard";
 import { ArrivalCard } from "@/app/projects/sections/NewArrivalsSection";
 import { Dialog } from "@/components/Dialog";
 
@@ -165,7 +165,7 @@ export function ImageRoleDialog({
                 {role.key === "is_hero" && (
                   <div className="p-2">
                     <div className="max-w-[320px] pointer-events-none">
-                      <LargeHeroCard project={previewProject} />
+                      <ProjectHeroCard project={previewProject} />
                     </div>
                   </div>
                 )}

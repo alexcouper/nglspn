@@ -22,6 +22,7 @@ from api.schemas.article import (
     ArticleOut,
     ArticlePublish,
     ArticleUpdate,
+    FrontPageArticle,
 )
 from api.schemas.errors import Error
 from api.schemas.project import (
@@ -51,6 +52,34 @@ if TYPE_CHECKING:
     from apps.projects.models import Image
 
 router = Router()
+
+MAX_FRONT_PAGE_LIMIT = 10
+
+
+def _clamp_front_page_limit(limit: int) -> int:
+    return max(1, min(limit, MAX_FRONT_PAGE_LIMIT))
+
+
+# The two front-page reads are registered before `/{article_id}`, so that
+# "recent" and "spotlight" are never taken for an article id.
+@router.get(
+    "/recent",
+    response={200: list[FrontPageArticle]},
+    auth=None,
+    tags=["Articles"],
+)
+def list_recent_articles(request: HttpRequest, limit: int = 2) -> list[Article]:
+    return REPO.articles.recent(_clamp_front_page_limit(limit))
+
+
+@router.get(
+    "/spotlight",
+    response={200: list[FrontPageArticle]},
+    auth=None,
+    tags=["Articles"],
+)
+def list_spotlight_articles(request: HttpRequest, limit: int = 5) -> list[Article]:
+    return REPO.articles.spotlight(_clamp_front_page_limit(limit))
 
 
 @router.get(

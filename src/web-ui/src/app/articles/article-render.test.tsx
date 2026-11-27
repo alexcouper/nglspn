@@ -93,7 +93,7 @@ async function render(props: Partial<Parameters<typeof ArticleRenderContent>[0]>
       <ArticleRenderContent
         container={projectContainer(project())}
         article={article()}
-        origin={{ kind: "latest", href: "/latest" }}
+        origin={{ kind: "discover", href: "/projects" }}
         onward={null}
         articleCount={4}
         channelCount={2}
@@ -115,15 +115,21 @@ function headings(container: HTMLElement): string[] {
 }
 
 function backLink(container: HTMLElement): HTMLAnchorElement | null {
-  return container.querySelector('a[href="/latest"], a[href^="/projects/"][href$="#articles"]');
+  return container.querySelector('a[href="/projects"], a[href^="/projects/"][href$="#articles"]');
+}
+
+function onwardLink(container: HTMLElement, text: string): HTMLAnchorElement | undefined {
+  return Array.from(container.querySelectorAll<HTMLAnchorElement>("section a")).find((a) =>
+    a.textContent?.includes(text),
+  );
 }
 
 describe("ArticleRenderContent", () => {
   it("names the place the reader came from on the back control", async () => {
     const { container, cleanup } = await render();
 
-    expect(backLink(container)?.textContent).toContain("Latest");
-    expect(backLink(container)?.getAttribute("href")).toBe("/latest");
+    expect(backLink(container)?.textContent).toContain("Discover");
+    expect(backLink(container)?.getAttribute("href")).toBe("/projects");
     cleanup();
   });
 
@@ -180,18 +186,31 @@ describe("ArticleRenderContent", () => {
     cleanup();
   });
 
-  it("labels feed cards that top up a thin project separately", async () => {
+  it("labels recent cards that top up a thin project separately", async () => {
     const { container, cleanup } = await render({
       onward: onward({
         topUp: {
           heading: { kind: "elsewhere" },
-          cards: [card({ id: "a-feed", title: "Counting cyclists", flag: "Reykjavik Bikes" })],
+          cards: [card({ id: "a-recent", title: "Counting cyclists", flag: "Reykjavik Bikes" })],
         },
       }),
     });
 
     expect(headings(container)).toEqual(["More in Updates", "Elsewhere on Naglasúpan"]);
     expect(container.textContent).toContain("Counting cyclists");
+    cleanup();
+  });
+
+  it("points the more link at Discover when recent articles are all there is", async () => {
+    const { container, cleanup } = await render({
+      onward: onward({
+        primary: { heading: { kind: "elsewhere" }, cards: [card({ title: "Counting cyclists" })] },
+        more: { kind: "discover", href: "/projects" },
+      }),
+    });
+
+    const more = onwardLink(container, "More on Discover");
+    expect(more?.getAttribute("href")).toBe("/projects");
     cleanup();
   });
 

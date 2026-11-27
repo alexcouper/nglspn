@@ -369,6 +369,25 @@ class PendingArticleFactory(PublishedArticleFactory):
     global_visibility = ArticleGlobalVisibility.PENDING
 
 
+def front_page_article(
+    *,
+    published_at: datetime | None = None,
+    approved_at: datetime | None = None,
+    project_status: str = ProjectStatus.APPROVED,
+    **kwargs,
+) -> Article:
+    """A visible article on an approved project, eligible for the front page
+    unless told otherwise. `approved_at` defaults to `published_at`, as it is
+    for a trusted author."""
+    published_at = published_at or timezone.now() - timedelta(days=1)
+    return PublishedArticleFactory(
+        project=ProjectFactory(status=project_status),
+        published_at=published_at,
+        approved_at=approved_at or published_at,
+        **kwargs,
+    )
+
+
 class CompetitionFactory(factory.django.DjangoModelFactory):
     class Meta:
         model = Competition

@@ -1,14 +1,16 @@
 "use client";
 
 import type { CategoryItem, DiscoverProject, WinnerProject } from "@/lib/api";
-import { FeaturedSection } from "./sections/FeaturedSection";
+import type { DiscoverTop } from "@/lib/discover-top";
+import { RecentSection } from "./sections/RecentSection";
+import { SpotlightSection } from "./sections/SpotlightSection";
 import { NewArrivalsSection } from "./sections/NewArrivalsSection";
 import { RecentTipoffsSection } from "./sections/RecentTipoffsSection";
 import { WinnersSection } from "./sections/WinnersSection";
 import { CategoryRowsSection } from "./sections/CategoryRowsSection";
 
 interface DiscoverViewProps {
-  featured: DiscoverProject[];
+  top: DiscoverTop;
   newArrivals: DiscoverProject[];
   recentTipoffs: DiscoverProject[];
   winners: WinnerProject[];
@@ -16,7 +18,7 @@ interface DiscoverViewProps {
 }
 
 export function DiscoverView({
-  featured,
+  top,
   newArrivals,
   recentTipoffs,
   winners,
@@ -24,7 +26,8 @@ export function DiscoverView({
 }: DiscoverViewProps) {
   return (
     <div className="space-y-10">
-      {featured.length > 0 && <FeaturedSection projects={featured} />}
+      <RecentSection lead={top.lead} second={top.second} slot={top.slot} />
+      <SpotlightSection articles={top.spotlight} />
       {newArrivals.length > 0 && <NewArrivalsSection projects={newArrivals} />}
       {winners.length > 0 && <WinnersSection winners={winners} />}
       <RecentTipoffsSection projects={recentTipoffs} />

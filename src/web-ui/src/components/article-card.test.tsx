@@ -52,6 +52,21 @@ function frameOf(container: HTMLElement): HTMLElement {
   return container.firstElementChild as HTMLElement;
 }
 
+function classesOf(element: Element | null): string[] {
+  return element?.className.split(/\s+/) ?? [];
+}
+
+function expectBoxed(card: Element | null) {
+  expect(classesOf(card)).toEqual(expect.arrayContaining(["border", "bg-white", "rounded-lg"]));
+  expect(classesOf(card)).not.toContain("border-b");
+}
+
+function expectRuled(card: Element | null) {
+  expect(classesOf(card)).toContain("border-b");
+  expect(classesOf(card)).not.toEqual(expect.arrayContaining(["bg-white"]));
+  expect(classesOf(card)).not.toContain("border");
+}
+
 // ---------------------------------------------------------------- the tests
 
 describe("CroppedImage", () => {
@@ -280,6 +295,29 @@ describe("ArticleCard", () => {
     );
     expect(imaged.container.querySelector(".bg-accent")).toBeNull();
     imaged.unmount();
+  });
+});
+
+describe("ArticleCard frame", () => {
+  it("draws a white bordered box unless asked otherwise", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <ArticleCard article={articleListItem()} href="/x" variant="grid" />,
+    );
+
+    expectBoxed(container.querySelector("article"));
+
+    cleanup();
+  });
+
+  it("sets a ruled card on the page with only a hairline underneath and no text inset", async () => {
+    const { container, unmount: cleanup } = await mount(
+      <ArticleCard article={articleListItem()} href="/x" variant="lead" frame="ruled" />,
+    );
+
+    expectRuled(container.querySelector("article"));
+    expect(classesOf(container.querySelector("h3")?.parentElement ?? null)).not.toContain("p-5");
+
+    cleanup();
   });
 });
 

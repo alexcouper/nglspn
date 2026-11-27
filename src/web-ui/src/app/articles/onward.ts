@@ -1,5 +1,5 @@
 import type { CropRect } from "@/components/CroppedImage";
-import type { Article, ArticleListItem, FeedEntry, UserArticle } from "@/lib/api";
+import type { Article, ArticleListItem, FrontPageArticle, UserArticle } from "@/lib/api";
 import { publishedNewestFirst } from "@/lib/article-listing";
 import {
   type Container,
@@ -36,12 +36,12 @@ export interface OnwardGroup {
 export type OnwardMore =
   | { kind: "project"; href: string; count: number; project: string }
   | { kind: "author"; href: string; count: number; author: string }
-  | { kind: "latest"; href: string };
+  | { kind: "discover"; href: string };
 
 export interface Onward {
   /** Never empty; its first card is the lead. */
   primary: OnwardGroup;
-  /** Site-feed cards filling the slots a thin container leaves empty. */
+  /** Front-page cards filling the slots a thin container leaves empty. */
   topUp: OnwardGroup | null;
   more: OnwardMore;
 }
@@ -60,10 +60,11 @@ interface Input {
   article: Article;
   /** The container's other articles as the API returns them, drafts and all. */
   siblings: OnwardSibling[] | null;
-  feed: FeedEntry[] | null;
+  /** Front-page articles, newest first, to top up a thin container. */
+  recent: FrontPageArticle[] | null;
 }
 
-export function buildOnward({ container, article, siblings, feed }: Input): Onward | null {
+export function buildOnward({ container, article, siblings, recent }: Input): Onward | null {
   const others = publishedSiblings(container, siblings ?? []).filter(
     (a) => a.id !== article.id,
   );
@@ -77,12 +78,12 @@ export function buildOnward({ container, article, siblings, feed }: Input): Onwa
     .slice(0, ONWARD_SLOTS)
     .map((a) => containerCard(a, container));
 
-  const fromFeed = feedCards(feed ?? [], container, article).slice(
+  const fromFrontPage = frontPageCards(recent ?? [], container, article).slice(
     0,
     ONWARD_SLOTS - fromContainer.length,
   );
-  const elsewhereGroup: OnwardGroup | null = fromFeed.length
-    ? { heading: { kind: "elsewhere" }, cards: fromFeed }
+  const elsewhereGroup: OnwardGroup | null = fromFrontPage.length
+    ? { heading: { kind: "elsewhere" }, cards: fromFrontPage }
     : null;
 
   if (!fromContainer.length) {
@@ -90,7 +91,7 @@ export function buildOnward({ container, article, siblings, feed }: Input): Onwa
     return {
       primary: elsewhereGroup,
       topUp: null,
-      more: { kind: "latest", href: "/latest" },
+      more: { kind: "discover", href: "/projects" },
     };
   }
 
@@ -151,14 +152,16 @@ function containerCard(article: OnwardSibling, container: Container): OnwardCard
   };
 }
 
-function feedCards(feed: FeedEntry[], container: Container, current: Article): OnwardCard[] {
+function frontPageCards(
+  recent: FrontPageArticle[],
+  container: Container,
+  current: Article,
+): OnwardCard[] {
   const seen = new Set<string>();
   const cards: OnwardCard[] = [];
-  for (const entry of feed) {
-    const article = entry.article;
-    if (!article?.slug) continue;
+  for (const article of recent) {
     if (article.id === current.id || isFromContainer(article, container)) continue;
-    const href = feedArticleHref(article);
+    const href = frontPageArticleHref(article);
     if (!href || seen.has(article.id)) continue;
     seen.add(article.id);
     cards.push({
@@ -174,17 +177,15 @@ function feedCards(feed: FeedEntry[], container: Container, current: Article): O
   return cards;
 }
 
-type FeedArticleRef = NonNullable<FeedEntry["article"]>;
-
-function isFromContainer(article: FeedArticleRef, container: Container): boolean {
+function isFromContainer(article: FrontPageArticle, container: Container): boolean {
   if (container.kind === "project") {
     return article.project_slug !== null && article.project_slug === container.project.slug;
   }
   return article.project_slug === null && article.author_id === container.author.id;
 }
 
-/** The public URL of a feed article: under its project, or under its author. */
-export function feedArticleHref(article: FeedArticleRef): string | null {
+/** The public URL of a front-page article: under its project, or under its author. */
+export function frontPageArticleHref(article: FrontPageArticle): string | null {
   if (!article.slug) return null;
   if (article.project_slug) return `/projects/${article.project_slug}/articles/${article.slug}`;
   if (article.author_id) return `/users/${article.author_id}/articles/${article.slug}`;

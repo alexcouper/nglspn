@@ -66,7 +66,7 @@ export function CompetitionSlot({ slot, className = "" }: Props) {
       className={`group flex overflow-hidden rounded-lg border border-border bg-white transition-colors hover:border-accent/50 ${className}`}
     >
       {imageUrl && (
-        <div className="relative w-24 flex-none self-stretch sm:w-32">
+        <div className="relative m-4 mr-0 aspect-video w-36 flex-none self-start overflow-hidden rounded-md bg-muted sm:w-56 md:w-44 lg:w-64">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={imageUrl}

@@ -6,6 +6,10 @@ from api.naglasupan.is, then downloads each referenced image from the prod
 CDN and uploads it to local MinIO so the listing renders real artwork.
 Re-running picks up new prod projects and articles (idempotent per record).
 
+Competitions are copied in the state prod has them in, open rounds included,
+with their square and wide images and their entries, and are updated on a
+re-run so the local Discover page shows the same competition slot as prod.
+
 Articles keep their production UUIDs, slugs, authors (as local users with
 the prod id and the default password), channels, images and listing-image
 choices. Body image URLs are rewritten from the prod CDN to local storage
@@ -54,7 +58,6 @@ from apps.follows.models import Channel
 from apps.projects.models import (
     Competition,
     CompetitionEntry,
-    CompetitionStatus,
     ContributorRole,
     EntrySource,
     Image,
@@ -315,7 +318,8 @@ def mirror_image(cdn_url: str) -> tuple[str | None, bool]:
     """
     if not cdn_url.startswith(f"{PROD_CDN_BASE}/"):
         return None, False
-    storage_key = cdn_url[len(PROD_CDN_BASE) + 1 :]
+    # The CDN URL is percent-encoded; the object's key is not.
+    storage_key = urllib.parse.unquote(cdn_url[len(PROD_CDN_BASE) + 1 :])
     if storage_service.object_exists(storage_key):
         return storage_key, False
     try:
@@ -380,46 +384,89 @@ def create_project_images(
     return count
 
 
+COMPETITION_IMAGE_FIELDS = {
+    "image": "image_url",
+    "image_wide": "image_wide_url",
+    "image_wide_winner": "image_wide_winner_url",
+}
+COMPETITION_STORAGE_PREFIX = "competitions/"
+
+
+def mirror_competition_image(cdn_url: str | None) -> str | None:
+    """Mirror a competition image; returns the name its ImageField stores,
+    which is the storage key without the storage's `competitions/` location."""
+    if not cdn_url:
+        return None
+    storage_key, _ = mirror_image(cdn_url)
+    if not storage_key or not storage_key.startswith(COMPETITION_STORAGE_PREFIX):
+        return None
+    return storage_key[len(COMPETITION_STORAGE_PREFIX) :]
+
+
+def winners_by_competition_slug(
+    project_data: list[dict], by_prod_id: dict[str, Project]
+) -> dict[str, Project]:
+    return {
+        won["slug"]: by_prod_id[pd["id"]]
+        for pd in project_data
+        if pd["id"] in by_prod_id
+        for won in pd.get("won_competitions") or []
+    }
+
+
 def create_competitions(
     competitions_data: list[dict],
     project_data: list[dict],
     by_prod_id: dict[str, Project],
 ) -> None:
-    """Recreate competitions for projects flagged as winners on prod."""
-    print("\nCreating competitions for winners...")
-    by_slug = {c["slug"]: c for c in competitions_data}
+    """Recreate every prod competition: its state, images, entries and winner.
 
-    for pd in project_data:
-        project = by_prod_id.get(pd["id"])
-        if not project:
-            continue
-        for w in pd.get("won_competitions") or []:
-            comp_data = by_slug.get(w["slug"])
-            if not comp_data:
-                continue
+    Existing rows are brought up to date, so a re-run moves a local round on
+    to the state prod has reached.
+    """
+    print("\nCreating competitions...")
+    winners = winners_by_competition_slug(project_data, by_prod_id)
 
-            comp, was_created = Competition.objects.get_or_create(
-                name=comp_data["name"],
-                defaults={
-                    "start_date": comp_data["start_date"],
-                    "submission_deadline": comp_data["submission_deadline"],
-                    "voting_end_date": comp_data.get("voting_end_date"),
-                    "prize_amount": int(comp_data.get("prize_amount") or 50000),
-                    "status": CompetitionStatus.CLOSED,
-                    "winner": project,
-                },
-            )
-            if not was_created and comp.winner_id != project.id:
-                comp.winner = project
-                comp.status = CompetitionStatus.CLOSED
-                comp.save(update_fields=["winner", "status"])
+    for comp_data in competitions_data:
+        winner = winners.get(comp_data["slug"])
+        fields = {
+            "slug": comp_data["slug"],
+            "start_date": comp_data["start_date"],
+            "submission_deadline": comp_data["submission_deadline"],
+            "voting_end_date": comp_data.get("voting_end_date"),
+            "prize_amount": int(comp_data.get("prize_amount") or 50000),
+            "status": comp_data["status"],
+            "winner": winner,
+            **{
+                field: mirror_competition_image(comp_data.get(url_key)) or ""
+                for field, url_key in COMPETITION_IMAGE_FIELDS.items()
+            },
+        }
+        comp, was_created = Competition.objects.update_or_create(
+            name=comp_data["name"], defaults=fields
+        )
+        entrants = _competition_entrants(comp_data["slug"], by_prod_id)
+        if winner:
+            entrants.append(winner)
+        for project in entrants:
             CompetitionEntry.objects.get_or_create(
                 competition=comp,
                 project=project,
                 defaults={"entered_via": EntrySource.BACKFILL},
             )
-            verb = "Created" if was_created else "Exists "
-            print(f"  {verb}: {comp.name} (winner: {project.title})")
+        verb = "Created" if was_created else "Updated"
+        outcome = f"winner: {winner.title}" if winner else comp.status
+        print(f"  {verb}: {comp.name} ({outcome}, {comp.entries.count()} entries)")
+
+
+def _competition_entrants(slug: str, by_prod_id: dict[str, Project]) -> list[Project]:
+    """The round's entered projects that exist locally."""
+    detail = fetch_json_or_none(f"{PROD_API_BASE}/competitions/{slug}") or {}
+    return [
+        by_prod_id[entry["id"]]
+        for entry in detail.get("projects") or []
+        if entry["id"] in by_prod_id
+    ]
 
 
 def fetch_json_or_none(url: str) -> Any:

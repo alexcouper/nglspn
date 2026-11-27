@@ -9362,6 +9362,17 @@
             ],
             "title": "Image Url"
           },
+          "image_wide_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Image Wide Url"
+          },
           "project_count": {
             "title": "Project Count",
             "type": "integer"

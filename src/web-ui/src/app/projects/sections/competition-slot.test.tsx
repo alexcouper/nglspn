@@ -91,6 +91,12 @@ function imageSources(container: HTMLElement): (string | null)[] {
   return Array.from(container.querySelectorAll("img")).map((img) => img.getAttribute("src"));
 }
 
+function thumbnailShapes(container: HTMLElement): (string | null)[] {
+  return Array.from(container.querySelectorAll("[data-thumbnail]")).map((el) =>
+    el.getAttribute("data-thumbnail"),
+  );
+}
+
 // ---------------------------------------------------------------- the tests
 
 describe("CompetitionSlot", () => {
@@ -151,6 +157,30 @@ describe("CompetitionSlot", () => {
     expectText(container, "Won by Alkóhól Listinn", "Ágúst");
     expect(imageSources(container)).toEqual(["https://cdn.example/winner.png"]);
     expectLinksTo(container, "/competitions/agust");
+
+    unmount();
+  });
+
+  it("prefers the competition's wide image, drawn wide", async () => {
+    const { container, unmount } = await mount(
+      <CompetitionSlot
+        slot={votingSlot(5, { image_wide_url: "https://cdn.example/grasker-wide.jpg" })}
+      />,
+    );
+
+    expect(imageSources(container)).toEqual(["https://cdn.example/grasker-wide.jpg"]);
+    expect(thumbnailShapes(container)).toEqual(["wide"]);
+
+    unmount();
+  });
+
+  it("draws the square image square when the competition has no wide one", async () => {
+    const { container, unmount } = await mount(
+      <CompetitionSlot slot={votingSlot(5, { image_wide_url: null })} />,
+    );
+
+    expect(imageSources(container)).toEqual(["https://cdn.example/tomatur.png"]);
+    expect(thumbnailShapes(container)).toEqual(["square"]);
 
     unmount();
   });

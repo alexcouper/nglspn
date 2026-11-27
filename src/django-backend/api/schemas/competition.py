@@ -180,6 +180,7 @@ class CompetitionSummaryResponse(Schema):
     prize_amount: Decimal | None = None
     status: CompetitionStatusEnum
     image_url: str | None = None
+    image_wide_url: str | None = None
     project_count: int
     # Set only on a closed competition with a winner.
     winner: CompetitionWinnerRef | None
@@ -197,6 +198,7 @@ class CompetitionSummaryResponse(Schema):
             prize_amount=competition.prize_amount,
             status=competition.status,
             image_url=competition.image_url,
+            image_wide_url=competition.image_wide_url,
             project_count=competition.project_count,
             winner=winner,
         )

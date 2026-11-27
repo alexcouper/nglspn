@@ -12,6 +12,21 @@ interface Props {
   className?: string;
 }
 
+// Both shapes come out the same height at every breakpoint, so the slot keeps
+// its size whichever image it has.
+const THUMBNAIL = {
+  wide: "aspect-video w-36 sm:w-56 md:w-44 lg:w-64",
+  square: "aspect-square w-20 sm:w-32 md:w-24 lg:w-36",
+} as const;
+
+// A competition's wide image if it has one, else its square one drawn square:
+// neither is cropped to the other's shape.
+function competitionImage(competition: Slot["competition"]) {
+  return competition.image_wide_url
+    ? { url: competition.image_wide_url, shape: "wide" as const }
+    : { url: competition.image_url, shape: "square" as const };
+}
+
 // The competition beside Recent, drawn as its state and what a visitor can do
 // about it rather than as an article card. Unboxed like the articles around
 // it: a hairline underneath, its content at the top, and any height the grid
@@ -25,7 +40,7 @@ export function CompetitionSlot({ slot, className = "" }: Props) {
   let headline: string;
   let details: string[];
   let verb: string;
-  let imageUrl: string | null | undefined;
+  let image: { url: string | null | undefined; shape: keyof typeof THUMBNAIL };
   let prize = "";
 
   switch (slot.state) {
@@ -37,7 +52,7 @@ export function CompetitionSlot({ slot, className = "" }: Props) {
         t("entries", { count: competition.project_count }),
       ];
       verb = t("voting.verb");
-      imageUrl = competition.image_url;
+      image = competitionImage(competition);
       break;
     case "accepting": {
       label = t("accepting.label");
@@ -47,7 +62,7 @@ export function CompetitionSlot({ slot, className = "" }: Props) {
         t("enteredSoFar", { count: competition.project_count }),
       ];
       verb = t("accepting.verb");
-      imageUrl = competition.image_url;
+      image = competitionImage(competition);
       const amount = formatKronurAmount(competition.prize_amount);
       prize = amount ? th("prize", { amount }) : "";
       break;
@@ -57,7 +72,7 @@ export function CompetitionSlot({ slot, className = "" }: Props) {
       headline = t("closed.wonBy", { project: slot.winner.title });
       details = [competition.name];
       verb = t("closed.verb");
-      imageUrl = slot.winner.image_url;
+      image = { url: slot.winner.image_url, shape: "wide" };
       break;
   }
 
@@ -67,11 +82,14 @@ export function CompetitionSlot({ slot, className = "" }: Props) {
       data-testid="competition-slot"
       className={`group flex items-start gap-4 rounded-md border-b border-border pb-5 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent ${className}`}
     >
-      {imageUrl && (
-        <div className="relative aspect-video w-36 flex-none overflow-hidden rounded-md bg-muted ring-1 ring-black/5 sm:w-56 md:w-44 lg:w-64">
+      {image.url && (
+        <div
+          data-thumbnail={image.shape}
+          className={`relative flex-none overflow-hidden rounded-md bg-muted ring-1 ring-black/5 ${THUMBNAIL[image.shape]}`}
+        >
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src={imageUrl}
+            src={image.url}
             alt=""
             loading="lazy"
             className="absolute inset-0 h-full w-full object-cover"

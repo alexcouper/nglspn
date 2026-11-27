@@ -569,6 +569,31 @@ class TestHighlights:
         assert_that(competitions[0]["name"], equal_to("Newer Open"))
         assert_that(competitions[1]["name"], equal_to("Older Open"))
 
+    def test_includes_the_wide_image_alongside_the_square_one(self, client) -> None:
+        CompetitionFactory(status=CompetitionStatus.VOTING)
+
+        with (
+            patch.object(
+                Competition,
+                "image_url",
+                new_callable=PropertyMock,
+                return_value="https://example.com/square.jpg",
+            ),
+            patch.object(
+                Competition,
+                "image_wide_url",
+                new_callable=PropertyMock,
+                return_value="https://example.com/wide.jpg",
+            ),
+        ):
+            response = client.get("/api/competitions/highlights")
+
+        highlight = response.json()["competitions"][0]
+        assert_that(highlight["image_url"], equal_to("https://example.com/square.jpg"))
+        assert_that(
+            highlight["image_wide_url"], equal_to("https://example.com/wide.jpg")
+        )
+
     def test_includes_voting_as_active(self, client) -> None:
         CompetitionFactory(
             status=CompetitionStatus.VOTING,
